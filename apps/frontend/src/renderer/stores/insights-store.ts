@@ -22,6 +22,7 @@ interface InsightsState {
   sessions: InsightsSessionSummary[]; // List of all sessions
   status: InsightsChatStatus;
   pendingMessage: string;
+  pendingImages: File[]; // Images selected for attachment
   streamingContent: string; // Accumulates streaming response
   currentTool: ToolUsage | null; // Currently executing tool
   toolsUsed: InsightsToolUsage[]; // Tools used during current response
@@ -32,6 +33,9 @@ interface InsightsState {
   setSessions: (sessions: InsightsSessionSummary[]) => void;
   setStatus: (status: InsightsChatStatus) => void;
   setPendingMessage: (message: string) => void;
+  addPendingImage: (image: File) => void;
+  removePendingImage: (index: number) => void;
+  clearPendingImages: () => void;
   addMessage: (message: InsightsChatMessage) => void;
   updateLastAssistantMessage: (content: string) => void;
   appendStreamingContent: (content: string) => void;
@@ -55,6 +59,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessions: [],
   status: initialStatus,
   pendingMessage: '',
+  pendingImages: [],
   streamingContent: '',
   currentTool: null,
   toolsUsed: [],
@@ -70,6 +75,18 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
   setPendingMessage: (message) => set({ pendingMessage: message }),
+
+  addPendingImage: (image) =>
+    set((state) => ({
+      pendingImages: [...state.pendingImages, image]
+    })),
+
+  removePendingImage: (index) =>
+    set((state) => ({
+      pendingImages: state.pendingImages.filter((_, i) => i !== index)
+    })),
+
+  clearPendingImages: () => set({ pendingImages: [] }),
 
   addMessage: (message) =>
     set((state) => {
@@ -187,6 +204,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       status: initialStatus,
       pendingMessage: '',
+      pendingImages: [],
       streamingContent: '',
       currentTool: null,
       toolsUsed: []
@@ -237,6 +255,7 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
 
   // Clear pending and set status
   store.setPendingMessage('');
+  store.clearPendingImages();
   store.clearStreamingContent();
   store.clearToolsUsed(); // Clear tools from previous response
   store.setStatus({
