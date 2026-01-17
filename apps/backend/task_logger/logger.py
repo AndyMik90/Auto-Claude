@@ -10,6 +10,7 @@ from core.debug import debug, debug_error, debug_info, debug_success, is_debug_e
 from .models import LogEntry, LogEntryType, LogPhase
 from .storage import LogStorage
 from .streaming import emit_marker
+from .utils import strip_ansi_codes
 
 
 class TaskLogger:
@@ -307,6 +308,10 @@ class TaskLogger:
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
+        # Sanitize detail content before storage
+        if detail:
+            detail = strip_ansi_codes(detail)
+
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=entry_type.value,
@@ -479,6 +484,10 @@ class TaskLogger:
                 stored_detail[:10240]
                 + f"\n\n... [truncated - full output was {len(detail)} chars]"
             )
+
+        # Sanitize detail content before storage
+        if stored_detail:
+            stored_detail = strip_ansi_codes(stored_detail)
 
         entry = LogEntry(
             timestamp=self._timestamp(),

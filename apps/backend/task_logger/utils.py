@@ -4,8 +4,10 @@ Utility functions for task logging.
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .logger import TaskLogger
+if TYPE_CHECKING:
+    from .logger import TaskLogger
 
 
 # ANSI escape code patterns
@@ -51,12 +53,12 @@ def strip_ansi_codes(text: str) -> str:
 
 
 # Global logger instance for easy access
-_current_logger: TaskLogger | None = None
+_current_logger: "TaskLogger | None" = None
 
 
 def get_task_logger(
     spec_dir: Path | None = None, emit_markers: bool = True
-) -> TaskLogger | None:
+) -> "TaskLogger | None":
     """
     Get or create a task logger for the given spec directory.
 
