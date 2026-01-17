@@ -2,9 +2,53 @@
 Utility functions for task logging.
 """
 
+import re
 from pathlib import Path
 
 from .logger import TaskLogger
+
+
+# ANSI escape code patterns
+# ANSI CSI (Control Sequence Introducer) escape sequence pattern.
+# Matches: \x1b[ followed by parameters and ending with a command byte
+ANSI_CSI_PATTERN = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+
+# OSC (Operating System Command) escape sequences with BEL (bell) terminator
+# Matches: \x1b] ... \x07
+ANSI_OSC_BEL_PATTERN = re.compile(r'\x1b\][^\x07]*\x07')
+
+# OSC (Operating System Command) escape sequences with ST (string terminator)
+# Matches: \x1b] ... \x1b\
+ANSI_OSC_ST_PATTERN = re.compile(r'\x1b\][^\x1b]*\x1b\\')
+
+
+def strip_ansi_codes(text: str) -> str:
+    """
+    Removes ANSI escape codes from a string.
+
+    These sequences are used for terminal coloring/formatting but appear
+    as raw text in logs and UI components.
+
+    Args:
+        text: The string potentially containing ANSI escape codes
+
+    Returns:
+        The string with all ANSI escape sequences removed
+
+    Example:
+        >>> strip_ansi_codes('\\x1b[90m[21:40:22.196]\\x1b[0m \\x1b[36m[DEBUG]\\x1b[0m')
+        '[21:40:22.196] [DEBUG]'
+    """
+    if not text:
+        return ''
+
+    # Remove all ANSI escape sequences
+    result = ANSI_CSI_PATTERN.sub('', text)
+    result = ANSI_OSC_BEL_PATTERN.sub('', result)
+    result = ANSI_OSC_ST_PATTERN.sub('', result)
+
+    return result
+
 
 # Global logger instance for easy access
 _current_logger: TaskLogger | None = None
