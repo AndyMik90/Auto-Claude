@@ -156,12 +156,19 @@ export function Terminal({
       // This fixes the race condition where IPC calls happen before terminal creation.
       if (pendingWorktreeConfigRef.current) {
         const config = pendingWorktreeConfigRef.current;
-        window.electronAPI.setTerminalWorktreeConfig(id, config);
-        window.electronAPI.setTerminalTitle(id, config.name);
+        try {
+          window.electronAPI.setTerminalWorktreeConfig(id, config);
+          window.electronAPI.setTerminalTitle(id, config.name);
+        } catch (error) {
+          console.error('Failed to sync worktree config after PTY creation:', error);
+        }
         pendingWorktreeConfigRef.current = null;
       }
     },
     onError: (error) => {
+      // Clear pending config on error to prevent stale config from being applied
+      // if PTY is recreated later (fixes potential race condition on failed recreation)
+      pendingWorktreeConfigRef.current = null;
       writeln(`\r\n\x1b[31mError: ${error}\x1b[0m`);
     },
   });
@@ -285,7 +292,7 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     setShowWorktreeDialog(true);
   }, []);
 
-  const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
+  const applyWorktreeConfig = useCallback(async (config: TerminalWorktreeConfig) => {
     // IMPORTANT: Set isRecreatingRef BEFORE destruction to signal deliberate recreation
     // This prevents exit handlers from triggering auto-removal during controlled recreation
     isRecreatingRef.current = true;
@@ -319,35 +326,13 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     resetForRecreate();
   }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
 
+  const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
+    await applyWorktreeConfig(config);
+  }, [applyWorktreeConfig]);
+
   const handleSelectWorktree = useCallback(async (config: TerminalWorktreeConfig) => {
-    // IMPORTANT: Set isRecreatingRef BEFORE destruction to signal deliberate recreation
-    // This prevents exit handlers from triggering auto-removal during controlled recreation
-    isRecreatingRef.current = true;
-
-    // Store pending config to be synced after PTY creation succeeds
-    // This fixes race condition where IPC calls happen before terminal exists in main process
-    pendingWorktreeConfigRef.current = config;
-
-    // Set isCreatingRef BEFORE updating the store to prevent race condition
-    prepareForRecreate();
-
-    // Same logic as handleWorktreeCreated - attach terminal to existing worktree
-    setWorktreeConfig(id, config);
-    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
-    // The onCreated callback will re-sync using pendingWorktreeConfigRef
-    window.electronAPI.setTerminalWorktreeConfig(id, config);
-    updateTerminal(id, { title: config.name, cwd: config.worktreePath });
-    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
-    window.electronAPI.setTerminalTitle(id, config.name);
-
-    // Destroy current PTY - a new one will be created in the worktree directory
-    if (isCreatedRef.current) {
-      await window.electronAPI.destroyTerminal(id);
-      isCreatedRef.current = false;
-    }
-
-    resetForRecreate();
-  }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
+    await applyWorktreeConfig(config);
+  }, [applyWorktreeConfig]);
 
   const handleOpenInIDE = useCallback(async () => {
     const worktreePath = terminal?.worktreeConfig?.worktreePath;
