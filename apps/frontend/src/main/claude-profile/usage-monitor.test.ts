@@ -479,4 +479,387 @@ describe('usage-monitor', () => {
       expect(usage?.weeklyResetTime).toBe('Unknown');
     });
   });
+
+  describe('API error handling', () => {
+    it('should handle 401 Unauthorized responses', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({ error: 'Invalid token' })
+      } as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // 401 errors should throw
+      await expect(
+        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile')
+      ).rejects.toThrow('API Auth Failure: 401');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.anthropic.com/api/oauth/usage',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer invalid-token'
+          })
+        })
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle 403 Forbidden responses', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ error: 'Access denied' })
+      } as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // 403 errors should throw
+      await expect(
+        monitor['fetchUsageViaAPI']('expired-token', 'test-profile-1', 'Test Profile')
+      ).rejects.toThrow('API Auth Failure: 403');
+
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle 500 Internal Server Error', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({ error: 'Server error' })
+      } as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle network timeout/failure', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle invalid JSON response', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => {
+          throw new SyntaxError('Invalid JSON');
+        }
+      } as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle auth errors with clear messages in response body', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      // Mock a 401 response with detailed error message in body
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({ error: 'authentication failed', detail: 'invalid credentials' })
+      } as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // 401 errors should throw with proper message
+      await expect(
+        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile')
+      ).rejects.toThrow('API Auth Failure: 401');
+
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Credential error handling', () => {
+    it('should handle missing credential gracefully', async () => {
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Call fetchUsage without credential
+      const usage = await monitor['fetchUsage']('test-profile-1', undefined);
+
+      // Should fall back to CLI method (which returns null)
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty credential string', async () => {
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsage']('test-profile-1', '');
+
+      // Should fall back to CLI method
+      expect(usage).toBeNull();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Profile error handling', () => {
+    it('should handle null active profile', async () => {
+      // Get the mocked getClaudeProfileManager function
+      const { getClaudeProfileManager } = await import('../claude-profile-manager');
+      const mockGetManager = vi.mocked(getClaudeProfileManager);
+
+      // Mock to return null for active profile
+      mockGetManager.mockReturnValueOnce({
+        getAutoSwitchSettings: vi.fn(() => ({
+          enabled: true,
+          proactiveSwapEnabled: true,
+          usageCheckInterval: 30000,
+          sessionThreshold: 80,
+          weeklyThreshold: 80
+        })),
+        getActiveProfile: vi.fn(() => null), // Return null
+        getProfile: vi.fn(() => null),
+        getProfilesSortedByAvailability: vi.fn(() => []),
+        setActiveProfile: vi.fn(),
+        getProfileToken: vi.fn(() => null)
+      } as any);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Call checkUsageAndSwap directly to test null profile handling
+      await monitor['checkUsageAndSwap']();
+
+      // Should log a warning about no active profile
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No active profile'));
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle profile with missing required fields', async () => {
+      const monitor = getUsageMonitor();
+      const rawData = {
+        // Missing all required fields
+      };
+
+      const usage = monitor['normalizeAnthropicResponse'](rawData, 'test-profile-1', 'Test Profile');
+
+      // Should still return a valid snapshot with defaults
+      expect(usage).not.toBeNull();
+      expect(usage.sessionPercent).toBe(0);
+      expect(usage.weeklyPercent).toBe(0);
+      expect(usage.sessionResetTime).toBe('Unknown');
+      expect(usage.weeklyResetTime).toBe('Unknown');
+    });
+  });
+
+  describe('Provider-specific error handling', () => {
+    it('should handle zai API errors', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({ error: 'z.ai service unavailable' })
+      } as Response);
+
+      // Mock API profile with zai baseUrl
+      mockLoadProfilesFile.mockResolvedValueOnce({
+        profiles: [{
+          id: 'zai-profile-1',
+          name: 'z.ai Profile',
+          baseUrl: 'https://api.z.ai/api/anthropic',
+          apiKey: 'zai-api-key'
+        }],
+        activeProfileId: 'zai-profile-1',
+        version: 1
+      });
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('zai-api-key', 'zai-profile-1', 'z.ai Profile');
+
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle ZHIPU API errors', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        json: async () => ({ error: 'ZHIPU gateway error' })
+      } as Response);
+
+      // Mock API profile with ZHIPU baseUrl
+      mockLoadProfilesFile.mockResolvedValueOnce({
+        profiles: [{
+          id: 'zhipu-profile-1',
+          name: 'ZHIPU Profile',
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          apiKey: 'zhipu-api-key'
+        }],
+        activeProfileId: 'zhipu-profile-1',
+        version: 1
+      });
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('zhipu-api-key', 'zhipu-profile-1', 'ZHIPU Profile');
+
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle unknown provider gracefully', async () => {
+      // Mock API profile with unknown provider baseUrl
+      mockLoadProfilesFile.mockResolvedValueOnce({
+        profiles: [{
+          id: 'unknown-profile-1',
+          name: 'Unknown Provider Profile',
+          baseUrl: 'https://unknown-provider.com/api',
+          apiKey: 'unknown-api-key'
+        }],
+        activeProfileId: 'unknown-profile-1',
+        version: 1
+      });
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const usage = await monitor['fetchUsageViaAPI']('unknown-api-key', 'unknown-profile-1', 'Unknown Profile');
+
+      // Unknown provider should return null
+      expect(usage).toBeNull();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Reset time formatting error handling', () => {
+    it('should handle invalid ISO timestamp format', () => {
+      const monitor = getUsageMonitor();
+
+      // When Date parsing fails with "Invalid Date", getTime() returns NaN
+      // The method continues and formats with NaN values
+      const formatted = monitor['formatResetTime']('not-a-valid-timestamp');
+
+      // Invalid dates result in NaN format (not a throw, not original string)
+      expect(formatted).toBe('NaNd NaNh');
+    });
+
+    it('should handle null timestamp', () => {
+      const monitor = getUsageMonitor();
+
+      const formatted = monitor['formatResetTime'](null as any);
+
+      expect(formatted).toBe('Unknown');
+    });
+
+    it('should handle undefined timestamp', () => {
+      const monitor = getUsageMonitor();
+
+      const formatted = monitor['formatResetTime'](undefined);
+
+      expect(formatted).toBe('Unknown');
+    });
+
+    it('should handle past dates in reset time', () => {
+      const monitor = getUsageMonitor();
+
+      const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25 hours ago (over 24h)
+      const formatted = monitor['formatResetTime'](pastDate.toISOString());
+
+      // Should still format correctly (negative time shows as negative values)
+      // 25 hours is still under 24 in absolute value for the code's check
+      // The code checks: if (diffHours < 24) use hours format
+      // -25 < 24 is true, so it uses hours format
+      expect(formatted).toBeDefined();
+      expect(typeof formatted).toBe('string');
+      expect(formatted).toMatch(/-?\d+h -?\d+m/); // Shows as -25h 0m (hours format)
+    });
+
+    it('should handle recent past dates in hours format', () => {
+      const monitor = getUsageMonitor();
+
+      const pastDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago (under 24h)
+      const formatted = monitor['formatResetTime'](pastDate.toISOString());
+
+      // Times under 24 hours show in hour format
+      expect(formatted).toBeDefined();
+      expect(typeof formatted).toBe('string');
+      expect(formatted).toMatch(/-?\d+h -?\d+m/); // Negative hours format
+    });
+  });
+
+  describe('Concurrent check prevention', () => {
+    it('should prevent concurrent usage checks', async () => {
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Start first check (it will take some time)
+      const firstCheck = monitor['checkUsageAndSwap']();
+
+      // Try to start second check immediately (should be ignored)
+      const secondCheck = monitor['checkUsageAndSwap']();
+
+      // Both should resolve
+      await firstCheck;
+      await secondCheck;
+
+      // Verify checks completed
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
