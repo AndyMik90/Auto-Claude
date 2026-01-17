@@ -23,7 +23,7 @@ import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv, getGitBashEnv } from '../env-utils';
-import { getToolInfo } from '../cli-tool-manager';
+import { getToolInfo, type CLITool } from '../cli-tool-manager';
 import { isWindows, killProcessGracefully } from '../platform';
 
 /**
@@ -109,7 +109,12 @@ export class AgentProcessManager {
     const augmentedEnv = getAugmentedEnv();
 
     // On Windows, detect and pass git-bash path for Claude Code CLI
-    const gitBashEnv = getGitBashEnv();
+    // Use dependency injection to avoid lazy-loading issues with bundlers
+    // Adapter converts path?: string to path: string | null for type compatibility
+    const gitBashEnv = getGitBashEnv((tool) => {
+      const result = getToolInfo(tool as CLITool);
+      return { ...result, path: result.path ?? null };
+    });
 
     // Detect and pass CLI tool paths to Python backend
     const claudeCliEnv = this.detectAndSetCliPath('claude');
