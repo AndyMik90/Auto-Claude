@@ -25,6 +25,20 @@ import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
 
+/**
+ * Type for supported CLI tools
+ */
+type CliTool = 'claude' | 'gh';
+
+/**
+ * Mapping of CLI tools to their environment variable names
+ * This ensures type safety - tools cannot be mismatched with env vars.
+ */
+const CLI_TOOL_ENV_MAP: Readonly<Record<CliTool, string>> = {
+  claude: 'CLAUDE_CLI_PATH',
+  gh: 'GITHUB_CLI_PATH'
+} as const;
+
 
 function deriveGitBashPath(gitExePath: string): string | null {
   if (process.platform !== 'win32') {
@@ -120,14 +134,11 @@ export class AgentProcessManager {
    * are not in subprocess PATH when app launches from Finder/Dock.
    *
    * @param toolName - Name of the CLI tool (e.g., 'claude', 'gh')
-   * @param envVarName - Environment variable name to set (e.g., 'CLAUDE_CLI_PATH')
    * @returns Record with env var set if tool was detected
    */
-  private detectAndSetCliPath(
-    toolName: 'claude' | 'gh',
-    envVarName: string
-  ): Record<string, string> {
+  private detectAndSetCliPath(toolName: CliTool): Record<string, string> {
     const env: Record<string, string> = {};
+    const envVarName = CLI_TOOL_ENV_MAP[toolName];
     if (!process.env[envVarName]) {
       try {
         const toolInfo = getToolInfo(toolName);
@@ -169,8 +180,8 @@ export class AgentProcessManager {
     }
 
     // Detect and pass CLI tool paths to Python backend
-    const claudeCliEnv = this.detectAndSetCliPath('claude', 'CLAUDE_CLI_PATH');
-    const ghCliEnv = this.detectAndSetCliPath('gh', 'GITHUB_CLI_PATH');
+    const claudeCliEnv = this.detectAndSetCliPath('claude');
+    const ghCliEnv = this.detectAndSetCliPath('gh');
 
     return {
       ...augmentedEnv,
