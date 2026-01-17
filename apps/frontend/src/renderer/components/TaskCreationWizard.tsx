@@ -161,7 +161,11 @@ export function TaskCreationWizard({
         setImages([]);
         setReferencedFiles([]);
         setRequireReviewBeforeCoding(false);
+        setBaseBranch(PROJECT_DEFAULT_BRANCH);
+        setUseWorktree(true);
         setShowClassification(false);
+        setShowFileExplorer(false);
+        setShowGitOptions(false);
         setIsDraftRestored(false);
         // Initialize model settings from selected profile
         setProfileId(settings.selectedAgentProfile || 'auto');
