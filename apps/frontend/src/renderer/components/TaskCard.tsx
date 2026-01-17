@@ -47,6 +47,14 @@ const CategoryIcon: Record<TaskCategory, typeof Zap> = {
   testing: FileCode
 };
 
+// Phases where stuck detection should be skipped (terminal states + initial planning)
+// Defined outside component to avoid recreation on every render
+const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning'] as const;
+
+function shouldSkipStuckCheck(phase: string | undefined): boolean {
+  return STUCK_CHECK_SKIP_PHASES.includes(phase as typeof STUCK_CHECK_SKIP_PHASES[number]);
+}
+
 interface TaskCardProps {
   task: Task;
   onClick: () => void;
@@ -181,11 +189,6 @@ export const TaskCard = memo(function TaskCard({
       </DropdownMenuItem>
     ));
   }, [task.status, onStatusChange, t]);
-
-  // Phases where stuck detection should be skipped (terminal states + initial planning)
-  const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning'] as const;
-  const shouldSkipStuckCheck = (phase: string | undefined): boolean =>
-    STUCK_CHECK_SKIP_PHASES.includes(phase as typeof STUCK_CHECK_SKIP_PHASES[number]);
 
   // Memoized stuck check function to avoid recreating on every render
   const performStuckCheck = useCallback(() => {
