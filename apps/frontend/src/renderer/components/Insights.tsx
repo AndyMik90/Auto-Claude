@@ -426,7 +426,10 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+        <div className={cn(
+          'prose prose-sm dark:prose-invert max-w-none',
+          isUser && '[&_]:whitespace-pre-wrap'
+        )}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
           </ReactMarkdown>
