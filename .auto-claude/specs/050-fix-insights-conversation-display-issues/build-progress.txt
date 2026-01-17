@@ -91,3 +91,34 @@ Quality Checklist:
 
 === END SESSION 2 ===
 
+=== SESSION 3 (Coder) ===
+
+[2025-01-18] Subtask 2-2: Extend sendMessage to include images parameter and clear images after send
+Status: COMPLETED
+
+Changes Made:
+- Added ImageAttachment import to insights-store.ts
+- Created convertFilesToImageAttachments() helper function to convert File[] to ImageAttachment[]
+  - Converts each File to base64 data URL
+  - Extracts metadata (filename, mimeType, size)
+  - Generates UUID for each attachment
+- Extended sendMessage() function signature to accept optional images?: File[] parameter
+- Made sendMessage() async to handle image conversion
+- Added logic to convert images to ImageAttachment[] if provided
+- Images are now included in user message creation
+- Pending images are cleared after adding user message (existing behavior maintained)
+- Images are passed to electronAPI.sendInsightsMessage() (with type assertion until API types updated)
+- TypeScript compilation verified successfully
+
+Committed:
+- 30e5dc9f "auto-claude: subtask-2-2 - Extend sendMessage to include images parameter and clear images after send"
+
+Quality Checklist:
+✓ Follows existing code patterns (FileReader, base64 conversion from ImageUpload.tsx)
+✓ No console.log/print debugging statements
+✓ Error handling in place (FileReader error rejection)
+✓ TypeScript compilation verified
+✓ Clean commit with descriptive message
+
+=== END SESSION 3 ===
+

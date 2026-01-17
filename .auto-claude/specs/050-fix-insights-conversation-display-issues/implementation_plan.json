@@ -73,7 +73,7 @@
             "type": "manual",
             "instructions": "Verify sendMessage accepts images parameter and clears pending images after adding user message"
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-2-3",
@@ -522,5 +522,5 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-17T22:32:56.490Z"
+  "updated_at": "2026-01-17T22:36:33.874Z"
 }

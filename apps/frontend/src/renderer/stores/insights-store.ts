@@ -412,7 +412,14 @@ export function setupInsightsListeners(): () => void {
       switch (chunk.type) {
         case 'text':
           if (chunk.content) {
-            store().appendStreamingContent(chunk.content);
+            // Add separator between thoughts when detecting double newline
+            const contentToAdd = chunk.content;
+            const lastContent = store().streamingContent;
+            const needsSeparator = lastContent.endsWith('\n\n') && contentToAdd.startsWith('\n');
+
+            store().appendStreamingContent(
+              needsSeparator ? '\n\n---\n\n' + contentToAdd : contentToAdd
+            );
             store().setCurrentTool(null); // Clear tool when receiving text
             store().setStatus({
               phase: 'streaming',
