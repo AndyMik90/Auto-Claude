@@ -180,6 +180,13 @@ export function PRDetail({
       return;
     }
 
+    // Additional guard: if we have any newCommitsCheck result but it lacks lastReviewedCommit,
+    // skip to prevent infinite loops. This handles edge cases where the API returns
+    // a result without the tracking field.
+    if (newCommitsCheck && !newCommitsCheck.lastReviewedCommit) {
+      return;
+    }
+
     // Cancel any pending check
     if (checkNewCommitsAbortRef.current) {
       checkNewCommitsAbortRef.current.abort();
@@ -194,9 +201,10 @@ export function PRDetail({
         setNewCommitsCheck(result);
       }
     } finally {
-      if (!checkNewCommitsAbortRef.current?.signal.aborted) {
-        isCheckingNewCommitsRef.current = false;
-      }
+      // Always reset the checking ref to allow future checks.
+      // The abort only determines whether to update STATE, not whether
+      // the operation tracking should be reset.
+      isCheckingNewCommitsRef.current = false;
     }
   }, [reviewResult, onCheckNewCommits, newCommitsCheck]);
 

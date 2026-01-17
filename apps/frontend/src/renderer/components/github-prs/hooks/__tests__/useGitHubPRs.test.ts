@@ -12,7 +12,7 @@
  * - Race condition prevention with AbortController
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { PRReviewResult, NewCommitsCheck } from '../../../../preload/api/modules/github-api';
+import type { PRReviewResult, NewCommitsCheck } from '../../../../../preload/api/modules/github-api';
 
 // Mock factory functions
 function createMockReviewResult(overrides: Partial<PRReviewResult> = {}): PRReviewResult {
@@ -146,10 +146,14 @@ async function simulateSelectPR(params: SelectPRTestParams): Promise<SelectPRTes
 }
 
 describe('useGitHubPRs - selectPR triggering checkNewCommits', () => {
-  let mockCheckNewCommits: ReturnType<typeof vi.fn>;
-  let mockGetPRReview: ReturnType<typeof vi.fn>;
-  let mockSetNewCommitsCheck: ReturnType<typeof vi.fn>;
-  let mockSetPRReviewResult: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockCheckNewCommits: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockGetPRReview: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSetNewCommitsCheck: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSetPRReviewResult: any;
 
   beforeEach(() => {
     mockCheckNewCommits = vi.fn().mockResolvedValue(createMockNewCommitsCheck());
@@ -307,15 +311,15 @@ describe('useGitHubPRs - selectPR triggering checkNewCommits', () => {
       expect(result.getPRReviewCalled).toBe(false);
     });
 
-    it('should NOT call checkNewCommits even if previous result exists during active review', async () => {
+    it('should still call checkNewCommits when previous result exists during active review', async () => {
       const previousReview = createMockReviewResult({ reviewedCommitSha: 'old123' });
 
       const result = await simulateSelectPR({
         prNumber: 123,
         projectId: 'test-project',
         existingState: {
-          result: previousReview, // Has result from before
-          isReviewing: true, // But new review is in progress
+          result: previousReview,
+          isReviewing: true,
           newCommitsCheck: null,
         },
         diskReviewResult: null,
@@ -325,14 +329,6 @@ describe('useGitHubPRs - selectPR triggering checkNewCommits', () => {
         mockSetPRReviewResult,
       });
 
-      // When isReviewing is true, we don't trigger additional checkNewCommits
-      // because the review state is being managed by IPC listeners
-      // Note: In the actual implementation, when isReviewing is true AND result exists,
-      // the code does check for new commits. Let's verify actual behavior:
-      // Actually, looking at the code more carefully:
-      // - If existingState?.result exists, it calls checkNewCommitsForPR
-      // - The isReviewing check only prevents loading from disk
-      // So this test needs to match actual behavior:
       expect(result.checkNewCommitsCalled).toBe(true);
     });
   });
@@ -511,7 +507,8 @@ describe('useGitHubPRs - selectPR triggering checkNewCommits', () => {
 });
 
 describe('useGitHubPRs - checkNewCommits result handling', () => {
-  let mockSetNewCommitsCheck: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSetNewCommitsCheck: any;
 
   beforeEach(() => {
     mockSetNewCommitsCheck = vi.fn();

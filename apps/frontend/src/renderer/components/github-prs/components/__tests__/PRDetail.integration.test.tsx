@@ -11,6 +11,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../../../shared/i18n';
 import { PRDetail } from '../PRDetail';
 import type { PRData, PRReviewResult } from '../../hooks/useGitHubPRs';
+import type { NewCommitsCheck } from '../../../../../preload/api/modules/github-api';
 
 // Mock window.electronAPI
 type PostCommentFn = (body: string) => void | Promise<void>;
@@ -387,12 +388,7 @@ describe('PRDetail - Follow-up Review Trigger Integration', () => {
   function renderPRDetailForFollowup(overrides: {
     pr?: PRData;
     reviewResult?: PRReviewResult;
-    initialNewCommitsCheck?: {
-      hasNewCommits: boolean;
-      newCommitCount: number;
-      hasCommitsAfterPosting?: boolean;
-      hasOverlapWithFindings?: boolean;
-    };
+    initialNewCommitsCheck?: NewCommitsCheck | null;
     isReviewing?: boolean;
     onRunFollowupReview?: () => void;
   } = {}) {
