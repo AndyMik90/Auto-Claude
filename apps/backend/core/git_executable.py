@@ -14,7 +14,6 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 # Git environment variables that can interfere with worktree operations
 # when set by pre-commit hooks or other git configurations.
@@ -37,7 +36,7 @@ GIT_ENV_VARS_TO_CLEAR = [
 _cached_git_path: str | None = None
 
 
-def get_isolated_git_env(base_env: Optional[dict] = None) -> dict:
+def get_isolated_git_env(base_env: dict | None = None) -> dict:
     """
     Create an isolated environment for git operations.
 
@@ -55,6 +54,10 @@ def get_isolated_git_env(base_env: Optional[dict] = None) -> dict:
 
     for key in GIT_ENV_VARS_TO_CLEAR:
         env.pop(key, None)
+
+    # Disable user's pre-commit hooks during Auto-Claude managed git operations
+    # to prevent double-hook execution and potential conflicts
+    env["HUSKY"] = "0"
 
     return env
 
@@ -146,7 +149,7 @@ def run_git(
     cwd: Path | str | None = None,
     timeout: int = 60,
     input_data: str | None = None,
-    env: Optional[dict] = None,
+    env: dict | None = None,
     isolate_env: bool = True,
 ) -> subprocess.CompletedProcess:
     """Run a git command with proper executable finding and environment isolation.

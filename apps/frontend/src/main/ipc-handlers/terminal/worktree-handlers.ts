@@ -604,6 +604,7 @@ async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInf
       cwd: projectPath,
       encoding: 'utf-8',
       timeout: 30000,
+      env: getIsolatedGitEnv(),
     });
 
     // Parse porcelain output
