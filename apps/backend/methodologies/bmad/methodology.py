@@ -323,12 +323,81 @@ class BMADRunner:
 
         Story Reference: Story 6.3 - Implement BMAD PRD Workflow Integration
         """
-        # TODO: Implement in Story 6.3
-        return PhaseResult(
-            success=False,
-            phase_id="prd",
-            error="PRD phase not yet implemented (Story 6.3)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.prd import (
+            create_prd,
+            load_prd,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="prd",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Check if PRD already exists
+        self._invoke_progress_callback("Checking for existing PRD...", 5.0)
+        existing = load_prd(self._output_dir)
+        if existing:
+            prd_file = self._output_dir / "prd.md"
+            self._invoke_progress_callback("Found existing PRD", 100.0)
+            return PhaseResult(
+                success=True,
+                phase_id="prd",
+                message="PRD already exists",
+                artifacts=[str(prd_file)],
+                metadata={"project_name": existing.project_name},
+            )
+
+        # Get task description from task config if available
+        task_description = ""
+        if self._task_config:
+            task_description = self._task_config.metadata.get("task_description", "")
+
+        # Create PRD
+        self._invoke_progress_callback("Creating PRD...", 10.0)
+        try:
+            prd = create_prd(
+                output_dir=self._output_dir,
+                spec_dir=self._spec_dir,
+                task_description=task_description,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            prd_file = self._output_dir / "prd.md"
+            prd_json_file = self._output_dir / "prd.json"
+
+            if prd_file.exists():
+                return PhaseResult(
+                    success=True,
+                    phase_id="prd",
+                    message=f"PRD created for '{prd.project_name}'",
+                    artifacts=[str(prd_file), str(prd_json_file)],
+                    metadata={
+                        "project_name": prd.project_name,
+                        "num_functional_requirements": len(prd.functional_requirements),
+                        "num_non_functional_requirements": len(
+                            prd.non_functional_requirements
+                        ),
+                        "prd_status": prd.metadata.status,
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="prd",
+                    error="PRD creation completed but artifact file was not created",
+                )
+
+        except Exception as e:
+            logger.error(f"PRD creation failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="prd",
+                error=f"PRD creation failed: {str(e)}",
+            )
 
     def _execute_architecture(self) -> PhaseResult:
         """Execute the architecture phase.
