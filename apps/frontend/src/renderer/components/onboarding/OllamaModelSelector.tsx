@@ -313,7 +313,7 @@ export function OllamaModelSelector({
     onSelect(model.name, model.dim);
   };
 
-  if (loading) {
+  if (loading && models.length === 0) {
     return (
       <div className={cn('flex items-center justify-center py-8', className)}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -440,7 +440,7 @@ export function OllamaModelSelector({
                       <span className="text-sm font-medium">{model.name}</span>
                       {model.badge && (
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                          {model.badge}
+                          {t(`ollama.badges.${model.badge}`, { defaultValue: model.badge })}
                         </span>
                       )}
                       <span className="text-xs text-muted-foreground">

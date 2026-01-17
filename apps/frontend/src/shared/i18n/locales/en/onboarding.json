@@ -254,6 +254,11 @@
       "bPerSec": "{{value}} B/s"
     },
     "dimLabel": "({{dim}} dim)",
+    "badges": {
+      "recommended": "Recommended",
+      "quality": "Best Quality",
+      "fast": "Fastest"
+    },
     "modelDescriptions": {
       "embeddinggemma": "Google's lightweight embedding model (Recommended)",
       "nomic-embed-text": "Popular general-purpose embeddings",
