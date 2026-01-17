@@ -70,12 +70,16 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   terminals: [],
   layouts: [],
   activeTerminalId: null,
-  maxTerminals: Infinity, // No limit on terminals
+  maxTerminals: 12, // Limit of 12 terminals per project
   hasRestoredSessions: false,
 
   addTerminal: (cwd?: string, projectPath?: string) => {
     const state = get();
-    if (state.terminals.length >= state.maxTerminals) {
+    // Check per-project terminal limit (only count non-exited terminals for this project)
+    const projectTerminalCount = state.terminals.filter(t => 
+      t.status !== 'exited' && t.projectPath === projectPath
+    ).length;
+    if (projectTerminalCount >= state.maxTerminals) {
       return null;
     }
 
@@ -148,10 +152,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       return existingTerminal;
     }
 
-    // Use the same logic as canAddTerminal - count only non-exited terminals
-    // This ensures consistency and doesn't block new terminals when only exited ones exist
-    const activeTerminalCount = state.terminals.filter(t => t.status !== 'exited').length;
-    if (activeTerminalCount >= state.maxTerminals) {
+    // Check per-project terminal limit (only count non-exited terminals for this project)
+    const projectTerminalCount = state.terminals.filter(t => 
+      t.status !== 'exited' && t.projectPath === projectPath
+    ).length;
+    if (projectTerminalCount >= state.maxTerminals) {
       return null;
     }
 
@@ -300,17 +305,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   canAddTerminal: (projectPath?: string) => {
     const state = get();
-    // Count only non-exited terminals, optionally filtered by project
-    const activeTerminals = state.terminals.filter(t => {
-      // Exclude exited terminals from the count
-      if (t.status === 'exited') return false;
-      // If projectPath specified, only count terminals for that project (or legacy without projectPath)
-      if (projectPath) {
-        return t.projectPath === projectPath || !t.projectPath;
-      }
-      return true;
-    });
-    return activeTerminals.length < state.maxTerminals;
+    // Count only non-exited terminals for this specific project
+    const projectTerminalCount = state.terminals.filter(t => 
+      t.status !== 'exited' && t.projectPath === projectPath
+    ).length;
+    return projectTerminalCount < state.maxTerminals;
   },
 
   getTerminalsForProject: (projectPath: string) => {
