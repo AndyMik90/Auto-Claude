@@ -399,7 +399,7 @@ describe('Subprocess Spawn Integration', () => {
       expect(manager.getRunningTasks()).toHaveLength(0);
     }, 10000);  // Increase timeout for Windows CI
 
-    it('should kill existing process when starting new one for same task', async () => {
+    it('should allow sequential execution of same task', async () => {
       const { AgentManager } = await import('../../main/agent');
 
       const manager = new AgentManager();
