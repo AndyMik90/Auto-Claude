@@ -8,7 +8,8 @@ import type {
   InsightsToolUsage,
   InsightsModelConfig,
   TaskMetadata,
-  Task
+  Task,
+  ImageAttachment
 } from '../../shared/types';
 
 interface ToolUsage {
@@ -213,6 +214,32 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
 // Helper functions
 
+/**
+ * Convert File objects to ImageAttachment format
+ */
+async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttachment[]> {
+  const attachments: ImageAttachment[] = [];
+
+  for (const file of files) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    attachments.push({
+      id: crypto.randomUUID(),
+      filename: file.name,
+      mimeType: file.type,
+      size: file.size,
+      data: dataUrl.split(',')[1] // Store base64 without data URL prefix
+    });
+  }
+
+  return attachments;
+}
+
 export async function loadInsightsSessions(projectId: string): Promise<void> {
   const store = useInsightsStore.getState();
   store.setLoadingSessions(true);
@@ -240,16 +267,27 @@ export async function loadInsightsSession(projectId: string): Promise<void> {
   await loadInsightsSessions(projectId);
 }
 
-export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig): void {
+export async function sendMessage(
+  projectId: string,
+  message: string,
+  modelConfig?: InsightsModelConfig,
+  images?: File[]
+): Promise<void> {
   const store = useInsightsStore.getState();
   const session = store.session;
+
+  // Convert images to ImageAttachment format if provided
+  const imageAttachments = images && images.length > 0
+    ? await convertFilesToImageAttachments(images)
+    : undefined;
 
   // Add user message to session
   const userMessage: InsightsChatMessage = {
     id: `msg-${Date.now()}`,
     role: 'user',
     content: message,
-    timestamp: new Date()
+    timestamp: new Date(),
+    images: imageAttachments
   };
   store.addMessage(userMessage);
 
@@ -267,7 +305,13 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process
-  window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
+  // TODO: Type assertion until IPC API types are updated in separate subtask
+  (window.electronAPI.sendInsightsMessage as any)(
+    projectId,
+    message,
+    configToUse,
+    imageAttachments
+  );
 }
 
 export async function clearSession(projectId: string): Promise<void> {
