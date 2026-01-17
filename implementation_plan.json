@@ -29,8 +29,8 @@
   ],
   "qa_signoff": {
     "status": "fixes_applied",
-    "timestamp": "2026-01-17T23:00:00Z",
-    "fix_session": 3,
+    "timestamp": "2026-01-18T01:10:00Z",
+    "fix_session": 4,
     "issues_fixed": [
       {
         "title": "Usage values not displaying correctly for z.ai and ZHIPU providers",
@@ -51,6 +51,26 @@
         "title": "Countdown timer needs to move to right of usage badge",
         "fix_commit": "94afd21e",
         "description": "Moved countdown timer from tooltip to visible blue badge positioned to the right of provider badge"
+      },
+      {
+        "title": "Duplicate 'Resets:' word in tooltip",
+        "fix_commit": "037fa6a1",
+        "description": "Removed duplicate 'Resets:' prefix from tooltips in UsageIndicator and AuthStatusIndicator components"
+      },
+      {
+        "title": "Monthly Tools badge should show 5 hour usage instead",
+        "fix_commit": "037fa6a1",
+        "description": "Replaced countdown timer badge with 5 hour usage badge that shows session percentage"
+      },
+      {
+        "title": "5 hour usage badge should only show when >= 90% and in red",
+        "fix_commit": "037fa6a1",
+        "description": "Badge is hidden until session usage reaches 90% threshold, then displays in red with percentage"
+      },
+      {
+        "title": "Time synchronization issue with reset countdown",
+        "fix_commit": "037fa6a1",
+        "description": "Store ISO timestamps and calculate relative time dynamically in UI instead of at fetch time, ensuring countdown stays accurate"
       }
     ],
     "ready_for_qa_revalidation": true
