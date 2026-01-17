@@ -128,7 +128,15 @@ class SpecOrchestrator:
                         # Overwrite existing spec - delete and reuse path
                         import shutil
 
-                        shutil.rmtree(chosen_spec)
+                        try:
+                            shutil.rmtree(chosen_spec)
+                        except OSError as e:
+                            # Log but continue - we'll try to create the directory anyway
+                            # This handles cases where directory is partially locked
+                            print_status(
+                                f"Warning: Could not fully delete {chosen_spec.name}: {e}",
+                                "warning",
+                            )
                         self.spec_dir = chosen_spec
                         self.spec_dir.mkdir(parents=True, exist_ok=True)
                         self.validator = SpecValidator(self.spec_dir)
@@ -341,7 +349,8 @@ class SpecOrchestrator:
         await self._store_phase_summary("requirements")
 
         # Rename spec folder with better name from requirements
-        rename_spec_dir_from_requirements(self.spec_dir)
+        # Use method to ensure self.spec_dir is updated to the new path
+        self._rename_spec_dir_from_requirements()
 
         # Update task description from requirements
         req = requirements.load_requirements(self.spec_dir)
@@ -507,10 +516,13 @@ class SpecOrchestrator:
         if not requirements_file.exists():
             return ""
 
-        with open(requirements_file) as f:
-            req = json.load(f)
-            self.task_description = req.get("task_description", self.task_description)
-            return f"""
+        try:
+            with open(requirements_file, encoding="utf-8") as f:
+                req = json.load(f)
+                self.task_description = req.get(
+                    "task_description", self.task_description
+                )
+                return f"""
 **Task Description**: {req.get("task_description", "Not provided")}
 **Workflow Type**: {req.get("workflow_type", "Not specified")}
 **Services Involved**: {", ".join(req.get("services_involved", []))}
@@ -521,6 +533,8 @@ class SpecOrchestrator:
 **Constraints**:
 {chr(10).join(f"- {c}" for c in req.get("constraints", []))}
 """
+        except (json.JSONDecodeError, OSError):
+            return ""
 
     def _create_override_assessment(self) -> complexity.ComplexityAssessment:
         """Create a complexity assessment from manual override.
@@ -610,8 +624,11 @@ class SpecOrchestrator:
         project_index = {}
         auto_build_index = self.project_dir / "auto-claude" / "project_index.json"
         if auto_build_index.exists():
-            with open(auto_build_index) as f:
-                project_index = json.load(f)
+            try:
+                with open(auto_build_index, encoding="utf-8") as f:
+                    project_index = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                project_index = {}
 
         analyzer = complexity.ComplexityAnalyzer(project_index)
         return analyzer.analyze(self.task_description or "")
@@ -711,7 +728,8 @@ class SpecOrchestrator:
             for candidate in parent.iterdir():
                 if (
                     candidate.name.startswith(prefix)
-                    and "pending" not in candidate.name
+                    # Check for -pending suffix, not substring (task may contain "pending")
+                    and not candidate.name.endswith("-pending")
                 ):
                     self.spec_dir = candidate
                     break
