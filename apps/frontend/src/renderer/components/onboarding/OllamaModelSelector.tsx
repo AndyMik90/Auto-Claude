@@ -182,7 +182,7 @@ export function OllamaModelSelector({
       if (result?.success && result?.data?.recommended) {
         setModels(result.data.recommended.map(m => ({
           name: m.name,
-          description: t(`ollama.modelDescriptions.${m.name}` as any, { defaultValue: m.description, nsSeparator: false }),
+          description: m.description, // Store raw backend description
           size_estimate: m.size_estimate,
           dim: m.dim,
           installed: m.installed,
@@ -316,6 +316,9 @@ export function OllamaModelSelector({
           return updated;
         });
 
+        // Clear tracking ref to reset speed/ETA metrics
+        delete downloadProgressRef.current[modelName];
+
         // Refresh the model list
         await checkInstalledModels();
         onDownloadComplete?.(modelName);
@@ -435,26 +438,23 @@ export function OllamaModelSelector({
           return (
             <div
               key={model.name}
-              role="button"
-              tabIndex={isInteractive ? 0 : -1}
               className={cn(
-                'w-full rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                isInteractive
-                  ? 'cursor-pointer hover:bg-accent/50'
-                  : 'cursor-default opacity-85',
+                'group relative rounded-lg border transition-colors',
                 isSelected && 'border-primary bg-primary/5',
-                !model.installed && 'bg-muted/30'
+                !model.installed && 'bg-muted/30',
+                isInteractive ? 'hover:bg-accent/50' : 'opacity-85'
               )}
-              onClick={() => isInteractive && handleSelect(model)}
-              onKeyDown={(e) => {
-                if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault();
-                  handleSelect(model);
-                }
-              }}
             >
-              <div className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={!isInteractive}
+                onClick={() => isInteractive && handleSelect(model)}
+                className={cn(
+                  'w-full flex items-center justify-between p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg',
+                  !isInteractive && 'cursor-default'
+                )}
+              >
+                <div className="flex items-center gap-3 pr-2">
                   {/* Selection/Status indicator */}
                   <div
                     className={cn(
@@ -487,15 +487,18 @@ export function OllamaModelSelector({
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {model.description.startsWith('ollama.')
-                        ? t(model.description as Parameters<typeof t>[0], { nsSeparator: false })
-                        : model.description}
+                      {t(`ollama.modelDescriptions.${model.name}` as any, { defaultValue: model.description, nsSeparator: false })}
                     </p>
                   </div>
                 </div>
 
-                {/* Download button for non-installed models */}
-                {!model.installed && (
+                {/* Spacer for potential download button overlay or just to balance flex */}
+                {!model.installed && <div className="w-24 shrink-0" />}
+              </button>
+
+              {/* Download button for non-installed models - positioned as a sibling to the main selection button */}
+              {!model.installed && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -505,7 +508,7 @@ export function OllamaModelSelector({
                       handleDownload(model.name);
                     }}
                     disabled={isCurrentlyDownloading || !!isDownloading || loading || disabled}
-                    className="shrink-0"
+                    className="h-8"
                   >
                     {isCurrentlyDownloading ? (
                       <>
@@ -524,8 +527,8 @@ export function OllamaModelSelector({
                       </>
                     )}
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Progress bar for downloading models */}
               {isCurrentlyDownloading && progress && (

@@ -797,12 +797,12 @@ describe('Terminal copy/paste integration', () => {
       });
 
       // Create a test wrapper component that provides the DOM element
-      const TestWrapper = () => {
-        const { terminalRef } = useXterm({ terminalId: 'test-terminal' });
+      const TestWrapper = ({ id }: { id: string }) => {
+        const { terminalRef } = useXterm({ terminalId: id });
         return React.createElement('div', { ref: terminalRef });
       };
 
-      render(React.createElement(TestWrapper));
+      render(React.createElement(TestWrapper, { id: terminalId }));
 
       await act(async () => {
         // Try to paste (will fail)
@@ -829,7 +829,7 @@ describe('Terminal copy/paste integration', () => {
       }
 
       // Verify input was sent to electronAPI (terminal still functional)
-      expect(mockSendTerminalInput).toHaveBeenCalledWith('test-terminal', 'test command');
+      expect(mockSendTerminalInput).toHaveBeenCalledWith(terminalId, 'test command');
 
       consoleErrorSpy.mockRestore();
     });
