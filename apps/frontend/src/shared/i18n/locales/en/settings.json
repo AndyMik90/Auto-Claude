@@ -48,6 +48,10 @@
     "debug": {
       "title": "Debug & Logs",
       "description": "Troubleshooting tools"
+    },
+    "terminal-fonts": {
+      "title": "Terminal Fonts",
+      "description": "Customize terminal font appearance"
     }
   },
   "apiProfiles": {
