@@ -54,10 +54,26 @@ export function SecuritySettings({
     azure: false
   });
 
+  // Platform-specific memories directory path
+  const [memoriesDir, setMemoriesDir] = useState<string>('');
+
   // Sync parent's showOpenAIKey prop to local state
   useEffect(() => {
     setShowApiKey(prev => ({ ...prev, openai: showOpenAIKey }));
   }, [showOpenAIKey]);
+
+  // Fetch platform-specific memories directory path
+  useEffect(() => {
+    window.electronAPI.getMemoriesDir()
+      .then((result) => {
+        if (result.success && result.data) {
+          setMemoriesDir(result.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to get memories directory:', err);
+      });
+  }, []);
 
   const embeddingProvider = envConfig?.graphitiProviderConfig?.embeddingProvider || 'ollama';
 
@@ -437,7 +453,7 @@ export function SecuritySettings({
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">Database Name</Label>
                 <p className="text-xs text-muted-foreground">
-                  Stored in ~/.auto-claude/memories/
+                  Stored in {memoriesDir || 'memories directory'}
                 </p>
                 <Input
                   placeholder="auto_claude_memory"
@@ -449,10 +465,10 @@ export function SecuritySettings({
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
                 <p className="text-xs text-muted-foreground">
-                  Custom storage location. Default: ~/.auto-claude/memories/
+                  Custom storage location. Default: {memoriesDir || 'memories directory'}
                 </p>
                 <Input
-                  placeholder="~/.auto-claude/memories"
+                  placeholder={memoriesDir || 'memories directory'}
                   value={envConfig.graphitiDbPath || ''}
                   onChange={(e) => updateEnvConfig({ graphitiDbPath: e.target.value || undefined })}
                 />

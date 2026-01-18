@@ -223,6 +223,9 @@ export const createProjectAPI = (): ProjectAPI => ({
   testMemoryConnection: (dbPath?: string, database?: string): Promise<IPCResult<GraphitiValidationResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEMORY_TEST_CONNECTION, dbPath, database),
 
+  getMemoriesDir: (): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_GET_DIR),
+
   // Graphiti Validation Operations
   validateLLMApiKey: (provider: string, apiKey: string): Promise<IPCResult<GraphitiValidationResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.GRAPHITI_VALIDATE_LLM, provider, apiKey),

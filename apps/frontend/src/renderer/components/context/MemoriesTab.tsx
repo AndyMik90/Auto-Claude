@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   RefreshCw,
   Database,
@@ -79,6 +79,20 @@ export function MemoriesTab({
 }: MemoriesTabProps) {
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
+  const [memoriesDir, setMemoriesDir] = useState<string>('');
+
+  // Fetch platform-specific memories directory path for display
+  useEffect(() => {
+    window.electronAPI.getMemoriesDir()
+      .then((result) => {
+        if (result.success && result.data) {
+          setMemoriesDir(result.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to get memories directory:', err);
+      });
+  }, []);
 
   // Calculate memory counts by category
   const memoryCounts = useMemo(() => {
@@ -146,7 +160,7 @@ export function MemoriesTab({
               <>
                 <div className="grid gap-3 sm:grid-cols-2 text-sm">
                   <InfoItem label="Database" value={memoryStatus.database || 'auto_claude_memory'} />
-                  <InfoItem label="Path" value={memoryStatus.dbPath || '~/.auto-claude/memories'} />
+                  <InfoItem label="Path" value={memoryStatus.dbPath || memoriesDir || 'memories directory'} />
                 </div>
 
                 {/* Memory Stats Summary */}
