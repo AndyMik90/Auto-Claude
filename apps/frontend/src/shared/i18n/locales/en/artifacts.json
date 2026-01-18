@@ -1,0 +1,118 @@
+{
+  "viewers": {
+    "yaml": {
+      "title": "YAML Viewer",
+      "parseError": "YAML Parse Error",
+      "errorAt": "Error at line {{line}}, column {{column}}",
+      "invalidSyntax": "Invalid YAML syntax"
+    },
+    "json": {
+      "title": "JSON Viewer",
+      "parseError": "JSON Parse Error",
+      "errorAt": "Error at position {{position}}",
+      "invalidSyntax": "Invalid JSON syntax",
+      "tree": "Tree",
+      "raw": "Raw",
+      "treeView": "JSON Tree View",
+      "items": "{{count}} item",
+      "items_plural": "{{count}} items"
+    },
+    "markdown": {
+      "title": "Markdown Viewer",
+      "tableOfContents": "Contents",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "copyLink": "Copy link to heading"
+    },
+    "rawText": {
+      "title": "Raw Text",
+      "lineNumbers": "Line numbers",
+      "wrapLines": "Enable word wrap",
+      "unwrapLines": "Disable word wrap"
+    },
+    "artifact": {
+      "loading": "Loading artifact...",
+      "loadError": "Failed to load content",
+      "emptyFile": "{{filename}} is empty",
+      "noContent": "No content to display",
+      "copyToClipboard": "Copy to clipboard",
+      "copied": "Copied!"
+    }
+  },
+  "fileTypes": {
+    "yaml": "YAML",
+    "json": "JSON",
+    "markdown": "Markdown",
+    "text": "Text",
+    "unknown": "Unknown"
+  },
+  "phases": {
+    "bmad": {
+      "analyze": "Analyze",
+      "analyzeDescription": "Scan project structure and detect technology stack",
+      "prd": "PRD",
+      "prdDescription": "Generate Product Requirements Document",
+      "architecture": "Architecture",
+      "architectureDescription": "Define architecture decisions and component structure",
+      "epics": "Epics",
+      "epicsDescription": "Break down requirements into epics",
+      "stories": "Stories",
+      "storiesDescription": "Create individual implementation stories",
+      "dev": "Dev",
+      "devDescription": "Implement stories with code changes",
+      "review": "Review",
+      "reviewDescription": "Validate implementation against acceptance criteria"
+    },
+    "native": {
+      "idle": "Idle",
+      "idleDescription": "Waiting to start",
+      "planning": "Planning",
+      "planningDescription": "Creating implementation plan",
+      "coding": "Coding",
+      "codingDescription": "Implementing changes",
+      "reviewing": "Reviewing",
+      "reviewingDescription": "QA validation",
+      "fixing": "Fixing",
+      "fixingDescription": "Addressing QA issues",
+      "complete": "Complete",
+      "completeDescription": "Task finished successfully",
+      "failed": "Failed",
+      "failedDescription": "Task encountered an error"
+    }
+  },
+  "methodology": {
+    "native": {
+      "name": "Native Auto Claude",
+      "description": "Default methodology with planning, coding, and QA phases"
+    },
+    "bmad": {
+      "name": "BMAD Method",
+      "description": "Business Model-Aware Development with structured PRD and architecture phases"
+    }
+  },
+  "complexity": {
+    "quick": "Quick",
+    "quickDescription": "Minimal phases for simple tasks",
+    "standard": "Standard",
+    "standardDescription": "Full methodology pipeline",
+    "complex": "Complex",
+    "complexDescription": "Extended analysis and validation"
+  },
+  "status": {
+    "pending": "Pending",
+    "active": "Active",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "skipped": "Skipped",
+    "failed": "Failed",
+    "blocked": "Blocked"
+  },
+  "progress": {
+    "overall": "Overall Progress",
+    "phaseProgress": "{{phase}} Progress",
+    "currentPhase": "Current Phase",
+    "phasesComplete": "{{count}} of {{total}} phases complete",
+    "allPhasesComplete": "All phases complete",
+    "interrupted": "Interrupted"
+  }
+}

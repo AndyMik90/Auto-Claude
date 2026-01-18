@@ -522,7 +522,27 @@ class TestServiceProtocolsRuntimeCheckable:
         from typing import Any
 
         class MockCheckpoint:
-            def create_checkpoint(self, checkpoint_id: str, data: dict[str, Any]) -> None:
+            def create_checkpoint(self, checkpoint_id: str, data: dict[str, Any]) -> Any:
+                return None
+
+            async def check_and_pause(
+                self,
+                phase_id: str,
+                artifacts: list[str] | None = None,
+                context: dict[str, Any] | None = None,
+            ) -> Any | None:
+                return None
+
+            def resume(self, decision: str, feedback: str | None = None) -> None:
+                pass
+
+            def is_paused(self) -> bool:
+                return False
+
+            def load_state(self) -> Any | None:
+                return None
+
+            def clear_state(self) -> None:
                 pass
 
         assert isinstance(MockCheckpoint(), CheckpointService)

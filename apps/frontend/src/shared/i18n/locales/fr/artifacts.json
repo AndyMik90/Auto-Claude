@@ -1,0 +1,118 @@
+{
+  "viewers": {
+    "yaml": {
+      "title": "Visionneuse YAML",
+      "parseError": "Erreur d'analyse YAML",
+      "errorAt": "Erreur à la ligne {{line}}, colonne {{column}}",
+      "invalidSyntax": "Syntaxe YAML invalide"
+    },
+    "json": {
+      "title": "Visionneuse JSON",
+      "parseError": "Erreur d'analyse JSON",
+      "errorAt": "Erreur à la position {{position}}",
+      "invalidSyntax": "Syntaxe JSON invalide",
+      "tree": "Arbre",
+      "raw": "Brut",
+      "treeView": "Vue arborescente JSON",
+      "items": "{{count}} élément",
+      "items_plural": "{{count}} éléments"
+    },
+    "markdown": {
+      "title": "Visionneuse Markdown",
+      "tableOfContents": "Sommaire",
+      "expand": "Développer",
+      "collapse": "Réduire",
+      "copyLink": "Copier le lien vers le titre"
+    },
+    "rawText": {
+      "title": "Texte brut",
+      "lineNumbers": "Numéros de ligne",
+      "wrapLines": "Activer le retour à la ligne",
+      "unwrapLines": "Désactiver le retour à la ligne"
+    },
+    "artifact": {
+      "loading": "Chargement de l'artefact...",
+      "loadError": "Échec du chargement du contenu",
+      "emptyFile": "{{filename}} est vide",
+      "noContent": "Aucun contenu à afficher",
+      "copyToClipboard": "Copier dans le presse-papiers",
+      "copied": "Copié !"
+    }
+  },
+  "fileTypes": {
+    "yaml": "YAML",
+    "json": "JSON",
+    "markdown": "Markdown",
+    "text": "Texte",
+    "unknown": "Inconnu"
+  },
+  "phases": {
+    "bmad": {
+      "analyze": "Analyser",
+      "analyzeDescription": "Scanner la structure du projet et détecter la pile technologique",
+      "prd": "PRD",
+      "prdDescription": "Générer le Document des Exigences Produit",
+      "architecture": "Architecture",
+      "architectureDescription": "Définir les décisions d'architecture et la structure des composants",
+      "epics": "Épopées",
+      "epicsDescription": "Décomposer les exigences en épopées",
+      "stories": "Stories",
+      "storiesDescription": "Créer les stories d'implémentation individuelles",
+      "dev": "Dév",
+      "devDescription": "Implémenter les stories avec les modifications de code",
+      "review": "Révision",
+      "reviewDescription": "Valider l'implémentation selon les critères d'acceptation"
+    },
+    "native": {
+      "idle": "Inactif",
+      "idleDescription": "En attente de démarrage",
+      "planning": "Planification",
+      "planningDescription": "Création du plan d'implémentation",
+      "coding": "Codage",
+      "codingDescription": "Implémentation des modifications",
+      "reviewing": "Révision",
+      "reviewingDescription": "Validation QA",
+      "fixing": "Correction",
+      "fixingDescription": "Résolution des problèmes QA",
+      "complete": "Terminé",
+      "completeDescription": "Tâche terminée avec succès",
+      "failed": "Échoué",
+      "failedDescription": "La tâche a rencontré une erreur"
+    }
+  },
+  "methodology": {
+    "native": {
+      "name": "Native Auto Claude",
+      "description": "Méthodologie par défaut avec phases de planification, codage et QA"
+    },
+    "bmad": {
+      "name": "Méthode BMAD",
+      "description": "Développement orienté modèle d'affaires avec phases PRD et architecture structurées"
+    }
+  },
+  "complexity": {
+    "quick": "Rapide",
+    "quickDescription": "Phases minimales pour les tâches simples",
+    "standard": "Standard",
+    "standardDescription": "Pipeline méthodologique complet",
+    "complex": "Complexe",
+    "complexDescription": "Analyse et validation approfondies"
+  },
+  "status": {
+    "pending": "En attente",
+    "active": "Actif",
+    "inProgress": "En cours",
+    "completed": "Terminé",
+    "skipped": "Ignoré",
+    "failed": "Échoué",
+    "blocked": "Bloqué"
+  },
+  "progress": {
+    "overall": "Progression globale",
+    "phaseProgress": "Progression {{phase}}",
+    "currentPhase": "Phase actuelle",
+    "phasesComplete": "{{count}} sur {{total}} phases terminées",
+    "allPhasesComplete": "Toutes les phases terminées",
+    "interrupted": "Interrompu"
+  }
+}
