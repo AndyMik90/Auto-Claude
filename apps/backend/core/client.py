@@ -357,7 +357,11 @@ from agents.tools_pkg import (
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
-from core.auth import get_sdk_env_vars, require_auth_token
+from core.auth import (
+    get_sdk_env_vars,
+    require_auth_token,
+    validate_token_not_encrypted,
+)
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
@@ -706,6 +710,12 @@ def create_client(
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
     oauth_token = require_auth_token()
+
+    # Validate token is not encrypted before passing to SDK
+    # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
+    # If we still have an encrypted token here, it means decryption failed or was skipped
+    validate_token_not_encrypted(oauth_token)
+
     # Ensure SDK can access it via its expected env var
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
 
