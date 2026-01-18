@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
+import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -42,22 +43,25 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
+  // Get font settings from store
+  const fontSettings = useTerminalFontSettingsStore();
+
   // Initialize xterm.js UI
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
     const xterm = new XTerm({
-      cursorBlink: true,
-      cursorStyle: 'block',
-      fontSize: 13,
-      fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
-      lineHeight: 1.2,
-      letterSpacing: 0,
+      cursorBlink: fontSettings.cursorBlink,
+      cursorStyle: fontSettings.cursorStyle,
+      fontSize: fontSettings.fontSize,
+      fontFamily: fontSettings.fontFamily.join(', '),
+      lineHeight: fontSettings.lineHeight,
+      letterSpacing: fontSettings.letterSpacing,
       theme: {
         background: '#0B0B0F',
         foreground: '#E8E6E3',
         cursor: '#D6D876',
-        cursorAccent: '#0B0B0F',
+        cursorAccent: fontSettings.cursorAccentColor,
         selectionBackground: '#D6D87640',
         selectionForeground: '#E8E6E3',
         black: '#1A1A1F',
@@ -78,7 +82,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
         brightWhite: '#FFFFFF',
       },
       allowProposedApi: true,
-      scrollback: 10000,
+      scrollback: fontSettings.scrollback,
     });
 
     const fitAddon = new FitAddon();
@@ -292,7 +296,60 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
+  }, [terminalId, onCommandEnter, onResize, onDimensionsReady, fontSettings]);
+
+  // Subscribe to font settings changes and update terminal reactively
+  useEffect(() => {
+    const xterm = xtermRef.current;
+    if (!xterm) return;
+
+    // Update terminal options when font settings change
+    const updateTerminalOptions = () => {
+      xterm.options.cursorBlink = fontSettings.cursorBlink;
+      xterm.options.cursorStyle = fontSettings.cursorStyle;
+      xterm.options.fontSize = fontSettings.fontSize;
+      xterm.options.fontFamily = fontSettings.fontFamily.join(', ');
+      xterm.options.lineHeight = fontSettings.lineHeight;
+      xterm.options.letterSpacing = fontSettings.letterSpacing;
+      xterm.options.theme = {
+        ...xterm.options.theme,
+        cursorAccent: fontSettings.cursorAccentColor,
+      };
+      xterm.options.scrollback = fontSettings.scrollback;
+
+      // Refresh terminal to apply visual changes
+      xterm.refresh(0, xterm.rows - 1);
+    };
+
+    // Apply immediately on mount
+    updateTerminalOptions();
+
+    // Subscribe to store changes
+    const unsubscribe = useTerminalFontSettingsStore.subscribe(
+      () => {
+        // Get latest settings from store
+        const latestSettings = useTerminalFontSettingsStore.getState();
+
+        // Update terminal options
+        xterm.options.cursorBlink = latestSettings.cursorBlink;
+        xterm.options.cursorStyle = latestSettings.cursorStyle;
+        xterm.options.fontSize = latestSettings.fontSize;
+        xterm.options.fontFamily = latestSettings.fontFamily.join(', ');
+        xterm.options.lineHeight = latestSettings.lineHeight;
+        xterm.options.letterSpacing = latestSettings.letterSpacing;
+        xterm.options.theme = {
+          ...xterm.options.theme,
+          cursorAccent: latestSettings.cursorAccentColor,
+        };
+        xterm.options.scrollback = latestSettings.scrollback;
+
+        // Refresh terminal to apply visual changes
+        xterm.refresh(0, xterm.rows - 1);
+      }
+    );
+
+    return unsubscribe;
+  }, [fontSettings]);
 
   // Register xterm write callback with terminal-store for global output listener
   // This allows the global listener to write directly to xterm when terminal is visible
