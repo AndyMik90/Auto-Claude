@@ -29,6 +29,17 @@ export function FeatureCard({
       .filter(f => f.dependencies?.includes(feature.id))
       .map(f => f.id);
 
+  // Debug: log for troubleshooting
+  console.log('[FeatureCard]', {
+    featureId: feature.id,
+    featureTitle: feature.title,
+    hasReverseDepsInData: !!feature.reverseDependencies,
+    reverseDepsFromData: feature.reverseDependencies,
+    calculatedReverseDeps: reverseDependencies,
+    hasRegularDeps: feature.dependencies && feature.dependencies.length > 0,
+    regularDeps: feature.dependencies
+  });
+
   return (
     <Card className="p-4 hover:bg-muted/50 cursor-pointer transition-colors" onClick={onClick}>
       <div className="flex items-start justify-between">

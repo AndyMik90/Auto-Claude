@@ -71,6 +71,16 @@ export function SortableFeatureCard({
       .filter(f => f.dependencies?.includes(feature.id))
       .map(f => f.id) || [];
 
+  // Debug: log for troubleshooting
+  console.log('[SortableFeatureCard]', {
+    featureId: feature.id,
+    featureTitle: feature.title,
+    hasReverseDepsInData: !!feature.reverseDependencies,
+    reverseDepsFromData: feature.reverseDependencies,
+    calculatedReverseDeps: reverseDependencies,
+    allFeatures: roadmap?.features.map(f => ({ id: f.id, title: f.title, deps: f.dependencies }))
+  });
+
   return (
     <div
       ref={setNodeRef}
