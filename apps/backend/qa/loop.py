@@ -20,7 +20,7 @@ from linear_updater import (
     linear_qa_rejected,
     linear_qa_started,
 )
-from phase_config import get_phase_model, get_phase_thinking_budget
+from phase_config import get_phase_model, get_phase_thinking_budget, get_phase_config
 from phase_event import ExecutionPhase, emit_phase
 from progress import count_subtasks, is_build_complete
 from security.constants import PROJECT_DIR_ENV_VAR
@@ -139,9 +139,10 @@ async def run_qa_validation_loop(
         emit_phase(ExecutionPhase.QA_FIXING, "Processing human feedback")
         print("\n📝 Human feedback detected. Running QA Fixer first...")
 
-        # Get model and thinking budget for fixer (uses QA phase config)
-        qa_model = get_phase_model(spec_dir, "qa", model)
-        fixer_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
+        # Get model, thinking budget, and provider for fixer (uses QA phase config)
+        qa_model, _, fixer_thinking_budget, qa_provider = get_phase_config(
+            spec_dir, "qa", model, None
+        )
 
         fix_client = create_client(
             project_dir,
@@ -149,6 +150,7 @@ async def run_qa_validation_loop(
             qa_model,
             agent_type="qa_fixer",
             max_thinking_tokens=fixer_thinking_budget,
+            provider=qa_provider,
         )
 
         async with fix_client:
@@ -217,14 +219,16 @@ async def run_qa_validation_loop(
             ExecutionPhase.QA_REVIEW, f"Running QA review iteration {qa_iteration}"
         )
 
-        # Run QA reviewer with phase-specific model and thinking budget
-        qa_model = get_phase_model(spec_dir, "qa", model)
-        qa_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
+        # Run QA reviewer with phase-specific model, thinking budget, and provider
+        qa_model, _, qa_thinking_budget, qa_provider = get_phase_config(
+            spec_dir, "qa", model, None
+        )
         debug(
             "qa_loop",
             "Creating client for QA reviewer session...",
             model=qa_model,
             thinking_budget=qa_thinking_budget,
+            provider=qa_provider,
         )
         client = create_client(
             project_dir,
@@ -232,6 +236,7 @@ async def run_qa_validation_loop(
             qa_model,
             agent_type="qa_reviewer",
             max_thinking_tokens=qa_thinking_budget,
+            provider=qa_provider,
         )
 
         async with client:
@@ -373,13 +378,14 @@ async def run_qa_validation_loop(
                 print("Escalating to human review.")
                 break
 
-            # Run fixer with phase-specific thinking budget
-            fixer_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
+            # Run fixer with phase-specific thinking budget and provider
+            # Note: qa_model and qa_provider are already set from the reviewer phase above
             debug(
                 "qa_loop",
                 "Starting QA fixer session...",
                 model=qa_model,
-                thinking_budget=fixer_thinking_budget,
+                thinking_budget=qa_thinking_budget,
+                provider=qa_provider,
             )
             emit_phase(ExecutionPhase.QA_FIXING, "Fixing QA issues")
             print("\nRunning QA Fixer Agent...")
@@ -389,7 +395,8 @@ async def run_qa_validation_loop(
                 spec_dir,
                 qa_model,
                 agent_type="qa_fixer",
-                max_thinking_tokens=fixer_thinking_budget,
+                max_thinking_tokens=qa_thinking_budget,
+                provider=qa_provider,
             )
 
             async with fix_client:

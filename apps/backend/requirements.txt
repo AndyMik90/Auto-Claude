@@ -25,5 +25,8 @@ google-generativeai>=0.8.0
 # Pydantic for structured output schemas
 pydantic>=2.0.0
 
+# OpenAI SDK (required for iFlow integration - uses OpenAI-compatible API)
+openai>=1.0.0
+
 # Error tracking (optional - requires SENTRY_DSN environment variable)
 sentry-sdk>=2.0.0

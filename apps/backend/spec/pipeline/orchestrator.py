@@ -61,6 +61,7 @@ class SpecOrchestrator:
         thinking_level: str = "medium",  # Thinking level for extended thinking
         complexity_override: str | None = None,  # Force a specific complexity
         use_ai_assessment: bool = True,  # Use AI for complexity assessment (vs heuristics)
+        provider: str = "claude",  # AI provider ('claude' or 'iflow')
     ):
         """Initialize the spec orchestrator.
 
@@ -73,6 +74,7 @@ class SpecOrchestrator:
             thinking_level: Thinking level (none, low, medium, high, ultrathink)
             complexity_override: Force a specific complexity level
             use_ai_assessment: Whether to use AI for complexity assessment
+            provider: AI provider to use ('claude' or 'iflow')
         """
         self.project_dir = Path(project_dir)
         self.task_description = task_description
@@ -80,6 +82,7 @@ class SpecOrchestrator:
         self.thinking_level = thinking_level
         self.complexity_override = complexity_override
         self.use_ai_assessment = use_ai_assessment
+        self.provider = provider
 
         # Get the appropriate specs directory (within the project)
         self.specs_dir = get_specs_dir(self.project_dir)
@@ -122,7 +125,11 @@ class SpecOrchestrator:
         if self._agent_runner is None:
             task_logger = get_task_logger(self.spec_dir)
             self._agent_runner = AgentRunner(
-                self.project_dir, self.spec_dir, self.model, task_logger
+                self.project_dir,
+                self.spec_dir,
+                self.model,
+                task_logger,
+                provider=self.provider,
             )
         return self._agent_runner
 

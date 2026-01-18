@@ -380,6 +380,15 @@ def create_iflow_agent_client(
         system_prompt = (
             f"You are an expert full-stack developer building production-quality software. "
             f"Your working directory is: {project_dir.resolve()}\n"
+            f"Your spec directory is: {spec_dir.resolve()}\n\n"
+            f"IMPORTANT: When you need to create or modify files, use bash heredoc syntax:\n"
+            f"```bash\n"
+            f"cat > filename.md << 'EOF'\n"
+            f"file content here\n"
+            f"EOF\n"
+            f"```\n\n"
+            f"The system will automatically extract and write these files for you.\n"
+            f"Always use single-quoted delimiters (e.g., << 'EOF' or << 'SPEC_EOF').\n\n"
             f"You follow existing code patterns, write clean maintainable code, and verify "
             f"your work through thorough testing."
         )
@@ -397,6 +406,18 @@ def create_iflow_agent_client(
     )
 
 
+@dataclass
+class TextBlock:
+    """TextBlock for iFlow responses (matches Claude SDK TextBlock type name)."""
+    text: str
+
+
+@dataclass
+class AssistantMessage:
+    """AssistantMessage for iFlow responses (matches Claude SDK AssistantMessage type name)."""
+    content: list
+
+
 class IFlowAgentClient:
     """
     iFlow agent client that mimics ClaudeSDKClient interface.
@@ -407,13 +428,17 @@ class IFlowAgentClient:
     wrapper provides a simplified interface for chat-based agents.
 
     Suitable for:
-    - spec_gatherer, spec_researcher, spec_writer (chat-based)
+    - spec_gatherer, spec_researcher, spec_writer (with heredoc file extraction)
     - insights extraction
     - commit message generation
 
+    The client automatically extracts file content from heredoc patterns in the
+    agent's response (e.g., `cat > spec.md << 'EOF'...EOF`) and writes the files.
+    This simulates tool use for chat-only agents.
+
     Not suitable for:
-    - coder (requires tool use)
-    - qa_reviewer, qa_fixer (requires tool use)
+    - coder (requires interactive tool use)
+    - qa_reviewer, qa_fixer (requires interactive tool use)
     """
 
     def __init__(
@@ -431,6 +456,8 @@ class IFlowAgentClient:
         self.spec_dir = spec_dir
         self._client = None
         self._conversation_history: list[dict[str, str]] = []
+        self._pending_query: str | None = None
+        self._last_response: str | None = None
 
     @property
     def client(self):
@@ -438,6 +465,125 @@ class IFlowAgentClient:
         if self._client is None:
             self._client = create_iflow_chat_client(self.config)
         return self._client
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        # No cleanup needed for iFlow client
+        return False
+
+    async def query(self, prompt: str):
+        """
+        Queue a query to be processed (mimics ClaudeSDKClient.query).
+
+        Args:
+            prompt: The prompt/message to send to iFlow
+        """
+        self._pending_query = prompt
+
+    async def receive_response(self):
+        """
+        Async generator that yields response messages (mimics ClaudeSDKClient.receive_response).
+
+        Yields:
+            IFlowAssistantMessage objects containing TextBlock with the response
+        """
+        if not self._pending_query:
+            return
+
+        messages = []
+
+        # Add system prompt
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+
+        # Add conversation history
+        messages.extend(self._conversation_history)
+
+        # Add user message
+        messages.append({"role": "user", "content": self._pending_query})
+
+        try:
+            logger.info(f"[iFlow] Sending query to {self.model}...")
+
+            # First, try a non-streaming call to check for model errors
+            # iFlow returns error in response body, not as exception
+            test_response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages[:1],  # Just system prompt for quick test
+                max_tokens=1,
+                stream=False,
+            )
+
+            # Check for iFlow-specific error response
+            if hasattr(test_response, 'status') and test_response.status:
+                status_code = str(test_response.status)
+                error_msg = getattr(test_response, 'msg', 'Unknown error')
+                if status_code != '200' and status_code != 'None':
+                    error_text = f"iFlow API Error (status {status_code}): {error_msg}"
+                    if 'not support' in error_msg.lower():
+                        error_text += f"\n\nModel '{self.model}' is not available. Please use a valid model."
+                    logger.error(f"[iFlow] {error_text}")
+                    yield AssistantMessage(
+                        content=[TextBlock(text=error_text)]
+                    )
+                    self._pending_query = None
+                    return
+
+            # Use streaming for real-time output
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                stream=True,
+            )
+
+            full_response = ""
+            for chunk in response:
+                # Check for error in streaming response
+                if hasattr(chunk, 'status') and chunk.status and str(chunk.status) not in ('200', 'None'):
+                    error_msg = getattr(chunk, 'msg', 'Unknown error')
+                    error_text = f"iFlow API Error: {error_msg}"
+                    yield AssistantMessage(
+                        content=[TextBlock(text=error_text)]
+                    )
+                    self._pending_query = None
+                    return
+
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    chunk_text = chunk.choices[0].delta.content
+                    full_response += chunk_text
+                    # Yield each chunk as an AssistantMessage
+                    yield AssistantMessage(
+                        content=[TextBlock(text=chunk_text)]
+                    )
+
+            # Update conversation history
+            self._conversation_history.append(
+                {"role": "user", "content": self._pending_query}
+            )
+            self._conversation_history.append(
+                {"role": "assistant", "content": full_response}
+            )
+            self._last_response = full_response
+            self._pending_query = None
+
+            # Post-process: Extract and write files from heredoc patterns
+            # This simulates tool use for iFlow agents that can't execute commands
+            files_written = self._extract_and_write_files(full_response)
+            if files_written:
+                logger.info(f"[iFlow] Auto-created files from response: {files_written}")
+
+        except Exception as e:
+            logger.error(f"[iFlow] Query failed: {e}")
+            error_msg = f"iFlow API Error: {str(e)}"
+            yield AssistantMessage(
+                content=[TextBlock(text=error_msg)]
+            )
+            self._pending_query = None
 
     def create_agent_session(
         self,
@@ -514,6 +660,162 @@ class IFlowAgentClient:
     def clear_history(self):
         """Clear conversation history."""
         self._conversation_history = []
+
+    def _extract_and_write_files(self, response_text: str) -> list[str]:
+        """
+        Extract file contents from heredoc patterns and write them.
+
+        This method parses the agent's response for bash heredoc patterns like:
+        - cat > filename << 'DELIMITER'...DELIMITER
+        - cat > filename << DELIMITER...DELIMITER
+        - cat >> filename << 'DELIMITER'...DELIMITER (append mode)
+
+        When found, it extracts the content and writes the file.
+        This simulates tool use for iFlow agents.
+
+        Args:
+            response_text: The full response from the iFlow agent
+
+        Returns:
+            List of filenames that were created/updated
+        """
+        import re
+
+        files_written = []
+
+        # Pattern to match heredoc: cat > file << 'DELIMITER' or cat > file << DELIMITER
+        # Captures:
+        # 1. operator (> or >>)
+        # 2. filename
+        # 3. delimiter (with or without quotes)
+        # 4. content until delimiter
+        heredoc_pattern = re.compile(
+            r"cat\s+(>|>>)\s+([^\s<]+)\s+<<\s*['\"]?(\w+)['\"]?\n(.*?)^\3$",
+            re.MULTILINE | re.DOTALL
+        )
+
+        for match in heredoc_pattern.finditer(response_text):
+            operator = match.group(1)
+            filename = match.group(2).strip()
+            content = match.group(4)
+
+            # Determine the target directory
+            if self.spec_dir:
+                target_path = self.spec_dir / filename
+            elif self.project_dir:
+                target_path = self.project_dir / filename
+            else:
+                logger.warning(f"[iFlow] Cannot write file {filename}: no spec_dir or project_dir set")
+                continue
+
+            # Security check: don't allow path traversal
+            try:
+                # Resolve to prevent path traversal attacks
+                target_path = target_path.resolve()
+                base_dir = (self.spec_dir or self.project_dir).resolve()
+                if not str(target_path).startswith(str(base_dir)):
+                    logger.warning(f"[iFlow] Rejected file write outside allowed directory: {filename}")
+                    continue
+            except Exception as e:
+                logger.warning(f"[iFlow] Path resolution failed for {filename}: {e}")
+                continue
+
+            try:
+                # Create parent directories if needed
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Write or append based on operator
+                mode = "a" if operator == ">>" else "w"
+                with open(target_path, mode, encoding="utf-8") as f:
+                    f.write(content)
+
+                files_written.append(str(target_path))
+                logger.info(f"[iFlow] Wrote file from heredoc: {target_path}")
+
+            except Exception as e:
+                logger.error(f"[iFlow] Failed to write file {target_path}: {e}")
+
+        # Also try to extract markdown code blocks that look like complete files
+        # Pattern: ```language:filename or just complete spec content
+        if not files_written and self.spec_dir:
+            # Look for spec.md content in the response
+            spec_file = self.spec_dir / "spec.md"
+            if not spec_file.exists():
+                # Try to find a markdown spec in the response
+                spec_content = self._extract_spec_from_response(response_text)
+                if spec_content:
+                    try:
+                        with open(spec_file, "w", encoding="utf-8") as f:
+                            f.write(spec_content)
+                        files_written.append(str(spec_file))
+                        logger.info(f"[iFlow] Extracted and wrote spec.md from response")
+                    except Exception as e:
+                        logger.error(f"[iFlow] Failed to write spec.md: {e}")
+
+        return files_written
+
+    def _extract_spec_from_response(self, response_text: str) -> str | None:
+        """
+        Try to extract spec.md content from the response text.
+
+        Looks for:
+        1. Heredoc-style spec content
+        2. Markdown content starting with '# Specification'
+        3. Content between ```markdown blocks
+
+        Args:
+            response_text: The full response from the agent
+
+        Returns:
+            Extracted spec content or None
+        """
+        import re
+
+        # Try to find spec content starting with "# Specification"
+        spec_pattern = re.compile(
+            r"(# Specification.*?)(?=\n```\s*$|\Z)",
+            re.DOTALL
+        )
+        match = spec_pattern.search(response_text)
+        if match:
+            content = match.group(1).strip()
+            # Validate it has minimum content
+            if len(content) > 500 and "## Overview" in content:
+                return content
+
+        # Try markdown code block
+        markdown_block_pattern = re.compile(
+            r"```(?:markdown)?\n(# Specification.*?)```",
+            re.DOTALL
+        )
+        match = markdown_block_pattern.search(response_text)
+        if match:
+            content = match.group(1).strip()
+            if len(content) > 500 and "## Overview" in content:
+                return content
+
+        # Last resort: look for substantial markdown content
+        # that looks like a spec document
+        lines = response_text.split("\n")
+        in_spec = False
+        spec_lines = []
+
+        for line in lines:
+            if line.startswith("# Specification"):
+                in_spec = True
+            if in_spec:
+                # Stop at end markers
+                if line.strip() in ("```", "SPEC_EOF", "EOF"):
+                    if spec_lines:
+                        break
+                spec_lines.append(line)
+
+        if spec_lines:
+            content = "\n".join(spec_lines).strip()
+            if len(content) > 500 and "## Overview" in content:
+                return content
+
+        return None
 
 
 @dataclass

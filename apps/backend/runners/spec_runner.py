@@ -216,6 +216,13 @@ Examples:
         action="store_true",
         help="Build directly in project without worktree isolation (default: use isolated worktree)",
     )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="claude",
+        choices=["claude", "iflow"],
+        help="AI provider to use (claude or iflow). Default: claude",
+    )
 
     args = parser.parse_args()
 
@@ -262,8 +269,54 @@ Examples:
                 project_dir = parent
                 break
 
-    # Resolve model shorthand to full model ID
-    resolved_model = resolve_model_id(args.model)
+    # Resolve model shorthand to full model ID (only for Claude provider)
+    resolved_model = args.model
+    provider = args.provider
+
+    # Read provider and model from task_metadata.json if spec_dir is provided (UI integration)
+    if args.spec_dir:
+        task_metadata_file = args.spec_dir / "task_metadata.json"
+        if task_metadata_file.exists():
+            import json
+            try:
+                metadata = json.loads(task_metadata_file.read_text())
+
+                # Check for provider/model in phaseModels (new format) or at top level (old format)
+                phase_models = metadata.get("phaseModels")
+                if phase_models and isinstance(phase_models, dict):
+                    # New format: provider is inside phaseModels.spec
+                    # Use "spec" phase config for spec creation
+                    spec_config = phase_models.get("spec")
+                    if isinstance(spec_config, dict):
+                        if spec_config.get("provider"):
+                            provider = spec_config["provider"]
+                            debug("spec_runner", f"Using provider from phaseModels.spec: {provider}")
+                        if spec_config.get("model"):
+                            resolved_model = spec_config["model"]
+                            debug("spec_runner", f"Using model from phaseModels.spec: {resolved_model}")
+                    elif isinstance(spec_config, str):
+                        # Old format: phaseModels.spec is just a model string
+                        resolved_model = spec_config
+                        debug("spec_runner", f"Using model from phaseModels.spec (old format): {resolved_model}")
+
+                # Fallback: check top-level provider/model (old format)
+                if provider == "claude" and metadata.get("provider"):
+                    provider = metadata["provider"]
+                    debug("spec_runner", f"Using provider from task_metadata.json (top level): {provider}")
+                if resolved_model == args.model and metadata.get("model"):
+                    resolved_model = metadata["model"]
+                    debug("spec_runner", f"Using model from task_metadata.json (top level): {resolved_model}")
+
+                # Strip 'iflow:' prefix if present
+                if resolved_model.startswith("iflow:"):
+                    resolved_model = resolved_model[6:]
+
+            except (json.JSONDecodeError, OSError) as e:
+                debug_error("spec_runner", f"Failed to read task_metadata.json: {e}")
+
+    # Resolve model shorthand to full model ID (only for Claude provider)
+    if provider == "claude":
+        resolved_model = resolve_model_id(resolved_model)
 
     debug(
         "spec_runner",
@@ -271,6 +324,7 @@ Examples:
         project_dir=str(project_dir),
         task_description=task_description[:200] if task_description else None,
         model=resolved_model,
+        provider=provider,
         thinking_level=args.thinking_level,
         complexity_override=args.complexity,
         use_ai_assessment=not args.no_ai_assessment,
@@ -287,6 +341,7 @@ Examples:
         thinking_level=args.thinking_level,
         complexity_override=args.complexity,
         use_ai_assessment=not args.no_ai_assessment,
+        provider=provider,
     )
 
     try:

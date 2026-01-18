@@ -31,6 +31,7 @@ class AgentRunner:
         spec_dir: Path,
         model: str,
         task_logger: TaskLogger | None = None,
+        provider: str = "claude",
     ):
         """Initialize the agent runner.
 
@@ -39,11 +40,13 @@ class AgentRunner:
             spec_dir: The spec directory
             model: The model to use for agent execution
             task_logger: Optional task logger for tracking progress
+            provider: AI provider to use ('claude' or 'iflow')
         """
         self.project_dir = project_dir
         self.spec_dir = spec_dir
         self.model = model
         self.task_logger = task_logger
+        self.provider = provider
 
     async def run_agent(
         self,
@@ -113,14 +116,17 @@ class AgentRunner:
         # Create client with thinking budget
         debug(
             "agent_runner",
-            "Creating Claude SDK client...",
+            f"Creating {self.provider} client...",
             thinking_budget=thinking_budget,
+            provider=self.provider,
+            model=self.model,
         )
         client = create_client(
             self.project_dir,
             self.spec_dir,
             self.model,
             max_thinking_tokens=thinking_budget,
+            provider=self.provider,
         )
 
         current_tool = None
