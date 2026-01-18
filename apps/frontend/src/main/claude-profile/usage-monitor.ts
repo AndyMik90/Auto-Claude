@@ -962,8 +962,23 @@ export class UsageMonitor extends EventEmitter {
         console.warn('[UsageMonitor:ZAI_NORMALIZATION] Found limit types:', {
           hasTokensLimit: !!tokensLimit,
           hasTimeLimit: !!timeLimit,
-          tokensPercentage: tokensLimit?.percentage,
-          timePercentage: timeLimit?.percentage
+          tokensLimit: tokensLimit ? {
+            type: tokensLimit.type,
+            unit: tokensLimit.unit,
+            number: tokensLimit.number,
+            usage: tokensLimit.usage,
+            currentValue: tokensLimit.currentValue,
+            remaining: tokensLimit.remaining,
+            percentage: tokensLimit.percentage,
+            nextResetTime: tokensLimit.nextResetTime,
+            nextResetDate: tokensLimit.nextResetTime ? new Date(tokensLimit.nextResetTime).toISOString() : undefined
+          } : null,
+          timeLimit: timeLimit ? {
+            type: timeLimit.type,
+            percentage: timeLimit.percentage,
+            currentValue: timeLimit.currentValue,
+            remaining: timeLimit.remaining
+          } : null
         });
       }
 
@@ -984,11 +999,18 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
-      // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window that resets exactly 5 hours from the current time
-      // This is a sliding window, not fixed intervals
+      // Extract reset time from API response
+      // The API provides nextResetTime as a Unix timestamp (milliseconds) for TOKENS_LIMIT
       const now = new Date();
-      const sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
+      let sessionResetTimestamp: string;
+
+      if (tokensLimit?.nextResetTime && typeof tokensLimit.nextResetTime === 'number') {
+        // Use the reset time from the API response (Unix timestamp in ms)
+        sessionResetTimestamp = new Date(tokensLimit.nextResetTime).toISOString();
+      } else {
+        // Fallback: calculate as 5 hours from now
+        sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
+      }
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
@@ -1063,8 +1085,23 @@ export class UsageMonitor extends EventEmitter {
         console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Found limit types:', {
           hasTokensLimit: !!tokensLimit,
           hasTimeLimit: !!timeLimit,
-          tokensPercentage: tokensLimit?.percentage,
-          timePercentage: timeLimit?.percentage
+          tokensLimit: tokensLimit ? {
+            type: tokensLimit.type,
+            unit: tokensLimit.unit,
+            number: tokensLimit.number,
+            usage: tokensLimit.usage,
+            currentValue: tokensLimit.currentValue,
+            remaining: tokensLimit.remaining,
+            percentage: tokensLimit.percentage,
+            nextResetTime: tokensLimit.nextResetTime,
+            nextResetDate: tokensLimit.nextResetTime ? new Date(tokensLimit.nextResetTime).toISOString() : undefined
+          } : null,
+          timeLimit: timeLimit ? {
+            type: timeLimit.type,
+            percentage: timeLimit.percentage,
+            currentValue: timeLimit.currentValue,
+            remaining: timeLimit.remaining
+          } : null
         });
       }
 
@@ -1085,11 +1122,18 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
-      // Calculate 5-hour window reset time
-      // The 5-hour window is a rolling window that resets exactly 5 hours from the current time
-      // This is a sliding window, not fixed intervals
+      // Extract reset time from API response
+      // The API provides nextResetTime as a Unix timestamp (milliseconds) for TOKENS_LIMIT
       const now = new Date();
-      const sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
+      let sessionResetTimestamp: string;
+
+      if (tokensLimit?.nextResetTime && typeof tokensLimit.nextResetTime === 'number') {
+        // Use the reset time from the API response (Unix timestamp in ms)
+        sessionResetTimestamp = new Date(tokensLimit.nextResetTime).toISOString();
+      } else {
+        // Fallback: calculate as 5 hours from now
+        sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
+      }
 
       // Calculate monthly reset time (1st of next month)
       const nextMonth = new Date(now);
