@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type ClipboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -14,7 +14,9 @@ import {
   FileText,
   FolderSearch,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -39,12 +41,21 @@ import {
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
+import {
+  generateImageId,
+  blobToBase64,
+  createThumbnail,
+  isValidImageMimeType,
+  resolveFilename
+} from './ImageUpload';
+import type { InsightsChatMessage, InsightsModelConfig, ImageAttachment } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
   TASK_COMPLEXITY_LABELS,
-  TASK_COMPLEXITY_COLORS
+  TASK_COMPLEXITY_COLORS,
+  MAX_IMAGES_PER_TASK,
+  ALLOWED_IMAGE_TYPES_DISPLAY
 } from '../../shared/constants';
 
 // createSafeLink - factory function that creates a SafeLink component with i18n support
@@ -105,6 +116,9 @@ export function Insights({ projectId }: InsightsProps) {
   const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
+  const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [pasteSuccess, setPasteSuccess] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -133,9 +147,11 @@ export function Insights({ projectId }: InsightsProps) {
 
   const handleSend = () => {
     const message = inputValue.trim();
-    if (!message || status.phase === 'thinking' || status.phase === 'streaming') return;
+    if ((!message && images.length === 0) || status.phase === 'thinking' || status.phase === 'streaming') return;
 
     setInputValue('');
+    setImages([]);
+    setImageError(null);
     sendMessage(projectId, message);
   };
 
@@ -145,6 +161,100 @@ export function Insights({ projectId }: InsightsProps) {
       handleSend();
     }
   };
+
+  /**
+   * Handle paste event for screenshot support
+   */
+  const handlePaste = useCallback(async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardItems = e.clipboardData?.items;
+    if (!clipboardItems) return;
+
+    // Find image items in clipboard
+    const imageItems: DataTransferItem[] = [];
+    for (let i = 0; i < clipboardItems.length; i++) {
+      const item = clipboardItems[i];
+      if (item.type.startsWith('image/')) {
+        imageItems.push(item);
+      }
+    }
+
+    // If no images, allow normal paste behavior
+    if (imageItems.length === 0) return;
+
+    // Prevent default paste when we have images
+    e.preventDefault();
+
+    // Check if we can add more images
+    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+    if (remainingSlots <= 0) {
+      setImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      return;
+    }
+
+    setImageError(null);
+
+    // Process image items
+    const newImages: ImageAttachment[] = [];
+    const existingFilenames = images.map(img => img.filename);
+
+    for (const item of imageItems.slice(0, remainingSlots)) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      // Validate image type
+      if (!isValidImageMimeType(file.type)) {
+        setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const thumbnail = await createThumbnail(dataUrl);
+
+        // Generate filename for pasted images (screenshot-timestamp.ext)
+        const mimeToExtension: Record<string, string> = {
+          'image/svg+xml': 'svg',
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+        };
+        const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
+        const baseFilename = `screenshot-${Date.now()}.${extension}`;
+        const resolvedFilename = resolveFilename(baseFilename, [
+          ...existingFilenames,
+          ...newImages.map(img => img.filename)
+        ]);
+
+        newImages.push({
+          id: generateImageId(),
+          filename: resolvedFilename,
+          mimeType: file.type,
+          size: file.size,
+          data: dataUrl.split(',')[1],
+          thumbnail
+        });
+      } catch (error) {
+        console.error('[Insights] Failed to process pasted image:', error);
+        setImageError('Failed to process pasted image');
+      }
+    }
+
+    if (newImages.length > 0) {
+      setImages([...images, ...newImages]);
+      // Show success feedback
+      setPasteSuccess(true);
+      setTimeout(() => setPasteSuccess(false), 2000);
+    }
+  }, [images]);
+
+  /**
+   * Remove an image from the attachments
+   */
+  const handleRemoveImage = useCallback((imageId: string) => {
+    setImages(images.filter(img => img.id !== imageId));
+    setImageError(null);
+  }, [images]);
 
   const handleNewSession = async () => {
     await newSession(projectId);
@@ -360,19 +470,74 @@ export function Insights({ projectId }: InsightsProps) {
 
       {/* Input */}
       <div className="border-t border-border p-4">
+        {/* Image thumbnails display */}
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {images.map((image) => (
+              <div
+                key={image.id}
+                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                style={{ width: '64px', height: '64px' }}
+                title={image.filename}
+              >
+                {image.thumbnail ? (
+                  <img
+                    src={image.thumbnail}
+                    alt={image.filename}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                {/* Remove button */}
+                <button
+                  type="button"
+                  className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveImage(image.id);
+                  }}
+                  aria-label="Remove image"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Paste Success Indicator */}
+        {pasteSuccess && (
+          <div className="flex items-center gap-2 text-sm text-green-600 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <ImageIcon className="h-4 w-4" />
+            Image added successfully!
+          </div>
+        )}
+
+        {/* Error display */}
+        {imageError && (
+          <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-sm text-destructive mb-2">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{imageError}</span>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Ask about your codebase..."
             className="min-h-[80px] resize-none"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={(!inputValue.trim() && images.length === 0) || isLoading}
             className="self-end"
           >
             {isLoading ? (
@@ -383,7 +548,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          Press Enter to send, Shift+Enter for new line. Paste screenshots directly (Ctrl+V).
         </p>
       </div>
       </div>
