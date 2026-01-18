@@ -148,7 +148,7 @@
               "Verify thumbnail appears and success message shows"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-3",
@@ -522,5 +522,6 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-17T22:44:18.873Z"
+  "updated_at": "2026-01-18T00:11:19.414Z",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-18T00:11:16.445Z"
 }

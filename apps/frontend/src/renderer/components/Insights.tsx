@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, type ClipboardEvent } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -119,6 +119,7 @@ export function Insights({ projectId }: InsightsProps) {
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -255,6 +256,103 @@ export function Insights({ projectId }: InsightsProps) {
     setImages(images.filter(img => img.id !== imageId));
     setImageError(null);
   }, [images]);
+
+  /**
+   * Handle drag over textarea for image drops
+   */
+  const handleTextareaDragOver = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTextarea(true);
+  }, []);
+
+  /**
+   * Handle drag leave from textarea
+   */
+  const handleTextareaDragLeave = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTextarea(false);
+  }, []);
+
+  /**
+   * Handle drop on textarea for images
+   */
+  const handleTextareaDrop = useCallback(
+    async (e: DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOverTextarea(false);
+
+      if (status.phase === 'thinking' || status.phase === 'streaming') return;
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      // Filter for image files
+      const imageFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length === 0) return;
+
+      // Check if we can add more images
+      const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+      if (remainingSlots <= 0) {
+        setImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+        return;
+      }
+
+      setImageError(null);
+
+      // Process image files
+      const newImages: ImageAttachment[] = [];
+      const existingFilenames = images.map(img => img.filename);
+
+      for (const file of imageFiles.slice(0, remainingSlots)) {
+        // Validate image type
+        if (!isValidImageMimeType(file.type)) {
+          setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+          continue;
+        }
+
+        try {
+          const dataUrl = await blobToBase64(file);
+          const thumbnail = await createThumbnail(dataUrl);
+
+          // Resolve filename to avoid duplicates
+          const resolvedFilename = resolveFilename(file.name, [
+            ...existingFilenames,
+            ...newImages.map(img => img.filename)
+          ]);
+
+          newImages.push({
+            id: generateImageId(),
+            filename: resolvedFilename,
+            mimeType: file.type,
+            size: file.size,
+            data: dataUrl.split(',')[1],
+            thumbnail
+          });
+        } catch (error) {
+          console.error('[Insights] Failed to process dropped image:', error);
+          setImageError('Failed to process dropped image');
+        }
+      }
+
+      if (newImages.length > 0) {
+        setImages([...images, ...newImages]);
+        // Show success feedback
+        setPasteSuccess(true);
+        setTimeout(() => setPasteSuccess(false), 2000);
+      }
+    },
+    [images, status.phase]
+  );
 
   const handleNewSession = async () => {
     await newSession(projectId);
@@ -531,8 +629,14 @@ export function Insights({ projectId }: InsightsProps) {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onDragOver={handleTextareaDragOver}
+            onDragLeave={handleTextareaDragLeave}
+            onDrop={handleTextareaDrop}
             placeholder="Ask about your codebase..."
-            className="min-h-[80px] resize-none"
+            className={cn(
+              'min-h-[80px] resize-none',
+              isDragOverTextarea && 'ring-2 ring-primary border-primary'
+            )}
             disabled={isLoading}
           />
           <Button
@@ -548,7 +652,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line. Paste screenshots directly (Ctrl+V).
+          Press Enter to send, Shift+Enter for new line. Paste screenshots directly (Ctrl+V) or drag and drop images.
         </p>
       </div>
       </div>
