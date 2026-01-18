@@ -2,10 +2,11 @@ import { Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SettingsSection } from '../SettingsSection';
 import { useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
+import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
 
-// Child components will be imported here
-// TODO: Import child components once created
-// import { FontConfigPanel } from './FontConfigPanel';
+// Child components
+import { FontConfigPanel } from './FontConfigPanel';
+// TODO: Import other child components once created
 // import { CursorConfigPanel } from './CursorConfigPanel';
 // import { PerformanceConfigPanel } from './PerformanceConfigPanel';
 // import { PresetsPanel } from './PresetsPanel';
@@ -40,9 +41,9 @@ export function TerminalFontSettings() {
    * Handle individual setting updates
    * This wrapper ensures type safety and could add validation/logging in future
    */
-  const handleSettingChange = <K extends keyof typeof settings>(
+  const handleSettingChange = <K extends keyof TerminalFontSettings>(
     key: K,
-    value: typeof settings[K]
+    value: TerminalFontSettings[K]
   ) => {
     updateSettings({ [key]: value });
   };
@@ -167,8 +168,7 @@ export function TerminalFontSettings() {
       </div>
 
       {/* Font Configuration Panel */}
-      {/* TODO: Uncomment once FontConfigPanel is implemented */}
-      {/* <SettingsSection
+      <SettingsSection
         title={t('terminalFonts.fontConfig.title', { defaultValue: 'Font Configuration' })}
         description={t('terminalFonts.fontConfig.description', {
           defaultValue: 'Customize font family, size, weight, line height, and letter spacing',
@@ -178,7 +178,7 @@ export function TerminalFontSettings() {
           settings={settings}
           onSettingChange={handleSettingChange}
         />
-      </SettingsSection> */}
+      </SettingsSection>
 
       {/* Cursor Configuration Panel */}
       {/* TODO: Uncomment once CursorConfigPanel is implemented */}
