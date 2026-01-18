@@ -37,6 +37,17 @@ const PROVIDER_TRANSLATION_KEYS: Readonly<Record<ApiProvider, string>> = {
   unknown: 'common:usage.providerUnknown'
 } as const;
 
+/**
+ * OAuth fallback state when no profile is active or profile not found
+ */
+const OAUTH_FALLBACK = {
+  type: 'oauth' as const,
+  name: 'OAuth',
+  provider: 'anthropic' as const,
+  providerLabel: 'Anthropic',
+  badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
+} as const;
+
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
@@ -104,22 +115,10 @@ export function AuthStatusIndicator() {
         };
       }
       // Profile ID set but profile not found - fallback to OAuth
-      return {
-        type: 'oauth' as const,
-        name: 'OAuth',
-        provider: 'anthropic' as const,
-        providerLabel: 'Anthropic',
-        badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
-      };
+      return OAUTH_FALLBACK;
     }
     // No active profile - using OAuth
-    return {
-      type: 'oauth' as const,
-      name: 'OAuth',
-      provider: 'anthropic' as const,
-      providerLabel: 'Anthropic',
-      badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
-    };
+    return OAUTH_FALLBACK;
   }, [activeProfileId, profiles]);
 
   // Helper function to truncate ID for display
