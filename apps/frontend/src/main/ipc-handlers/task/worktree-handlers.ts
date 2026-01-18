@@ -2834,6 +2834,123 @@ export function registerWorktreeHandlers(
   }
 
   /**
+   * Run a command asynchronously and return a promise
+   * This avoids blocking the main process during long-running operations
+   */
+  function runCommandAsync(command: string, args: string[], cwd: string, timeoutMs = 300000): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const proc = spawn(command, args, {
+        cwd,
+        stdio: 'pipe',
+        shell: true
+      });
+
+      let stderr = '';
+      const timeout = setTimeout(() => {
+        proc.kill();
+        resolve({ success: false, error: 'Command timed out' });
+      }, timeoutMs);
+
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve({ success: true });
+        } else {
+          resolve({ success: false, error: stderr || `Process exited with code ${code}` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        clearTimeout(timeout);
+        resolve({ success: false, error: err.message });
+      });
+    });
+  }
+
+  /**
+   * Check if a command exists asynchronously (for Linux terminal detection)
+   */
+  function commandExistsAsync(command: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const proc = spawn('which', [command], { stdio: 'pipe' });
+      proc.on('close', (code) => resolve(code === 0));
+      proc.on('error', () => resolve(false));
+    });
+  }
+
+  /**
+   * Kill any running dev server processes from a specific worktree path.
+   * This prevents port conflicts and ensures we launch fresh.
+   * Only kills processes from the specified worktree - won't affect other tasks.
+   */
+  async function killWorktreeProcesses(worktreePath: string): Promise<void> {
+    if (isWindows()) {
+      // On Windows, use PowerShell to find and kill processes by command line
+      // Normalize path for comparison (Windows paths in command lines may vary)
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+
+      try {
+        // Find node.exe and python.exe processes whose command line contains this worktree path
+        const findProc = spawn('powershell', [
+          '-Command',
+          `Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'node.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like '*${normalizedPath}*' } | Select-Object -ExpandProperty ProcessId`
+        ], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        // Parse PIDs and kill each one
+        const pids = stdout.trim().split(/\r?\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('taskkill', ['/F', '/PID', pid], { stdio: 'ignore' });
+          } catch {
+            // Ignore errors killing individual processes
+          }
+        }
+      } catch {
+        // Ignore errors - this is best-effort cleanup
+      }
+    } else {
+      // On Unix, use pgrep/pkill or ps to find processes
+      try {
+        const findProc = spawn('pgrep', ['-f', worktreePath], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        const pids = stdout.trim().split(/\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('kill', ['-9', pid], { stdio: 'ignore' });
+          } catch {
+            // Ignore errors
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    // Brief delay to let processes terminate
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  /**
    * Install dependencies in a worktree directory
    */
   ipcMain.handle(
@@ -2851,24 +2968,18 @@ export function registerWorktreeHandlers(
 
         const packageManager = detectPackageManager(worktreePath);
 
-        // Run the install command synchronously
-        try {
-          execSync(`${packageManager} install`, {
-            cwd: worktreePath,
-            stdio: 'pipe',
-            timeout: 300000, // 5 minute timeout
-            encoding: 'utf-8'
-          });
+        // Run the install command asynchronously to avoid blocking the UI
+        const result = await runCommandAsync(packageManager, ['install'], worktreePath);
 
+        if (result.success) {
           return {
             success: true,
             data: { installed: true, packageManager }
           };
-        } catch (installError) {
-          const errorMessage = installError instanceof Error ? installError.message : String(installError);
+        } else {
           return {
             success: false,
-            error: `Failed to install dependencies with ${packageManager}: ${errorMessage}`
+            error: `Failed to install dependencies with ${packageManager}: ${result.error}`
           };
         }
       } catch (error) {
@@ -2893,6 +3004,11 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Worktree path does not exist' };
         }
 
+        // Kill any existing dev server processes from THIS worktree before launching
+        // This prevents port conflicts and stale server issues
+        // Only affects processes from this specific worktree path - other tasks are safe
+        await killWorktreeProcesses(worktreePath);
+
         // Use platform helpers for OS detection
         const platform = process.platform;
 
@@ -2906,24 +3022,29 @@ export function registerWorktreeHandlers(
         const packageManager = detectPackageManager(worktreePath);
 
         // Check if dependencies are installed
+        // Must verify node_modules is a real directory with contents, not a broken symlink
         const nodeModulesPath = path.join(worktreePath, 'node_modules');
-        const depsInstalled = existsSync(nodeModulesPath);
+        let depsInstalled = false;
+        try {
+          const stats = statSync(nodeModulesPath);
+          if (stats.isDirectory()) {
+            // Check if it has actual contents (at least a few packages)
+            const contents = readdirSync(nodeModulesPath);
+            depsInstalled = contents.length > 5; // Real installs have many packages
+          }
+        } catch {
+          // Path doesn't exist or is inaccessible
+          depsInstalled = false;
+        }
 
         if (!depsInstalled) {
           if (autoInstall) {
-            // Auto-install dependencies
-            try {
-              execSync(`${packageManager} install`, {
-                cwd: worktreePath,
-                stdio: 'pipe',
-                timeout: 300000, // 5 minute timeout
-                encoding: 'utf-8'
-              });
-            } catch (installError) {
-              const errorMessage = installError instanceof Error ? installError.message : String(installError);
+            // Auto-install dependencies asynchronously to avoid blocking the UI
+            const installResult = await runCommandAsync(packageManager, ['install'], worktreePath);
+            if (!installResult.success) {
               return {
                 success: false,
-                error: `Failed to install dependencies with ${packageManager}: ${errorMessage}`,
+                error: `Failed to install dependencies with ${packageManager}: ${installResult.error}`,
                 data: { launched: false, command: '', depsInstalled: false, packageManager }
               };
             }
@@ -2947,10 +3068,11 @@ export function registerWorktreeHandlers(
             const scripts = packageJson.scripts || {};
 
             // Priority order for dev commands, using detected package manager
+            // All package managers (npm, pnpm, yarn, bun) support shorthand `start` without `run`
             if (scripts.dev) {
               devCommand = `${packageManager} run dev`;
             } else if (scripts.start) {
-              devCommand = packageManager === 'npm' ? 'npm start' : `${packageManager} run start`;
+              devCommand = `${packageManager} start`;
             } else if (scripts.serve) {
               devCommand = `${packageManager} run serve`;
             } else if (scripts.develop) {
@@ -2973,28 +3095,29 @@ export function registerWorktreeHandlers(
         // Use the user's preferred terminal (spawn is already imported at the top)
         if (isWindows()) {
           // Windows: Open cmd with the command
-          // Note: 'start' requires an empty title ("") as first arg when the command contains quotes
-          // Also: shell: true mangles nested quotes, so we avoid it
-          const proc = spawn('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', `cd /d "${escapedPath}" && ${devCommand}`], {
+          // Use start /d to set working directory - this avoids nested quote issues
+          // that occur when embedding cd /d "path" inside the command string.
+          // Node.js spawn will properly quote worktreePath if it contains spaces.
+          const proc = spawn('cmd.exe', ['/c', 'start', '""', '/d', worktreePath, 'cmd.exe', '/k', devCommand], {
             detached: true,
             stdio: 'ignore'
           });
 
-          // Handle spawn errors
-          let spawnFailed = false;
-          let spawnError: Error | undefined;
-          proc.once('error', (err) => {
-            spawnFailed = true;
-            spawnError = err;
+          // Wait for either 'spawn' event (success) or 'error' event (failure)
+          // This properly handles async spawn errors instead of using unreliable timeouts
+          const spawnResult = await new Promise<{ success: boolean; error?: Error }>((resolve) => {
+            proc.once('spawn', () => {
+              resolve({ success: true });
+            });
+            proc.once('error', (err) => {
+              resolve({ success: false, error: err });
+            });
           });
 
-          // Give a brief moment for synchronous spawn errors to propagate
-          await new Promise(resolve => setImmediate(resolve));
-
-          if (spawnFailed) {
+          if (!spawnResult.success) {
             return {
               success: false,
-              error: `Failed to launch terminal: ${spawnError?.message ?? 'Unknown error'}`
+              error: `Failed to launch terminal: ${spawnResult.error?.message ?? 'Unknown error'}`
             };
           }
 
@@ -3043,71 +3166,68 @@ export function registerWorktreeHandlers(
           proc.unref();
         } else {
           // Linux: Try common terminal emulators
-          // First check which terminals are actually installed using 'which'
+          // Check which terminals are actually installed using async 'which'
           const terminals = ['gnome-terminal', 'konsole', 'xfce4-terminal', 'xterm'];
           let launched = false;
           let lastError: Error | null = null;
 
           for (const term of terminals) {
-            try {
-              // Check if the terminal is installed before spawning
-              execSync(`which ${term}`, { stdio: 'ignore' });
-
-              // Terminal exists, spawn it with escaped path
-              let proc;
-              if (term === 'gnome-terminal') {
-                proc = spawn(term, ['--', 'bash', '-c', `cd '${escapedPath}' && ${devCommand}; exec bash`], {
-                  detached: true,
-                  stdio: 'ignore'
-                });
-              } else if (term === 'konsole') {
-                // konsole's --workdir accepts the path directly (no shell interpolation)
-                proc = spawn(term, ['--workdir', worktreePath, '-e', 'bash', '-c', `${devCommand}; exec bash`], {
-                  detached: true,
-                  stdio: 'ignore'
-                });
-              } else if (term === 'xfce4-terminal') {
-                // xfce4-terminal: use --working-directory to set the directory directly
-                // This avoids shell escaping issues entirely by passing the path as an option value
-                proc = spawn(term, ['--working-directory', worktreePath, '-x', 'bash', '-c', `${devCommand}; exec bash`], {
-                  detached: true,
-                  stdio: 'ignore'
-                });
-              } else {
-                // xterm and other terminals: use same approach as gnome-terminal
-                // escapedPath has single quotes properly escaped with '\'' pattern
-                proc = spawn(term, ['-e', 'bash', '-c', `cd '${escapedPath}' && ${devCommand}; exec bash`], {
-                  detached: true,
-                  stdio: 'ignore'
-                });
-              }
-
-              // Wait for either 'spawn' event (success) or 'error' event (failure)
-              // This properly handles async spawn errors instead of using unreliable timeouts
-              const spawnResult = await new Promise<{ success: boolean; error?: Error }>((resolve) => {
-                proc.once('spawn', () => {
-                  resolve({ success: true });
-                });
-                proc.once('error', (err) => {
-                  resolve({ success: false, error: err });
-                });
-              });
-
-              if (!spawnResult.success) {
-                // Spawn failed, try next terminal
-                lastError = spawnResult.error || new Error('Spawn failed');
-                continue;
-              }
-
-              // Detach the process so it keeps running after our app exits
-              proc.unref();
-              launched = true;
-              break;
-            } catch (e) {
-              // Terminal not found (which failed) or other error, try next one
-              lastError = e instanceof Error ? e : new Error(String(e));
+            // Check if the terminal is installed before spawning (async to avoid blocking)
+            const terminalExists = await commandExistsAsync(term);
+            if (!terminalExists) {
               continue;
             }
+
+            // Terminal exists, spawn it with escaped path
+            let proc;
+            if (term === 'gnome-terminal') {
+              proc = spawn(term, ['--', 'bash', '-c', `cd '${escapedPath}' && ${devCommand}; exec bash`], {
+                detached: true,
+                stdio: 'ignore'
+              });
+            } else if (term === 'konsole') {
+              // konsole's --workdir accepts the path directly (no shell interpolation)
+              proc = spawn(term, ['--workdir', worktreePath, '-e', 'bash', '-c', `${devCommand}; exec bash`], {
+                detached: true,
+                stdio: 'ignore'
+              });
+            } else if (term === 'xfce4-terminal') {
+              // xfce4-terminal: use --working-directory to set the directory directly
+              // This avoids shell escaping issues entirely by passing the path as an option value
+              proc = spawn(term, ['--working-directory', worktreePath, '-x', 'bash', '-c', `${devCommand}; exec bash`], {
+                detached: true,
+                stdio: 'ignore'
+              });
+            } else {
+              // xterm and other terminals: use same approach as gnome-terminal
+              // escapedPath has single quotes properly escaped with '\'' pattern
+              proc = spawn(term, ['-e', 'bash', '-c', `cd '${escapedPath}' && ${devCommand}; exec bash`], {
+                detached: true,
+                stdio: 'ignore'
+              });
+            }
+
+            // Wait for either 'spawn' event (success) or 'error' event (failure)
+            // This properly handles async spawn errors instead of using unreliable timeouts
+            const spawnResult = await new Promise<{ success: boolean; error?: Error }>((resolve) => {
+              proc.once('spawn', () => {
+                resolve({ success: true });
+              });
+              proc.once('error', (err) => {
+                resolve({ success: false, error: err });
+              });
+            });
+
+            if (!spawnResult.success) {
+              // Spawn failed, try next terminal
+              lastError = spawnResult.error || new Error('Spawn failed');
+              continue;
+            }
+
+            // Detach the process so it keeps running after our app exits
+            proc.unref();
+            launched = true;
+            break;
           }
 
           if (!launched) {
@@ -3118,7 +3238,7 @@ export function registerWorktreeHandlers(
           }
         }
 
-        return { success: true, data: { launched: true, command: devCommand } };
+        return { success: true, data: { launched: true, command: devCommand, depsInstalled: true, packageManager } };
       } catch (error) {
         console.error('Failed to launch app:', error);
         return {
