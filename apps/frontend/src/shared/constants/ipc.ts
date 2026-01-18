@@ -39,6 +39,8 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_OPEN_IN_IDE: 'task:worktreeOpenInIDE',
   TASK_WORKTREE_OPEN_IN_TERMINAL: 'task:worktreeOpenInTerminal',
   TASK_WORKTREE_DETECT_TOOLS: 'task:worktreeDetectTools',  // Detect installed IDEs/terminals
+  TASK_WORKTREE_LAUNCH_APP: 'task:worktreeLaunchApp',  // Launch dev server from worktree
+  TASK_WORKTREE_INSTALL_DEPS: 'task:worktreeInstallDeps',  // Install dependencies in worktree
   TASK_LIST_WORKTREES: 'task:listWorktrees',
   TASK_ARCHIVE: 'task:archive',
   TASK_UNARCHIVE: 'task:unarchive',
