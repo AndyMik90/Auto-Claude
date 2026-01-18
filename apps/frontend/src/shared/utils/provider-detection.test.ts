@@ -17,6 +17,11 @@ describe('provider-detection', () => {
         const result = detectProvider('https://api.anthropic.com/v1/messages');
         expect(result).toBe('anthropic');
       });
+
+      it('should handle subdomain of Anthropic correctly', () => {
+        const result = detectProvider('https://sub.api.anthropic.com');
+        expect(result).toBe('anthropic');
+      });
     });
 
     describe('z.ai provider', () => {
@@ -57,11 +62,6 @@ describe('provider-detection', () => {
       it('should handle invalid URL gracefully', () => {
         const result = detectProvider('not-a-url');
         expect(result).toBe('unknown');
-      });
-
-      it('should handle subdomain of Anthropic correctly', () => {
-        const result = detectProvider('https://sub.api.anthropic.com');
-        expect(result).toBe('anthropic');
       });
     });
   });

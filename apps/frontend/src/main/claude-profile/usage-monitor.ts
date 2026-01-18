@@ -1473,8 +1473,16 @@ export class UsageMonitor extends EventEmitter {
 
     try {
       const date = new Date(isoTimestamp);
+
+      // Handle invalid dates
+      if (isNaN(date.getTime())) return 'Unknown';
+
       const now = new Date();
       const diffMs = date.getTime() - now.getTime();
+
+      // Handle past dates (expired timestamps)
+      if (diffMs < 0) return 'Expired';
+
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 

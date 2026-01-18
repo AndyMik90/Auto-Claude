@@ -61,10 +61,10 @@ export function UsageIndicator() {
 
   // Get formatted reset times (calculated dynamically from timestamps)
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? formatResetTime(usage.sessionResetTimestamp)
+    ? (formatResetTime(usage.sessionResetTimestamp) ?? usage?.sessionResetTime)
     : usage?.sessionResetTime;
   const weeklyResetTime = usage?.weeklyResetTimestamp
-    ? formatResetTime(usage.weeklyResetTimestamp)
+    ? (formatResetTime(usage.weeklyResetTimestamp) ?? usage?.weeklyResetTime)
     : usage?.weeklyResetTime;
 
   useEffect(() => {

@@ -93,7 +93,7 @@ export function AuthStatusIndicator() {
 
   // Get formatted reset times (calculated dynamically from timestamps)
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? formatResetTime(usage.sessionResetTimestamp)
+    ? (formatResetTime(usage.sessionResetTimestamp) ?? usage?.sessionResetTime)
     : usage?.sessionResetTime;
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders

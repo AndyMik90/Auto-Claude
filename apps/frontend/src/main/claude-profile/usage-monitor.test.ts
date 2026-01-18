@@ -1042,11 +1042,11 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
 
       // When Date parsing fails with "Invalid Date", getTime() returns NaN
-      // The method continues and formats with NaN values
+      // The fixed code now checks for invalid dates and returns 'Unknown'
       const formatted = monitor['formatResetTime']('not-a-valid-timestamp');
 
-      // Invalid dates result in NaN format (not a throw, not original string)
-      expect(formatted).toBe('NaNd NaNh');
+      // Invalid dates are now handled and return 'Unknown'
+      expect(formatted).toBe('Unknown');
     });
 
     it('should handle null timestamp', () => {
@@ -1071,13 +1071,8 @@ describe('usage-monitor', () => {
       const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25 hours ago (over 24h)
       const formatted = monitor['formatResetTime'](pastDate.toISOString());
 
-      // Should still format correctly (negative time shows as negative values)
-      // 25 hours is still under 24 in absolute value for the code's check
-      // The code checks: if (diffHours < 24) use hours format
-      // -25 < 24 is true, so it uses hours format
-      expect(formatted).toBeDefined();
-      expect(typeof formatted).toBe('string');
-      expect(formatted).toMatch(/-?\d+h -?\d+m/); // Shows as -25h 0m (hours format)
+      // Past dates are now handled and return 'Expired'
+      expect(formatted).toBe('Expired');
     });
 
     it('should handle recent past dates in hours format', () => {
@@ -1086,10 +1081,8 @@ describe('usage-monitor', () => {
       const pastDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago (under 24h)
       const formatted = monitor['formatResetTime'](pastDate.toISOString());
 
-      // Times under 24 hours show in hour format
-      expect(formatted).toBeDefined();
-      expect(typeof formatted).toBe('string');
-      expect(formatted).toMatch(/-?\d+h -?\d+m/); // Negative hours format
+      // All past dates now return 'Expired'
+      expect(formatted).toBe('Expired');
     });
   });
 
