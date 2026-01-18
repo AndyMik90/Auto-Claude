@@ -745,10 +745,96 @@ export function isKuzuAvailable(): boolean {
 }
 
 /**
+ * Check if LadybugDB (real_ladybug) Python package is installed
+ * Returns detailed status about the installation
+ */
+export interface LadybugInstallStatus {
+  installed: boolean;
+  pythonAvailable: boolean;
+  error?: string;
+}
+
+let ladybugInstallCache: LadybugInstallStatus | null = null;
+
+export function checkLadybugInstalled(): LadybugInstallStatus {
+  // Return cached result if available (avoid repeated slow checks)
+  if (ladybugInstallCache !== null) {
+    return ladybugInstallCache;
+  }
+
+  const pythonCmd = findPythonCommand();
+  if (!pythonCmd) {
+    ladybugInstallCache = {
+      installed: false,
+      pythonAvailable: false,
+      error: 'Python not found. Please install Python 3.12 or later.',
+    };
+    return ladybugInstallCache;
+  }
+
+  try {
+    const [cmd, args] = parsePythonCommand(pythonCmd);
+    const checkArgs = [...args, '-c', 'import real_ladybug; print("OK")'];
+
+    const { spawnSync } = require('child_process');
+    const result = spawnSync(cmd, checkArgs, {
+      encoding: 'utf-8',
+      timeout: 10000,
+      windowsHide: true,
+    });
+
+    if (result.status === 0 && result.stdout?.includes('OK')) {
+      ladybugInstallCache = {
+        installed: true,
+        pythonAvailable: true,
+      };
+    } else {
+      // Parse error to provide helpful message
+      const stderr = result.stderr || '';
+      let error = 'LadybugDB (real_ladybug) is not installed.';
+
+      if (stderr.includes('ModuleNotFoundError') || stderr.includes('No module named')) {
+        error =
+          'LadybugDB (real_ladybug) is not installed. ' +
+          'On Windows, this may require Visual Studio Build Tools to compile.';
+      } else if (stderr.includes('WinError 2') || stderr.includes('system cannot find')) {
+        error =
+          'Failed to build LadybugDB. ' +
+          'Please install Visual Studio Build Tools with C++ workload from: ' +
+          'https://visualstudio.microsoft.com/visual-cpp-build-tools/';
+      }
+
+      ladybugInstallCache = {
+        installed: false,
+        pythonAvailable: true,
+        error,
+      };
+    }
+  } catch (err) {
+    ladybugInstallCache = {
+      installed: false,
+      pythonAvailable: true,
+      error: `Failed to check LadybugDB: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  return ladybugInstallCache;
+}
+
+/**
+ * Clear the LadybugDB installation cache (useful after installation attempt)
+ */
+export function clearLadybugInstallCache(): void {
+  ladybugInstallCache = null;
+}
+
+/**
  * Get memory service status
  */
 export interface MemoryServiceStatus {
   kuzuInstalled: boolean;
+  ladybugInstalled: boolean;
+  ladybugError?: string;
   databasePath: string;
   databaseExists: boolean;
   databases: string[];
@@ -765,8 +851,13 @@ export function getMemoryServiceStatus(dbPath?: string): MemoryServiceStatus {
   const pythonAvailable = findPythonCommand() !== null;
   const scriptAvailable = getQueryScriptPath() !== null;
 
+  // Check if LadybugDB is actually installed
+  const ladybugStatus = checkLadybugInstalled();
+
   return {
     kuzuInstalled: pythonAvailable && scriptAvailable,
+    ladybugInstalled: ladybugStatus.installed,
+    ladybugError: ladybugStatus.error,
     databasePath: basePath,
     databaseExists: databases.length > 0,
     databases,
