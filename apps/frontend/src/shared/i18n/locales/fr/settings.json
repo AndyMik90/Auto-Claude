@@ -609,7 +609,13 @@
   "terminalFonts": {
     "title": "Polices de Terminal",
     "description": "Personnaliser l'apparence et le comportement des polices de terminal",
+    "configActions": "Configuration :",
+    "export": "Exporter JSON",
+    "import": "Importer JSON",
+    "copy": "Copier dans le presse-papier",
     "fontConfig": {
+      "title": "Configuration des Polices",
+      "description": "Personnaliser la famille, la taille, la graisse, la hauteur de ligne et l'espacement des lettres",
       "fontFamily": "Famille de Police",
       "fontFamilyDescription": "Police monospace principale pour le texte du terminal",
       "selectFont": "Sélectionner une police...",
@@ -627,18 +633,29 @@
       "letterSpacingDescription": "Espacement horizontal entre les caractères (-2 à 5px)"
     },
     "cursorConfig": {
-      "title": "Paramètres de Curseur",
-      "description": "Personnaliser l'apparence et le comportement du curseur",
+      "title": "Configuration du Curseur",
+      "description": "Personnaliser le style, le clignotement et la couleur d'accent du curseur",
       "cursorStyle": "Style de Curseur",
-      "cursorStyleDescription": "Forme du curseur de terminal",
+      "cursorStyleDescription": "Choisir l'apparence du curseur de terminal",
+      "selectStyle": "Sélectionner le style de curseur...",
+      "currentStyle": "Actuel :",
       "cursorBlink": "Clignotement du Curseur",
-      "cursorBlinkDescription": "Activer ou désactiver l'animation du curseur",
+      "cursorBlinkDescription": "Activer ou désactiver l'animation de clignotement du curseur",
+      "blinkStatus": "État :",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
       "cursorAccentColor": "Couleur d'Accent du Curseur",
-      "cursorAccentColorDescription": "Couleur du curseur de terminal"
+      "cursorAccentColorDescription": "Choisir la couleur du curseur de terminal",
+      "pickColor": "Cliquer pour choisir une couleur",
+      "resetColor": "Réinitialiser en noir",
+      "reset": "Réinitialiser",
+      "preview": "Aperçu :"
     },
     "performanceConfig": {
-      "title": "Performance",
-      "description": "Paramètres de performance et de mémoire du terminal",
+      "title": "Paramètres de Performance",
+      "description": "Ajuster la limite de défilement et autres paramètres liés aux performances",
+      "presets": "Préréglages Rapides",
+      "presetsDescription": "Limites de défilement courantes pour différents cas d'usage",
       "scrollback": "Limite de Défilement",
       "scrollbackDescription": "Nombre maximum de lignes à conserver dans l'historique du terminal",
       "scrollbackPresets": "Préréglages Rapides"
@@ -666,7 +683,15 @@
     },
     "livePreview": {
       "title": "Aperçu en Direct",
-      "description": "Prévisualiser les changements de police de terminal en temps réel"
+      "description": "Prévisualiser vos paramètres de terminal en temps réel (mises à jour dans les 300ms)",
+      "ariaLabel": "Aperçu des polices de terminal",
+      "infoText": "Cet aperçu se met à jour dans les 300ms suivant tout changement pour montrer l'apparence de vos paramètres dans les terminaux réels."
+    },
+    "preview": {
+      "title": "Aperçu en Direct",
+      "description": "Prévisualiser vos paramètres de terminal en temps réel (mises à jour dans les 300ms)",
+      "ariaLabel": "Aperçu des polices de terminal",
+      "infoText": "Cet aperçu se met à jour dans les 300ms suivant tout changement pour montrer l'apparence de vos paramètres dans les terminaux réels."
     }
   }
 }

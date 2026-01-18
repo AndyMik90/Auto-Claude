@@ -609,7 +609,13 @@
   "terminalFonts": {
     "title": "Terminal Fonts",
     "description": "Customize terminal font appearance and behavior",
+    "configActions": "Configuration:",
+    "export": "Export JSON",
+    "import": "Import JSON",
+    "copy": "Copy to Clipboard",
     "fontConfig": {
+      "title": "Font Configuration",
+      "description": "Customize font family, size, weight, line height, and letter spacing",
       "fontFamily": "Font Family",
       "fontFamilyDescription": "Primary monospace font for terminal text",
       "selectFont": "Select a font...",
@@ -627,18 +633,29 @@
       "letterSpacingDescription": "Horizontal spacing between characters (-2 to 5px)"
     },
     "cursorConfig": {
-      "title": "Cursor Settings",
-      "description": "Customize cursor appearance and behavior",
+      "title": "Cursor Configuration",
+      "description": "Customize cursor style, blinking behavior, and accent color",
       "cursorStyle": "Cursor Style",
-      "cursorStyleDescription": "Shape of the terminal cursor",
-      "cursorBlink": "Cursor Blinking",
-      "cursorBlinkDescription": "Enable or disable cursor animation",
+      "cursorStyleDescription": "Choose the appearance of the terminal cursor",
+      "selectStyle": "Select cursor style...",
+      "currentStyle": "Current:",
+      "cursorBlink": "Cursor Blink",
+      "cursorBlinkDescription": "Enable or disable cursor blinking animation",
+      "blinkStatus": "Status:",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
       "cursorAccentColor": "Cursor Accent Color",
-      "cursorAccentColorDescription": "Color of the terminal cursor"
+      "cursorAccentColorDescription": "Choose the color of the terminal cursor",
+      "pickColor": "Click to pick a color",
+      "resetColor": "Reset to black",
+      "reset": "Reset",
+      "preview": "Preview:"
     },
     "performanceConfig": {
-      "title": "Performance",
-      "description": "Terminal performance and memory settings",
+      "title": "Performance Settings",
+      "description": "Adjust scrollback limit and other performance-related settings",
+      "presets": "Quick Presets",
+      "presetsDescription": "Common scrollback limits for different use cases",
       "scrollback": "Scrollback Limit",
       "scrollbackDescription": "Maximum number of lines to keep in terminal history",
       "scrollbackPresets": "Quick Presets"
@@ -666,7 +683,15 @@
     },
     "livePreview": {
       "title": "Live Preview",
-      "description": "Preview your terminal font changes in real-time"
+      "description": "Preview your terminal settings in real-time (updates within 300ms)",
+      "ariaLabel": "Terminal font preview",
+      "infoText": "This preview updates within 300ms of any change to show how your settings will look in actual terminals."
+    },
+    "preview": {
+      "title": "Live Preview",
+      "description": "Preview your terminal settings in real-time (updates within 300ms)",
+      "ariaLabel": "Terminal font preview",
+      "infoText": "This preview updates within 300ms of any change to show how your settings will look in actual terminals."
     }
   }
 }
