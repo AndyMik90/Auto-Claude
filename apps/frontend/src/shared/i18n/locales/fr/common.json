@@ -403,6 +403,12 @@
     "profile": "Profil",
     "id": "ID",
     "apiEndpoint": "Point de terminaison API",
-    "sessionQuota": "Quota de session"
+    "sessionQuota": "Quota de session",
+    "notAvailable": "N/A",
+    "usageStatusAriaLabel": "Statut d'utilisation Claude",
+    "sessionDefault": "Session",
+    "weeklyDefault": "Hebdomadaire",
+    "resetsInHours": "Réinitialisation dans {{hours}}h {{minutes}}m",
+    "resetsInDays": "Réinitialisation dans {{days}}j {{hours}}h"
   }
 }

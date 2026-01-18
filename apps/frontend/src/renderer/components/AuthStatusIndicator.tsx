@@ -29,7 +29,7 @@ import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation(['common', 'usage']);
 
   // Track usage data for warning badge
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
@@ -47,12 +47,12 @@ export function AuthStatusIndicator() {
       const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
       if (diffHours < 24) {
-        return `Resets in ${diffHours}h ${diffMins}m`;
+        return t('usage:resetsInHours', { hours: diffHours, minutes: diffMins });
       }
 
       const diffDays = Math.floor(diffHours / 24);
       const remainingHours = diffHours % 24;
-      return `Resets in ${diffDays}d ${remainingHours}h`;
+      return t('usage:resetsInDays', { days: diffDays, hours: remainingHours });
     } catch (_error) {
       return undefined;
     }
@@ -71,6 +71,9 @@ export function AuthStatusIndicator() {
       if (result.success && result.data) {
         setUsage(result.data);
       }
+    }).catch(() => {
+      // Handle errors (IPC failure, network issues, etc.)
+      setIsLoadingUsage(false);
     });
 
     return () => {

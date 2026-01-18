@@ -403,6 +403,12 @@
     "profile": "Profile",
     "id": "ID",
     "apiEndpoint": "API Endpoint",
-    "sessionQuota": "Session Quota"
+    "sessionQuota": "Session Quota",
+    "notAvailable": "N/A",
+    "usageStatusAriaLabel": "Claude usage status",
+    "sessionDefault": "Session",
+    "weeklyDefault": "Weekly",
+    "resetsInHours": "Resets in {{hours}}h {{minutes}}m",
+    "resetsInDays": "Resets in {{days}}d {{hours}}h"
   }
 }
