@@ -204,7 +204,9 @@ class ProcessRegistry {
         let output = '';
         proc.stdout?.on('data', (data) => { output += data.toString(); });
         proc.on('close', () => {
-          resolve(output.includes(pid.toString()));
+          // Check that the PID appears as a whole word in the output to avoid partial matches
+          const pidRegex = new RegExp(`\\b${pid}\\b`);
+          resolve(pidRegex.test(output));
         });
         proc.on('error', () => resolve(false));
       } else {

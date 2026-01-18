@@ -3069,7 +3069,7 @@ export function registerWorktreeHandlers(
     if (isWindows()) {
       // On Windows, use PowerShell to find and kill processes by command line
       // Normalize path for comparison (Windows paths in command lines may vary)
-      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\').replace(/'/g, "''");
 
       try {
         // Find node.exe and python.exe processes whose command line contains this worktree path
@@ -3136,7 +3136,7 @@ export function registerWorktreeHandlers(
     let killedCount = 0;
 
     if (isWindows()) {
-      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\').replace(/'/g, "''");
 
       try {
         const findProc = spawn('powershell', [
@@ -3203,7 +3203,7 @@ export function registerWorktreeHandlers(
     const processes: Array<{ pid: number; command: string }> = [];
 
     if (isWindows()) {
-      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\').replace(/'/g, "''");
 
       try {
         const findProc = spawn('powershell', [
