@@ -1,3 +1,13 @@
+// Polyfill CommonJS require for ESM compatibility
+// This MUST be at the very top, before any imports that might trigger Sentry's
+// require-in-the-middle hooks. Sentry's hooks expect require.cache to exist,
+// which is only available in CommonJS. Without this, node-pty native module
+// loading fails with "ReferenceError: require is not defined".
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+// Make require globally available for Sentry's require-in-the-middle hooks
+globalThis.require = require;
+
 // Load .env file FIRST before any other imports that might use process.env
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
@@ -35,7 +45,7 @@ import { TerminalManager } from './terminal-manager';
 import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
-import { initializeAppUpdater } from './app-updater';
+import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
@@ -194,9 +204,24 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
-  // Handle external links
+  // Handle external links with URL scheme allowlist for security
+  // Note: Terminal links now use IPC via WebLinksAddon callback, but this handler
+  // catches any other window.open() calls (e.g., from third-party libraries)
+  const ALLOWED_URL_SCHEMES = ['http:', 'https:', 'mailto:'];
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    try {
+      const url = new URL(details.url);
+      if (!ALLOWED_URL_SCHEMES.includes(url.protocol)) {
+        console.warn('[main] Blocked URL with disallowed scheme:', details.url);
+        return { action: 'deny' };
+      }
+    } catch {
+      console.warn('[main] Blocked invalid URL:', details.url);
+      return { action: 'deny' };
+    }
+    shell.openExternal(details.url).catch((error) => {
+      console.warn('[main] Failed to open external URL:', details.url, error);
+    });
     return { action: 'deny' };
   });
 
@@ -440,6 +465,9 @@ app.on('window-all-closed', () => {
 
 // Cleanup before quit
 app.on('before-quit', async () => {
+  // Stop periodic update checks
+  stopPeriodicUpdates();
+
   // Stop usage monitor
   const usageMonitor = getUsageMonitor();
   usageMonitor.stop();
