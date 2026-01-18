@@ -3,22 +3,37 @@
  * Tests atomic writes, backup recovery, race condition prevention, and write serialization
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
 import path from 'path';
+import os from 'os';
 
-// Test directories
-const TEST_DIR = '/tmp/terminal-session-store-test';
-const USER_DATA_PATH = path.join(TEST_DIR, 'userData');
-const SESSIONS_DIR = path.join(USER_DATA_PATH, 'sessions');
-const STORE_PATH = path.join(SESSIONS_DIR, 'terminals.json');
-const TEMP_PATH = path.join(SESSIONS_DIR, 'terminals.json.tmp');
-const BACKUP_PATH = path.join(SESSIONS_DIR, 'terminals.json.backup');
-const TEST_PROJECT_PATH = path.join(TEST_DIR, 'test-project');
+// Test directories - use secure temporary directory with unique suffix
+// This prevents symlink attacks and race conditions compared to predictable /tmp paths
+let TEST_DIR: string;
+let USER_DATA_PATH: string;
+let SESSIONS_DIR: string;
+let STORE_PATH: string;
+let TEMP_PATH: string;
+let BACKUP_PATH: string;
+let TEST_PROJECT_PATH: string;
+
+function initTestPaths(): void {
+  // Create a unique temporary directory using mkdtempSync for security
+  TEST_DIR = mkdtempSync(path.join(os.tmpdir(), 'terminal-session-store-test-'));
+  USER_DATA_PATH = path.join(TEST_DIR, 'userData');
+  SESSIONS_DIR = path.join(USER_DATA_PATH, 'sessions');
+  STORE_PATH = path.join(SESSIONS_DIR, 'terminals.json');
+  TEMP_PATH = path.join(SESSIONS_DIR, 'terminals.json.tmp');
+  BACKUP_PATH = path.join(SESSIONS_DIR, 'terminals.json.backup');
+  TEST_PROJECT_PATH = path.join(TEST_DIR, 'test-project');
+}
 
 // Mock Electron before importing the store
+// Note: The mock uses a getter to access the dynamic paths at runtime
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn((name: string) => {
+      // Access the module-level variables which are set before each test
       if (name === 'userData') return USER_DATA_PATH;
       return TEST_DIR;
     })
@@ -27,13 +42,16 @@ vi.mock('electron', () => ({
 
 // Setup test directories
 function setupTestDirs(): void {
+  // Initialize unique test paths for this test run
+  initTestPaths();
   mkdirSync(SESSIONS_DIR, { recursive: true });
   mkdirSync(TEST_PROJECT_PATH, { recursive: true });
 }
 
 // Cleanup test directories
 function cleanupTestDirs(): void {
-  if (existsSync(TEST_DIR)) {
+  // Only clean up if TEST_DIR was initialized and exists
+  if (TEST_DIR && existsSync(TEST_DIR)) {
     rmSync(TEST_DIR, { recursive: true, force: true });
   }
 }
@@ -71,7 +89,9 @@ function createTestSession(overrides: Partial<{
 
 describe('TerminalSessionStore', () => {
   beforeEach(async () => {
+    // Clean up any previous test's temp directory
     cleanupTestDirs();
+    // Setup creates new unique temp directory for this test
     setupTestDirs();
     vi.resetModules();
     vi.useFakeTimers();
