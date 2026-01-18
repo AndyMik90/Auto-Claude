@@ -142,10 +142,10 @@ function getTaskOrderKey(projectId: string): string {
 function createEmptyTaskOrder(): TaskOrderState {
   return {
     backlog: [],
+    queue: [],
     in_progress: [],
     ai_review: [],
     human_review: [],
-    pr_created: [],
     done: []
   };
 }
@@ -326,7 +326,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 1. Subtasks array is properly populated (not empty)
           // 2. All subtasks are actually completed (for 'done' and 'ai_review' statuses)
           const hasSubtasks = subtasks.length > 0;
-          const terminalStatuses: TaskStatus[] = ['human_review', 'pr_created', 'done'];
+          const terminalStatuses: TaskStatus[] = ['human_review', 'done'];
 
           // If task is currently in a terminal status, validate subtasks before allowing downgrade
           // This prevents flip-flop when plan file is written with incomplete data
@@ -337,8 +337,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
               if (newStatus === 'ai_review' && (!allCompleted || !hasSubtasks)) {
                 return true;
               }
-              // For done and pr_created, all subtasks must be completed
-              if ((newStatus === 'done' || newStatus === 'pr_created') && (!allCompleted || !hasSubtasks)) {
+              // For done, all subtasks must be completed
+              if (newStatus === 'done' && (!allCompleted || !hasSubtasks)) {
                 return true;
               }
               // For human_review with 'completed' reason, all subtasks must be done
@@ -358,7 +358,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           if (!isInActivePhase && !isInTerminalPhase && !isExplicitHumanReview) {
             if (allCompleted && hasSubtasks) {
               // FIX (Flip-Flop Bug): Don't downgrade from terminal statuses to ai_review
-              // Once a task reaches human_review, pr_created, or done, it should stay there
+              // Once a task reaches human_review or done, it should stay there
               // unless explicitly changed (these are finalized workflow states)
               if (!terminalStatuses.includes(t.status)) {
                 status = 'ai_review';
@@ -572,10 +572,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         const emptyOrder = createEmptyTaskOrder();
         const validatedOrder: TaskOrderState = {
           backlog: isValidColumnArray(parsed.backlog) ? parsed.backlog : emptyOrder.backlog,
+          queue: isValidColumnArray(parsed.queue) ? parsed.queue : emptyOrder.queue,
           in_progress: isValidColumnArray(parsed.in_progress) ? parsed.in_progress : emptyOrder.in_progress,
           ai_review: isValidColumnArray(parsed.ai_review) ? parsed.ai_review : emptyOrder.ai_review,
           human_review: isValidColumnArray(parsed.human_review) ? parsed.human_review : emptyOrder.human_review,
-          pr_created: isValidColumnArray(parsed.pr_created) ? parsed.pr_created : emptyOrder.pr_created,
           done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done
         };
 

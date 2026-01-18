@@ -27,10 +27,10 @@ function createTestTask(overrides: Partial<Task> = {}): Task {
 function createTestTaskOrder(overrides: Partial<TaskOrderState> = {}): TaskOrderState {
   return {
     backlog: [],
+    queue: [],
     in_progress: [],
     ai_review: [],
     human_review: [],
-    pr_created: [],
     done: [],
     ...overrides
   };
@@ -95,7 +95,7 @@ describe('Task Order State Management', () => {
         in_progress: ['task-2'],
         ai_review: ['task-3'],
         human_review: ['task-4'],
-        pr_created: ['task-5'],
+        queue: ['task-5'],
         done: ['task-6']
       });
 
@@ -105,7 +105,7 @@ describe('Task Order State Management', () => {
       expect(useTaskStore.getState().taskOrder?.in_progress).toEqual(['task-2']);
       expect(useTaskStore.getState().taskOrder?.ai_review).toEqual(['task-3']);
       expect(useTaskStore.getState().taskOrder?.human_review).toEqual(['task-4']);
-      expect(useTaskStore.getState().taskOrder?.pr_created).toEqual(['task-5']);
+      expect(useTaskStore.getState().taskOrder?.queue).toEqual(['task-5']);
       expect(useTaskStore.getState().taskOrder?.done).toEqual(['task-6']);
     });
   });
@@ -248,7 +248,7 @@ describe('Task Order State Management', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
-        pr_created: [],
+        queue: [],
         done: []
       });
     });
@@ -280,7 +280,7 @@ describe('Task Order State Management', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
-        pr_created: [],
+        queue: [],
         done: []
       });
       expect(consoleSpy).toHaveBeenCalledWith('Failed to load task order:', expect.any(Error));
@@ -306,7 +306,7 @@ describe('Task Order State Management', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
-        pr_created: [],
+        queue: [],
         done: []
       });
 
@@ -494,7 +494,7 @@ describe('Task Order State Management', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
-        pr_created: [],
+        queue: [],
         done: []
       } as TaskOrderState;
       useTaskStore.setState({ taskOrder: order });
@@ -591,7 +591,7 @@ describe('Task Order State Management', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
-        pr_created: [],
+        queue: [],
         done: []
       });
 
@@ -640,7 +640,7 @@ describe('Task Order State Management', () => {
         in_progress: ['task-4'],
         ai_review: [],
         human_review: ['task-5', 'task-6'],
-        pr_created: [],
+        queue: [],
         done: ['task-7', 'task-8', 'task-9', 'task-10']
       });
       useTaskStore.setState({ taskOrder: order });

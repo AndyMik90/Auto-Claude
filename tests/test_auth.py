@@ -390,7 +390,7 @@ class TestRequireAuthToken:
 
     def test_require_token_raises_when_missing(self):
         """Raises ValueError when no token is configured."""
-        with pytest.raises(ValueError, match="No OAuth token found"):
+        with pytest.raises(ValueError, match="No authentication token found"):
             require_auth_token()
 
     def test_error_message_includes_macos_instructions(self, monkeypatch):

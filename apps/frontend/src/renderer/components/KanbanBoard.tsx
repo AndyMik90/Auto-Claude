@@ -44,11 +44,10 @@ function isValidDropColumn(id: string): id is typeof TASK_STATUS_COLUMNS[number]
 
 /**
  * Get the visual column for a task status.
- * pr_created tasks are displayed in the 'done' column, so we map them accordingly.
  * This is used to compare visual positions during drag-and-drop operations.
  */
 function getVisualColumn(status: TaskStatus): typeof TASK_STATUS_COLUMNS[number] {
-  return status === 'pr_created' ? 'done' : status;
+  return status;
 }
 
 interface KanbanBoardProps {
@@ -902,7 +901,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       in_progress: [],
       ai_review: [],
       human_review: [],
-      pr_created: [],
       done: []
     };
 
@@ -954,7 +952,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         const task = tasks.find((t) => t.id === activeTaskId);
         if (!task) return;
 
-        // Compare visual columns (pr_created maps to 'done' visually)
+        // Compare visual columns
         const taskVisualColumn = getVisualColumn(task.status);
         const overTaskVisualColumn = getVisualColumn(overTask.status);
 

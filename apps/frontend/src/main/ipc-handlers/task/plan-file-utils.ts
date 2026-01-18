@@ -83,8 +83,6 @@ export function mapStatusToPlanStatus(status: TaskStatus): string {
     case 'ai_review':
     case 'human_review':
       return 'review';
-    case 'pr_created':
-      return 'pr_created';
     case 'done':
       return 'completed';
     default:
