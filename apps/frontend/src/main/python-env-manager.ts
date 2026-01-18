@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
 import { isLinux, isWindows, getPathDelimiter } from './platform';
+import { getIsolatedGitEnv } from './utils/git-isolation';
 
 export interface PythonEnvStatus {
   ready: boolean;
@@ -682,12 +683,17 @@ if sys.version_info >= (3, 12):
    * @see https://github.com/mhammond/pywin32/blob/main/win32/Lib/pywin32_bootstrap.py
    */
   getPythonEnv(): Record<string, string> {
-    // Start with process.env but explicitly remove problematic Python variables
-    // PYTHONHOME causes "Could not find platform independent libraries" when set
-    // to a different Python installation than the one we're spawning
+    // Start with isolated git env to prevent git environment variable contamination.
+    // When running Python scripts that call git (like merge resolver, PR creator),
+    // we must not pass GIT_DIR, GIT_WORK_TREE, etc. or git operations will target
+    // the wrong repository. getIsolatedGitEnv() removes these variables and sets HUSKY=0.
+    //
+    // Also remove PYTHONHOME - it causes "Could not find platform independent libraries"
+    // when set to a different Python installation than the one we're spawning.
+    const isolatedEnv = getIsolatedGitEnv();
     const baseEnv: Record<string, string> = {};
 
-    for (const [key, value] of Object.entries(process.env)) {
+    for (const [key, value] of Object.entries(isolatedEnv)) {
       // Skip PYTHONHOME - it causes the "platform independent libraries" error
       // Use case-insensitive check for Windows compatibility (env vars are case-insensitive on Windows)
       // Skip undefined values (TypeScript type guard)
