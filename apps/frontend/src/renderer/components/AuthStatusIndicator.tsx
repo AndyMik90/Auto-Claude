@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { Key, Lock, Cloud, AlertTriangle } from 'lucide-react';
+import { Key, Lock } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
 import { detectProvider, getProviderLabel, getProviderBadgeColor } from '../../shared/utils/provider-detection';
+import { formatTimeRemaining } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function AuthStatusIndicator() {
@@ -34,29 +35,6 @@ export function AuthStatusIndicator() {
   // Track usage data for warning badge
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
-
-  // Helper function to calculate formatted reset time from timestamp
-  const formatResetTime = (timestamp?: string): string | undefined => {
-    if (!timestamp) return undefined;
-
-    try {
-      const date = new Date(timestamp);
-      const now = new Date();
-      const diffMs = date.getTime() - now.getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-      if (diffHours < 24) {
-        return t('usage:resetsInHours', { hours: diffHours, minutes: diffMins });
-      }
-
-      const diffDays = Math.floor(diffHours / 24);
-      const remainingHours = diffHours % 24;
-      return t('usage:resetsInDays', { days: diffDays, hours: remainingHours });
-    } catch (_error) {
-      return undefined;
-    }
-  };
 
   // Listen for usage updates
   useEffect(() => {
@@ -93,7 +71,7 @@ export function AuthStatusIndicator() {
 
   // Get formatted reset times (calculated dynamically from timestamps)
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? (formatResetTime(usage.sessionResetTimestamp) ?? usage?.sessionResetTime)
+    ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ?? usage?.sessionResetTime)
     : usage?.sessionResetTime;
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
@@ -139,6 +117,12 @@ export function AuthStatusIndicator() {
     return id.slice(0, 8);
   };
 
+  // Get localized provider label for display
+  const getLocalizedProviderLabel = (provider: string): string => {
+    const providerKey = `usage:provider${provider.charAt(0).toUpperCase() + provider.slice(1)}`;
+    return t(providerKey as any);
+  };
+
   const isOAuth = authStatus.type === 'oauth';
   const Icon = isOAuth ? Lock : Key;
 
@@ -176,11 +160,11 @@ export function AuthStatusIndicator() {
             <button
               type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
-              aria-label={`Authentication: ${authStatus.providerLabel}`}
+              aria-label={t('usage:authenticationAriaLabel', { provider: getLocalizedProviderLabel(authStatus.provider) })}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">
-                {authStatus.providerLabel}
+                {getLocalizedProviderLabel(authStatus.provider)}
               </span>
             </button>
           </TooltipTrigger>
@@ -192,7 +176,7 @@ export function AuthStatusIndicator() {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground font-medium">{t('usage:provider')}</span>
-                <span className="font-semibold">{authStatus.providerLabel}</span>
+                <span className="font-semibold">{getLocalizedProviderLabel(authStatus.provider)}</span>
               </div>
               {!isOAuth && (
                 <>

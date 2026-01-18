@@ -15,6 +15,7 @@ import { ClaudeUsageSnapshot } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
 import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
+import { formatTimeRemainingSimple } from '../../shared/utils/format-time';
 
 // Re-export for backward compatibility
 export type { ApiProvider };
@@ -1321,35 +1322,10 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Format ISO timestamp to human-readable reset time
+   * Wrapper around shared formatTimeRemainingSimple utility
    */
   private formatResetTime(isoTimestamp?: string): string {
-    if (!isoTimestamp) return 'Unknown';
-
-    try {
-      const date = new Date(isoTimestamp);
-
-      // Handle invalid dates
-      if (isNaN(date.getTime())) return 'Unknown';
-
-      const now = new Date();
-      const diffMs = date.getTime() - now.getTime();
-
-      // Handle past dates (expired timestamps)
-      if (diffMs < 0) return 'Expired';
-
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-      if (diffHours < 24) {
-        return `${diffHours}h ${diffMins}m`;
-      }
-
-      const diffDays = Math.floor(diffHours / 24);
-      const remainingHours = diffHours % 24;
-      return `${diffDays}d ${remainingHours}h`;
-    } catch (_error) {
-      return isoTimestamp;
-    }
+    return formatTimeRemainingSimple(isoTimestamp);
   }
 
   /**

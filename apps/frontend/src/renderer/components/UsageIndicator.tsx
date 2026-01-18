@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { useTranslation } from 'react-i18next';
+import { formatTimeRemaining } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
@@ -36,35 +37,12 @@ export function UsageIndicator() {
     return value.toString();
   };
 
-  // Helper function to calculate formatted reset time from timestamp
-  const formatResetTime = (timestamp?: string): string | undefined => {
-    if (!timestamp) return undefined;
-
-    try {
-      const date = new Date(timestamp);
-      const now = new Date();
-      const diffMs = date.getTime() - now.getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-      if (diffHours < 24) {
-        return t('usage:resetsInHours', { hours: diffHours, minutes: diffMins });
-      }
-
-      const diffDays = Math.floor(diffHours / 24);
-      const remainingHours = diffHours % 24;
-      return t('usage:resetsInDays', { days: diffDays, hours: remainingHours });
-    } catch (_error) {
-      return undefined;
-    }
-  };
-
   // Get formatted reset times (calculated dynamically from timestamps)
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? (formatResetTime(usage.sessionResetTimestamp) ?? usage?.sessionResetTime)
+    ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ?? usage?.sessionResetTime)
     : usage?.sessionResetTime;
   const weeklyResetTime = usage?.weeklyResetTimestamp
-    ? (formatResetTime(usage.weeklyResetTimestamp) ?? usage?.weeklyResetTime)
+    ? (formatTimeRemaining(usage.weeklyResetTimestamp, t) ?? usage?.weeklyResetTime)
     : usage?.weeklyResetTime;
 
   useEffect(() => {

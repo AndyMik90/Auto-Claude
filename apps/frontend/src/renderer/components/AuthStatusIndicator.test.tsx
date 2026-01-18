@@ -8,14 +8,83 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { initReactI18next } from react-i18next } from 'react-i18next';
 import { AuthStatusIndicator } from './AuthStatusIndicator';
 import { useSettingsStore } from '../stores/settings-store';
-import type { APIProfile } from '@shared/types/profile';
+import type { APIProfile } from '../../shared/types/profile';
 
 // Mock the settings store
 vi.mock('../stores/settings-store', () => ({
   useSettingsStore: vi.fn()
 }));
+
+// Initialize i18next for tests
+import { initReactI18next } from react-i18next({
+  react: {
+    useSuspense: false
+  },
+  lng: 'en',
+  fallbackLng: 'en',
+  resources: {
+    en: {
+      translation: {
+        'common': {
+          'authentication': 'Authentication',
+          'apiProfile': 'API Profile',
+          'oauth': 'OAuth',
+          'provider': 'Provider',
+          'profile': 'Profile',
+          'id': 'ID',
+          'apiEndpoint': 'API Endpoint',
+          'notAvailable': 'N/A'
+        },
+        'usage': {
+          'dataUnavailable': 'Usage data unavailable',
+          'authentication': 'Authentication',
+          'authenticationAriaLabel': 'Authentication: {{provider}}',
+          'provider': 'Provider',
+          'providerAnthropic': 'Anthropic',
+          'providerZai': 'z.ai',
+          'providerZhipu': 'ZHIPU AI'
+        }
+      }
+    }
+  }
+});
+
+// Wrap component with I18nextProvider for tests
+function renderWithI18next(ui: React.ReactElement) {
+  return render(<I18nextProvider i18n={{
+    resources: {
+      en: {
+        translation: {
+          'common': {
+            'authentication': 'Authentication',
+            'apiProfile': 'API Profile',
+            'oauth': 'OAuth',
+            'provider': 'Provider',
+            'profile': 'Profile',
+            'id': 'ID',
+            'apiEndpoint': 'API Endpoint',
+            'notAvailable': 'N/A'
+          },
+          'usage': {
+            'dataUnavailable': 'Usage data unavailable',
+            'authentication': 'Authentication',
+            'authenticationAriaLabel': 'Authentication: {{provider}}',
+            'provider': 'Provider',
+            'providerAnthropic': 'Anthropic',
+            'providerZai': 'z.ai',
+            'providerZhipu': 'ZHIPU AI'
+          }
+        }
+      }
+    }
+  }}>
+    {ui}
+  </I18nextProvider>);
+}
 
 /**
  * Creates a mock settings store with optional overrides
