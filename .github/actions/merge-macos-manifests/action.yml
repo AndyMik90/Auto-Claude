@@ -41,13 +41,13 @@ runs:
         echo "=== Merging macOS update manifests ==="
 
         # Find all latest-mac.yml files from different build artifacts
-        intel_manifest=$(find ${{ inputs.dist-path }} -path "*/macos-intel-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
-        arm64_manifest=$(find ${{ inputs.dist-path }} -path "*/macos-arm64-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
+        intel_manifest=$(find "${{ inputs.dist-path }}" -path "*/macos-intel-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
+        arm64_manifest=$(find "${{ inputs.dist-path }}" -path "*/macos-arm64-builds/latest-mac.yml" -type f 2>/dev/null | head -1)
 
         echo "Intel manifest: ${intel_manifest:-not found}"
         echo "ARM64 manifest: ${arm64_manifest:-not found}"
 
-        mkdir -p ${{ inputs.output-path }}
+        mkdir -p "${{ inputs.output-path }}"
 
         if [ -n "$intel_manifest" ] && [ -n "$arm64_manifest" ]; then
           echo "Both architectures found - merging manifests..."
@@ -84,19 +84,19 @@ runs:
           # This avoids shell expansion issues with multiline YAML
           yq eval-all '
             select(fileIndex == 0) * {"files": ([.[].files] | add)}
-          ' "$intel_manifest" "$arm64_manifest" > ${{ inputs.output-path }}/latest-mac.yml
+          ' "$intel_manifest" "$arm64_manifest" > "${{ inputs.output-path }}/latest-mac.yml"
 
           echo "Merged manifest contents:"
-          cat ${{ inputs.output-path }}/latest-mac.yml
+          cat "${{ inputs.output-path }}/latest-mac.yml"
 
         elif [ -n "$intel_manifest" ]; then
           echo "Only Intel manifest found - using as-is"
           echo "merged=false" >> "$GITHUB_OUTPUT"
-          cp "$intel_manifest" ${{ inputs.output-path }}/latest-mac.yml
+          cp "$intel_manifest" "${{ inputs.output-path }}/latest-mac.yml"
         elif [ -n "$arm64_manifest" ]; then
           echo "Only ARM64 manifest found - using as-is"
           echo "merged=false" >> "$GITHUB_OUTPUT"
-          cp "$arm64_manifest" ${{ inputs.output-path }}/latest-mac.yml
+          cp "$arm64_manifest" "${{ inputs.output-path }}/latest-mac.yml"
         else
           echo "::error::No macOS manifests found - this will cause auto-update to fail"
           exit 1
@@ -181,13 +181,13 @@ runs:
 
         # Copy other manifests (Windows, Linux) - these don't have the duplicate issue
         for manifest in latest.yml latest-linux.yml latest-linux-arm64.yml; do
-          found=$(find ${{ inputs.dist-path }} -name "$manifest" -type f 2>/dev/null | head -1)
+          found=$(find "${{ inputs.dist-path }}" -name "$manifest" -type f 2>/dev/null | head -1)
           if [ -n "$found" ]; then
             echo "Copying $manifest"
-            cp "$found" ${{ inputs.output-path }}/
+            cp "$found" "${{ inputs.output-path }}/"
           fi
         done
 
         echo ""
         echo "=== Manifest files in ${{ inputs.output-path }} ==="
-        ls -la ${{ inputs.output-path }}/*.yml 2>/dev/null || echo "No manifest files found"
+        ls -la "${{ inputs.output-path }}"/*.yml 2>/dev/null || echo "No manifest files found"

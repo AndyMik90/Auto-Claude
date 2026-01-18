@@ -33,6 +33,9 @@
         // noSecrets: disabled due to excessive false positives (2700+ warnings)
         // It flags normal strings like "Settings", "Integrations", etc. as potential secrets
         "noSecrets": "off",
+        // noDangerouslySetInnerHtml: warn (not error) because this Electron app has legitimate
+        // uses for dangerouslySetInnerHTML (e.g., rendering sanitized markdown in terminal output,
+        // code highlighting). All usages are reviewed and sanitized. Set to warn for visibility.
         "noDangerouslySetInnerHtml": "warn"
       },
       "style": {

@@ -13,6 +13,14 @@ import argparse
 import re
 import sys
 
+# Semver pattern: X.Y.Z or X.Y.Z-prerelease.N
+SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(-[a-zA-Z]+\.\d+)?$")
+
+
+def validate_version(version: str) -> bool:
+    """Validate version string matches semver format."""
+    return bool(SEMVER_PATTERN.match(version))
+
 
 def update_section(text: str, start_marker: str, end_marker: str, replacements: list) -> str:
     """Update content between markers with given replacements."""
@@ -131,6 +139,12 @@ def main():
     parser.add_argument("version", help="Version string (e.g., 2.8.0 or 2.8.0-beta.1)")
     parser.add_argument("--prerelease", action="store_true", help="Mark as prerelease version")
     args = parser.parse_args()
+
+    # Validate version format
+    if not validate_version(args.version):
+        print(f"ERROR: Invalid version format: {args.version}", file=sys.stderr)
+        print("Expected format: X.Y.Z or X.Y.Z-prerelease.N (e.g., 2.8.0 or 2.8.0-beta.1)", file=sys.stderr)
+        sys.exit(1)
 
     # Auto-detect prerelease if not explicitly set
     is_prerelease = args.prerelease or ("-" in args.version)

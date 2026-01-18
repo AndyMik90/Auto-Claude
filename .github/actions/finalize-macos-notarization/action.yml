@@ -76,6 +76,14 @@ runs:
           exit 0
         fi
 
+        # Warn if no notarization IDs provided (could indicate submission failure)
+        if [ -z "$INTEL_NOTARIZATION_ID" ] && [ -z "$ARM64_NOTARIZATION_ID" ]; then
+          echo "::warning::No notarization IDs provided - nothing to finalize. Check if notarization submission succeeded."
+          echo "intel_stapled=false" >> "$GITHUB_OUTPUT"
+          echo "arm64_stapled=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         # Wait for Intel notarization
         if [ -n "$INTEL_NOTARIZATION_ID" ]; then
           echo "Waiting for Intel notarization: $INTEL_NOTARIZATION_ID"
@@ -98,6 +106,11 @@ runs:
             exit 1
           fi
           echo "Intel notarization status: $INTEL_STATUS"
+          # Verify DMG file exists before stapling
+          if [ ! -f "$INTEL_PATH/$INTEL_DMG" ]; then
+            echo "::error::Intel DMG not found at $INTEL_PATH/$INTEL_DMG"
+            exit 1
+          fi
           echo "Stapling Intel DMG: $INTEL_PATH/$INTEL_DMG"
           if ! xcrun stapler staple "$INTEL_PATH/$INTEL_DMG"; then
             echo "::error::Failed to staple Intel DMG"
@@ -129,6 +142,11 @@ runs:
             exit 1
           fi
           echo "ARM64 notarization status: $ARM64_STATUS"
+          # Verify DMG file exists before stapling
+          if [ ! -f "$ARM64_PATH/$ARM64_DMG" ]; then
+            echo "::error::ARM64 DMG not found at $ARM64_PATH/$ARM64_DMG"
+            exit 1
+          fi
           echo "Stapling ARM64 DMG: $ARM64_PATH/$ARM64_DMG"
           if ! xcrun stapler staple "$ARM64_PATH/$ARM64_DMG"; then
             echo "::error::Failed to staple ARM64 DMG"
