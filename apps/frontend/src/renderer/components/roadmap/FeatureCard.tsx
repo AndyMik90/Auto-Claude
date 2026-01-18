@@ -65,7 +65,7 @@ export function FeatureCard({
           <p className="text-sm text-muted-foreground line-clamp-2">{feature.description}</p>
 
           {/* Dependencies Section */}
-          {(feature.dependencies && feature.dependencies.length > 0) || reverseDependencies.length > 0 ? (
+          {((feature.dependencies && feature.dependencies.length > 0) || reverseDependencies.length > 0) && (
             <div className="dependencies-section mt-3 pt-3 border-t border-border">
               {/* Dependencies */}
               {feature.dependencies && feature.dependencies.length > 0 && (
@@ -156,7 +156,7 @@ export function FeatureCard({
                 </div>
               )}
             </div>
-          ) : null}
+          )}
         </div>
         {feature.linkedSpecId ? (
           <Button
