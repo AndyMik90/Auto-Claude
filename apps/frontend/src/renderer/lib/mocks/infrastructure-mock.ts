@@ -10,7 +10,8 @@ export const infrastructureMock = {
     data: {
       memory: {
         kuzuInstalled: true,
-        databasePath: '~/.auto-claude/graphs',
+        ladybugInstalled: true,
+        databasePath: '~/.auto-claude/memories',
         databaseExists: true,
         databases: ['auto_claude_memory']
       },
@@ -30,6 +31,11 @@ export const infrastructureMock = {
       message: 'Connected to LadybugDB database (mock)',
       details: { latencyMs: 5 }
     }
+  }),
+
+  getMemoriesDir: async () => ({
+    success: true,
+    data: '~/.auto-claude/memories'
   }),
 
   // LLM API Validation Operations
