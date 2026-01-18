@@ -36,6 +36,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_IFLOW_BASE_URL = "https://apis.iflow.cn/v1"
 DEFAULT_IFLOW_MODEL = "deepseek-v3"
 
+# Models known to have issues with tool calling
+# These will use heredoc-based file creation instead
+MODELS_WITHOUT_TOOL_SUPPORT = {
+    "kimi-k2",      # Has issues with tool_call_id
+    "qwen3-max",    # Inconsistent tool support
+    "glm-4.6",      # No tool support
+    "glm-4.7",      # No tool support
+}
+
 # Model-specific configurations
 IFLOW_MODEL_CONFIGS = {
     "deepseek-v3": {
@@ -332,6 +341,8 @@ def create_iflow_agent_client(
     model: str | None = None,
     agent_type: str = "coder",
     system_prompt: str | None = None,
+    enable_tools: bool = True,
+    max_turns: int = 100,
 ) -> "IFlowAgentClient":
     """
     Create an iFlow agent client for use with agents.
@@ -339,12 +350,19 @@ def create_iflow_agent_client(
     This is the main entry point for creating iFlow-based agent sessions.
     Use this instead of create_client() when iFlow provider is selected.
 
+    NOW SUPPORTS TOOL CALLING:
+    - Read, Write, Edit, Bash, Glob, Grep tools
+    - Full agent loop with automatic tool execution
+    - Compatible with coder, qa_reviewer, and other tool-using agents
+
     Args:
         project_dir: Root directory for the project
         spec_dir: Directory containing the spec
         model: iFlow model to use (defaults to recommended model for agent type)
         agent_type: Agent type identifier (for model recommendation)
         system_prompt: System prompt for the agent
+        enable_tools: Whether to enable tool calling (default: True)
+        max_turns: Maximum number of agent turns (default: 100)
 
     Returns:
         IFlowAgentClient instance
@@ -356,12 +374,12 @@ def create_iflow_agent_client(
         >>> client = create_iflow_agent_client(
         ...     project_dir=Path("/project"),
         ...     spec_dir=Path("/project/.auto-claude/specs/001"),
-        ...     agent_type="spec_researcher"
+        ...     agent_type="coder"
         ... )
-        >>> response = client.create_agent_session(
-        ...     name="research-session",
-        ...     starting_message="Analyze the codebase"
-        ... )
+        >>> async with client:
+        ...     await client.query("Implement the feature")
+        ...     async for msg in client.receive_response():
+        ...         print(msg)
     """
     if not is_iflow_enabled():
         status = get_iflow_status()
@@ -377,24 +395,39 @@ def create_iflow_agent_client(
 
     # Build default system prompt if not provided
     if system_prompt is None:
+        tools_info = ""
+        if enable_tools:
+            tools_info = (
+                "\n\nYou have access to the following tools:\n"
+                "- Read: Read file contents\n"
+                "- Write: Create or overwrite files\n"
+                "- Edit: Find and replace in files\n"
+                "- Bash: Execute shell commands\n"
+                "- Glob: Find files by pattern\n"
+                "- Grep: Search file contents\n\n"
+                "Use these tools to complete your tasks. Call tools when needed - "
+                "the system will execute them and return results.\n"
+            )
+
         system_prompt = (
-            f"You are an expert full-stack developer building production-quality software. "
+            f"You are an expert full-stack developer building production-quality software.\n"
             f"Your working directory is: {project_dir.resolve()}\n"
-            f"Your spec directory is: {spec_dir.resolve()}\n\n"
-            f"IMPORTANT: When you need to create or modify files, use bash heredoc syntax:\n"
-            f"```bash\n"
-            f"cat > filename.md << 'EOF'\n"
-            f"file content here\n"
-            f"EOF\n"
-            f"```\n\n"
-            f"The system will automatically extract and write these files for you.\n"
-            f"Always use single-quoted delimiters (e.g., << 'EOF' or << 'SPEC_EOF').\n\n"
+            f"Your spec directory is: {spec_dir.resolve()}\n"
+            f"{tools_info}\n"
             f"You follow existing code patterns, write clean maintainable code, and verify "
             f"your work through thorough testing."
         )
 
+    # Check if model supports tool calling
+    if enable_tools and model in MODELS_WITHOUT_TOOL_SUPPORT:
+        logger.warning(
+            f"[iFlow] Model '{model}' doesn't support tool calling well. "
+            f"Disabling tools and using heredoc-based file creation."
+        )
+        enable_tools = False
+
     logger.info(
-        f"[iFlow] Creating agent client: model={model}, agent_type={agent_type}"
+        f"[iFlow] Creating agent client: model={model}, agent_type={agent_type}, tools={enable_tools}"
     )
 
     return IFlowAgentClient(
@@ -403,6 +436,8 @@ def create_iflow_agent_client(
         system_prompt=system_prompt,
         project_dir=project_dir,
         spec_dir=spec_dir,
+        enable_tools=enable_tools,
+        max_turns=max_turns,
     )
 
 
@@ -418,27 +453,48 @@ class AssistantMessage:
     content: list
 
 
+@dataclass
+class ToolUseBlock:
+    """ToolUseBlock for iFlow responses (matches Claude SDK ToolUseBlock type name)."""
+    id: str
+    name: str
+    input: dict
+
+
+@dataclass
+class ToolResultBlock:
+    """ToolResultBlock for iFlow responses (matches Claude SDK ToolResultBlock type name)."""
+    tool_use_id: str
+    content: str
+    is_error: bool = False
+
+
+@dataclass
+class UserMessage:
+    """UserMessage for iFlow responses (matches Claude SDK UserMessage type name)."""
+    content: list
+
+
 class IFlowAgentClient:
     """
     iFlow agent client that mimics ClaudeSDKClient interface.
 
     This provides compatibility for agents that need to switch between
-    Claude SDK and iFlow backends. Note that iFlow does not support
-    the full agent capabilities (MCP servers, custom tools), so this
-    wrapper provides a simplified interface for chat-based agents.
+    Claude SDK and iFlow backends.
 
-    Suitable for:
-    - spec_gatherer, spec_researcher, spec_writer (with heredoc file extraction)
-    - insights extraction
-    - commit message generation
+    NOW SUPPORTS TOOL CALLING for:
+    - coder (Read, Write, Edit, Bash, Glob, Grep)
+    - qa_reviewer, qa_fixer (with tool support)
+    - spec_gatherer, spec_researcher, spec_writer
 
-    The client automatically extracts file content from heredoc patterns in the
-    agent's response (e.g., `cat > spec.md << 'EOF'...EOF`) and writes the files.
-    This simulates tool use for chat-only agents.
+    The client implements a full agent loop with tool calling:
+    1. Send prompt to model with tool definitions
+    2. If model requests tool calls, execute them locally
+    3. Send tool results back to model
+    4. Repeat until model completes or max_turns reached
 
-    Not suitable for:
-    - coder (requires interactive tool use)
-    - qa_reviewer, qa_fixer (requires interactive tool use)
+    For agents that don't need tools, heredoc file extraction is still available
+    as a fallback.
     """
 
     def __init__(
@@ -448,16 +504,22 @@ class IFlowAgentClient:
         system_prompt: str,
         project_dir: Path | None = None,
         spec_dir: Path | None = None,
+        enable_tools: bool = True,
+        max_turns: int = 100,
     ):
         self.config = config
         self.model = model
         self.system_prompt = system_prompt
         self.project_dir = project_dir
         self.spec_dir = spec_dir
+        self.enable_tools = enable_tools
+        self.max_turns = max_turns
         self._client = None
-        self._conversation_history: list[dict[str, str]] = []
+        self._conversation_history: list[dict] = []
         self._pending_query: str | None = None
         self._last_response: str | None = None
+        self._tool_context = None
+        self._current_turn = 0
 
     @property
     def client(self):
@@ -465,6 +527,16 @@ class IFlowAgentClient:
         if self._client is None:
             self._client = create_iflow_chat_client(self.config)
         return self._client
+
+    def _get_tool_context(self):
+        """Get or create tool execution context."""
+        if self._tool_context is None and self.project_dir and self.spec_dir:
+            from core.iflow_tools import ToolContext
+            self._tool_context = ToolContext(
+                project_dir=self.project_dir,
+                spec_dir=self.spec_dir,
+            )
+        return self._tool_context
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -483,16 +555,27 @@ class IFlowAgentClient:
             prompt: The prompt/message to send to iFlow
         """
         self._pending_query = prompt
+        self._current_turn = 0
 
     async def receive_response(self):
         """
         Async generator that yields response messages (mimics ClaudeSDKClient.receive_response).
 
+        Implements a full agent loop with tool calling:
+        1. Send prompt to model with tool definitions
+        2. If model requests tool calls, execute them locally
+        3. Send tool results back to model
+        4. Repeat until model completes or max_turns reached
+
         Yields:
-            IFlowAssistantMessage objects containing TextBlock with the response
+            AssistantMessage objects containing TextBlock/ToolUseBlock
+            UserMessage objects containing ToolResultBlock (for tool results)
         """
         if not self._pending_query:
             return
+
+        # Import tools
+        from core.iflow_tools import TOOL_SCHEMAS, execute_tool, format_tool_result
 
         messages = []
 
@@ -506,83 +589,227 @@ class IFlowAgentClient:
         # Add user message
         messages.append({"role": "user", "content": self._pending_query})
 
+        # Store initial user message for history
+        initial_user_message = self._pending_query
+
         try:
-            logger.info(f"[iFlow] Sending query to {self.model}...")
+            logger.info(f"[iFlow] Starting agent loop with {self.model} (tools={'enabled' if self.enable_tools else 'disabled'})...")
 
-            # First, try a non-streaming call to check for model errors
-            # iFlow returns error in response body, not as exception
-            test_response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages[:1],  # Just system prompt for quick test
-                max_tokens=1,
-                stream=False,
-            )
+            while self._current_turn < self.max_turns:
+                self._current_turn += 1
+                logger.info(f"[iFlow] Turn {self._current_turn}/{self.max_turns}")
 
-            # Check for iFlow-specific error response
-            if hasattr(test_response, 'status') and test_response.status:
-                status_code = str(test_response.status)
-                error_msg = getattr(test_response, 'msg', 'Unknown error')
-                if status_code != '200' and status_code != 'None':
-                    error_text = f"iFlow API Error (status {status_code}): {error_msg}"
-                    if 'not support' in error_msg.lower():
-                        error_text += f"\n\nModel '{self.model}' is not available. Please use a valid model."
-                    logger.error(f"[iFlow] {error_text}")
-                    yield AssistantMessage(
-                        content=[TextBlock(text=error_text)]
+                # Truncate messages to avoid token explosion
+                truncated_messages = self._truncate_messages(messages, max_messages=30)
+
+                # Build request kwargs
+                request_kwargs = {
+                    "model": self.model,
+                    "messages": truncated_messages,
+                    "temperature": 0.7,
+                }
+
+                # Add tools if enabled
+                if self.enable_tools:
+                    request_kwargs["tools"] = TOOL_SCHEMAS
+                    request_kwargs["tool_choice"] = "auto"
+
+                # Make API call (non-streaming for tool support)
+                response = self.client.chat.completions.create(**request_kwargs)
+
+                # Log token usage if available
+                if hasattr(response, 'usage') and response.usage:
+                    usage = response.usage
+                    logger.info(
+                        f"[iFlow] Token usage - prompt: {usage.prompt_tokens}, "
+                        f"completion: {usage.completion_tokens}, "
+                        f"total: {usage.total_tokens}"
                     )
+
+                # Check for errors
+                if hasattr(response, 'status') and response.status:
+                    status_code = str(response.status)
+                    error_msg = getattr(response, 'msg', 'Unknown error')
+                    if status_code not in ('200', 'None', ''):
+                        # Handle rate limit with retry
+                        if status_code == '449' or 'rate limit' in str(error_msg).lower():
+                            import time
+                            retry_delay = 30  # seconds
+                            logger.warning(f"[iFlow] Rate limit hit, waiting {retry_delay}s before retry...")
+                            yield AssistantMessage(content=[TextBlock(text=f"[Rate limit hit, waiting {retry_delay}s...]")])
+                            time.sleep(retry_delay)
+                            self._current_turn -= 1  # Don't count this as a turn
+                            continue  # Retry the same request
+
+                        error_text = f"iFlow API Error (status {status_code}): {error_msg}"
+                        if 'not support' in str(error_msg).lower():
+                            error_text += f"\n\nModel '{self.model}' may not support function calling."
+                        logger.error(f"[iFlow] {error_text}")
+                        yield AssistantMessage(content=[TextBlock(text=error_text)])
+                        break
+
+                # Get the response message
+                choice = response.choices[0] if response.choices else None
+                if not choice:
+                    logger.error("[iFlow] No response from model")
+                    yield AssistantMessage(content=[TextBlock(text="Error: No response from model")])
+                    break
+
+                message = choice.message
+                finish_reason = choice.finish_reason
+
+                # Collect content blocks for AssistantMessage
+                content_blocks = []
+
+                # Handle text content
+                if message.content:
+                    content_blocks.append(TextBlock(text=message.content))
+                    # Yield text incrementally (simulate streaming)
+                    yield AssistantMessage(content=[TextBlock(text=message.content)])
+
+                # Handle tool calls
+                tool_calls = getattr(message, 'tool_calls', None)
+
+                if tool_calls:
+                    logger.info(f"[iFlow] Model requested {len(tool_calls)} tool call(s)")
+
+                    # Process each tool call
+                    tool_results = []
+
+                    for tool_call in tool_calls:
+                        tool_name = tool_call.function.name
+                        tool_id = tool_call.id
+
+                        # Parse arguments - handle both string and dict formats
+                        try:
+                            import json
+                            raw_args = tool_call.function.arguments
+                            if isinstance(raw_args, str):
+                                tool_args = json.loads(raw_args) if raw_args else {}
+                            elif isinstance(raw_args, dict):
+                                tool_args = raw_args
+                            else:
+                                tool_args = {}
+                        except (json.JSONDecodeError, TypeError):
+                            tool_args = {}
+
+                        logger.info(f"[iFlow] Executing tool: {tool_name}")
+
+                        # Yield ToolUseBlock to show tool is being called
+                        tool_use_block = ToolUseBlock(
+                            id=tool_id,
+                            name=tool_name,
+                            input=tool_args
+                        )
+                        yield AssistantMessage(content=[tool_use_block])
+
+                        # Execute the tool
+                        tool_context = self._get_tool_context()
+                        if tool_context:
+                            result = execute_tool(tool_name, tool_args, tool_context)
+                            result_text = format_tool_result(tool_name, result)
+                            is_error = not result.get("success", False)
+                        else:
+                            result_text = "Error: Tool context not available (no project_dir or spec_dir)"
+                            is_error = True
+
+                        # Yield tool result
+                        tool_result_block = ToolResultBlock(
+                            tool_use_id=tool_id,
+                            content=result_text,
+                            is_error=is_error
+                        )
+                        yield UserMessage(content=[tool_result_block])
+
+                        # Store result for next API call
+                        tool_results.append({
+                            "tool_call_id": tool_id,
+                            "role": "tool",
+                            "content": result_text,
+                        })
+
+                    # Add assistant message with tool calls to history
+                    assistant_msg = {"role": "assistant", "content": message.content or ""}
+                    assistant_msg["tool_calls"] = [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            }
+                        }
+                        for tc in tool_calls
+                    ]
+                    messages.append(assistant_msg)
+
+                    # Add tool results to messages
+                    for tr in tool_results:
+                        messages.append(tr)
+
+                    # Continue the loop to get model's response to tool results
+                    continue
+
+                else:
+                    # No tool calls - model is done
+                    logger.info(f"[iFlow] Agent completed (finish_reason: {finish_reason})")
+
+                    # Update conversation history with final exchange
+                    self._conversation_history.append(
+                        {"role": "user", "content": initial_user_message}
+                    )
+                    self._conversation_history.append(
+                        {"role": "assistant", "content": message.content or ""}
+                    )
+
+                    self._last_response = message.content
                     self._pending_query = None
-                    return
 
-            # Use streaming for real-time output
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.7,
-                stream=True,
-            )
+                    # Post-process: Extract and write files from heredoc patterns
+                    # (fallback for models that don't use tools properly)
+                    if message.content:
+                        files_written = self._extract_and_write_files(message.content)
+                        if files_written:
+                            logger.info(f"[iFlow] Auto-created files from response: {files_written}")
 
-            full_response = ""
-            for chunk in response:
-                # Check for error in streaming response
-                if hasattr(chunk, 'status') and chunk.status and str(chunk.status) not in ('200', 'None'):
-                    error_msg = getattr(chunk, 'msg', 'Unknown error')
-                    error_text = f"iFlow API Error: {error_msg}"
-                    yield AssistantMessage(
-                        content=[TextBlock(text=error_text)]
-                    )
-                    self._pending_query = None
-                    return
+                    break
 
-                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                    chunk_text = chunk.choices[0].delta.content
-                    full_response += chunk_text
-                    # Yield each chunk as an AssistantMessage
-                    yield AssistantMessage(
-                        content=[TextBlock(text=chunk_text)]
-                    )
-
-            # Update conversation history
-            self._conversation_history.append(
-                {"role": "user", "content": self._pending_query}
-            )
-            self._conversation_history.append(
-                {"role": "assistant", "content": full_response}
-            )
-            self._last_response = full_response
-            self._pending_query = None
-
-            # Post-process: Extract and write files from heredoc patterns
-            # This simulates tool use for iFlow agents that can't execute commands
-            files_written = self._extract_and_write_files(full_response)
-            if files_written:
-                logger.info(f"[iFlow] Auto-created files from response: {files_written}")
+            else:
+                # Max turns reached
+                logger.warning(f"[iFlow] Max turns ({self.max_turns}) reached")
+                yield AssistantMessage(
+                    content=[TextBlock(text=f"\n\n[Agent stopped: max turns ({self.max_turns}) reached]")]
+                )
+                self._pending_query = None
 
         except Exception as e:
-            logger.error(f"[iFlow] Query failed: {e}")
-            error_msg = f"iFlow API Error: {str(e)}"
-            yield AssistantMessage(
-                content=[TextBlock(text=error_msg)]
-            )
+            error_str = str(e)
+            logger.error(f"[iFlow] Agent loop failed: {e}", exc_info=True)
+
+            # Check if it's a tool_call_id error - retry without tools
+            if "tool_call_id" in error_str.lower() or "400" in error_str:
+                logger.warning("[iFlow] Tool calling error detected, retrying without tools...")
+                yield AssistantMessage(content=[TextBlock(text="[Tool calling error, retrying without tools...]")])
+
+                # Disable tools and retry with simple chat
+                self.enable_tools = False
+                self._current_turn = 0
+                self._conversation_history = []
+
+                # Re-run the query without tools
+                try:
+                    async for msg in self._simple_chat_fallback(initial_user_message if 'initial_user_message' in dir() else self._pending_query):
+                        yield msg
+                    return
+                except Exception as fallback_error:
+                    logger.error(f"[iFlow] Fallback also failed: {fallback_error}")
+                    error_msg = f"iFlow API Error (fallback failed): {str(fallback_error)}"
+                    yield AssistantMessage(content=[TextBlock(text=error_msg)])
+                    self._pending_query = None
+                    return
+
+            error_msg = f"iFlow API Error: {error_str}"
+            yield AssistantMessage(content=[TextBlock(text=error_msg)])
             self._pending_query = None
 
     def create_agent_session(
@@ -660,6 +887,127 @@ class IFlowAgentClient:
     def clear_history(self):
         """Clear conversation history."""
         self._conversation_history = []
+
+    async def _simple_chat_fallback(self, prompt: str):
+        """
+        Simple chat fallback when tool calling fails.
+
+        Uses streaming chat without tools, with heredoc extraction for file creation.
+
+        Args:
+            prompt: The user prompt to process
+
+        Yields:
+            AssistantMessage objects with response text
+        """
+        messages = []
+
+        # Add system prompt with heredoc instructions
+        fallback_system = (
+            f"{self.system_prompt}\n\n"
+            f"NOTE: Tool calling is not available. To create files, use heredoc syntax:\n"
+            f"```bash\n"
+            f"cat > filename << 'EOF'\n"
+            f"file content\n"
+            f"EOF\n"
+            f"```\n"
+            f"The system will extract and create files from your response."
+        )
+        messages.append({"role": "system", "content": fallback_system})
+        messages.append({"role": "user", "content": prompt})
+
+        try:
+            logger.info(f"[iFlow] Running simple chat fallback (no tools)...")
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                stream=True,
+            )
+
+            full_response = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    chunk_text = chunk.choices[0].delta.content
+                    full_response += chunk_text
+                    yield AssistantMessage(content=[TextBlock(text=chunk_text)])
+
+            # Extract and write files from heredoc patterns
+            if full_response:
+                files_written = self._extract_and_write_files(full_response)
+                if files_written:
+                    logger.info(f"[iFlow] Fallback created files: {files_written}")
+
+            self._last_response = full_response
+
+        except Exception as e:
+            logger.error(f"[iFlow] Simple chat fallback failed: {e}")
+            raise
+
+    def _truncate_messages(self, messages: list, max_messages: int = 20) -> list:
+        """
+        Truncate conversation history to avoid token explosion.
+
+        IMPORTANT: Never truncate in the middle of a tool call sequence!
+        Tool results must always follow their corresponding assistant tool_calls.
+
+        Keeps:
+        - System prompt (first message)
+        - Last N messages (ensuring tool call sequences are complete)
+
+        Args:
+            messages: Full message list
+            max_messages: Max messages to keep (default 20)
+
+        Returns:
+            Truncated message list
+        """
+        if len(messages) <= max_messages:
+            return messages
+
+        # Separate system messages
+        system_msgs = [m for m in messages if m.get("role") == "system"]
+        other_msgs = [m for m in messages if m.get("role") != "system"]
+
+        # Find safe truncation point (not in middle of tool call sequence)
+        # We need to keep messages from the start of the last tool call sequence
+        target_keep = max_messages - len(system_msgs)
+
+        if len(other_msgs) <= target_keep:
+            return messages
+
+        # Start from the end and find a safe cut point
+        # Safe cut points are: after user message, after assistant message without tool_calls
+        cut_index = len(other_msgs) - target_keep
+
+        # Adjust cut_index to not break tool call sequences
+        while cut_index < len(other_msgs):
+            msg = other_msgs[cut_index]
+            role = msg.get("role", "")
+
+            # Safe to cut before: user message or assistant without tool_calls
+            if role == "user":
+                break
+            if role == "assistant" and not msg.get("tool_calls"):
+                break
+
+            # Not safe: tool result or assistant with tool_calls
+            # Move forward to find safe point
+            cut_index += 1
+
+        # If we couldn't find a safe point, keep everything
+        if cut_index >= len(other_msgs):
+            return messages
+
+        truncated = system_msgs + other_msgs[cut_index:]
+
+        logger.info(
+            f"[iFlow] Truncated conversation: {len(messages)} -> {len(truncated)} messages "
+            f"(cut at index {cut_index})"
+        )
+
+        return truncated
 
     def _extract_and_write_files(self, response_text: str) -> list[str]:
         """
