@@ -2838,7 +2838,10 @@ export function registerWorktreeHandlers(
    * Detect the project type based on files present in the project directory.
    * Returns 'node' for JavaScript/TypeScript projects, 'python' for Python projects, etc.
    */
-  function detectProjectType(projectPath: string): 'node' | 'python' | 'unknown' {
+  type ProjectType = 'node' | 'python' | 'rust' | 'go' | 'unknown';
+  type PythonPackageManager = 'uv' | 'poetry' | 'pipenv' | 'pip';
+
+  function detectProjectType(projectPath: string): ProjectType {
     // Check for Node.js project indicators
     if (existsSync(path.join(projectPath, 'package.json'))) {
       return 'node';
@@ -2855,13 +2858,41 @@ export function registerWorktreeHandlers(
       return 'python';
     }
 
-    // Could extend to detect other project types:
-    // - Rust: Cargo.toml
-    // - Go: go.mod
-    // - Java: pom.xml, build.gradle
-    // - .NET: *.csproj, *.sln
+    // Check for Rust project
+    if (existsSync(path.join(projectPath, 'Cargo.toml'))) {
+      return 'rust';
+    }
+
+    // Check for Go project
+    if (existsSync(path.join(projectPath, 'go.mod'))) {
+      return 'go';
+    }
 
     return 'unknown';
+  }
+
+  /**
+   * Detect the Python package manager used by the project.
+   * Priority: uv > poetry > pipenv > pip (with venv)
+   */
+  function detectPythonPackageManager(projectPath: string): PythonPackageManager {
+    // Check for uv (uv.lock indicates uv is being used)
+    if (existsSync(path.join(projectPath, 'uv.lock'))) {
+      return 'uv';
+    }
+
+    // Check for poetry (poetry.lock indicates poetry is being used)
+    if (existsSync(path.join(projectPath, 'poetry.lock'))) {
+      return 'poetry';
+    }
+
+    // Check for pipenv (Pipfile.lock indicates pipenv is being used)
+    if (existsSync(path.join(projectPath, 'Pipfile.lock')) || existsSync(path.join(projectPath, 'Pipfile'))) {
+      return 'pipenv';
+    }
+
+    // Default to pip with venv
+    return 'pip';
   }
 
   /**
@@ -3416,65 +3447,151 @@ export function registerWorktreeHandlers(
             };
           }
         } else if (projectType === 'python') {
-          // Python project handling
-          const venvPath = detectPythonVenv(worktreePath);
-          const pythonExe = getPythonExecutable(venvPath);
-          depsInstalled = arePythonDepsInstalled(venvPath);
+          // Python project handling - detect package manager first
+          const pythonPkgManager = detectPythonPackageManager(worktreePath);
+          packageManager = pythonPkgManager; // For response
 
-          if (!venvPath) {
-            return {
-              success: false,
-              error: 'No Python virtual environment found. Create one with "python -m venv .venv" first.',
-              data: { launched: false, command: '', depsInstalled: false, projectType }
-            };
-          }
+          if (pythonPkgManager === 'uv') {
+            // uv manages its own environment, no need to check for venv
+            // Check if uv.lock exists (indicates deps are synced)
+            depsInstalled = existsSync(path.join(worktreePath, 'uv.lock'));
 
-          if (!depsInstalled) {
-            if (autoInstall) {
-              // Try to install dependencies
-              const reqsPath = path.join(worktreePath, 'requirements.txt');
-              const pyprojectPath = path.join(worktreePath, 'pyproject.toml');
-
-              let installResult: { success: boolean; error?: string };
-              if (existsSync(pyprojectPath)) {
-                // Use pip install -e . for projects with pyproject.toml
-                installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-e', '.'], worktreePath);
-              } else if (existsSync(reqsPath)) {
-                // Use pip install -r requirements.txt
-                installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-r', 'requirements.txt'], worktreePath);
-              } else {
-                return {
-                  success: false,
-                  error: 'No pyproject.toml or requirements.txt found to install dependencies.',
-                  data: { launched: false, command: '', depsInstalled: false, projectType }
-                };
-              }
-
+            if (!depsInstalled && autoInstall) {
+              const installResult = await runCommandAsync('uv', ['sync'], worktreePath);
               if (!installResult.success) {
                 return {
                   success: false,
-                  error: `Failed to install Python dependencies: ${installResult.error}`,
-                  data: { launched: false, command: '', depsInstalled: false, projectType }
+                  error: `Failed to sync dependencies with uv: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
                 };
               }
               depsInstalled = true;
-            } else {
+            } else if (!depsInstalled) {
               return {
                 success: false,
-                error: 'Python dependencies not installed. Run "pip install -r requirements.txt" in your virtual environment.',
-                data: { launched: false, command: '', depsInstalled: false, projectType }
+                error: 'Dependencies not synced. Run "uv sync" first.',
+                data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
               };
             }
-          }
 
-          // Detect the dev command for Python
-          devCommand = detectPythonDevCommand(worktreePath, pythonExe);
+            // Detect dev command and wrap with uv run
+            const baseCommand = detectPythonDevCommand(worktreePath, 'python');
+            if (baseCommand) {
+              // Convert "python main.py" to "uv run python main.py"
+              devCommand = `uv run ${baseCommand}`;
+            }
+          } else if (pythonPkgManager === 'poetry') {
+            // poetry manages its own environment
+            depsInstalled = existsSync(path.join(worktreePath, 'poetry.lock'));
+
+            if (!depsInstalled && autoInstall) {
+              const installResult = await runCommandAsync('poetry', ['install'], worktreePath);
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to install dependencies with poetry: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+                };
+              }
+              depsInstalled = true;
+            } else if (!depsInstalled) {
+              return {
+                success: false,
+                error: 'Dependencies not installed. Run "poetry install" first.',
+                data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+              };
+            }
+
+            // Detect dev command and wrap with poetry run
+            const baseCommand = detectPythonDevCommand(worktreePath, 'python');
+            if (baseCommand) {
+              devCommand = `poetry run ${baseCommand}`;
+            }
+          } else if (pythonPkgManager === 'pipenv') {
+            // pipenv manages its own environment
+            depsInstalled = existsSync(path.join(worktreePath, 'Pipfile.lock'));
+
+            if (!depsInstalled && autoInstall) {
+              const installResult = await runCommandAsync('pipenv', ['install'], worktreePath);
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to install dependencies with pipenv: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+                };
+              }
+              depsInstalled = true;
+            } else if (!depsInstalled) {
+              return {
+                success: false,
+                error: 'Dependencies not installed. Run "pipenv install" first.',
+                data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+              };
+            }
+
+            // Detect dev command and wrap with pipenv run
+            const baseCommand = detectPythonDevCommand(worktreePath, 'python');
+            if (baseCommand) {
+              devCommand = `pipenv run ${baseCommand}`;
+            }
+          } else {
+            // pip with venv - original behavior
+            const venvPath = detectPythonVenv(worktreePath);
+            const pythonExe = getPythonExecutable(venvPath);
+            depsInstalled = arePythonDepsInstalled(venvPath);
+
+            if (!venvPath) {
+              return {
+                success: false,
+                error: 'No Python virtual environment found. Create one with "python -m venv .venv" first.',
+                data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+              };
+            }
+
+            if (!depsInstalled) {
+              if (autoInstall) {
+                const reqsPath = path.join(worktreePath, 'requirements.txt');
+                const pyprojectPath = path.join(worktreePath, 'pyproject.toml');
+
+                let installResult: { success: boolean; error?: string };
+                if (existsSync(pyprojectPath)) {
+                  installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-e', '.'], worktreePath);
+                } else if (existsSync(reqsPath)) {
+                  installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-r', 'requirements.txt'], worktreePath);
+                } else {
+                  return {
+                    success: false,
+                    error: 'No pyproject.toml or requirements.txt found to install dependencies.',
+                    data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+                  };
+                }
+
+                if (!installResult.success) {
+                  return {
+                    success: false,
+                    error: `Failed to install Python dependencies: ${installResult.error}`,
+                    data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+                  };
+                }
+                depsInstalled = true;
+              } else {
+                return {
+                  success: false,
+                  error: 'Python dependencies not installed. Run "pip install -r requirements.txt" in your virtual environment.',
+                  data: { launched: false, command: '', depsInstalled: false, packageManager: pythonPkgManager, projectType }
+                };
+              }
+            }
+
+            // Detect the dev command for Python (uses venv python path)
+            devCommand = detectPythonDevCommand(worktreePath, pythonExe);
+          }
 
           if (!devCommand) {
             return {
               success: false,
               error: 'No Python run command detected. Expected manage.py, main.py, app.py, or a web framework configuration.',
-              data: { launched: false, command: '', depsInstalled, projectType }
+              data: { launched: false, command: '', depsInstalled, packageManager: pythonPkgManager, projectType }
             };
           }
         } else {
