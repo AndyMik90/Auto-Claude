@@ -181,6 +181,7 @@ export interface ElectronAPI {
   worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean) => Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean; pid?: number; projectType?: string }>>;
   worktreeStopApp: (worktreePath: string) => Promise<IPCResult<{ stopped: boolean; killed: number }>>;
   worktreeAppStatus: (worktreePath: string) => Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>>;
+  worktreeKillAll: () => Promise<IPCResult<{ killed: number; errors: string[] }>>;
   worktreeInstallDeps: (worktreePath: string) => Promise<IPCResult<{ installed: boolean; packageManager: string }>>;
 
   // Task archive operations

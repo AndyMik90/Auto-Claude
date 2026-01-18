@@ -42,6 +42,7 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_LAUNCH_APP: 'task:worktreeLaunchApp',  // Launch dev server from worktree
   TASK_WORKTREE_STOP_APP: 'task:worktreeStopApp',  // Stop dev server for worktree
   TASK_WORKTREE_APP_STATUS: 'task:worktreeAppStatus',  // Get running status of dev server
+  TASK_WORKTREE_KILL_ALL: 'task:worktreeKillAll',  // Kill all tracked dev servers (nuclear option)
   TASK_WORKTREE_INSTALL_DEPS: 'task:worktreeInstallDeps',  // Install dependencies in worktree
   TASK_LIST_WORKTREES: 'task:listWorktrees',
   TASK_ARCHIVE: 'task:archive',

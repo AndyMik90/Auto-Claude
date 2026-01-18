@@ -64,6 +64,7 @@ export interface TaskAPI {
   worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean) => Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean; pid?: number; projectType?: string }>>;
   worktreeStopApp: (worktreePath: string) => Promise<IPCResult<{ stopped: boolean; killed: number }>>;
   worktreeAppStatus: (worktreePath: string) => Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>>;
+  worktreeKillAll: () => Promise<IPCResult<{ killed: number; errors: string[] }>>;
   worktreeInstallDeps: (worktreePath: string) => Promise<IPCResult<{ installed: boolean; packageManager: string }>>;
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
   unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
@@ -178,6 +179,9 @@ export const createTaskAPI = (): TaskAPI => ({
 
   worktreeAppStatus: (worktreePath: string): Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_APP_STATUS, worktreePath),
+
+  worktreeKillAll: (): Promise<IPCResult<{ killed: number; errors: string[] }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_KILL_ALL),
 
   worktreeInstallDeps: (worktreePath: string): Promise<IPCResult<{ installed: boolean; packageManager: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_INSTALL_DEPS, worktreePath),

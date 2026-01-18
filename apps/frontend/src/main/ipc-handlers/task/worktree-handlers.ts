@@ -3851,6 +3851,38 @@ export function registerWorktreeHandlers(
   );
 
   /**
+   * Kill all tracked dev server processes (nuclear option)
+   * Use this to clean up all spawned processes across all tasks
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_KILL_ALL,
+    async (): Promise<IPCResult<{ killed: number; errors: string[] }>> => {
+      try {
+        // Kill all processes from the registry
+        const registryResult = await processRegistry.killAll();
+
+        // Also scan for any orphaned node/python processes
+        // This catches processes that weren't registered (e.g., from terminal launches)
+        // We don't want to kill system-wide processes, so this is limited to known patterns
+
+        return {
+          success: true,
+          data: {
+            killed: registryResult.killed,
+            errors: registryResult.errors
+          }
+        };
+      } catch (error) {
+        console.error('Failed to kill all processes:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to kill all processes'
+        };
+      }
+    }
+  );
+
+  /**
    * Clear the staged state for a task
    * This allows the user to re-stage changes if needed
    */

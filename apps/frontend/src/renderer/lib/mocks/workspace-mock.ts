@@ -119,6 +119,11 @@ export const workspaceMock = {
     data: { running: false, processes: [] }
   }),
 
+  worktreeKillAll: async () => ({
+    success: true,
+    data: { killed: 0, errors: [] }
+  }),
+
   worktreeInstallDeps: async (_worktreePath: string) => ({
     success: true,
     data: { installed: true, packageManager: 'npm' }
