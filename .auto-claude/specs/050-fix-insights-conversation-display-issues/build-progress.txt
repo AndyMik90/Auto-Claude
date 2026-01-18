@@ -152,26 +152,50 @@ Quality Checklist:
 
 === SESSION 5 (Coder) ===
 
-[2025-01-18] Subtask 3-1: Add white-space: pre-wrap CSS to user message content for newline preservation
+[2025-01-18] Subtask 3-3: Implement drag-drop event handlers for image files with visual feedback
 Status: COMPLETED
 
 Changes Made:
-- Modified MessageBubble component in Insights.tsx
-- Added conditional CSS class: whitespace-pre-wrap for user messages only
-- Used Tailwind's arbitrary variant selector: isUser && '[&_]:whitespace-pre-wrap'
-- This applies whitespace-preserving CSS to all children of the prose container
-- User messages with Shift+Enter line breaks will now display correctly
-- Assistant messages remain unchanged (no whitespace-pre-wrap)
-- Frontend build verified successfully
+- Added DragEvent type import to Insights.tsx
+- Added isDragOverTextarea state for tracking drag-over status
+- Implemented handleTextareaDragOver() handler:
+  - Prevents default browser behavior
+  - Stops event propagation
+  - Sets isDragOverTextarea to true for visual feedback
+- Implemented handleTextareaDragLeave() handler:
+  - Prevents default browser behavior
+  - Stops event propagation
+  - Sets isDragOverTextarea to false to remove visual feedback
+- Implemented handleTextareaDrop() handler:
+  - Prevents default browser behavior
+  - Stops event propagation
+  - Resets isDragOverTextarea to false
+  - Checks if app is in thinking/streaming state (rejects drops during AI response)
+  - Filters for image files from dropped files
+  - Validates image count against MAX_IMAGES_PER_TASK limit
+  - Processes each image file:
+    - Validates MIME type
+    - Converts to base64 data URL
+    - Creates thumbnail
+    - Resolves filename to avoid duplicates
+  - Adds processed images to state
+  - Shows success feedback for 2 seconds
+- Applied visual feedback to textarea:
+  - Added conditional className with ring-2 ring-primary border-primary when isDragOverTextarea is true
+  - Provides clear visual indication during drag-over
+- Updated help text to mention drag-and-drop support
+- Fixed TypeScript error by using status.phase instead of isLoading (which wasn't defined yet)
+- TypeScript compilation verified successfully
 
 Committed:
-- 8189e7af "auto-claude: subtask-3-1 - Add white-space: pre-wrap CSS to user message content"
+- bc484285 "auto-claude: subtask-3-3 - Implement drag-drop event handlers for image files"
 
 Quality Checklist:
-✓ Follows existing component patterns
+✓ Follows pattern from QAFeedbackSection.tsx exactly
 ✓ No console.log/print debugging statements
-✓ Error handling in place
-✓ Build verification passed
+✓ Error handling in place (image limit, invalid types, processing errors)
+✓ Visual feedback implemented (ring-2 ring-primary border-primary)
+✓ TypeScript compilation verified
 ✓ Clean commit with descriptive message
 
 === END SESSION 5 ===

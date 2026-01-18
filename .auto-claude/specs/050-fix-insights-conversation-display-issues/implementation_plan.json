@@ -171,7 +171,7 @@
               "Drop file and verify thumbnail appears"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-4",
@@ -522,6 +522,6 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-18T00:11:19.414Z",
-  "recoveryNote": "Task recovered from stuck state at 2026-01-18T00:11:16.445Z"
+  "updated_at": "2026-01-18T00:32:25.472Z",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-18T00:32:22.247Z"
 }
