@@ -7,8 +7,8 @@ import type { TerminalFontSettings } from '../../../stores/terminal-font-setting
 // Child components
 import { FontConfigPanel } from './FontConfigPanel';
 import { CursorConfigPanel } from './CursorConfigPanel';
+import { PerformanceConfigPanel } from './PerformanceConfigPanel';
 // TODO: Import other child components once created
-// import { PerformanceConfigPanel } from './PerformanceConfigPanel';
 // import { PresetsPanel } from './PresetsPanel';
 // import { LivePreviewTerminal } from './LivePreviewTerminal';
 
@@ -194,8 +194,7 @@ export function TerminalFontSettings() {
       </SettingsSection>
 
       {/* Performance Configuration Panel */}
-      {/* TODO: Uncomment once PerformanceConfigPanel is implemented */}
-      {/* <SettingsSection
+      <SettingsSection
         title={t('terminalFonts.performanceConfig.title', { defaultValue: 'Performance Settings' })}
         description={t('terminalFonts.performanceConfig.description', {
           defaultValue: 'Adjust scrollback limit and other performance-related settings',
@@ -205,7 +204,7 @@ export function TerminalFontSettings() {
           settings={settings}
           onSettingChange={handleSettingChange}
         />
-      </SettingsSection> */}
+      </SettingsSection>
 
       {/* Presets Panel */}
       {/* TODO: Uncomment once PresetsPanel is implemented */}
