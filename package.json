@@ -48,6 +48,7 @@
     "lucide-react": "^0.562.0"
   },
   "overrides": {
-    "tar": "^7.5.3"
+    "tar": "^7.5.3",
+    "@electron/rebuild": "4.0.2"
   }
 }

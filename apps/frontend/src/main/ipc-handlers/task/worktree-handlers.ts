@@ -1610,7 +1610,7 @@ async function withRetry<T>(
       onRetry?.(attempt, error);
 
       // Wait before retry (exponential backoff)
-      await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)));
+      await new Promise(r => setTimeout(r, baseDelayMs * 2 ** (attempt - 1)));
     }
   }
 

@@ -43,8 +43,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -101,10 +102,10 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.11",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@electron/rebuild": "^4.0.2",
-    "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/dom": "^10.0.0",
@@ -120,25 +121,22 @@
     "autoprefixer": "^10.4.22",
     "cross-env": "^10.1.0",
     "electron": "39.2.7",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.4.0",
     "electron-vite": "^5.0.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "globals": "^17.0.0",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.1",
     "vite": "^7.2.7",
     "vitest": "^4.0.16"
   },
   "overrides": {
+    "tar": "^7.5.3",
     "electron-builder-squirrel-windows": "^26.0.12",
-    "dmg-builder": "^26.0.12"
+    "dmg-builder": "^26.0.12",
+    "@electron/rebuild": "4.0.2"
   },
   "build": {
     "appId": "com.autoclaude.ui",
@@ -237,8 +235,8 @@
     }
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix"
+    "*.{ts,tsx,js,jsx,json}": [
+      "biome check --write --no-errors-on-unmatched"
     ]
   }
 }

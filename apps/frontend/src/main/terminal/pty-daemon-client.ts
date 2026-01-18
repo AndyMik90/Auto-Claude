@@ -231,7 +231,7 @@ class PtyDaemonClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
 
     console.warn(
       `[PtyDaemonClient] Reconnect attempt ${this.reconnectAttempts} in ${delay}ms...`
