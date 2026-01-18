@@ -42,15 +42,16 @@ autonomous-coding/
 ### Setup
 
 **Requirements:**
-- Python 3.12+ (required for backend)
+- Python 3.12 or 3.13 (required for backend - 3.14 not yet supported due to missing wheels)
 - Node.js (for frontend)
+- uv (auto-installed if missing - 10-100x faster than pip)
 
 ```bash
-# Install all dependencies from root
+# Install all dependencies from root (uses uv for fast Python installs)
 npm run install:all
 
 # Or install separately:
-# Backend (from apps/backend/)
+# Backend (from apps/backend/) - uv auto-installed if missing
 cd apps/backend && uv venv && uv pip install -r requirements.txt
 
 # Frontend (from apps/frontend/)
@@ -61,6 +62,8 @@ claude
 # Then type: /login
 # Press Enter to open browser and complete OAuth
 ```
+
+**Note:** The install script automatically installs `uv` if not present. uv is 10-100x faster than pip for dependency installation. If uv installation fails, the script falls back to pip.
 
 ### Creating and Running Specs
 ```bash
