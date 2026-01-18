@@ -122,11 +122,14 @@ Once the PR is approved and merged to `main`, GitHub Actions will automatically:
 6. **Build binaries** for all platforms:
    - macOS Intel (x64) - code signed & notarized
    - macOS Apple Silicon (arm64) - code signed & notarized
-   - Windows (NSIS installer) - code signed
-   - Linux (AppImage + .deb)
+   - Windows x64 (NSIS installer) - code signed
+   - Windows ARM64 (NSIS installer) - code signed or unsigned*
+   - Linux (AppImage + .deb + Flatpak)
 7. **Scan binaries** with VirusTotal
 8. **Create GitHub release** with release notes from CHANGELOG.md
 9. **Update README** with new version badge and download links
+
+*Note: Windows ARM64 builds may be unsigned initially if Azure Trusted Signing doesn't support ARM64 executables. Users will see SmartScreen warnings in this case.
 
 ### Step 5: Verify
 

@@ -23,7 +23,9 @@ const os = require('os');
 const nodeCrypto = require('crypto');
 
 // Python version to bundle (must be 3.10+ for claude-agent-sdk, 3.12+ for full Graphiti support)
-const PYTHON_VERSION = '3.12.8';
+// Note: 3.12.10 is the last full bugfix release with binary installers for Windows ARM64
+// Later releases (3.12.11+) only have source distributions
+const PYTHON_VERSION = '3.12.10';
 
 // Patterns for files/directories to strip from site-packages to reduce size
 // These are safe to remove - Python doesn't need them at runtime
@@ -134,13 +136,18 @@ const BASE_URL = `https://github.com/indygreg/python-build-standalone/releases/d
 // Output directory for downloaded Python (relative to frontend root)
 const OUTPUT_DIR = 'python-runtime';
 
-// SHA256 checksums for verification (from python-build-standalone release)
-// These must be updated when changing PYTHON_VERSION or RELEASE_TAG
-// Get checksums from: https://github.com/indygreg/python-build-standalone/releases/download/{RELEASE_TAG}/SHA256SUMS
+// SHA256 checksums for verification
+// python-build-standalone checksums: https://github.com/indygreg/python-build-standalone/releases/download/{RELEASE_TAG}/SHA256SUMS
+// Python.org checksums: https://www.python.org/downloads/ (look for "Files" section with hashes)
+// To verify checksums for Python.org .exe (if needed):
+//   1. Download the installer: https://www.python.org/ftp/python/3.12.10/python-3.12.10-arm64.exe
+//   2. Run: certutil -hashfile python-3.12.10-arm64.exe SHA256  (Windows)
+//   3.      or: shasum -a 256 python-3.12.10-arm64.exe  (macOS/Linux via WSL)
 const CHECKSUMS = {
   'darwin-arm64': 'abe1de2494bb8b243fd507944f4d50292848fa00685d5288c858a72623a16635',
   'darwin-x64': '867c1af10f204224b571f8f2593fc9eb580fe0c2376224d1096ebe855ad8c722',
   'win32-x64': '1a702b3463cf87ec0d2e33902a47e95456053b0178fe96bd673c1dbb554f5d15',
+  'win32-arm64': '377ac8fd478987940088e879441e702a71b53164d2a1e6f1d51ff77a7e470258',  // Python 3.12.10 ARM64 installer from python.org
   'linux-x64': '698e53b264a9bcd35cfa15cd680c4d78b0878fa529838844b5ffd0cd661d6bc2',
   'linux-arm64': 'fb983ec85952513f5f013674fcbf4306b1a142c50fcfd914c2c3f00c61a874b0',
 };
@@ -190,26 +197,42 @@ function getDownloadInfo(platform, arch) {
   const version = PYTHON_VERSION;
 
   // Map platform/arch to python-build-standalone naming
+  // Note: win32-arm64 uses Python.org official installer instead of python-build-standalone
+  //       (which doesn't support Windows ARM64)
   const configs = {
     'darwin-arm64': {
       filename: `cpython-${version}+${RELEASE_TAG}-aarch64-apple-darwin-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'darwin-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-apple-darwin-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'win32-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
+    },
+    'win32-arm64': {
+      // Python.org official ARM64 installer for Windows
+      // Note: Using 3.12.10 (last full bugfix release with binary installers)
+      // Download URL: https://www.python.org/ftp/python/3.12.10/python-3.12.10-arm64.exe
+      filename: `python-${version}-arm64.exe`,
+      extractDir: 'python',
+      source: 'python-org',
+      url: `https://www.python.org/ftp/python/${version}/python-${version}-arm64.exe`,
     },
     'linux-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'linux-arm64': {
       filename: `cpython-${version}+${RELEASE_TAG}-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
   };
 
@@ -224,12 +247,13 @@ function getDownloadInfo(platform, arch) {
   const ebPlatform = toElectronBuilderPlatform(nodePlatform);
 
   return {
-    url: `${BASE_URL}/${config.filename}`,
+    url: config.url || `${BASE_URL}/${config.filename}`,  // Use custom URL if provided (e.g., Python.org for win32-arm64)
     filename: config.filename,
     extractDir: config.extractDir,
     outputDir: `${ebPlatform}-${arch}`,  // e.g., "mac-arm64", "win-x64", "linux-x64"
     nodePlatform,  // For internal checks (darwin, win32, linux)
     checksum: CHECKSUMS[key],
+    source: config.source,  // Source of the distribution (python-build-standalone, python-org)
   };
 }
 
@@ -354,6 +378,75 @@ function verifyChecksum(filePath, expectedChecksum) {
 
   console.log(`[download-python] Checksum verified: ${hash.substring(0, 16)}...`);
   return true;
+}
+
+/**
+ * Extract a Python.org Windows .exe installer.
+ * Note: The /extract flag doesn't work reliably on ARM64, so we use silent installation
+ * to a custom directory instead. This is more compatible across Windows versions.
+ */
+function extractPythonOrgExe(exePath, destDir) {
+  console.log(`[download-python] Installing Python.org .exe to: ${destDir}`);
+
+  // Ensure destination exists
+  fs.mkdirSync(destDir, { recursive: true });
+
+  // Use silent installation mode with custom target directory
+  // /quiet: Don't show progress UI
+  // /quiet: Install to TargetDir (used by Windows installer)
+  // Important: We use silent install instead of /extract because:
+  // - /extract flag doesn't work reliably on Windows ARM64
+  // - Silent install with TargetDir is more compatible
+  // - The installer will extract and copy Python to the target directory
+  const result = spawnSync(exePath, ['/quiet', `TargetDir=${destDir}`, 'PrependPath=0'], {
+    stdio: 'inherit',
+  });
+
+  if (result.error) {
+    throw new Error(`Failed to install Python: ${result.error.message}`);
+  }
+
+  if (result.status !== 0 && result.status !== 3010) {  // 3010 = success, reboot required (we don't reboot)
+    throw new Error(`Failed to install Python: exited with code ${result.status}`);
+  }
+
+  // Verify installation succeeded by checking for python.exe in multiple locations
+  let pythonExe = path.join(destDir, 'python.exe');
+  if (!fs.existsSync(pythonExe)) {
+    // Try searching in subdirectories (e.g., pythonXY/ or python/)
+    const entries = fs.readdirSync(destDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subDir = path.join(destDir, entry.name);
+        const subPython = path.join(subDir, 'python.exe');
+        if (fs.existsSync(subPython)) {
+          // Found it in subdirectory - need to promote contents up
+          console.log(`[download-python] Found python.exe in subdirectory: ${entry.name}`);
+          // Move all contents from subdirectory up to parent
+          const subEntries = fs.readdirSync(subDir, { withFileTypes: true });
+          for (const subEntry of subEntries) {
+            const oldPath = path.join(subDir, subEntry.name);
+            const newPath = path.join(destDir, subEntry.name);
+            // Handle collision by using rename
+            if (fs.existsSync(newPath)) {
+              fs.rmSync(newPath, { recursive: true, force: true });
+            }
+            fs.renameSync(oldPath, newPath);
+          }
+          // Remove the now-empty subdirectory
+          fs.rmdirSync(subDir);
+          pythonExe = path.join(destDir, 'python.exe');
+          break;
+        }
+      }
+    }
+  }
+
+  if (!fs.existsSync(pythonExe)) {
+    throw new Error(`Python installation failed: python.exe not found at ${pythonExe}. Contents: ${fs.readdirSync(destDir).join(', ')}`);
+  }
+
+  console.log(`[download-python] Installation complete`);
 }
 
 /**
@@ -930,8 +1023,14 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       verifyChecksum(archivePath, info.checksum);
     }
 
-    // Extract
-    extractTarGz(archivePath, platformDir);
+    // Extract based on source
+    if (info.source === 'python-org') {
+      // Python.org .exe installer - extract directly
+      extractPythonOrgExe(archivePath, platformDir);
+    } else {
+      // python-build-standalone tar.gz
+      extractTarGz(archivePath, platformDir);
+    }
 
     // Verify binary exists
     if (!fs.existsSync(pythonBin)) {
@@ -1007,6 +1106,7 @@ async function downloadAllPlatforms() {
     { platform: 'darwin', arch: 'arm64' },
     { platform: 'darwin', arch: 'x64' },
     { platform: 'win32', arch: 'x64' },
+    { platform: 'win32', arch: 'arm64' },
     { platform: 'linux', arch: 'x64' },
     { platform: 'linux', arch: 'arm64' },
   ];
