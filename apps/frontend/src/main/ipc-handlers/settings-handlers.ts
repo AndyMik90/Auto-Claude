@@ -593,20 +593,20 @@ export function registerSettingsHandlers(
    * In production mode, the .env file is NOT bundled (excluded in electron-builder config).
    * We store the source .env in app userData directory instead, which is writable.
    * The sourcePath points to the bundled backend for reference, but envPath is in userData.
+   *
+   * Uses enhanced backend detection with 3-priority system:
+   * 1. AUTO_CLAUDE_BACKEND_PATH environment variable (manual override)
+   * 2. Local apps/backend in worktree (if running from worktree)
+   * 3. Standard auto-detection logic (production/dev paths)
    */
   const getSourceEnvPath = (): {
     sourcePath: string | null;
     envPath: string | null;
     isProduction: boolean;
   } => {
-    const savedSettings = readSettingsFile();
-    const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
-
-    // Get autoBuildPath from settings or try to auto-detect
-    let sourcePath: string | null = settings.autoBuildPath || null;
-    if (!sourcePath) {
-      sourcePath = detectAutoBuildSourcePath();
-    }
+    // Always use enhanced detection to ensure priority order is respected
+    // (environment variable override, worktree detection, standard paths)
+    const sourcePath = detectAutoBuildSourcePath();
 
     if (!sourcePath) {
       return { sourcePath: null, envPath: null, isProduction: !is.dev };
