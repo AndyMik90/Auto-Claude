@@ -1035,7 +1035,12 @@ export class UsageMonitor extends EventEmitter {
         usageWindows: {
           sessionWindowLabel: '5 Hours Quota',
           weeklyWindowLabel: 'Total Monthly Tools Quota'
-        }
+        },
+        // Extract raw usage values for display in tooltip
+        sessionUsageValue: tokensLimit?.currentValue,
+        sessionUsageLimit: tokensLimit?.usage,
+        weeklyUsageValue: timeLimit?.currentValue,
+        weeklyUsageLimit: timeLimit?.usage
       };
     } catch (error) {
       console.error('[UsageMonitor:ZAI] Failed to parse quota/limit response:', error, 'Raw data:', data);
@@ -1158,7 +1163,12 @@ export class UsageMonitor extends EventEmitter {
         usageWindows: {
           sessionWindowLabel: '5 Hours Quota',
           weeklyWindowLabel: 'Total Monthly Tools Quota'
-        }
+        },
+        // Extract raw usage values for display in tooltip
+        sessionUsageValue: tokensLimit?.currentValue,
+        sessionUsageLimit: tokensLimit?.usage,
+        weeklyUsageValue: timeLimit?.currentValue,
+        weeklyUsageLimit: timeLimit?.usage
       };
     } catch (error) {
       console.error('[UsageMonitor:ZHIPU] Failed to parse quota/limit response:', error, 'Raw data:', data);

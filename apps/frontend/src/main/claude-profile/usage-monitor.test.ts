@@ -379,6 +379,121 @@ describe('usage-monitor', () => {
     });
   });
 
+  describe('z.ai quota/limit endpoint normalization', () => {
+    it('should normalize z.ai quota/limit response with limits array', () => {
+      const monitor = getUsageMonitor();
+      // Create a future reset time (3 hours from now)
+      const now = Date.now();
+      const nextResetTime = now + 3 * 60 * 60 * 1000; // 3 hours from now
+
+      const rawData = {
+        limits: [
+          {
+            type: 'TIME_LIMIT',
+            unit: 5,
+            number: 1,
+            usage: 1000,
+            currentValue: 660,
+            remaining: 340,
+            percentage: 66,
+            usageDetails: [
+              { modelCode: 'search-prime', usage: 599 },
+              { modelCode: 'web-reader', usage: 88 }
+            ]
+          },
+          {
+            type: 'TOKENS_LIMIT',
+            unit: 3,
+            number: 5,
+            usage: 200000000,
+            currentValue: 20926987,
+            remaining: 179073013,
+            percentage: 10,
+            nextResetTime: nextResetTime
+          }
+        ]
+      };
+
+      const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
+
+      expect(usage).not.toBeNull();
+      expect(usage?.sessionPercent).toBe(10); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(66); // TIME_LIMIT percentage
+      expect(usage?.sessionUsageValue).toBe(20926987); // current token usage
+      expect(usage?.sessionUsageLimit).toBe(200000000); // total token limit
+      expect(usage?.weeklyUsageValue).toBe(660); // current tool usage
+      expect(usage?.weeklyUsageLimit).toBe(1000); // total tool limit
+      expect(usage?.sessionResetTimestamp).toBeDefined();
+      expect(usage?.limitType).toBe('weekly'); // 66 > 10
+      expect(usage?.usageWindows?.sessionWindowLabel).toBe('5 Hours Quota');
+      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('Total Monthly Tools Quota');
+    });
+
+    it('should handle missing nextResetTime gracefully', () => {
+      const monitor = getUsageMonitor();
+
+      const rawData = {
+        limits: [
+          {
+            type: 'TIME_LIMIT',
+            unit: 5,
+            number: 1,
+            usage: 1000,
+            currentValue: 500,
+            remaining: 500,
+            percentage: 50
+          },
+          {
+            type: 'TOKENS_LIMIT',
+            unit: 3,
+            number: 5,
+            usage: 200000000,
+            currentValue: 100000000,
+            remaining: 100000000,
+            percentage: 50
+            // Missing nextResetTime - should fall back to now + 5 hours
+          }
+        ]
+      };
+
+      const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
+
+      expect(usage).not.toBeNull();
+      expect(usage?.sessionPercent).toBe(50);
+      expect(usage?.weeklyPercent).toBe(50);
+      expect(usage?.sessionResetTimestamp).toBeDefined(); // Should have fallback timestamp
+    });
+
+    it('should handle missing currentValue and usage fields', () => {
+      const monitor = getUsageMonitor();
+
+      const rawData = {
+        limits: [
+          {
+            type: 'TIME_LIMIT',
+            percentage: 75
+            // Missing currentValue, usage
+          },
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 25
+            // Missing currentValue, usage, nextResetTime
+          }
+        ]
+      };
+
+      const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
+
+      expect(usage).not.toBeNull();
+      expect(usage?.sessionPercent).toBe(25);
+      expect(usage?.weeklyPercent).toBe(75);
+      expect(usage?.sessionUsageValue).toBeUndefined(); // No currentValue in response
+      expect(usage?.sessionUsageLimit).toBeUndefined(); // No usage in response
+      expect(usage?.weeklyUsageValue).toBeUndefined();
+      expect(usage?.weeklyUsageLimit).toBeUndefined();
+    });
+  });
+
   describe('ZHIPU response normalization', () => {
     it('should normalize ZHIPU response with usage/limit fields', () => {
       const monitor = getUsageMonitor();
@@ -415,6 +530,86 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage?.sessionPercent).toBe(50); // (30000/60000) * 100
       expect(usage?.weeklyPercent).toBe(48); // (200000/420000) * 100 = 47.6 -> 48
+    });
+  });
+
+  describe('ZHIPU quota/limit endpoint normalization', () => {
+    it('should normalize ZHIPU quota/limit response with limits array', () => {
+      const monitor = getUsageMonitor();
+      // Create a future reset time (2 hours from now)
+      const now = Date.now();
+      const nextResetTime = now + 2 * 60 * 60 * 1000; // 2 hours from now
+
+      const rawData = {
+        limits: [
+          {
+            type: 'TIME_LIMIT',
+            unit: 5,
+            number: 1,
+            usage: 1000,
+            currentValue: 800,
+            remaining: 200,
+            percentage: 80,
+            usageDetails: [
+              { modelCode: 'search-prime', usage: 700 },
+              { modelCode: 'web-reader', usage: 100 }
+            ]
+          },
+          {
+            type: 'TOKENS_LIMIT',
+            unit: 3,
+            number: 5,
+            usage: 200000000,
+            currentValue: 40000000,
+            remaining: 160000000,
+            percentage: 20,
+            nextResetTime: nextResetTime
+          }
+        ]
+      };
+
+      const usage = monitor['normalizeZhipuResponse'](rawData, 'zhipu-profile-1', 'ZHIPU Profile');
+
+      expect(usage).not.toBeNull();
+      expect(usage?.sessionPercent).toBe(20); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(80); // TIME_LIMIT percentage
+      expect(usage?.sessionUsageValue).toBe(40000000); // current token usage
+      expect(usage?.sessionUsageLimit).toBe(200000000); // total token limit
+      expect(usage?.weeklyUsageValue).toBe(800); // current tool usage
+      expect(usage?.weeklyUsageLimit).toBe(1000); // total tool limit
+      expect(usage?.sessionResetTimestamp).toBeDefined();
+      expect(usage?.limitType).toBe('weekly'); // 80 > 20
+      expect(usage?.usageWindows?.sessionWindowLabel).toBe('5 Hours Quota');
+      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('Total Monthly Tools Quota');
+    });
+
+    it('should handle ZHIPU quota/limit response without nextResetTime', () => {
+      const monitor = getUsageMonitor();
+
+      const rawData = {
+        limits: [
+          {
+            type: 'TIME_LIMIT',
+            percentage: 45
+          },
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 55
+            // Missing nextResetTime, currentValue, usage
+          }
+        ]
+      };
+
+      const usage = monitor['normalizeZhipuResponse'](rawData, 'zhipu-profile-1', 'ZHIPU Profile');
+
+      expect(usage).not.toBeNull();
+      expect(usage?.sessionPercent).toBe(55);
+      expect(usage?.weeklyPercent).toBe(45);
+      expect(usage?.sessionResetTimestamp).toBeDefined(); // Should have fallback timestamp
+      expect(usage?.sessionUsageValue).toBeUndefined();
+      expect(usage?.sessionUsageLimit).toBeUndefined();
+      expect(usage?.weeklyUsageValue).toBeUndefined();
+      expect(usage?.weeklyUsageLimit).toBeUndefined();
     });
   });
 

@@ -56,6 +56,14 @@ export interface ClaudeUsageSnapshot {
     /** Label for the weekly window (e.g., '7-day', 'monthly', 'calendar month') */
     weeklyWindowLabel: string;
   };
+  /** Raw session usage value (e.g., tokens used) */
+  sessionUsageValue?: number;
+  /** Session usage limit (total quota) */
+  sessionUsageLimit?: number;
+  /** Raw weekly usage value (e.g., tools used) */
+  weeklyUsageValue?: number;
+  /** Weekly usage limit (total quota) */
+  weeklyUsageLimit?: number;
 }
 
 /**

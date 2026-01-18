@@ -151,7 +151,14 @@ export function UsageIndicator() {
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
                 <span className="text-muted-foreground font-medium">{sessionLabel}</span>
-                <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
+                <div className="flex items-center gap-2">
+                  {usage.sessionUsageValue !== undefined && usage.sessionUsageLimit !== undefined && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {usage.sessionUsageValue.toLocaleString()}/{usage.sessionUsageLimit.toLocaleString()}
+                    </span>
+                  )}
+                  <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
+                </div>
               </div>
               {sessionResetTime && (
                 <div className="text-[10px] text-muted-foreground">
@@ -178,7 +185,14 @@ export function UsageIndicator() {
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
                 <span className="text-muted-foreground font-medium">{weeklyLabel}</span>
-                <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
+                <div className="flex items-center gap-2">
+                  {usage.weeklyUsageValue !== undefined && usage.weeklyUsageLimit !== undefined && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {usage.weeklyUsageValue.toLocaleString()}/{usage.weeklyUsageLimit.toLocaleString()}
+                    </span>
+                  )}
+                  <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
+                </div>
               </div>
               {weeklyResetTime && (
                 <div className="text-[10px] text-muted-foreground">
