@@ -47,6 +47,15 @@ class BMADRunner:
     6. Dev - Development/implementation
     7. Review - Code review
 
+    Complexity Levels (Story 6.8):
+        - QUICK: Skips PRD/Architecture phases for faster iteration
+          Phases: analyze → epics → stories → dev → review
+        - STANDARD: Full 7-phase pipeline (default)
+          Phases: analyze → prd → architecture → epics → stories → dev → review
+        - COMPLEX: Full pipeline with additional validation depth
+          Phases: analyze → prd → architecture → epics → stories → dev → review
+          (with deeper analysis and self-critique in each phase)
+
     Artifact Storage (Story 6.9):
         All artifacts are stored in task-scoped directories:
         `.auto-claude/specs/{task-id}/bmad/`
@@ -55,11 +64,65 @@ class BMADRunner:
         artifact collisions.
 
     Story Reference: Story 6.1 - Create BMAD Methodology Plugin Structure
+    Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
     Story Reference: Story 6.9 - Task-Scoped Output Directories
     """
 
     # BMAD output subdirectory name within spec_dir
     BMAD_OUTPUT_SUBDIR = "bmad"
+
+    # Phase configuration per complexity level (Story 6.8)
+    # Maps ComplexityLevel to list of phase IDs that should be executed
+    COMPLEXITY_PHASES: dict[ComplexityLevel, list[str]] = {
+        ComplexityLevel.QUICK: [
+            "analyze",
+            "epics",
+            "stories",
+            "dev",
+            "review",
+        ],
+        ComplexityLevel.STANDARD: [
+            "analyze",
+            "prd",
+            "architecture",
+            "epics",
+            "stories",
+            "dev",
+            "review",
+        ],
+        ComplexityLevel.COMPLEX: [
+            "analyze",
+            "prd",
+            "architecture",
+            "epics",
+            "stories",
+            "dev",
+            "review",
+        ],
+    }
+
+    # Checkpoints per complexity level (Story 6.8)
+    # Quick has fewer checkpoints for faster iteration
+    COMPLEXITY_CHECKPOINTS: dict[ComplexityLevel, list[str]] = {
+        ComplexityLevel.QUICK: [
+            "after_epics",
+            "after_review",
+        ],
+        ComplexityLevel.STANDARD: [
+            "after_prd",
+            "after_architecture",
+            "after_epics",
+            "after_story",
+            "after_review",
+        ],
+        ComplexityLevel.COMPLEX: [
+            "after_prd",
+            "after_architecture",
+            "after_epics",
+            "after_story",
+            "after_review",
+        ],
+    }
 
     def __init__(self) -> None:
         """Initialize BMADRunner instance."""
@@ -112,17 +175,32 @@ class BMADRunner:
         self._initialized = True
 
     def get_phases(self) -> list[Phase]:
-        """Return all phase definitions for the BMAD methodology.
+        """Return phase definitions for the BMAD methodology.
+
+        Returns phases based on the current complexity level:
+        - QUICK: analyze, epics, stories, dev, review (5 phases)
+        - STANDARD: analyze, prd, architecture, epics, stories, dev, review (7 phases)
+        - COMPLEX: Same as STANDARD with deeper analysis in each phase
 
         Returns:
-            List of Phase objects defining the 7-phase pipeline:
-            analyze, prd, architecture, epics, stories, dev, review
+            List of Phase objects enabled for the current complexity level
 
         Raises:
             RuntimeError: If runner has not been initialized
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
         """
         self._ensure_initialized()
-        return self._phases.copy()
+
+        # Filter phases based on complexity level (Story 6.8)
+        enabled_phase_ids = self.get_enabled_phases()
+        filtered_phases = [p for p in self._phases if p.id in enabled_phase_ids]
+
+        # Recompute order for filtered phases
+        for i, phase in enumerate(filtered_phases, start=1):
+            phase.order = i
+
+        return filtered_phases
 
     def execute_phase(
         self,
@@ -133,6 +211,9 @@ class BMADRunner:
 
         Delegates to the BMAD workflow integration for each phase.
         Emits ProgressEvents at phase start and end for frontend updates.
+
+        Phases not enabled for the current complexity level are automatically
+        skipped with SKIPPED status.
 
         Args:
             phase_id: ID of the phase to execute (analyze, prd, architecture,
@@ -145,11 +226,34 @@ class BMADRunner:
 
         Raises:
             RuntimeError: If runner has not been initialized
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
         """
         self._ensure_initialized()
 
         # Store callback for use during phase execution
         self._current_progress_callback = progress_callback
+
+        # Story 6.8: Check if phase is enabled for current complexity level
+        if not self.is_phase_enabled(phase_id):
+            complexity = self.get_complexity_level()
+            logger.info(
+                f"Skipping phase '{phase_id}' - not enabled for {complexity.value} complexity"
+            )
+            # Mark the phase as skipped in the internal list
+            phase = self._find_phase(phase_id)
+            if phase:
+                phase.status = PhaseStatus.SKIPPED
+
+            return PhaseResult(
+                success=True,
+                phase_id=phase_id,
+                message=f"Phase skipped for {complexity.value} complexity level",
+                metadata={
+                    "skipped": True,
+                    "complexity": complexity.value,
+                },
+            )
 
         # Find the phase
         phase = self._find_phase(phase_id)
@@ -875,26 +979,54 @@ class BMADRunner:
     def get_checkpoints(self) -> list[Checkpoint]:
         """Return checkpoint definitions for Semi-Auto mode.
 
+        Returns checkpoints based on the current complexity level:
+        - QUICK: after_epics, after_review (minimal checkpoints for speed)
+        - STANDARD/COMPLEX: All checkpoints (after_prd, after_architecture,
+          after_epics, after_story, after_review)
+
         Returns:
-            List of Checkpoint objects defining pause points for user review
+            List of Checkpoint objects enabled for the current complexity level
 
         Raises:
             RuntimeError: If runner has not been initialized
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
         """
         self._ensure_initialized()
-        return self._checkpoints.copy()
+
+        # Filter checkpoints based on complexity level (Story 6.8)
+        enabled_checkpoint_ids = self.get_enabled_checkpoints()
+        filtered_checkpoints = [
+            c for c in self._checkpoints if c.id in enabled_checkpoint_ids
+        ]
+
+        return filtered_checkpoints
 
     def get_artifacts(self) -> list[Artifact]:
         """Return artifact definitions produced by the BMAD methodology.
 
+        Returns artifacts based on the current complexity level:
+        - QUICK: Excludes PRD and Architecture artifacts
+        - STANDARD/COMPLEX: All artifacts included
+
         Returns:
-            List of Artifact objects defining methodology outputs
+            List of Artifact objects for enabled phases
 
         Raises:
             RuntimeError: If runner has not been initialized
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
         """
         self._ensure_initialized()
-        return self._artifacts.copy()
+
+        # Filter artifacts based on complexity level (Story 6.8)
+        # Only include artifacts for phases that are enabled
+        enabled_phases = self.get_enabled_phases()
+        filtered_artifacts = [
+            a for a in self._artifacts if a.phase_id in enabled_phases
+        ]
+
+        return filtered_artifacts
 
     # =========================================================================
     # Helper Methods
@@ -908,6 +1040,122 @@ class BMADRunner:
         """
         if not self._initialized:
             raise RuntimeError("BMADRunner not initialized. Call initialize() first.")
+
+    # =========================================================================
+    # Story 6.8: Complexity Level Support Methods
+    # =========================================================================
+
+    def get_complexity_level(self) -> ComplexityLevel:
+        """Get the current complexity level.
+
+        Returns the complexity level set during initialization. Defaults to
+        STANDARD if not explicitly set.
+
+        Returns:
+            ComplexityLevel enum value (QUICK, STANDARD, or COMPLEX)
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        return self._complexity or ComplexityLevel.STANDARD
+
+    def is_phase_enabled(self, phase_id: str) -> bool:
+        """Check if a phase is enabled for the current complexity level.
+
+        Args:
+            phase_id: ID of the phase to check (e.g., 'prd', 'architecture')
+
+        Returns:
+            True if the phase should be executed, False if it should be skipped
+
+        Example:
+            >>> runner.is_phase_enabled('prd')
+            True  # Standard/Complex
+            False # Quick
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        complexity = self.get_complexity_level()
+        enabled_phases = self.COMPLEXITY_PHASES.get(
+            complexity, self.COMPLEXITY_PHASES[ComplexityLevel.STANDARD]
+        )
+        return phase_id in enabled_phases
+
+    def get_enabled_phases(self) -> list[str]:
+        """Get the list of phase IDs enabled for the current complexity level.
+
+        Returns:
+            List of phase IDs that should be executed
+
+        Example:
+            >>> runner.get_enabled_phases()
+            ['analyze', 'epics', 'stories', 'dev', 'review']  # Quick
+            ['analyze', 'prd', 'architecture', 'epics', 'stories', 'dev', 'review']  # Standard/Complex
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        complexity = self.get_complexity_level()
+        return self.COMPLEXITY_PHASES.get(
+            complexity, self.COMPLEXITY_PHASES[ComplexityLevel.STANDARD]
+        ).copy()
+
+    def get_enabled_checkpoints(self) -> list[str]:
+        """Get the list of checkpoint IDs enabled for the current complexity level.
+
+        Quick complexity has fewer checkpoints for faster iteration.
+        Standard and Complex have all checkpoints enabled.
+
+        Returns:
+            List of checkpoint IDs that should be active
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        complexity = self.get_complexity_level()
+        return self.COMPLEXITY_CHECKPOINTS.get(
+            complexity, self.COMPLEXITY_CHECKPOINTS[ComplexityLevel.STANDARD]
+        ).copy()
+
+    def get_skipped_phases(self) -> list[str]:
+        """Get the list of phase IDs that are skipped for the current complexity level.
+
+        Useful for logging and reporting which phases are being skipped.
+
+        Returns:
+            List of phase IDs that will be skipped
+
+        Example:
+            >>> runner.get_skipped_phases()
+            ['prd', 'architecture']  # Quick
+            []  # Standard/Complex
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        all_phases = self.COMPLEXITY_PHASES[ComplexityLevel.STANDARD]
+        enabled_phases = self.get_enabled_phases()
+        return [p for p in all_phases if p not in enabled_phases]
+
+    @property
+    def is_quick_mode(self) -> bool:
+        """Check if running in Quick complexity mode.
+
+        Returns:
+            True if complexity level is QUICK
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        return self.get_complexity_level() == ComplexityLevel.QUICK
+
+    @property
+    def is_complex_mode(self) -> bool:
+        """Check if running in Complex complexity mode.
+
+        Complex mode enables deeper analysis and validation in each phase.
+
+        Returns:
+            True if complexity level is COMPLEX
+
+        Story Reference: Story 6.8 - Implement BMAD Complexity Level Support
+        """
+        return self.get_complexity_level() == ComplexityLevel.COMPLEX
 
     # =========================================================================
     # Story 6.9: Task-Scoped Output Directory Methods
