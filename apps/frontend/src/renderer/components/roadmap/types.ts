@@ -26,6 +26,7 @@ export interface FeatureCardProps {
 
 export interface FeatureDetailPanelProps {
   feature: RoadmapFeature;
+  features: RoadmapFeature[];
   onClose: () => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
   onGoToTask: (specId: string) => void;

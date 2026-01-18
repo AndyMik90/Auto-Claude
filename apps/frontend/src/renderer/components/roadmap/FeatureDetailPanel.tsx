@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Trash2,
   Link,
+  AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -27,6 +28,7 @@ import { useRoadmapStore } from '../../stores/roadmap-store';
 
 export function FeatureDetailPanel({
   feature,
+  features,
   onClose,
   onConvertToSpec,
   onGoToTask,
@@ -173,20 +175,34 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <Link className="h-4 w-4" />
-              Dependencies
+              Dependencies ({feature.dependencies.length})
             </h3>
             <div className="flex flex-wrap gap-1">
-              {feature.dependencies.map((dep) => (
-                <button
-                  key={dep}
-                  className="px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
-                  onClick={() => handleDependencyClick(dep)}
-                  title={`View dependency: ${dep}`}
-                >
-                  <span>{dep}</span>
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              ))}
+              {feature.dependencies.map((depId) => {
+                const depFeature = features.find(f => f.id === depId);
+                const isMissing = !depFeature;
+
+                return (
+                  <button
+                    key={depId}
+                    className={`
+                      px-2 py-1 rounded-md text-xs font-medium
+                      transition-all flex items-center gap-1
+                      ${isMissing
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 cursor-not-allowed'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer'
+                      }
+                    `}
+                    onClick={() => !isMissing && handleDependencyClick(depId)}
+                    disabled={isMissing}
+                    title={isMissing ? `Dependency '${depId}' not found in roadmap` : depFeature?.title || depId}
+                  >
+                    {isMissing && <AlertTriangle className="h-3 w-3" />}
+                    <span>{depFeature?.title || depId}</span>
+                    {!isMissing && <ChevronRight className="h-3 w-3" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
