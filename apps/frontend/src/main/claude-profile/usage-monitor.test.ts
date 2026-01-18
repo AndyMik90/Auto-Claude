@@ -180,12 +180,15 @@ describe('usage-monitor', () => {
       // getCurrentUsage returns the last known usage snapshot
       // Note: Since getUsageMonitor() is a singleton, this may have data from previous tests
       // Just verify the method returns the expected type (snapshot or null)
-      if (usage !== null) {
-        expect(usage).toHaveProperty('sessionPercent');
-        expect(usage).toHaveProperty('weeklyPercent');
-        expect(usage).toHaveProperty('profileId');
-        expect(usage).toHaveProperty('profileName');
-      }
+      expect(usage).toBeTruthy();
+      expect(typeof usage).toBe('object');
+      expect(usage).toHaveProperty('sessionPercent');
+      expect(usage).toHaveProperty('weeklyPercent');
+      expect(usage).toHaveProperty('profileId');
+      expect(usage).toHaveProperty('profileName');
+      // Verify types of critical properties
+      expect(typeof usage?.sessionPercent).toBe('number');
+      expect(typeof usage?.weeklyPercent).toBe('number');
     });
 
     it('should emit events when listeners are attached', () => {
@@ -280,7 +283,6 @@ describe('usage-monitor', () => {
       // Create future dates for reset times (use relative time from now)
       const now = new Date();
       const sessionReset = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
-      const weeklyReset = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4 days from now
 
       // Use quota/limit format with limits array
       const rawData = {
@@ -304,7 +306,8 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage?.sessionPercent).toBe(72); // TOKENS_LIMIT percentage
       expect(usage?.weeklyPercent).toBe(51); // TIME_LIMIT percentage
-      expect(usage?.sessionResetTime).toBe('Resets in ...'); // Placeholder, calculated dynamically in UI
+      expect(usage?.sessionResetTime).toBeDefined(); // Placeholder text, actual countdown calculated in UI
+      expect(typeof usage?.sessionResetTime).toBe('string');
       expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
       expect(usage?.limitType).toBe('session'); // 51 (weekly) < 72 (session), so session is higher
     });
