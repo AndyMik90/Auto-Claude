@@ -1034,7 +1034,7 @@ export class UsageMonitor extends EventEmitter {
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
           sessionWindowLabel: '5 Hours Quota',
-          weeklyWindowLabel: 'Total Monthly Tools Quota'
+          weeklyWindowLabel: 'Monthly Tools Quota'
         },
         // Extract raw usage values for display in tooltip
         sessionUsageValue: tokensLimit?.currentValue,
@@ -1162,7 +1162,7 @@ export class UsageMonitor extends EventEmitter {
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
           sessionWindowLabel: '5 Hours Quota',
-          weeklyWindowLabel: 'Total Monthly Tools Quota'
+          weeklyWindowLabel: 'Monthly Tools Quota'
         },
         // Extract raw usage values for display in tooltip
         sessionUsageValue: tokensLimit?.currentValue,
