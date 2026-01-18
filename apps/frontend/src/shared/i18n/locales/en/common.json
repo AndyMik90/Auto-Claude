@@ -428,7 +428,7 @@
     "apiEndpoint": "API Endpoint",
     "sessionQuota": "Session Quota",
     "notAvailable": "N/A",
-    "usageStatusAriaLabel": "Claude usage status",
+    "usageStatusAriaLabel": "Usage status",
     "sessionDefault": "Session",
     "weeklyDefault": "Weekly",
     "resetsInHours": "Resets in {{hours}}h {{minutes}}m",

@@ -299,8 +299,8 @@ export class UsageMonitor extends EventEmitter {
           const activeAPIProfile = profilesFile.profiles.find(
             (p) => p.id === profilesFile.activeProfileId
           );
-          if (activeAPIProfile) {
-            // API profile is active
+          if (activeAPIProfile?.apiKey) {
+            // API profile is active and has an apiKey
             profileId = activeAPIProfile.id;
             profileName = activeAPIProfile.name;
             isAPIProfile = true;
@@ -310,6 +310,14 @@ export class UsageMonitor extends EventEmitter {
                 profileId,
                 profileName,
                 baseUrl: activeAPIProfile.baseUrl
+              });
+            }
+          } else if (activeAPIProfile) {
+            // API profile exists but missing apiKey - fall back to OAuth
+            if (this.isDebug) {
+              console.warn('[UsageMonitor:TRACE] Active API profile missing apiKey, falling back to OAuth', {
+                profileId: activeAPIProfile.id,
+                profileName: activeAPIProfile.name
               });
             }
           } else {

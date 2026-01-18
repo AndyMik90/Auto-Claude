@@ -175,13 +175,21 @@ describe('usage-monitor', () => {
 
     it('should return current usage snapshot', () => {
       const monitor = getUsageMonitor();
+
+      // Seed the monitor with known test data for deterministic behavior
+      const seeded = {
+        sessionPercent: 10,
+        weeklyPercent: 20,
+        profileId: 'test-profile',
+        profileName: 'Test Profile',
+        fetchedAt: new Date()
+      };
+      monitor['currentUsage'] = seeded as any;
+
       const usage = monitor.getCurrentUsage();
 
-      // getCurrentUsage returns the last known usage snapshot
-      // Note: Since getUsageMonitor() is a singleton, this may have data from previous tests
-      // Just verify the method returns the expected type (snapshot or null)
-      expect(usage).toBeTruthy();
-      expect(typeof usage).toBe('object');
+      // getCurrentUsage returns the seeded usage snapshot
+      expect(usage).toBe(seeded);
       expect(usage).toHaveProperty('sessionPercent');
       expect(usage).toHaveProperty('weeklyPercent');
       expect(usage).toHaveProperty('profileId');

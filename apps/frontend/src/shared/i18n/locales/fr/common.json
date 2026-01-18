@@ -428,7 +428,7 @@
     "apiEndpoint": "Point de terminaison API",
     "sessionQuota": "Quota de session",
     "notAvailable": "N/A",
-    "usageStatusAriaLabel": "Statut d'utilisation Claude",
+    "usageStatusAriaLabel": "Statut d'utilisation",
     "sessionDefault": "Session",
     "weeklyDefault": "Hebdomadaire",
     "resetsInHours": "Réinitialisation dans {{hours}}h {{minutes}}m",
