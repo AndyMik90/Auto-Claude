@@ -32,8 +32,8 @@ class TestThinkingLevelValidation:
         assert get_thinking_budget("none") is None
 
     def test_ultrathink_max_budget(self):
-        """Test that 'ultrathink' returns maximum budget (Claude API's 64000 token limit)."""
-        assert get_thinking_budget("ultrathink") == 64000
+        """Test that 'ultrathink' returns maximum budget (63999 so max_tokens = 63999 + 1 = 64000 limit)."""
+        assert get_thinking_budget("ultrathink") == 63999
 
     def test_invalid_level_logs_warning(self, caplog):
         """Test that invalid thinking level logs a warning."""
@@ -89,4 +89,4 @@ class TestThinkingLevelValidation:
         assert get_thinking_budget("low") == 1024
         assert get_thinking_budget("medium") == 4096
         assert get_thinking_budget("high") == 16384
-        assert get_thinking_budget("ultrathink") == 64000
+        assert get_thinking_budget("ultrathink") == 63999

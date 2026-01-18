@@ -35,7 +35,9 @@ export default defineConfig({
         '@sentry/utils',
         '@opentelemetry/instrumentation',
         'debug',
-        'ms'
+        'ms',
+        // Minimatch for glob pattern matching in worktree handlers
+        'minimatch'
       ]
     })],
     build: {

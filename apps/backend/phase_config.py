@@ -25,7 +25,7 @@ THINKING_BUDGET_MAP: dict[str, int | None] = {
     "low": 1024,
     "medium": 4096,  # Moderate analysis
     "high": 16384,  # Deep thinking for QA review
-    "ultrathink": 64000,  # Maximum reasoning depth (within Claude API's 64000 token limit)
+    "ultrathink": 63999,  # Maximum reasoning depth (API requires max_tokens >= budget + 1, so 63999 + 1 = 64000 limit)
 }
 
 # Spec runner phase-specific thinking levels
