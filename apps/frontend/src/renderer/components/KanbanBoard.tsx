@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useViewState } from '../contexts/ViewStateContext';
 import {
@@ -486,6 +486,9 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   // Queue settings modal state
   const [showQueueSettings, setShowQueueSettings] = useState(false);
 
+  // Queue processing lock to prevent race conditions
+  const isProcessingQueueRef = useRef(false);
+
   // Selection state for bulk actions (Human Review column)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
@@ -807,56 +810,68 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
    * Promotes multiple tasks if needed (e.g., after bulk queue)
    */
   const processQueue = useCallback(async () => {
-    // Track tasks we've already attempted to promote (to avoid infinite retries)
-    const attemptedTaskIds = new Set<string>();
-    let consecutiveFailures = 0;
-    const MAX_CONSECUTIVE_FAILURES = 10; // Safety limit to prevent infinite loop
-
-    // Loop until capacity is full or queue is empty
-    while (true) {
-      // Get CURRENT state from store to ensure accuracy
-      const currentTasks = useTaskStore.getState().tasks;
-      const inProgressCount = currentTasks.filter((t) =>
-        t.status === 'in_progress' && !t.metadata?.archivedAt
-      ).length;
-      const queuedTasks = currentTasks.filter((t) =>
-        t.status === 'queue' && !t.metadata?.archivedAt && !attemptedTaskIds.has(t.id)
-      );
-
-      // Stop if no capacity, no queued tasks, or too many consecutive failures
-      if (inProgressCount >= maxParallelTasks || queuedTasks.length === 0) {
-        break;
-      }
-
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        console.warn(`[Queue] Stopping queue processing after ${MAX_CONSECUTIVE_FAILURES} consecutive failures`);
-        break;
-      }
-
-      // Get the oldest task in queue (FIFO ordering)
-      const nextTask = queuedTasks.sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateA - dateB; // Ascending order (oldest first)
-      })[0];
-
-      console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress (${inProgressCount + 1}/${maxParallelTasks})`);
-      const result = await persistTaskStatus(nextTask.id, 'in_progress');
-
-      if (result.success) {
-        // Reset consecutive failures on success
-        consecutiveFailures = 0;
-      } else {
-        // If promotion failed, log error, mark as attempted, and skip to next task
-        console.error(`[Queue] Failed to promote task ${nextTask.id} to In Progress:`, result.error);
-        attemptedTaskIds.add(nextTask.id);
-        consecutiveFailures++;
-      }
+    // Prevent concurrent executions to avoid race conditions
+    if (isProcessingQueueRef.current) {
+      console.log('[Queue] Already processing queue, skipping duplicate call');
+      return;
     }
 
-    // Log if we had failed tasks
-    if (attemptedTaskIds.size > 0) {
-      console.warn(`[Queue] Skipped ${attemptedTaskIds.size} task(s) that failed to promote`);
+    isProcessingQueueRef.current = true;
+
+    try {
+      // Track tasks we've already attempted to promote (to avoid infinite retries)
+      const attemptedTaskIds = new Set<string>();
+      let consecutiveFailures = 0;
+      const MAX_CONSECUTIVE_FAILURES = 10; // Safety limit to prevent infinite loop
+
+      // Loop until capacity is full or queue is empty
+      while (true) {
+        // Get CURRENT state from store to ensure accuracy
+        const currentTasks = useTaskStore.getState().tasks;
+        const inProgressCount = currentTasks.filter((t) =>
+          t.status === 'in_progress' && !t.metadata?.archivedAt
+        ).length;
+        const queuedTasks = currentTasks.filter((t) =>
+          t.status === 'queue' && !t.metadata?.archivedAt && !attemptedTaskIds.has(t.id)
+        );
+
+        // Stop if no capacity, no queued tasks, or too many consecutive failures
+        if (inProgressCount >= maxParallelTasks || queuedTasks.length === 0) {
+          break;
+        }
+
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.warn(`[Queue] Stopping queue processing after ${MAX_CONSECUTIVE_FAILURES} consecutive failures`);
+          break;
+        }
+
+        // Get the oldest task in queue (FIFO ordering)
+        const nextTask = queuedTasks.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateA - dateB; // Ascending order (oldest first)
+        })[0];
+
+        console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress (${inProgressCount + 1}/${maxParallelTasks})`);
+        const result = await persistTaskStatus(nextTask.id, 'in_progress');
+
+        if (result.success) {
+          // Reset consecutive failures on success
+          consecutiveFailures = 0;
+        } else {
+          // If promotion failed, log error, mark as attempted, and skip to next task
+          console.error(`[Queue] Failed to promote task ${nextTask.id} to In Progress:`, result.error);
+          attemptedTaskIds.add(nextTask.id);
+          consecutiveFailures++;
+        }
+      }
+
+      // Log if we had failed tasks
+      if (attemptedTaskIds.size > 0) {
+        console.warn(`[Queue] Skipped ${attemptedTaskIds.size} task(s) that failed to promote`);
+      }
+    } finally {
+      isProcessingQueueRef.current = false;
     }
   }, [maxParallelTasks]);
 
