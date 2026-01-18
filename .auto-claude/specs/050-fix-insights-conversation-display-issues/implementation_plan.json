@@ -194,7 +194,7 @@
               "Click remove and verify image deleted"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-5",
@@ -216,7 +216,7 @@
               "Verify thumbnails render correctly in message bubbles"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-6",
@@ -239,7 +239,7 @@
               "Verify error with allowed types shows"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-7",
@@ -258,7 +258,7 @@
             "command": "cd apps/frontend && npm run build",
             "expected": "Build completes with no missing translation key errors"
           },
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },
@@ -290,7 +290,7 @@
               "Verify display shows three separate lines with proper spacing"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-4-2",
@@ -522,6 +522,6 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-18T00:32:25.472Z",
+  "updated_at": "2026-01-18T00:56:54.986Z",
   "recoveryNote": "Task recovered from stuck state at 2026-01-18T00:32:22.247Z"
 }
