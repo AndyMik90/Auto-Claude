@@ -2879,12 +2879,12 @@ export function registerWorktreeHandlers(
         // Open a terminal and run the dev command
         // Use the user's preferred terminal (spawn is already imported at the top)
         if (isWindows()) {
-          // Windows: Open Windows Terminal or cmd with the command
-          // Use escaped path in double quotes
-          const proc = spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', `cd /d "${escapedPath}" && ${devCommand}`], {
+          // Windows: Open cmd with the command
+          // Note: 'start' requires an empty title ("") as first arg when the command contains quotes
+          // Also: shell: true mangles nested quotes, so we avoid it
+          const proc = spawn('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', `cd /d "${escapedPath}" && ${devCommand}`], {
             detached: true,
-            stdio: 'ignore',
-            shell: true
+            stdio: 'ignore'
           });
 
           // Handle spawn errors
