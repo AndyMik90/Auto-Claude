@@ -8,8 +8,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
-import { I18nextProvider } from 'react-i18next';
-import { initReactI18next } from react-i18next } from 'react-i18next';
 import { AuthStatusIndicator } from './AuthStatusIndicator';
 import { useSettingsStore } from '../stores/settings-store';
 import type { APIProfile } from '../../shared/types/profile';
@@ -19,72 +17,37 @@ vi.mock('../stores/settings-store', () => ({
   useSettingsStore: vi.fn()
 }));
 
-// Initialize i18next for tests
-import { initReactI18next } from react-i18next({
-  react: {
-    useSuspense: false
-  },
-  lng: 'en',
-  fallbackLng: 'en',
-  resources: {
-    en: {
-      translation: {
-        'common': {
-          'authentication': 'Authentication',
-          'apiProfile': 'API Profile',
-          'oauth': 'OAuth',
-          'provider': 'Provider',
-          'profile': 'Profile',
-          'id': 'ID',
-          'apiEndpoint': 'API Endpoint',
-          'notAvailable': 'N/A'
-        },
-        'usage': {
-          'dataUnavailable': 'Usage data unavailable',
-          'authentication': 'Authentication',
-          'authenticationAriaLabel': 'Authentication: {{provider}}',
-          'provider': 'Provider',
-          'providerAnthropic': 'Anthropic',
-          'providerZai': 'z.ai',
-          'providerZhipu': 'ZHIPU AI'
+// Mock i18n translation function
+vi.mock('react-i18next', () => ({
+  useTranslation: vi.fn(() => ({
+    t: (key: string, params?: Record<string, unknown>) => {
+      // For translation keys, return values for testing
+      const translations: Record<string, string> = {
+        'usage:authentication': 'Authentication',
+        'usage:oauth': 'OAuth',
+        'usage:apiProfile': 'API Profile',
+        'usage:provider': 'Provider',
+        'usage:providerAnthropic': 'Anthropic',
+        'usage:providerZai': 'z.ai',
+        'usage:providerZhipu': 'ZHIPU AI',
+        'usage:authenticationAriaLabel': 'Authentication: {{provider}}',
+        'usage:profile': 'Profile',
+        'usage:id': 'ID',
+        'usage:apiEndpoint': 'API Endpoint'
+      };
+      // Handle interpolation (e.g., "Authentication: {{provider}}")
+      if (params && Object.keys(params).length > 0) {
+        const translated = translations[key] || key;
+        if (translated.includes('{{provider}}')) {
+          return translated.replace('{{provider}}', String(params.provider));
         }
+        return translated;
       }
+      return translations[key] || key;
     }
-  }
-});
-
-// Wrap component with I18nextProvider for tests
-function renderWithI18next(ui: React.ReactElement) {
-  return render(<I18nextProvider i18n={{
-    resources: {
-      en: {
-        translation: {
-          'common': {
-            'authentication': 'Authentication',
-            'apiProfile': 'API Profile',
-            'oauth': 'OAuth',
-            'provider': 'Provider',
-            'profile': 'Profile',
-            'id': 'ID',
-            'apiEndpoint': 'API Endpoint',
-            'notAvailable': 'N/A'
-          },
-          'usage': {
-            'dataUnavailable': 'Usage data unavailable',
-            'authentication': 'Authentication',
-            'authenticationAriaLabel': 'Authentication: {{provider}}',
-            'provider': 'Provider',
-            'providerAnthropic': 'Anthropic',
-            'providerZai': 'z.ai',
-            'providerZhipu': 'ZHIPU AI'
-          }
-        }
-      }
-    }
-  }}>
-    {ui}
-  </I18nextProvider>);
-}
+  })),
+  Translation: vi.fn(() => ({ t: (key: string) => key }))
+}));
 
 /**
  * Creates a mock settings store with optional overrides

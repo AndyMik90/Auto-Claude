@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { Key, Lock } from 'lucide-react';
+import { AlertTriangle, Key, Lock } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
