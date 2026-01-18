@@ -20,7 +20,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder, History, ChevronDown, Loader2, TerminalSquare } from 'lucide-react';
+import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder, History, ChevronDown, Loader2, TerminalSquare, Settings } from 'lucide-react';
 import { SortableTerminalWrapper } from './SortableTerminalWrapper';
 import { Button } from './ui/button';
 import {
@@ -451,6 +451,17 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-app-settings', { detail: 'terminal-fonts' }));
+              }}
+            >
+              <Settings className="h-3 w-3" />
+              Settings
+            </Button>
             {terminals.some((t) => t.status === 'running' && !t.isClaudeMode) && (
               <Button
                 variant="outline"
