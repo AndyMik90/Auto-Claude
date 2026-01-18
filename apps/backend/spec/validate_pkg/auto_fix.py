@@ -10,7 +10,7 @@ import logging
 import re
 from pathlib import Path
 
-from core.file_utils import safe_open, write_json_atomic
+from core.file_utils import write_json_atomic
 from core.plan_normalization import normalize_subtask_aliases
 
 
