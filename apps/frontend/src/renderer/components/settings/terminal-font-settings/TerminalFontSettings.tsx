@@ -9,8 +9,7 @@ import { FontConfigPanel } from './FontConfigPanel';
 import { CursorConfigPanel } from './CursorConfigPanel';
 import { PerformanceConfigPanel } from './PerformanceConfigPanel';
 import { PresetsPanel } from './PresetsPanel';
-// TODO: Import other child components once created
-// import { LivePreviewTerminal } from './LivePreviewTerminal';
+import { LivePreviewTerminal } from './LivePreviewTerminal';
 
 /**
  * Terminal font settings main container component
@@ -221,15 +220,14 @@ export function TerminalFontSettings() {
       </SettingsSection>
 
       {/* Live Preview Terminal */}
-      {/* TODO: Uncomment once LivePreviewTerminal is implemented */}
-      {/* <SettingsSection
+      <SettingsSection
         title={t('terminalFonts.preview.title', { defaultValue: 'Live Preview' })}
         description={t('terminalFonts.preview.description', {
           defaultValue: 'Preview your terminal settings in real-time (updates within 300ms)',
         })}
       >
         <LivePreviewTerminal settings={settings} />
-      </SettingsSection> */}
+      </SettingsSection>
     </div>
   );
 }

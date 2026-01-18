@@ -7,7 +7,5 @@ export { TerminalFontSettings } from './TerminalFontSettings';
 export { FontConfigPanel } from './FontConfigPanel';
 export { CursorConfigPanel } from './CursorConfigPanel';
 export { PerformanceConfigPanel } from './PerformanceConfigPanel';
-
-// TODO: Export other components once implemented
-// export { PresetsPanel } from './PresetsPanel';
-// export { LivePreviewTerminal } from './LivePreviewTerminal';
+export { PresetsPanel } from './PresetsPanel';
+export { LivePreviewTerminal } from './LivePreviewTerminal';

@@ -276,8 +276,9 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
           {/* List of Custom Presets */}
           {customPresets.length > 0 && (
             <div className="space-y-2 pt-2">
-              {customPresets.map((preset) => (
-                <div
+              {customPresets.map((preset) => {
+                return (
+                  <div
                   key={preset.id}
                   className={cn(
                     'flex items-center justify-between p-3 rounded-lg border',
@@ -326,7 +327,8 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -343,6 +345,5 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
           )}
         </div>
       </div>
-    </div>
   );
 }
