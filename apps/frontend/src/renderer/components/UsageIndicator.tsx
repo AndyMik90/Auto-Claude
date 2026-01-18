@@ -18,7 +18,7 @@ import { formatTimeRemaining } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
-  const { t } = useTranslation(['common', 'usage']);
+  const { t } = useTranslation(['common']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -93,14 +93,14 @@ export function UsageIndicator() {
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground cursor-help">
               <Activity className="h-3.5 w-3.5" />
-              <span className="text-xs font-semibold">{t('usage:notAvailable')}</span>
+              <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs w-64">
             <div className="space-y-1">
-              <p className="font-medium">{t('usage:dataUnavailable')}</p>
+              <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
               <p className="text-muted-foreground text-[10px]">
-                {t('usage:dataUnavailableDescription')}
+                {t('common:usage.dataUnavailableDescription')}
               </p>
             </div>
           </TooltipContent>
@@ -119,8 +119,8 @@ export function UsageIndicator() {
     'text-green-500 bg-green-500/10 border-green-500/20';
 
   // Get window labels for display
-  const sessionLabel = usage.usageWindows?.sessionWindowLabel || t('usage:sessionDefault');
-  const weeklyLabel = usage.usageWindows?.weeklyWindowLabel || t('usage:weeklyDefault');
+  const sessionLabel = usage.usageWindows?.sessionWindowLabel || t('common:usage.sessionDefault');
+  const weeklyLabel = usage.usageWindows?.weeklyWindowLabel || t('common:usage.weeklyDefault');
 
   // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
@@ -135,7 +135,7 @@ export function UsageIndicator() {
         <TooltipTrigger asChild>
           <button
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColorClasses}`}
-            aria-label={t('usage:usageStatusAriaLabel')}
+            aria-label={t('common:usage.usageStatusAriaLabel')}
           >
             <Icon className="h-3.5 w-3.5" />
             <span className="text-xs font-semibold font-mono">
@@ -213,7 +213,7 @@ export function UsageIndicator() {
 
             {/* Active profile */}
             <div className="flex items-center justify-between gap-4 pt-1">
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('usage:activeAccount')}</span>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('common:usage.activeAccount')}</span>
               <span className="font-semibold text-primary">{usage.profileName}</span>
             </div>
           </div>

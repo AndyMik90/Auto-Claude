@@ -31,16 +31,16 @@ import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
  * Type-safe mapping from ApiProvider to translation keys
  */
 const PROVIDER_TRANSLATION_KEYS: Readonly<Record<ApiProvider, string>> = {
-  anthropic: 'usage:providerAnthropic',
-  zai: 'usage:providerZai',
-  zhipu: 'usage:providerZhipu',
-  unknown: 'usage:providerUnknown'
+  anthropic: 'common:usage.providerAnthropic',
+  zai: 'common:usage.providerZai',
+  zhipu: 'common:usage.providerZhipu',
+  unknown: 'common:usage.providerUnknown'
 } as const;
 
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
-  const { t } = useTranslation(['common', 'usage']);
+  const { t } = useTranslation(['common']);
 
   // Track usage data for warning badge
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
@@ -135,7 +135,7 @@ export function AuthStatusIndicator() {
     const translationKey = PROVIDER_TRANSLATION_KEYS[normalizedProvider];
 
     // Try to get translation, fallback to getProviderLabel if key doesn't exist or provider unknown
-    if (translationKey && translationKey !== 'usage:providerUnknown') {
+    if (translationKey && translationKey !== 'common:usage.providerUnknown') {
       const translated = t(translationKey);
       // If translation returns the key itself (not found), use getProviderLabel fallback
       if (translated !== translationKey) {
@@ -164,12 +164,12 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">{t('usage:usageAlert')}</span>
+                  <span className="text-muted-foreground font-medium">{t('common:usage.usageAlert')}</span>
                   <span className="font-semibold text-red-500">{Math.round(warningBadgePercent)}%</span>
                 </div>
                 <div className="h-px bg-border" />
                 <div className="text-[10px] text-muted-foreground">
-                  {t('usage:accountExceedsThreshold')}
+                  {t('common:usage.accountExceedsThreshold')}
                 </div>
               </div>
             </TooltipContent>
@@ -184,7 +184,7 @@ export function AuthStatusIndicator() {
             <button
               type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
-              aria-label={t('usage:authenticationAriaLabel', { provider: getLocalizedProviderLabel(authStatus.provider) })}
+              aria-label={t('common:usage.authenticationAriaLabel', { provider: getLocalizedProviderLabel(authStatus.provider) })}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">
@@ -195,11 +195,11 @@ export function AuthStatusIndicator() {
           <TooltipContent side="bottom" className="text-xs max-w-xs">
             <div className="space-y-1">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">{t('usage:authentication')}</span>
-                <span className="font-semibold">{isOAuth ? t('usage:oauth') : t('usage:apiProfile')}</span>
+                <span className="text-muted-foreground font-medium">{t('common:usage.authentication')}</span>
+                <span className="font-semibold">{isOAuth ? t('common:usage.oauth') : t('common:usage.apiProfile')}</span>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">{t('usage:provider')}</span>
+                <span className="text-muted-foreground font-medium">{t('common:usage.provider')}</span>
                 <span className="font-semibold">{getLocalizedProviderLabel(authStatus.provider)}</span>
               </div>
               {!isOAuth && (
@@ -207,16 +207,16 @@ export function AuthStatusIndicator() {
                   <div className="h-px bg-border" />
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">{t('usage:profile')}</span>
+                      <span className="text-muted-foreground text-[10px]">{t('common:usage.profile')}</span>
                       <span className="font-medium text-[10px]">{authStatus.name}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">{t('usage:id')}</span>
+                      <span className="text-muted-foreground text-[10px]">{t('common:usage.id')}</span>
                       <span className="font-mono text-[10px] text-muted-foreground">{truncateId(authStatus.id)}</span>
                     </div>
                     {authStatus.baseUrl && (
                       <div className="pt-1">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">{t('usage:apiEndpoint')}</div>
+                        <div className="text-[10px] text-muted-foreground mb-0.5">{t('common:usage.apiEndpoint')}</div>
                         <div className="text-[10px] font-mono text-foreground break-all">{authStatus.baseUrl}</div>
                       </div>
                     )}
@@ -240,7 +240,7 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">{usage.usageWindows?.sessionWindowLabel || t('usage:sessionQuota')}</span>
+                  <span className="text-muted-foreground font-medium">{usage.usageWindows?.sessionWindowLabel || t('common:usage.sessionQuota')}</span>
                   <span className="font-semibold text-red-500">{Math.round(usage.sessionPercent)}%</span>
                 </div>
                 {sessionResetTime && (

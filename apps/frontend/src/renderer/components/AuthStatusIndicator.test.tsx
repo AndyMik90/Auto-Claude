@@ -23,17 +23,17 @@ vi.mock('react-i18next', () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       // For translation keys, return values for testing
       const translations: Record<string, string> = {
-        'usage:authentication': 'Authentication',
-        'usage:oauth': 'OAuth',
-        'usage:apiProfile': 'API Profile',
-        'usage:provider': 'Provider',
-        'usage:providerAnthropic': 'Anthropic',
-        'usage:providerZai': 'z.ai',
-        'usage:providerZhipu': 'ZHIPU AI',
-        'usage:authenticationAriaLabel': 'Authentication: {{provider}}',
-        'usage:profile': 'Profile',
-        'usage:id': 'ID',
-        'usage:apiEndpoint': 'API Endpoint'
+        'common:usage.authentication': 'Authentication',
+        'common:usage.oauth': 'OAuth',
+        'common:usage.apiProfile': 'API Profile',
+        'common:usage.provider': 'Provider',
+        'common:usage.providerAnthropic': 'Anthropic',
+        'common:usage.providerZai': 'z.ai',
+        'common:usage.providerZhipu': 'ZHIPU AI',
+        'common:usage.authenticationAriaLabel': 'Authentication: {{provider}}',
+        'common:usage.profile': 'Profile',
+        'common:usage.id': 'ID',
+        'common:usage.apiEndpoint': 'API Endpoint'
       };
       // Handle interpolation (e.g., "Authentication: {{provider}}")
       if (params && Object.keys(params).length > 0) {
