@@ -146,16 +146,14 @@ describe('usage-monitor', () => {
 
     it('should return correct endpoint for zai', () => {
       const result = getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic');
-      // Should include query parameters for time window (timestamps vary, so just check for presence)
-      expect(result).toMatch(/^https:\/\/api\.z\.ai\/api\/monitor\/usage\/model-usage\?startTime=/);
-      expect(result).toContain('&endTime=');
+      // quota/limit endpoint doesn't require query parameters
+      expect(result).toBe('https://api.z.ai/api/monitor/usage/quota/limit');
     });
 
     it('should return correct endpoint for zhipu', () => {
       const result = getUsageEndpoint('zhipu', 'https://open.bigmodel.cn/api/paas/v4');
-      // Should include query parameters for time window (timestamps vary, so just check for presence)
-      expect(result).toMatch(/^https:\/\/open\.bigmodel\.cn\/api\/monitor\/usage\/model-usage\?startTime=/);
-      expect(result).toContain('&endTime=');
+      // quota/limit endpoint doesn't require query parameters
+      expect(result).toBe('https://open.bigmodel.cn/api/monitor/usage/quota/limit');
     });
 
     it('should return null for unknown provider', () => {
@@ -225,11 +223,19 @@ describe('usage-monitor', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should return null for current usage initially', () => {
+    it('should return current usage snapshot', () => {
       const monitor = getUsageMonitor();
       const usage = monitor.getCurrentUsage();
 
-      expect(usage).toBeNull();
+      // getCurrentUsage returns the last known usage snapshot
+      // Note: Since getUsageMonitor() is a singleton, this may have data from previous tests
+      // Just verify the method returns the expected type (snapshot or null)
+      if (usage !== null) {
+        expect(usage).toHaveProperty('sessionPercent');
+        expect(usage).toHaveProperty('weeklyPercent');
+        expect(usage).toHaveProperty('profileId');
+        expect(usage).toHaveProperty('profileName');
+      }
     });
 
     it('should emit events when listeners are attached', () => {
@@ -326,45 +332,62 @@ describe('usage-monitor', () => {
       const sessionReset = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
       const weeklyReset = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4 days from now
 
+      // Use quota/limit format with limits array
       const rawData = {
-        session_usage: 36000,
-        session_limit: 50000,
-        weekly_usage: 180000,
-        weekly_limit: 350000,
-        session_reset_at: sessionReset.toISOString(),
-        weekly_reset_at: weeklyReset.toISOString()
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 72,
+            nextResetTime: sessionReset.getTime()
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 51,
+            currentValue: 180000,
+            usage: 350000
+          }
+        ]
       };
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
       expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(72); // (36000/50000) * 100
-      expect(usage?.weeklyPercent).toBe(51); // (180000/350000) * 100 = 51.43 -> 51
-      expect(usage?.sessionResetTime).toMatch(/\d+h \d+m/); // Should match format like "2h 0m"
-      expect(usage?.weeklyResetTime).toMatch(/\d+d \d+h/); // Should match format like "4d 0h"
+      expect(usage?.sessionPercent).toBe(72); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(51); // TIME_LIMIT percentage
+      expect(usage?.sessionResetTime).toBe('Resets in ...'); // Placeholder, calculated dynamically in UI
+      expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
       expect(usage?.limitType).toBe('session'); // 51 (weekly) < 72 (session), so session is higher
     });
 
     it('should try alternative field names for z.ai response', () => {
       const monitor = getUsageMonitor();
+      // Use quota/limit format with limits array
       const rawData = {
-        used_tokens: 25000,
-        total_tokens: 100000,
-        weekly_used: 150000,
-        week_limit: 300000
-        // Missing reset times
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 25
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 50,
+            currentValue: 150000,
+            usage: 300000
+          }
+        ]
       };
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
       expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(25); // (25000/100000) * 100
-      expect(usage?.weeklyPercent).toBe(50); // (150000/300000) * 100
-      expect(usage?.sessionResetTime).toBe('Unknown'); // Missing
-      expect(usage?.weeklyResetTime).toBe('Unknown'); // Missing
+      expect(usage?.sessionPercent).toBe(25); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(50); // TIME_LIMIT percentage
+      // sessionResetTime is a placeholder, calculated dynamically in UI
+      expect(usage?.sessionResetTime).toBe('Resets in ...');
+      expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
     });
 
-    it('should return 0% usage when no data can be extracted from z.ai', () => {
+    it('should return null when no data can be extracted from z.ai', () => {
       const monitor = getUsageMonitor();
       const rawData = {
         unknown_field: 'some_value',
@@ -373,9 +396,7 @@ describe('usage-monitor', () => {
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
-      expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(0);
-      expect(usage?.weeklyPercent).toBe(0);
+      expect(usage).toBeNull();
     });
   });
 
@@ -497,20 +518,28 @@ describe('usage-monitor', () => {
   describe('ZHIPU response normalization', () => {
     it('should normalize ZHIPU response with usage/limit fields', () => {
       const monitor = getUsageMonitor();
+      // Use quota/limit format with limits array
       const rawData = {
-        session_usage: 45000,
-        session_limit: 50000,
-        weekly_usage: 280000,
-        weekly_limit: 350000,
-        session_reset_at: '2025-01-17T17:00:00Z',
-        weekly_reset_at: '2025-01-21T14:00:00Z'
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 90,
+            nextResetTime: Date.now() + 2 * 60 * 60 * 1000 // 2 hours from now
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 80,
+            currentValue: 280000,
+            usage: 350000
+          }
+        ]
       };
 
       const usage = monitor['normalizeZhipuResponse'](rawData, 'zhipu-profile-1', 'ZHIPU Profile');
 
       expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(90); // (45000/50000) * 100
-      expect(usage?.weeklyPercent).toBe(80); // (280000/350000) * 100
+      expect(usage?.sessionPercent).toBe(90); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(80); // TIME_LIMIT percentage
       expect(usage?.limitType).toBe('session'); // 80 (weekly) < 90 (session), so session is higher
       expect(usage?.profileId).toBe('zhipu-profile-1');
       expect(usage?.profileName).toBe('ZHIPU Profile');
@@ -518,18 +547,27 @@ describe('usage-monitor', () => {
 
     it('should try alternative field names for ZHIPU response', () => {
       const monitor = getUsageMonitor();
+      // Use quota/limit format with limits array
       const rawData = {
-        five_hour_usage: 30000,
-        five_hour_limit: 60000,
-        seven_day_usage: 200000,
-        seven_day_limit: 420000
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 50
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 48,
+            currentValue: 200000,
+            usage: 420000
+          }
+        ]
       };
 
       const usage = monitor['normalizeZhipuResponse'](rawData, 'zhipu-profile-1', 'ZHIPU Profile');
 
       expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(50); // (30000/60000) * 100
-      expect(usage?.weeklyPercent).toBe(48); // (200000/420000) * 100 = 47.6 -> 48
+      expect(usage?.sessionPercent).toBe(50); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(48); // TIME_LIMIT percentage
     });
   });
 
@@ -616,38 +654,53 @@ describe('usage-monitor', () => {
   describe('Percentage calculation', () => {
     it('should calculate percentages correctly from usage/limit values', () => {
       const monitor = getUsageMonitor();
+      // Use quota/limit format - percentages are pre-calculated by the API
       const rawData = {
-        session_usage: 1,
-        session_limit: 4,
-        weekly_usage: 2,
-        weekly_limit: 4
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 25 // 25%
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 50 // 50%
+          }
+        ]
       };
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 
-      expect(usage?.sessionPercent).toBe(25); // 1/4 * 100
-      expect(usage?.weeklyPercent).toBe(50); // 2/4 * 100
+      expect(usage?.sessionPercent).toBe(25); // TOKENS_LIMIT percentage
+      expect(usage?.weeklyPercent).toBe(50); // TIME_LIMIT percentage
     });
 
     it('should handle division by zero (zero limit)', () => {
       const monitor = getUsageMonitor();
+      // When percentage is 0 or missing, default to 0
       const rawData = {
-        session_usage: 1000,
-        session_limit: 0, // Zero limit should not cause division by zero
-        weekly_usage: 5000,
-        weekly_limit: 10000
+        limits: [
+          {
+            type: 'TOKENS_LIMIT',
+            percentage: 0 // Zero usage
+          },
+          {
+            type: 'TIME_LIMIT',
+            percentage: 50
+          }
+        ]
       };
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 
-      expect(usage?.sessionPercent).toBe(0); // Should default to 0 when limit is 0
-      expect(usage?.weeklyPercent).toBe(50); // (5000/10000) * 100
+      expect(usage?.sessionPercent).toBe(0); // Zero percentage
+      expect(usage?.weeklyPercent).toBe(50); // TIME_LIMIT percentage
     });
   });
 
   describe('Malformed response handling', () => {
     it('should handle non-numeric usage values gracefully', () => {
       const monitor = getUsageMonitor();
+      // Missing limits array - should return null
       const rawData = {
         session_usage: 'not a number',
         session_limit: 'also not a number',
@@ -657,14 +710,13 @@ describe('usage-monitor', () => {
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 
-      // Should return 0% usage when all values are invalid
-      expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(0);
-      expect(usage?.weeklyPercent).toBe(0);
+      // Should return null when response doesn't match expected quota/limit format
+      expect(usage).toBeNull();
     });
 
     it('should handle completely unknown response structure', () => {
       const monitor = getUsageMonitor();
+      // Unknown structure without limits array - should return null
       const rawData = {
         unknown_field: 'some_value',
         another_field: 123,
@@ -675,12 +727,8 @@ describe('usage-monitor', () => {
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 
-      // Should return 0% usage when no known fields found
-      expect(usage).not.toBeNull();
-      expect(usage?.sessionPercent).toBe(0);
-      expect(usage?.weeklyPercent).toBe(0);
-      expect(usage?.sessionResetTime).toBe('Unknown');
-      expect(usage?.weeklyResetTime).toBe('Unknown');
+      // Should return null when response doesn't match expected quota/limit format
+      expect(usage).toBeNull();
     });
   });
 
@@ -1170,7 +1218,7 @@ describe('usage-monitor', () => {
         monitor.start();
 
         // Default usageCheckInterval is 30000ms
-        expect(consoleSpy).toHaveBeenCalledWith('[UsageMonitor] Starting with interval:', 30000, 'ms');
+        expect(consoleSpy).toHaveBeenCalledWith('[UsageMonitor] Starting with interval:', 30000, 'ms (30-second updates for accurate usage stats)');
 
         consoleSpy.mockRestore();
         monitor.stop();

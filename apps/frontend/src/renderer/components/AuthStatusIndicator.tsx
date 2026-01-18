@@ -21,6 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
 import { detectProvider, getProviderLabel, getProviderBadgeColor } from '../../shared/utils/provider-detection';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
@@ -28,6 +29,7 @@ import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
+  const { t } = useTranslation(['common']);
 
   // Track usage data for warning badge
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
@@ -151,12 +153,12 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">Usage Alert</span>
+                  <span className="text-muted-foreground font-medium">{t('usage:usageAlert')}</span>
                   <span className="font-semibold text-red-500">{Math.round(warningBadgePercent)}%</span>
                 </div>
                 <div className="h-px bg-border" />
                 <div className="text-[10px] text-muted-foreground">
-                  Account usage exceeds 90% threshold
+                  {t('usage:accountExceedsThreshold')}
                 </div>
               </div>
             </TooltipContent>
@@ -182,11 +184,11 @@ export function AuthStatusIndicator() {
           <TooltipContent side="bottom" className="text-xs max-w-xs">
             <div className="space-y-1">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">Authentication</span>
-                <span className="font-semibold">{isOAuth ? 'OAuth' : 'API Profile'}</span>
+                <span className="text-muted-foreground font-medium">{t('usage:authentication')}</span>
+                <span className="font-semibold">{isOAuth ? t('usage:oauth') : t('usage:apiProfile')}</span>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">Provider</span>
+                <span className="text-muted-foreground font-medium">{t('usage:provider')}</span>
                 <span className="font-semibold">{authStatus.providerLabel}</span>
               </div>
               {!isOAuth && (
@@ -194,16 +196,16 @@ export function AuthStatusIndicator() {
                   <div className="h-px bg-border" />
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">Profile</span>
+                      <span className="text-muted-foreground text-[10px]">{t('usage:profile')}</span>
                       <span className="font-medium text-[10px]">{authStatus.name}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">ID</span>
+                      <span className="text-muted-foreground text-[10px]">{t('usage:id')}</span>
                       <span className="font-mono text-[10px] text-muted-foreground">{truncateId(authStatus.id)}</span>
                     </div>
                     {authStatus.baseUrl && (
                       <div className="pt-1">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">API Endpoint</div>
+                        <div className="text-[10px] text-muted-foreground mb-0.5">{t('usage:apiEndpoint')}</div>
                         <div className="text-[10px] font-mono text-foreground break-all">{authStatus.baseUrl}</div>
                       </div>
                     )}
@@ -227,7 +229,7 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">5 Hours Quota</span>
+                  <span className="text-muted-foreground font-medium">{usage.usageWindows?.sessionWindowLabel || t('usage:sessionQuota')}</span>
                   <span className="font-semibold text-red-500">{Math.round(usage.sessionPercent)}%</span>
                 </div>
                 {sessionResetTime && (

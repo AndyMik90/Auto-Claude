@@ -89,6 +89,11 @@ const testProfiles: APIProfile[] = [
 describe('AuthStatusIndicator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock window.electronAPI usage functions
+    (window as any).electronAPI = {
+      onUsageUpdated: vi.fn(() => vi.fn()), // Returns unsubscribe function
+      requestUsageUpdate: vi.fn().mockResolvedValue({ success: false, data: null })
+    };
   });
 
   describe('when using OAuth (no active profile)', () => {

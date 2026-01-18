@@ -389,5 +389,20 @@
     "loadingMore": "Chargement...",
     "scrollForMore": "Défiler pour plus",
     "allLoaded": "Toutes les issues chargées"
+  },
+  "usage": {
+    "dataUnavailable": "Données d'utilisation non disponibles",
+    "dataUnavailableDescription": "Le point de terminaison de surveillance d'utilisation pour ce fournisseur n'est pas disponible ou n'est pas pris en charge.",
+    "activeAccount": "Compte actif",
+    "usageAlert": "Alerte d'utilisation",
+    "accountExceedsThreshold": "L'utilisation du compte dépasse le seuil de 90 %",
+    "authentication": "Authentification",
+    "apiProfile": "Profil API",
+    "oauth": "OAuth",
+    "provider": "Fournisseur",
+    "profile": "Profil",
+    "id": "ID",
+    "apiEndpoint": "Point de terminaison API",
+    "sessionQuota": "Quota de session"
   }
 }

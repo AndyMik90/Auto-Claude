@@ -13,9 +13,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { useTranslation } from 'react-i18next';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
+  const { t } = useTranslation(['common']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -114,9 +116,9 @@ export function UsageIndicator() {
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs w-64">
             <div className="space-y-1">
-              <p className="font-medium">Usage data unavailable</p>
+              <p className="font-medium">{t('usage:dataUnavailable')}</p>
               <p className="text-muted-foreground text-[10px]">
-                The usage monitoring endpoint for this provider is not available or not supported.
+                {t('usage:dataUnavailableDescription')}
               </p>
             </div>
           </TooltipContent>
@@ -229,7 +231,7 @@ export function UsageIndicator() {
 
             {/* Active profile */}
             <div className="flex items-center justify-between gap-4 pt-1">
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Active Account</span>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('usage:activeAccount')}</span>
               <span className="font-semibold text-primary">{usage.profileName}</span>
             </div>
           </div>
