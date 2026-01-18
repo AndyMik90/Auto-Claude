@@ -296,7 +296,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize, onDimensionsReady, fontSettings]);
+  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]); // Don't include fontSettings - subscription handles updates
 
   // Subscribe to font settings changes and update terminal reactively
   useEffect(() => {
@@ -304,52 +304,40 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     if (!xterm) return;
 
     // Update terminal options when font settings change
-    const updateTerminalOptions = () => {
-      xterm.options.cursorBlink = fontSettings.cursorBlink;
-      xterm.options.cursorStyle = fontSettings.cursorStyle;
-      xterm.options.fontSize = fontSettings.fontSize;
-      xterm.options.fontFamily = fontSettings.fontFamily.join(', ');
-      xterm.options.lineHeight = fontSettings.lineHeight;
-      xterm.options.letterSpacing = fontSettings.letterSpacing;
+    const updateTerminalOptions = (settings: typeof fontSettings) => {
+      xterm.options.cursorBlink = settings.cursorBlink;
+      xterm.options.cursorStyle = settings.cursorStyle;
+      xterm.options.fontSize = settings.fontSize;
+      xterm.options.fontFamily = settings.fontFamily.join(', ');
+      xterm.options.lineHeight = settings.lineHeight;
+      xterm.options.letterSpacing = settings.letterSpacing;
       xterm.options.theme = {
         ...xterm.options.theme,
-        cursorAccent: fontSettings.cursorAccentColor,
+        cursorAccent: settings.cursorAccentColor,
       };
-      xterm.options.scrollback = fontSettings.scrollback;
+      xterm.options.scrollback = settings.scrollback;
 
       // Refresh terminal to apply visual changes
       xterm.refresh(0, xterm.rows - 1);
     };
 
-    // Apply immediately on mount
-    updateTerminalOptions();
+    // Apply current settings on mount
+    updateTerminalOptions(fontSettings);
 
-    // Subscribe to store changes
+    // Subscribe to store changes - this effect runs once per terminal instance
+    // and the subscription handles all future updates without re-creating the effect
     const unsubscribe = useTerminalFontSettingsStore.subscribe(
       () => {
         // Get latest settings from store
         const latestSettings = useTerminalFontSettingsStore.getState();
 
-        // Update terminal options
-        xterm.options.cursorBlink = latestSettings.cursorBlink;
-        xterm.options.cursorStyle = latestSettings.cursorStyle;
-        xterm.options.fontSize = latestSettings.fontSize;
-        xterm.options.fontFamily = latestSettings.fontFamily.join(', ');
-        xterm.options.lineHeight = latestSettings.lineHeight;
-        xterm.options.letterSpacing = latestSettings.letterSpacing;
-        xterm.options.theme = {
-          ...xterm.options.theme,
-          cursorAccent: latestSettings.cursorAccentColor,
-        };
-        xterm.options.scrollback = latestSettings.scrollback;
-
-        // Refresh terminal to apply visual changes
-        xterm.refresh(0, xterm.rows - 1);
+        // Update terminal options with latest settings
+        updateTerminalOptions(latestSettings);
       }
     );
 
     return unsubscribe;
-  }, [fontSettings]);
+  }, []); // Empty dependency array - subscription handles all updates
 
   // Register xterm write callback with terminal-store for global output listener
   // This allows the global listener to write directly to xterm when terminal is visible
