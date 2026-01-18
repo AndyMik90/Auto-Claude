@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { existsSync, readdirSync } from 'fs';
 import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
+import { sortNvmVersionDirs } from '../cli-tool-manager';
 
 /**
  * Resolve Claude CLI executable path
@@ -208,23 +209,13 @@ export function findNodeJsDirectories(): string[] {
     try {
       // Find all version directories (e.g., v20.0.0, v18.17.1)
       const entries = readdirSync(nvmPath, { withFileTypes: true });
-      const versionDirs = entries
-        .filter((entry) => entry.isDirectory() && /^v\d+\.\d+\.\d+$/.test(entry.name))
-        .sort((a, b) => {
-          // Sort by version descending (newest first)
-          const vA = a.name.slice(1).split('.').map(Number);
-          const vB = b.name.slice(1).split('.').map(Number);
-          for (let i = 0; i < 3; i++) {
-            const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
-            if (diff !== 0) return diff;
-          }
-          return 0;
-        })
-        .map((entry) => joinPaths(nvmPath, entry.name));
+      const versionNames = sortNvmVersionDirs(entries);
+      const versionDirs = versionNames.map((name) => joinPaths(nvmPath, name));
 
       candidates.push(...versionDirs);
-    } catch {
-      // Ignore errors reading NVM directory
+    } catch (error) {
+      // Log error for debugging but don't fail - Node.js detection is non-critical
+      console.warn('[findNodeJsDirectories] Failed to read NVM directory:', error);
     }
   }
 
