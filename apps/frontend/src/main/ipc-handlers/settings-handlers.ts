@@ -27,8 +27,73 @@ const settingsPath = getSettingsPath();
 /**
  * Auto-detect the auto-claude source path relative to the app location.
  * Works across platforms (macOS, Windows, Linux) in both dev and production modes.
+ *
+ * Priority order:
+ * 1. AUTO_CLAUDE_BACKEND_PATH environment variable (manual override)
+ * 2. Local apps/backend in worktree (if running from worktree)
+ * 3. Standard auto-detection logic (production/dev paths)
  */
 const detectAutoBuildSourcePath = (): string | null => {
+  // Enable debug logging with DEBUG=1
+  const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
+
+  if (debug) {
+    console.warn('[detectAutoBuildSourcePath] Platform:', process.platform);
+    console.warn('[detectAutoBuildSourcePath] Is dev:', is.dev);
+    console.warn('[detectAutoBuildSourcePath] __dirname:', __dirname);
+    console.warn('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
+    console.warn('[detectAutoBuildSourcePath] process.cwd():', process.cwd());
+  }
+
+  // PRIORITY 1: Check environment variable override
+  const envBackendPath = process.env.AUTO_CLAUDE_BACKEND_PATH;
+  if (envBackendPath) {
+    const markerPath = path.join(envBackendPath, 'runners', 'spec_runner.py');
+    const exists = existsSync(envBackendPath) && existsSync(markerPath);
+
+    if (debug) {
+      console.warn(`[detectAutoBuildSourcePath] ENV override path: ${envBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+    }
+
+    if (exists) {
+      console.warn(`[detectAutoBuildSourcePath] Using AUTO_CLAUDE_BACKEND_PATH: ${envBackendPath}`);
+      return envBackendPath;
+    } else {
+      console.warn(`[detectAutoBuildSourcePath] AUTO_CLAUDE_BACKEND_PATH set but invalid: ${envBackendPath}`);
+    }
+  }
+
+  // PRIORITY 2: Check if running in worktree and use local backend
+  const cwd = process.cwd();
+  const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
+
+  if (worktreePattern.test(cwd)) {
+    // We're in a worktree - extract worktree root and check for local backend
+    // Pattern: .../worktrees/tasks/XXX-name/...
+    // We want to find the worktree root (XXX-name directory)
+    const match = cwd.match(/(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/);
+
+    if (match) {
+      const worktreeRoot = match[1];
+      const localBackendPath = path.join(worktreeRoot, 'apps', 'backend');
+      const markerPath = path.join(localBackendPath, 'runners', 'spec_runner.py');
+      const exists = existsSync(localBackendPath) && existsSync(markerPath);
+
+      if (debug) {
+        console.warn(`[detectAutoBuildSourcePath] Detected worktree: ${worktreeRoot}`);
+        console.warn(`[detectAutoBuildSourcePath] Local backend path: ${localBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+      }
+
+      if (exists) {
+        console.warn(`[detectAutoBuildSourcePath] Using worktree local backend: ${localBackendPath}`);
+        return localBackendPath;
+      } else {
+        console.warn(`[detectAutoBuildSourcePath] Worktree detected but no local backend found, falling back to standard detection`);
+      }
+    }
+  }
+
+  // PRIORITY 3: Standard auto-detection logic
   const possiblePaths: string[] = [];
 
   // Development mode paths
@@ -57,16 +122,8 @@ const detectAutoBuildSourcePath = (): string | null => {
   // Add process.cwd() as last resort on all platforms
   possiblePaths.push(path.resolve(process.cwd(), 'apps', 'backend'));
 
-  // Enable debug logging with DEBUG=1
-  const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
-
   if (debug) {
-    console.warn('[detectAutoBuildSourcePath] Platform:', process.platform);
-    console.warn('[detectAutoBuildSourcePath] Is dev:', is.dev);
-    console.warn('[detectAutoBuildSourcePath] __dirname:', __dirname);
-    console.warn('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
-    console.warn('[detectAutoBuildSourcePath] process.cwd():', process.cwd());
-    console.warn('[detectAutoBuildSourcePath] Checking paths:', possiblePaths);
+    console.warn('[detectAutoBuildSourcePath] Checking standard paths:', possiblePaths);
   }
 
   for (const p of possiblePaths) {
