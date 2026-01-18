@@ -23,6 +23,12 @@ export function FeatureCard({
 }: FeatureCardProps) {
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
+  // Calculate reverse dependencies on-the-fly if not present in data
+  const reverseDependencies = feature.reverseDependencies ||
+    features
+      .filter(f => f.dependencies?.includes(feature.id))
+      .map(f => f.id);
+
   return (
     <Card className="p-4 hover:bg-muted/50 cursor-pointer transition-colors" onClick={onClick}>
       <div className="flex items-start justify-between">
@@ -59,66 +65,68 @@ export function FeatureCard({
           <p className="text-sm text-muted-foreground line-clamp-2">{feature.description}</p>
 
           {/* Dependencies Section */}
-          {feature.dependencies && feature.dependencies.length > 0 && (
-            <div className="dependencies-section mt-4 pt-4 border-t border-border">
+          {(feature.dependencies && feature.dependencies.length > 0) || reverseDependencies.length > 0 ? (
+            <div className="dependencies-section mt-3 pt-3 border-t border-border">
               {/* Dependencies */}
-              <div className="mb-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-                  <Package className="w-4 h-4" />
-                  <span>Dependencies ({feature.dependencies.length})</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {feature.dependencies.map(depId => {
-                    const depFeature = features.find(f => f.id === depId);
-                    const isMissing = !depFeature;
+              {feature.dependencies && feature.dependencies.length > 0 && (
+                <div className="mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                    <Package className="w-3 h-3" />
+                    <span>Dependencies ({feature.dependencies.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {feature.dependencies.map(depId => {
+                      const depFeature = features.find(f => f.id === depId);
+                      const isMissing = !depFeature;
 
-                    return (
-                      <button
-                        key={depId}
-                        className={`
-                          dependency-chip px-3 py-1 rounded-md text-sm font-medium
-                          flex items-center gap-1.5 transition-all
-                          ${isMissing
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-300 dark:border-red-700'
-                            : 'bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer'
-                          }
-                        `}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (depFeature) {
-                            if (onDependencyClick) {
-                              onDependencyClick(depId);
-                            } else {
-                              openDependencyDetail(depId);
+                      return (
+                        <button
+                          key={depId}
+                          className={`
+                            dependency-chip px-2 py-0.5 rounded-md text-xs font-medium
+                            flex items-center gap-1 transition-all
+                            ${isMissing
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-300 dark:border-red-700'
+                              : 'bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer'
                             }
-                          }
-                        }}
-                        disabled={isMissing}
-                        title={isMissing ? `Dependency '${depId}' not found in roadmap` : depFeature?.title}
-                      >
-                        {isMissing && <AlertTriangle className="w-3.5 h-3.5" />}
-                        <span>{depFeature?.title || depId}</span>
-                        {!isMissing && <ChevronRight className="w-3 h-3" />}
-                      </button>
-                    );
-                  })}
+                          `}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (depFeature) {
+                              if (onDependencyClick) {
+                                onDependencyClick(depId);
+                              } else {
+                                openDependencyDetail(depId);
+                              }
+                            }
+                          }}
+                          disabled={isMissing}
+                          title={isMissing ? `Dependency '${depId}' not found in roadmap` : depFeature?.title}
+                        >
+                          {isMissing && <AlertTriangle className="w-3 h-3" />}
+                          <span>{depFeature?.title || depId}</span>
+                          {!isMissing && <ChevronRight className="w-2.5 h-2.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Reverse Dependencies */}
-              {feature.reverseDependencies && feature.reverseDependencies.length > 0 && (
+              {reverseDependencies.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-                    <Link className="w-4 h-4" />
-                    <span>Required By ({feature.reverseDependencies.length})</span>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                    <Link className="w-3 h-3" />
+                    <span>Required By ({reverseDependencies.length})</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {feature.reverseDependencies.map(depId => {
+                  <div className="flex flex-wrap gap-1.5">
+                    {reverseDependencies.map(depId => {
                       const depFeature = features.find(f => f.id === depId);
                       return (
                         <button
                           key={depId}
-                          className="dependency-chip px-3 py-1 rounded-md text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1.5"
+                          className="dependency-chip px-2 py-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (depFeature) {
@@ -132,7 +140,7 @@ export function FeatureCard({
                           title={depFeature?.title}
                         >
                           <span>{depFeature?.title || depId}</span>
-                          <ChevronRight className="w-3 h-3" />
+                          <ChevronRight className="w-2.5 h-2.5" />
                         </button>
                       );
                     })}
@@ -142,13 +150,13 @@ export function FeatureCard({
 
               {/* Validation Warnings */}
               {feature.dependencyValidation?.hasCircular && (
-                <div className="mt-3 p-2 bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-md flex items-center gap-2 text-sm text-purple-700 dark:text-purple-400">
-                  <RefreshCw className="w-4 h-4" />
+                <div className="mt-2 p-1.5 bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-md flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-400">
+                  <RefreshCw className="w-3 h-3" />
                   <span>Circular dependency detected</span>
                 </div>
               )}
             </div>
-          )}
+          ) : null}
         </div>
         {feature.linkedSpecId ? (
           <Button
