@@ -138,12 +138,15 @@ export class TitleGenerator extends EventEmitter {
     debug('Generating title for description:', description.substring(0, 100) + '...');
 
     const autoBuildEnv = this.loadAutoBuildEnv();
-    debug('Environment loaded', {
-      hasOAuthToken: !!autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN
-    });
-
-    // Get active Claude profile environment (CLAUDE_CONFIG_DIR if not default)
     const profileEnv = getProfileEnv();
+
+    // Log token sources for debugging (masked for security)
+    const maskToken = (t: string | undefined) => t ? `${t.substring(0, 15)}...` : 'none';
+    debug('Token sources:', {
+      autoBuildEnv: maskToken(autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN),
+      profileEnv: maskToken(profileEnv.CLAUDE_CODE_OAUTH_TOKEN),
+      effectiveSource: profileEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'profile' : (autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'autoBuildEnv' : 'none')
+    });
 
     return new Promise((resolve) => {
       // Parse Python command to handle space-separated commands like "py -3"

@@ -4,6 +4,7 @@
  */
 
 import { getClaudeProfileManager } from './claude-profile-manager';
+import { isValidTokenFormat } from './claude-profile/profile-utils';
 
 /**
  * Regex pattern to detect Claude Code rate limit messages
@@ -276,10 +277,17 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
       : profileManager.getActiveProfileToken();
 
     if (decryptedToken) {
-      console.warn('[getProfileEnv] Using OAuth token for profile:', profile.name);
-      return {
-        CLAUDE_CODE_OAUTH_TOKEN: decryptedToken
-      };
+      // Validate token format after decryption
+      if (!isValidTokenFormat(decryptedToken)) {
+        console.warn('[getProfileEnv] Token has invalid format for profile:', profile.name);
+        console.warn('[getProfileEnv] Token should start with sk-ant-oat01-. Please re-authenticate.');
+        // Don't use invalid token - fall through to other auth methods
+      } else {
+        console.warn('[getProfileEnv] Using OAuth token for profile:', profile.name);
+        return {
+          CLAUDE_CODE_OAUTH_TOKEN: decryptedToken
+        };
+      }
     } else {
       console.warn('[getProfileEnv] Failed to decrypt token for profile:', profile.name);
     }
