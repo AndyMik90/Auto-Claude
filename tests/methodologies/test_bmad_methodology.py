@@ -595,8 +595,12 @@ class TestBMADRunnerExecutePhase:
         with pytest.raises(RuntimeError, match="not initialized"):
             runner.execute_phase("analyze")
 
-    def test_execute_phase_unknown_phase_returns_failure(self, mock_context: Any) -> None:
-        """Test that execute_phase() returns failure for unknown phase."""
+    def test_execute_phase_unknown_phase_returns_skipped(self, mock_context: Any) -> None:
+        """Test that execute_phase() returns skipped for unknown phase.
+
+        The BMAD methodology treats unknown phases as skipped based on
+        complexity level filtering, returning success=True with skipped metadata.
+        """
         from apps.backend.methodologies.bmad import BMADRunner
 
         runner = BMADRunner()
@@ -604,11 +608,16 @@ class TestBMADRunnerExecutePhase:
 
         result = runner.execute_phase("unknown_phase")
 
-        assert result.success is False
-        assert "Unknown phase" in result.error
+        # Unknown phases are treated as skipped with success=True
+        assert result.success is True
+        assert result.metadata.get("skipped") is True
 
-    def test_execute_phase_analyze_returns_not_implemented(self, mock_context: Any) -> None:
-        """Test that analyze phase returns not implemented (stub)."""
+    def test_execute_phase_analyze_requires_spec_dir(self, mock_context: Any) -> None:
+        """Test that analyze phase requires spec_dir to be configured.
+
+        The BMAD methodology requires spec_dir in task_config.metadata
+        for artifact storage.
+        """
         from apps.backend.methodologies.bmad import BMADRunner
 
         runner = BMADRunner()
@@ -616,8 +625,9 @@ class TestBMADRunnerExecutePhase:
 
         result = runner.execute_phase("analyze")
 
+        # Without spec_dir, the phase fails with configuration error
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
+        assert "output directory" in result.error.lower() or "spec_dir" in result.error.lower()
 
     def test_execute_phase_returns_phase_result(self, mock_context: Any) -> None:
         """Test that execute_phase() returns PhaseResult."""
@@ -632,9 +642,14 @@ class TestBMADRunnerExecutePhase:
         assert isinstance(result, PhaseResult)
         assert result.phase_id == "analyze"
 
-    def test_execute_phase_all_phases_have_stubs(self, mock_context: Any) -> None:
-        """Test that all 7 phases have execution stubs."""
+    def test_execute_phase_all_phases_return_result(self, mock_context: Any) -> None:
+        """Test that all 7 phases return PhaseResult.
+
+        Without spec_dir configured, phases requiring output will fail,
+        but all should return proper PhaseResult objects.
+        """
         from apps.backend.methodologies.bmad import BMADRunner
+        from apps.backend.methodologies.protocols import PhaseResult
 
         runner = BMADRunner()
         runner.initialize(mock_context)
@@ -643,8 +658,8 @@ class TestBMADRunnerExecutePhase:
 
         for phase_id in phase_ids:
             result = runner.execute_phase(phase_id)
-            # All stubs should return success=False with "not yet implemented"
-            assert result.success is False, f"Phase {phase_id} should return success=False"
+            # All phases should return PhaseResult with correct phase_id
+            assert isinstance(result, PhaseResult), f"Phase {phase_id} should return PhaseResult"
             assert result.phase_id == phase_id
 
 
