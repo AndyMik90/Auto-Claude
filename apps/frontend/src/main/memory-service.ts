@@ -612,7 +612,7 @@ export class MemoryService {
     if (!data.databaseExists) {
       return {
         success: false,
-        message: `Database not found at ${data.databasePath}/${data.database}`,
+        message: `Database not found at ${path.join(data.databasePath, data.database)}`,
       };
     }
 

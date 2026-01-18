@@ -413,6 +413,22 @@ export function registerMemoryHandlers(): void {
     }
   );
 
+  // Get platform-specific memories directory path
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_GET_DIR,
+    async (): Promise<IPCResult<string>> => {
+      try {
+        const memoriesDir = getDefaultDbPath();
+        return { success: true, data: memoriesDir };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get memories directory',
+        };
+      }
+    }
+  );
+
   // Test memory database connection
   ipcMain.handle(
     IPC_CHANNELS.MEMORY_TEST_CONNECTION,

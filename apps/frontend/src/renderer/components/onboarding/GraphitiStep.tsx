@@ -146,6 +146,20 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
     database: null,
     provider: null
   });
+  const [memoriesDir, setMemoriesDir] = useState<string>('');
+
+  // Fetch platform-specific memories directory path
+  useEffect(() => {
+    window.electronAPI.getMemoriesDir()
+      .then((result) => {
+        if (result.success && result.data) {
+          setMemoriesDir(result.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to get memories directory:', err);
+      });
+  }, []);
 
   // Check LadybugDB/Kuzu availability on mount
   useEffect(() => {
@@ -919,7 +933,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                         disabled={isSaving || isValidating}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Stored in ~/.auto-claude/graphs/
+                        Stored in {memoriesDir || 'memories directory'}
                       </p>
                     </div>
 

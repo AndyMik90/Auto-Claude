@@ -418,6 +418,7 @@ export const IPC_CHANNELS = {
   MEMORY_STATUS: 'memory:status',
   MEMORY_LIST_DATABASES: 'memory:listDatabases',
   MEMORY_TEST_CONNECTION: 'memory:testConnection',
+  MEMORY_GET_DIR: 'memory:getDir',  // Get platform-specific memories directory path
 
   // Graphiti validation
   GRAPHITI_VALIDATE_LLM: 'graphiti:validateLlm',

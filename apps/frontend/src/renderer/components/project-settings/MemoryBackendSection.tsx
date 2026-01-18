@@ -48,6 +48,9 @@ export function MemoryBackendSection({
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
   const [ollamaError, setOllamaError] = useState<string | null>(null);
 
+  // Platform-specific memories directory path
+  const [memoriesDir, setMemoriesDir] = useState<string>('');
+
   const embeddingProvider = envConfig.graphitiProviderConfig?.embeddingProvider || 'openai';
   const ollamaBaseUrl = envConfig.graphitiProviderConfig?.ollamaBaseUrl || 'http://localhost:11434';
 
@@ -89,6 +92,19 @@ export function MemoryBackendSection({
       detectOllamaModels();
     }
   }, [embeddingProvider, envConfig.graphitiEnabled, detectOllamaModels]);
+
+  // Fetch platform-specific memories directory path
+  useEffect(() => {
+    window.electronAPI.getMemoriesDir()
+      .then((result) => {
+        if (result.success && result.data) {
+          setMemoriesDir(result.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to get memories directory:', err);
+      });
+  }, []);
 
   const badge = (
     <span className={`px-2 py-0.5 text-xs rounded-full ${
@@ -478,7 +494,7 @@ export function MemoryBackendSection({
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">Database Name</Label>
             <p className="text-xs text-muted-foreground">
-              Name for the memory database (stored in ~/.auto-claude/memories/)
+              Name for the memory database (stored in {memoriesDir || 'memories directory'})
             </p>
             <Input
               placeholder="auto_claude_memory"
@@ -490,10 +506,10 @@ export function MemoryBackendSection({
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
             <p className="text-xs text-muted-foreground">
-              Custom storage location. Default: ~/.auto-claude/memories/
+              Custom storage location. Default: {memoriesDir || 'memories directory'}
             </p>
             <Input
-              placeholder="~/.auto-claude/memories"
+              placeholder={memoriesDir || 'memories directory'}
               value={envConfig.graphitiDbPath || ''}
               onChange={(e) => onUpdateConfig({ graphitiDbPath: e.target.value || undefined })}
             />

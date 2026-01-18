@@ -11,6 +11,7 @@ import { parseEnvFile } from './utils';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { debugError } from '../../shared/utils/debug-logger';
 import { getSpawnOptions, getSpawnCommand } from '../env-utils';
+import { getMemoriesDir } from '../config-paths';
 
 // GitLab environment variable keys
 const GITLAB_ENV_KEYS = {
@@ -336,7 +337,7 @@ ${existingVars['OLLAMA_EMBEDDING_DIM'] ? `OLLAMA_EMBEDDING_DIM=${existingVars['O
 
 # LadybugDB Database (embedded - no Docker required)
 ${existingVars['GRAPHITI_DATABASE'] ? `GRAPHITI_DATABASE=${existingVars['GRAPHITI_DATABASE']}` : '# GRAPHITI_DATABASE=auto_claude_memory'}
-${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_DB_PATH']}` : '# GRAPHITI_DB_PATH=~/.auto-claude/memories'}
+${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_DB_PATH']}` : `# GRAPHITI_DB_PATH=${getMemoriesDir()}`}
 `;
 
     return content;
