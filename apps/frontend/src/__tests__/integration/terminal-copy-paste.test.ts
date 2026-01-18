@@ -14,7 +14,6 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
-import { renderHook } from '@testing-library/react'; // Corrected import from @testing-library/react
 
 // Define a minimal interface for the mocked electronAPI to maintain type safety
 interface ElectronAPIMock {
@@ -27,6 +26,10 @@ declare global {
   // eslint-disable-next-line no-var
   var electronAPI: ElectronAPIMock;
 }
+
+// Preserve original navigator properties for restoration
+const originalUserAgentData = (navigator as any).userAgentData;
+const originalPlatform = navigator.platform;
 
 // Mock xterm.js and its addons
 vi.mock('@xterm/xterm', () => ({
@@ -118,6 +121,25 @@ describe('Terminal copy/paste integration', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+
+    // Restore navigator properties to prevent side effects
+    if (originalUserAgentData) {
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: originalUserAgentData,
+        configurable: true
+      });
+    } else {
+      try {
+        delete (navigator as any).userAgentData;
+      } catch (e) {
+        // Fallback for environments where delete is not allowed
+      }
+    }
+
+    Object.defineProperty(navigator, 'platform', {
+      value: originalPlatform,
+      configurable: true
+    });
   });
 
   describe('xterm.js selection API integration with clipboard write', () => {
@@ -436,21 +458,24 @@ describe('Terminal copy/paste integration', () => {
 
       mockClipboard.readText.mockResolvedValue('macos content');
 
-      // On macOS, CMD+V is typically handled by the browser/system,
-      // but let's verify that even if we triggered it manually, it would work.
-      // Note: useXterm for macOS doesn't actually bind CMD+V in the custom handler,
-      // so we are mostly testing the helper function handlePasteFromClipboard if it were invoked.
+      // On macOS, CMD+V should be handled by the browser/system to preserve native behavior.
+      expect(keyEventHandler).toBeDefined();
 
-      // Wait for the RAF/setTimeout in useXterm to complete
-      await new Promise(resolve => setTimeout(resolve, 0));
+      if (keyEventHandler) {
+        const cmdVEvent = {
+          key: 'v',
+          metaKey: true,
+          ctrlKey: false,
+          shiftKey: false,
+          type: 'keydown',
+          preventDefault: vi.fn()
+        } as unknown as KeyboardEvent;
 
-      // Manually trigger a paste since the custom handler doesn't bind CMD+V on macOS
-      // to avoid interfering with system shortcuts.
-      // However, we can still test the integration of clipboard read with xterm paste.
-      // In a real scenario, the browser's native paste would call xterm.paste directly.
-      // Here, we simulate that direct call.
-      xterm.paste('macos content');
-      expect(xterm.paste).toHaveBeenCalledWith('macos content');
+        const result = (keyEventHandler as (e: KeyboardEvent) => boolean)(cmdVEvent);
+
+        // Should return false to let the browser handle it
+        expect(result).toBe(false);
+      }
     });
 
     it('should not paste when clipboard is empty', async () => {

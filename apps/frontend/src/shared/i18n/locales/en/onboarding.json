@@ -271,6 +271,7 @@
       "checkFailed": "Failed to check Ollama models",
       "downloadFailed": "Failed to download {{modelName}}",
       "genericDownloadFailed": "Download failed"
-    }
+    },
+    "incompatible": "Incompatible"
   }
 }

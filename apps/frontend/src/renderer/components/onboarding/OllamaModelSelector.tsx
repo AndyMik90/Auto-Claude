@@ -17,6 +17,8 @@ interface OllamaModel {
   dim: number;
   installed: boolean;
   badge?: string;
+  compatible?: boolean;
+  compatibilityNote?: string;
 }
 
 interface OllamaModelSelectorProps {
@@ -186,7 +188,9 @@ export function OllamaModelSelector({
           size_estimate: m.size_estimate,
           dim: m.dim,
           installed: m.installed,
-          badge: m.badge
+          badge: m.badge,
+          compatible: m.compatible,
+          compatibilityNote: m.compatibility_note
         })));
       }
     } catch (err) {
@@ -433,7 +437,8 @@ export function OllamaModelSelector({
           const isSelected = selectedModel === model.name;
           const isCurrentlyDownloading = isDownloading === model.name;
           const progress = downloadProgress[model.name];
-          const isInteractive = model.installed && !disabled && !isDownloading && !loading;
+          const isCompatible = model.compatible !== false;
+          const isInteractive = model.installed && !disabled && !isDownloading && !loading && isCompatible;
 
           return (
             <div
@@ -485,10 +490,21 @@ export function OllamaModelSelector({
                           {t('ollama.installed')}
                         </span>
                       )}
+                      {!isCompatible && (
+                        <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                          <AlertCircle className="mr-1 h-3 w-3" />
+                          {t('ollama.incompatible')}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {t(`ollama.modelDescriptions.${model.name}` as any, { defaultValue: model.description, nsSeparator: false })}
                     </p>
+                    {!isCompatible && model.compatibilityNote && (
+                      <p className="mt-1 text-[10px] text-destructive/80 italic">
+                        {model.compatibilityNote}
+                      </p>
+                    )}
                   </div>
                 </div>
 

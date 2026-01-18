@@ -271,6 +271,7 @@
       "checkFailed": "Échec de la vérification des modèles Ollama",
       "downloadFailed": "Échec du téléchargement de {{modelName}}",
       "genericDownloadFailed": "Échec du téléchargement"
-    }
+    },
+    "incompatible": "Incompatible"
   }
 }
