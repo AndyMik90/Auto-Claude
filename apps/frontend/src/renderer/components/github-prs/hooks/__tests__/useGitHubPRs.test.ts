@@ -71,7 +71,7 @@ async function simulateSelectPR(params: SelectPRTestParams): Promise<SelectPRTes
     prNumber,
     projectId,
     existingState,
-    diskReviewResult,
+    diskReviewResult: _diskReviewResult,  // Passed for test documentation but not used directly
     mockCheckNewCommits,
     mockGetPRReview,
     mockSetNewCommitsCheck,

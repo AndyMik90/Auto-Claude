@@ -16,12 +16,11 @@ import sys
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from recovery import RecoveryManager, FailureType, RecoveryAction
+from recovery import RecoveryManager, FailureType
 
 
 def setup_test_environment():
@@ -96,7 +95,8 @@ def test_initialization():
     temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
 
     try:
-        manager = RecoveryManager(spec_dir, project_dir)
+        # Initialize manager to trigger directory creation (manager instance not needed)
+        _manager = RecoveryManager(spec_dir, project_dir)
 
         # Check that memory directory was created
         assert (spec_dir / "memory").exists(), "Memory directory not created"

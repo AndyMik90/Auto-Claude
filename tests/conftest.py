@@ -153,6 +153,7 @@ def pytest_runtest_setup(item):
                 try:
                     importlib.reload(sys.modules[review_module])
                 except Exception:
+                    # Module reload may fail if dependencies aren't loaded; safe to ignore
                     pass
 
 
@@ -267,25 +268,7 @@ from tests.review_fixtures import (  # noqa: E402, F401
 @pytest.fixture
 def python_project(temp_git_repo: Path) -> Path:
     """Create a sample Python project structure."""
-    # Create pyproject.toml
-    pyproject = {
-        "project": {
-            "name": "test-project",
-            "version": "0.1.0",
-            "dependencies": [
-                "flask>=2.0",
-                "pytest>=7.0",
-                "sqlalchemy>=2.0",
-            ],
-        },
-        "tool": {
-            "pytest": {"testpaths": ["tests"]},
-            "ruff": {"line-length": 100},
-        },
-    }
-
-    import tomllib
-    # Write as TOML (we'll write manually since tomllib is read-only)
+    # Write pyproject.toml content directly (tomllib is read-only, no writer)
     toml_content = """[project]
 name = "test-project"
 version = "0.1.0"
@@ -1057,18 +1040,7 @@ Add Google OAuth2 authentication to the application.
 # MERGE SYSTEM FIXTURES AND SAMPLE DATA
 # =============================================================================
 
-# Import merge module (path already added at top of conftest)
-try:
-    from merge import (
-        SemanticAnalyzer,
-        ConflictDetector,
-        AutoMerger,
-        FileEvolutionTracker,
-        AIResolver,
-    )
-except ImportError:
-    # Module will be available when tests run
-    pass
+# Merge module fixtures below import within each function to handle ImportError gracefully
 
 # Sample data constants moved to test_fixtures.py
 # Import from there if needed in test files
