@@ -99,7 +99,7 @@ interface InsightsProps {
 }
 
 export function Insights({ projectId }: InsightsProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'tasks']);
   const session = useInsightsStore((state) => state.session);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
@@ -188,7 +188,7 @@ export function Insights({ projectId }: InsightsProps) {
     // Check if we can add more images
     const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
     if (remainingSlots <= 0) {
-      setImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+      setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
       return;
     }
 
@@ -204,7 +204,7 @@ export function Insights({ projectId }: InsightsProps) {
 
       // Validate image type
       if (!isValidImageMimeType(file.type)) {
-        setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+        setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
         continue;
       }
 
@@ -237,7 +237,7 @@ export function Insights({ projectId }: InsightsProps) {
         });
       } catch (error) {
         console.error('[Insights] Failed to process pasted image:', error);
-        setImageError('Failed to process pasted image');
+        setImageError(t('tasks:feedback.processingError'));
       }
     }
 
@@ -303,7 +303,7 @@ export function Insights({ projectId }: InsightsProps) {
       // Check if we can add more images
       const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
       if (remainingSlots <= 0) {
-        setImageError(`Maximum of ${MAX_IMAGES_PER_TASK} images allowed`);
+        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
         return;
       }
 
@@ -316,7 +316,7 @@ export function Insights({ projectId }: InsightsProps) {
       for (const file of imageFiles.slice(0, remainingSlots)) {
         // Validate image type
         if (!isValidImageMimeType(file.type)) {
-          setImageError(`Invalid image type. Allowed: ${ALLOWED_IMAGE_TYPES_DISPLAY}`);
+          setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
           continue;
         }
 
@@ -340,7 +340,7 @@ export function Insights({ projectId }: InsightsProps) {
           });
         } catch (error) {
           console.error('[Insights] Failed to process dropped image:', error);
-          setImageError('Failed to process dropped image');
+          setImageError(t('tasks:feedback.processingError'));
         }
       }
 
@@ -610,7 +610,7 @@ export function Insights({ projectId }: InsightsProps) {
         {pasteSuccess && (
           <div className="flex items-center gap-2 text-sm text-green-600 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
             <ImageIcon className="h-4 w-4" />
-            Image added successfully!
+            {t('tasks:feedback.imageAdded')}
           </div>
         )}
 
