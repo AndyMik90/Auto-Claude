@@ -131,7 +131,7 @@ export function WorkspaceStatus({
     try {
       const result = await window.electronAPI.worktreeInstallDeps(worktreeStatus.worktreePath);
       if (result.success) {
-        setDepsStatus({ missing: false, packageManager: result.data?.packageManager || 'npm', installing: false });
+        setDepsStatus(prev => ({ missing: false, packageManager: result.data?.packageManager || prev.packageManager, installing: false }));
         toast({
           title: 'Dependencies installed',
           description: 'You can now launch the app',
@@ -194,7 +194,7 @@ export function WorkspaceStatus({
     try {
       const result = await window.electronAPI.worktreeLaunchApp(worktreeStatus.worktreePath, autoInstall);
       if (result.success) {
-        setDepsStatus({ missing: false, packageManager: result.data?.packageManager || 'npm', installing: false });
+        setDepsStatus(prev => ({ missing: false, packageManager: result.data?.packageManager || prev.packageManager, installing: false }));
         toast({
           title: t('taskReview:workspace.launchSuccess'),
           description: result.data?.command,
