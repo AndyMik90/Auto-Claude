@@ -8,7 +8,7 @@ import { app } from 'electron';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { AUTO_BUILD_PATHS, DEFAULT_CHANGELOG_PATH } from '../../shared/constants';
-import { getToolPath } from '../cli-tool-manager';
+import { getToolPath, getToolInfo } from '../cli-tool-manager';
 import type {
   ChangelogTask,
   TaskSpecContent,
@@ -185,9 +185,10 @@ export class ChangelogService extends EventEmitter {
         throw new Error('Auto-build source path not found');
       }
 
-      // Verify claude CLI is available
-      if (this.claudePath !== 'claude' && !existsSync(this.claudePath)) {
-        throw new Error(`Claude CLI not found. Please ensure Claude Code is installed. Looked for: ${this.claudePath}`);
+      // Verify claude CLI is available using proper detection
+      const claudeInfo = getToolInfo('claude');
+      if (!claudeInfo.found) {
+        throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
       }
 
       const autoBuildEnv = this.loadAutoBuildEnv();
@@ -231,9 +232,10 @@ export class ChangelogService extends EventEmitter {
         throw new Error('Auto-build source path not found');
       }
 
-      // Verify claude CLI is available
-      if (this.claudePath !== 'claude' && !existsSync(this.claudePath)) {
-        throw new Error(`Claude CLI not found. Please ensure Claude Code is installed. Looked for: ${this.claudePath}`);
+      // Verify claude CLI is available using proper detection
+      const claudeInfo = getToolInfo('claude');
+      if (!claudeInfo.found) {
+        throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
       }
 
       this.versionSuggester = new VersionSuggester(
