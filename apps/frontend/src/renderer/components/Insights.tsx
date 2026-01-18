@@ -153,7 +153,7 @@ export function Insights({ projectId }: InsightsProps) {
     setInputValue('');
     setImages([]);
     setImageError(null);
-    sendMessage(projectId, message);
+    sendMessage(projectId, message, undefined, images);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -695,6 +695,38 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
+
+        {/* Image attachments display */}
+        {message.images && message.images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {message.images.map((image) => (
+              <div
+                key={image.id}
+                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                style={{ width: '120px', height: '120px' }}
+                title={image.filename}
+                onClick={() => {
+                  // Open full-size image in new tab
+                  const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                  window.open(fullSizeUrl, '_blank');
+                }}
+              >
+                {image.thumbnail ? (
+                  <img
+                    src={image.thumbnail}
+                    alt={image.filename}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={cn(
           'prose prose-sm dark:prose-invert max-w-none',
           isUser && '[&_]:whitespace-pre-wrap'

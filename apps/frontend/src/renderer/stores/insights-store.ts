@@ -271,15 +271,23 @@ export async function sendMessage(
   projectId: string,
   message: string,
   modelConfig?: InsightsModelConfig,
-  images?: File[]
+  images?: File[] | ImageAttachment[]
 ): Promise<void> {
   const store = useInsightsStore.getState();
   const session = store.session;
 
   // Convert images to ImageAttachment format if provided
-  const imageAttachments = images && images.length > 0
-    ? await convertFilesToImageAttachments(images)
-    : undefined;
+  // Accepts both File[] and ImageAttachment[] for flexibility
+  let imageAttachments: ImageAttachment[] | undefined = undefined;
+  if (images && images.length > 0) {
+    // Check if images are already ImageAttachment format
+    if (images.length > 0 && 'data' in images[0]) {
+      imageAttachments = images as ImageAttachment[];
+    } else {
+      // Convert File[] to ImageAttachment[]
+      imageAttachments = await convertFilesToImageAttachments(images as File[]);
+    }
+  }
 
   // Add user message to session
   const userMessage: InsightsChatMessage = {
