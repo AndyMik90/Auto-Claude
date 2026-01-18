@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useDroppable, useDndContext } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settings-store';
 import { useToast } from '../hooks/use-toast';
 import type { TerminalProps } from './terminal/types';
 import type { TerminalWorktreeConfig } from '../../shared/types';
+import { TERMINAL_DOM_UPDATE_DELAY_MS } from '../../shared/constants';
 import { TerminalHeader } from './terminal/TerminalHeader';
 import { CreateWorktreeDialog } from './terminal/CreateWorktreeDialog';
 import { useXterm } from './terminal/useXterm';
@@ -20,7 +21,17 @@ import { useTerminalFileDrop } from './terminal/useTerminalFileDrop';
 const MIN_COLS = 10;
 const MIN_ROWS = 3;
 
-export function Terminal({
+/**
+ * Handle interface exposed by Terminal component for external control.
+ * Used by parent components (e.g., SortableTerminalWrapper) to trigger operations
+ * like refitting the terminal after container size changes.
+ */
+export interface TerminalHandle {
+  /** Refit the terminal to its container size */
+  fit: () => void;
+}
+
+export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal({
   id,
   cwd,
   projectPath,
@@ -34,12 +45,16 @@ export function Terminal({
   isDragging,
   isExpanded,
   onToggleExpand,
-}: TerminalProps) {
+}, ref) {
   const isMountedRef = useRef(true);
   const isCreatedRef = useRef(false);
   // Track deliberate terminal recreation (e.g., worktree switching)
   // This prevents exit handlers from triggering auto-removal during controlled recreation
   const isRecreatingRef = useRef(false);
+  // Store pending worktree config during recreation to sync after PTY creation
+  // This fixes a race condition where IPC calls to set worktree config happen before
+  // the terminal exists in main process, causing the config to not be persisted
+  const pendingWorktreeConfigRef = useRef<TerminalWorktreeConfig | null>(null);
 
   // Worktree dialog state
   const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
@@ -103,7 +118,8 @@ export function Terminal({
   const {
     terminalRef,
     xtermRef: _xtermRef,
-    write,
+    fit,
+    write: _write,  // Output now handled by useGlobalTerminalListeners
     writeln,
     focus,
     dispose,
@@ -119,6 +135,12 @@ export function Terminal({
     },
     onDimensionsReady: handleDimensionsReady,
   });
+
+  // Expose fit method to parent components via ref
+  // This allows external triggering of terminal resize (e.g., after drag-drop reorder)
+  useImperativeHandle(ref, () => ({
+    fit,
+  }), [fit]);
 
   // Use ready dimensions for PTY creation (wait until xterm has measured)
   // This prevents creating PTY with default 80x24 when container is smaller
@@ -147,20 +169,33 @@ export function Terminal({
     isRecreatingRef,
     onCreated: () => {
       isCreatedRef.current = true;
+      // If there's a pending worktree config from a recreation attempt,
+      // sync it to main process now that the terminal exists.
+      // This fixes the race condition where IPC calls happen before terminal creation.
+      if (pendingWorktreeConfigRef.current) {
+        const config = pendingWorktreeConfigRef.current;
+        try {
+          window.electronAPI.setTerminalWorktreeConfig(id, config);
+          window.electronAPI.setTerminalTitle(id, config.name);
+        } catch (error) {
+          console.error('Failed to sync worktree config after PTY creation:', error);
+        }
+        pendingWorktreeConfigRef.current = null;
+      }
     },
     onError: (error) => {
+      // Clear pending config on error to prevent stale config from being applied
+      // if PTY is recreated later (fixes potential race condition on failed recreation)
+      pendingWorktreeConfigRef.current = null;
       writeln(`\r\n\x1b[31mError: ${error}\x1b[0m`);
     },
   });
 
-  // Handle terminal events
+  // Handle terminal events (output is now handled globally via useGlobalTerminalListeners)
   useTerminalEvents({
     terminalId: id,
     // Pass recreation ref to skip auto-removal during deliberate terminal recreation
     isRecreatingRef,
-    onOutput: (data) => {
-      write(data);
-    },
     onExit: (exitCode) => {
       isCreatedRef.current = false;
       writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}\x1b[0m`);
@@ -173,6 +208,14 @@ export function Terminal({
       focus();
     }
   }, [isActive, focus]);
+
+  // Refit terminal when expansion state changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fit();
+    }, TERMINAL_DOM_UPDATE_DELAY_MS);
+    return () => clearTimeout(timeoutId);
+  }, [isExpanded, fit]);
 
   // Trigger deferred Claude resume when terminal becomes active
   // This ensures Claude sessions are only resumed when the user actually views the terminal,
@@ -275,10 +318,14 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     setShowWorktreeDialog(true);
   }, []);
 
-  const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
+  const applyWorktreeConfig = useCallback(async (config: TerminalWorktreeConfig) => {
     // IMPORTANT: Set isRecreatingRef BEFORE destruction to signal deliberate recreation
     // This prevents exit handlers from triggering auto-removal during controlled recreation
     isRecreatingRef.current = true;
+
+    // Store pending config to be synced after PTY creation succeeds
+    // This fixes race condition where IPC calls happen before terminal exists in main process
+    pendingWorktreeConfigRef.current = config;
 
     // Set isCreatingRef BEFORE updating the store to prevent race condition
     // This prevents the PTY effect from running before destroyTerminal completes
@@ -286,12 +333,13 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
 
     // Update terminal store with worktree config
     setWorktreeConfig(id, config);
-    // Sync to main process so worktree config persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
+    // The onCreated callback will re-sync using pendingWorktreeConfigRef
     window.electronAPI.setTerminalWorktreeConfig(id, config);
 
     // Update terminal title and cwd to worktree path
     updateTerminal(id, { title: config.name, cwd: config.worktreePath });
-    // Sync to main process so title persists across hot reloads
+    // Try to sync to main process (may be ignored if terminal doesn't exist yet)
     window.electronAPI.setTerminalTitle(id, config.name);
 
     // Destroy current PTY - a new one will be created in the worktree directory
@@ -304,30 +352,13 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     resetForRecreate();
   }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
 
+  const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
+    await applyWorktreeConfig(config);
+  }, [applyWorktreeConfig]);
+
   const handleSelectWorktree = useCallback(async (config: TerminalWorktreeConfig) => {
-    // IMPORTANT: Set isRecreatingRef BEFORE destruction to signal deliberate recreation
-    // This prevents exit handlers from triggering auto-removal during controlled recreation
-    isRecreatingRef.current = true;
-
-    // Set isCreatingRef BEFORE updating the store to prevent race condition
-    prepareForRecreate();
-
-    // Same logic as handleWorktreeCreated - attach terminal to existing worktree
-    setWorktreeConfig(id, config);
-    // Sync to main process so worktree config persists across hot reloads
-    window.electronAPI.setTerminalWorktreeConfig(id, config);
-    updateTerminal(id, { title: config.name, cwd: config.worktreePath });
-    // Sync to main process so title persists across hot reloads
-    window.electronAPI.setTerminalTitle(id, config.name);
-
-    // Destroy current PTY - a new one will be created in the worktree directory
-    if (isCreatedRef.current) {
-      await window.electronAPI.destroyTerminal(id);
-      isCreatedRef.current = false;
-    }
-
-    resetForRecreate();
-  }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
+    await applyWorktreeConfig(config);
+  }, [applyWorktreeConfig]);
 
   const handleOpenInIDE = useCallback(async () => {
     const worktreePath = terminal?.worktreeConfig?.worktreePath;
@@ -429,4 +460,4 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
       )}
     </div>
   );
-}
+});

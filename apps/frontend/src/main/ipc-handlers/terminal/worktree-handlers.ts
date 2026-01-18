@@ -5,10 +5,12 @@ import type {
   CreateTerminalWorktreeRequest,
   TerminalWorktreeConfig,
   TerminalWorktreeResult,
+  OtherWorktreeInfo,
 } from '../../../shared/types';
 import path from 'path';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, symlinkSync, lstatSync } from 'fs';
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
 import { minimatch } from 'minimatch';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 import { projectStore } from '../../project-store';
@@ -19,6 +21,11 @@ import {
   getTerminalWorktreeMetadataDir,
   getTerminalWorktreeMetadataPath,
 } from '../../worktree-paths';
+import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getToolPath } from '../../cli-tool-manager';
+
+// Promisify execFile for async operations
+const execFileAsync = promisify(execFile);
 
 // Shared validation regex for worktree names - lowercase alphanumeric with dashes/underscores
 // Must start and end with alphanumeric character
@@ -26,6 +33,15 @@ const WORKTREE_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*[a-z0-9]$|^[a-z0-9]$/;
 
 // Validation regex for git branch names - allows alphanumeric, dots, slashes, dashes, underscores
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+
+// Git worktree list porcelain output parsing constants
+const GIT_PORCELAIN = {
+  WORKTREE_PREFIX: 'worktree ',
+  HEAD_PREFIX: 'HEAD ',
+  BRANCH_PREFIX: 'branch ',
+  DETACHED_LINE: 'detached',
+  COMMIT_SHA_LENGTH: 8,
+} as const;
 
 /**
  * Fix repositories that are incorrectly marked with core.bare=true.
@@ -38,9 +54,9 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
   try {
     // Check if bare=true is set
     const bareConfig = execFileSync(
-      'git',
+      getToolPath('git'),
       ['config', '--get', 'core.bare'],
-      { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getIsolatedGitEnv() }
     ).trim().toLowerCase();
 
     if (bareConfig !== 'true') {
@@ -119,9 +135,9 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
     // Fix the misconfiguration
     debugLog('[TerminalWorktree] Detected misconfigured bare repository with source files. Auto-fixing by unsetting core.bare...');
     execFileSync(
-      'git',
+      getToolPath('git'),
       ['config', '--unset', 'core.bare'],
-      { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], env: getIsolatedGitEnv() }
     );
     debugLog('[TerminalWorktree] Fixed: core.bare has been unset. Git operations should now work correctly.');
     return true;
@@ -166,10 +182,11 @@ function getDefaultBranch(projectPath: string): string {
 
   for (const branch of ['main', 'master']) {
     try {
-      execFileSync('git', ['rev-parse', '--verify', branch], {
+      execFileSync(getToolPath('git'), ['rev-parse', '--verify', branch], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: getIsolatedGitEnv(),
       });
       debugLog('[TerminalWorktree] Auto-detected branch:', branch);
       return branch;
@@ -180,10 +197,11 @@ function getDefaultBranch(projectPath: string): string {
 
   // Fallback to current branch - wrap in try-catch
   try {
-    const currentBranch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+    const currentBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv(),
     }).trim();
     debugLog('[TerminalWorktree] Falling back to current branch:', currentBranch);
     return currentBranch;
@@ -382,10 +400,11 @@ async function createTerminalWorktree(
 
     // Fetch the branch from remote
     try {
-      execFileSync('git', ['fetch', 'origin', remoteBranchName], {
+      execFileSync(getToolPath('git'), ['fetch', 'origin', remoteBranchName], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: getIsolatedGitEnv(),
       });
       debugLog('[TerminalWorktree] Fetched latest from origin/' + remoteBranchName);
     } catch {
@@ -401,10 +420,11 @@ async function createTerminalWorktree(
     } else {
       // Check if remote version exists and use it for latest code
       try {
-        execFileSync('git', ['rev-parse', '--verify', `origin/${baseBranch}`], {
+        execFileSync(getToolPath('git'), ['rev-parse', '--verify', `origin/${baseBranch}`], {
           cwd: projectPath,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
+          env: getIsolatedGitEnv(),
         });
         baseRef = `origin/${baseBranch}`;
         debugLog('[TerminalWorktree] Using remote ref:', baseRef);
@@ -414,17 +434,19 @@ async function createTerminalWorktree(
     }
 
     if (createGitBranch) {
-      execFileSync('git', ['worktree', 'add', '-b', branchName, worktreePath, baseRef], {
+      execFileSync(getToolPath('git'), ['worktree', 'add', '-b', branchName, worktreePath, baseRef], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: getIsolatedGitEnv(),
       });
       debugLog('[TerminalWorktree] Created worktree with branch:', branchName, 'from', baseRef);
     } else {
-      execFileSync('git', ['worktree', 'add', '--detach', worktreePath, baseRef], {
+      execFileSync(getToolPath('git'), ['worktree', 'add', '--detach', worktreePath, baseRef], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: getIsolatedGitEnv(),
       });
       debugLog('[TerminalWorktree] Created worktree in detached HEAD mode from', baseRef);
     }
@@ -461,10 +483,11 @@ async function createTerminalWorktree(
         debugLog('[TerminalWorktree] Cleaned up failed worktree directory:', worktreePath);
         // Also prune stale worktree registrations in case git worktree add partially succeeded
         try {
-          execFileSync('git', ['worktree', 'prune'], {
+          execFileSync(getToolPath('git'), ['worktree', 'prune'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
+            env: getIsolatedGitEnv(),
           });
           debugLog('[TerminalWorktree] Pruned stale worktree registrations');
         } catch {
@@ -551,6 +574,110 @@ async function listTerminalWorktrees(projectPath: string): Promise<TerminalWorkt
   return configs;
 }
 
+/**
+ * List "other" worktrees - worktrees not managed by Auto Claude
+ * These are discovered via `git worktree list` excluding:
+ * - Main worktree (project root)
+ * - .auto-claude/worktrees/terminal/*
+ * - .auto-claude/worktrees/tasks/*
+ * - .auto-claude/worktrees/pr/*
+ */
+async function listOtherWorktrees(projectPath: string): Promise<OtherWorktreeInfo[]> {
+  // Validate projectPath against registered projects
+  if (!isValidProjectPath(projectPath)) {
+    debugError('[TerminalWorktree] Invalid project path for listing other worktrees:', projectPath);
+    return [];
+  }
+
+  const results: OtherWorktreeInfo[] = [];
+
+  // Paths to exclude (normalize for comparison)
+  const normalizedProjectPath = path.resolve(projectPath);
+  const excludePrefixes = [
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'terminal'),
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'tasks'),
+    path.join(normalizedProjectPath, '.auto-claude', 'worktrees', 'pr'),
+  ];
+
+  try {
+    const { stdout: output } = await execFileAsync(getToolPath('git'), ['worktree', 'list', '--porcelain'], {
+      cwd: projectPath,
+      encoding: 'utf-8',
+      timeout: 30000,
+      env: getIsolatedGitEnv(),
+    });
+
+    // Parse porcelain output
+    // Format:
+    // worktree /path/to/worktree
+    // HEAD abc123...
+    // branch refs/heads/branch-name (or "detached" line)
+    // (blank line)
+
+    let currentWorktree: { path?: string; head?: string; branch?: string | null } = {};
+
+    for (const line of output.split('\n')) {
+      if (line.startsWith(GIT_PORCELAIN.WORKTREE_PREFIX)) {
+        // Save previous worktree if complete
+        if (currentWorktree.path && currentWorktree.head) {
+          processOtherWorktree(currentWorktree, normalizedProjectPath, excludePrefixes, results);
+        }
+        currentWorktree = { path: line.substring(GIT_PORCELAIN.WORKTREE_PREFIX.length) };
+      } else if (line.startsWith(GIT_PORCELAIN.HEAD_PREFIX)) {
+        currentWorktree.head = line.substring(GIT_PORCELAIN.HEAD_PREFIX.length);
+      } else if (line.startsWith(GIT_PORCELAIN.BRANCH_PREFIX)) {
+        // Extract branch name from "refs/heads/branch-name"
+        const fullRef = line.substring(GIT_PORCELAIN.BRANCH_PREFIX.length);
+        currentWorktree.branch = fullRef.replace('refs/heads/', '');
+      } else if (line === GIT_PORCELAIN.DETACHED_LINE) {
+        currentWorktree.branch = null; // Use null for detached HEAD state
+      }
+    }
+
+    // Process final worktree
+    if (currentWorktree.path && currentWorktree.head) {
+      processOtherWorktree(currentWorktree, normalizedProjectPath, excludePrefixes, results);
+    }
+  } catch (error) {
+    debugError('[TerminalWorktree] Error listing other worktrees:', error);
+  }
+
+  return results;
+}
+
+function processOtherWorktree(
+  wt: { path?: string; head?: string; branch?: string | null },
+  mainWorktreePath: string,
+  excludePrefixes: string[],
+  results: OtherWorktreeInfo[]
+): void {
+  if (!wt.path || !wt.head) return;
+
+  const normalizedPath = path.resolve(wt.path);
+
+  // Exclude main worktree
+  if (normalizedPath === mainWorktreePath) {
+    return;
+  }
+
+  // Check if this path starts with any excluded prefix
+  for (const excludePrefix of excludePrefixes) {
+    if (normalizedPath.startsWith(excludePrefix + path.sep) || normalizedPath === excludePrefix) {
+      return; // Skip this worktree
+    }
+  }
+
+  // Extract display name from path (last directory component)
+  const displayName = path.basename(normalizedPath);
+
+  results.push({
+    path: normalizedPath,
+    branch: wt.branch ?? null, // null indicates detached HEAD state
+    commitSha: wt.head.substring(0, GIT_PORCELAIN.COMMIT_SHA_LENGTH),
+    displayName,
+  });
+}
+
 async function removeTerminalWorktree(
   projectPath: string,
   name: string,
@@ -582,10 +709,11 @@ async function removeTerminalWorktree(
 
   try {
     if (existsSync(worktreePath)) {
-      execFileSync('git', ['worktree', 'remove', '--force', worktreePath], {
+      execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: getIsolatedGitEnv(),
       });
       debugLog('[TerminalWorktree] Removed git worktree');
     }
@@ -596,10 +724,11 @@ async function removeTerminalWorktree(
         debugError('[TerminalWorktree] Invalid branch name in config:', config.branchName);
       } else {
         try {
-          execFileSync('git', ['branch', '-D', config.branchName], {
+          execFileSync(getToolPath('git'), ['branch', '-D', config.branchName], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: ['pipe', 'pipe', 'pipe'],
+            env: getIsolatedGitEnv(),
           });
           debugLog('[TerminalWorktree] Deleted branch:', config.branchName);
         } catch {
@@ -661,6 +790,21 @@ export function registerTerminalWorktreeHandlers(): void {
       deleteBranch: boolean
     ): Promise<IPCResult> => {
       return removeTerminalWorktree(projectPath, name, deleteBranch);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TERMINAL_WORKTREE_LIST_OTHER,
+    async (_, projectPath: string): Promise<IPCResult<OtherWorktreeInfo[]>> => {
+      try {
+        const worktrees = await listOtherWorktrees(projectPath);
+        return { success: true, data: worktrees };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to list other worktrees',
+        };
+      }
     }
   );
 }
