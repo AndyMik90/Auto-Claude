@@ -2883,6 +2883,74 @@ export function registerWorktreeHandlers(
   }
 
   /**
+   * Kill any running dev server processes from a specific worktree path.
+   * This prevents port conflicts and ensures we launch fresh.
+   * Only kills processes from the specified worktree - won't affect other tasks.
+   */
+  async function killWorktreeProcesses(worktreePath: string): Promise<void> {
+    if (isWindows()) {
+      // On Windows, use PowerShell to find and kill processes by command line
+      // Normalize path for comparison (Windows paths in command lines may vary)
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+
+      try {
+        // Find node.exe and python.exe processes whose command line contains this worktree path
+        const findProc = spawn('powershell', [
+          '-Command',
+          `Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'node.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like '*${normalizedPath}*' } | Select-Object -ExpandProperty ProcessId`
+        ], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        // Parse PIDs and kill each one
+        const pids = stdout.trim().split(/\r?\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('taskkill', ['/F', '/PID', pid], { stdio: 'ignore' });
+          } catch {
+            // Ignore errors killing individual processes
+          }
+        }
+      } catch {
+        // Ignore errors - this is best-effort cleanup
+      }
+    } else {
+      // On Unix, use pgrep/pkill or ps to find processes
+      try {
+        const findProc = spawn('pgrep', ['-f', worktreePath], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        const pids = stdout.trim().split(/\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('kill', ['-9', pid], { stdio: 'ignore' });
+          } catch {
+            // Ignore errors
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    // Brief delay to let processes terminate
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  /**
    * Install dependencies in a worktree directory
    */
   ipcMain.handle(
@@ -2936,6 +3004,11 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Worktree path does not exist' };
         }
 
+        // Kill any existing dev server processes from THIS worktree before launching
+        // This prevents port conflicts and stale server issues
+        // Only affects processes from this specific worktree path - other tasks are safe
+        await killWorktreeProcesses(worktreePath);
+
         // Use platform helpers for OS detection
         const platform = process.platform;
 
@@ -2949,8 +3022,20 @@ export function registerWorktreeHandlers(
         const packageManager = detectPackageManager(worktreePath);
 
         // Check if dependencies are installed
+        // Must verify node_modules is a real directory with contents, not a broken symlink
         const nodeModulesPath = path.join(worktreePath, 'node_modules');
-        const depsInstalled = existsSync(nodeModulesPath);
+        let depsInstalled = false;
+        try {
+          const stats = statSync(nodeModulesPath);
+          if (stats.isDirectory()) {
+            // Check if it has actual contents (at least a few packages)
+            const contents = readdirSync(nodeModulesPath);
+            depsInstalled = contents.length > 5; // Real installs have many packages
+          }
+        } catch {
+          // Path doesn't exist or is inaccessible
+          depsInstalled = false;
+        }
 
         if (!depsInstalled) {
           if (autoInstall) {
@@ -3010,9 +3095,10 @@ export function registerWorktreeHandlers(
         // Use the user's preferred terminal (spawn is already imported at the top)
         if (isWindows()) {
           // Windows: Open cmd with the command
-          // Note: 'start' requires an empty title ("") as first arg when the command contains quotes
-          // Also: shell: true mangles nested quotes, so we avoid it
-          const proc = spawn('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', `cd /d "${escapedPath}" && ${devCommand}`], {
+          // Use start /d to set working directory - this avoids nested quote issues
+          // that occur when embedding cd /d "path" inside the command string.
+          // Node.js spawn will properly quote worktreePath if it contains spaces.
+          const proc = spawn('cmd.exe', ['/c', 'start', '""', '/d', worktreePath, 'cmd.exe', '/k', devCommand], {
             detached: true,
             stdio: 'ignore'
           });
