@@ -3,8 +3,8 @@
  */
 
 /**
- * Integration tests for terminal copy/paste functionality
- * Tests xterm.js selection API integration with clipboard operations
+ * Integration tests for terminal copy/paste functionality.
+ * Tests xterm.js selection API integration with clipboard operations.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
@@ -66,7 +66,17 @@ describe('Terminal copy/paste integration', () => {
   };
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
+
+    // Mock requestAnimationFrame to return an ID but not schedule real timers
+    // Using setTimeout causes infinite loops with vi.runAllTimersAsync() because
+    // requestAnimationFrame callbacks (like performInitialFit) schedule more timers
+    let rafId = 0;
+    global.requestAnimationFrame = vi.fn(() => {
+      return ++rafId;
+    });
+    global.cancelAnimationFrame = vi.fn();
 
     // Mock ResizeObserver
     global.ResizeObserver = vi.fn().mockImplementation(function() {
@@ -76,14 +86,6 @@ describe('Terminal copy/paste integration', () => {
         disconnect: vi.fn()
       };
     });
-
-    // Mock requestAnimationFrame for xterm.js integration tests
-    global.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
-      // Synchronously execute the callback to avoid timing issues in tests
-      // Just pass timestamp directly - this context isn't used by RAF callbacks
-      callback(0);
-      return 0;
-    }) as unknown as Mock;
 
     // Mock navigator.clipboard
     mockClipboard = {
@@ -103,6 +105,8 @@ describe('Terminal copy/paste integration', () => {
   });
 
   afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -168,8 +172,8 @@ describe('Terminal copy/paste integration', () => {
 
         if (keyEventHandler) {
           keyEventHandler(event);
-          // Wait for clipboard write
-          await new Promise(resolve => setTimeout(resolve, 0));
+          // Advance timers to allow clipboard write to complete
+          await vi.runAllTimersAsync();
         }
       });
 
@@ -341,7 +345,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(event);
           // Wait for clipboard read and paste
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await vi.runAllTimersAsync();
         }
       });
 
@@ -421,7 +425,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(event);
           // Wait for clipboard read
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await vi.runAllTimersAsync();
         }
       });
 
@@ -513,7 +517,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(copyEvent);
           // Wait for clipboard write
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await vi.runAllTimersAsync();
         }
 
         // Copy should not send input to terminal
@@ -528,7 +532,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(pasteEvent);
           // Wait for clipboard read
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await vi.runAllTimersAsync();
         }
 
         // Paste should use xterm.paste(), not xterm.input()
@@ -713,7 +717,7 @@ describe('Terminal copy/paste integration', () => {
         if (keyEventHandler) {
           keyEventHandler(pasteEvent);
           // Wait for clipboard error
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await vi.runAllTimersAsync();
         }
       });
 
