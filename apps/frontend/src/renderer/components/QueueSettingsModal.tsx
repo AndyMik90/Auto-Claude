@@ -55,7 +55,16 @@ export function QueueSettingsModal({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
+    const inputValue = e.target.value;
+
+    // Handle empty input - allow clearing the field
+    if (inputValue === '') {
+      setMaxParallel(0); // Reset to 0 (will fail validation, but allows re-entry)
+      setError(null);
+      return;
+    }
+
+    const value = parseInt(inputValue, 10);
     if (!isNaN(value)) {
       setMaxParallel(value);
       setError(null);

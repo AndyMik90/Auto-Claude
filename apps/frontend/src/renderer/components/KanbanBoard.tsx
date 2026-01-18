@@ -481,7 +481,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   // Get projectId from first task
   const projectId = tasks[0]?.projectId;
   const project = projectId ? projects.find((p) => p.id === projectId) : undefined;
-  const maxParallelTasks = project?.settings.maxParallelTasks ?? 3;
+  const maxParallelTasks = project?.settings?.maxParallelTasks ?? 3;
 
   // Queue settings modal state
   const [showQueueSettings, setShowQueueSettings] = useState(false);
@@ -807,6 +807,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
    * Promotes multiple tasks if needed (e.g., after bulk queue)
    */
   const processQueue = useCallback(async () => {
+    // Track tasks we've already attempted to promote (to avoid infinite retries)
+    const attemptedTaskIds = new Set<string>();
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 10; // Safety limit to prevent infinite loop
+
     // Loop until capacity is full or queue is empty
     while (true) {
       // Get CURRENT state from store to ensure accuracy
@@ -815,11 +820,16 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         t.status === 'in_progress' && !t.metadata?.archivedAt
       ).length;
       const queuedTasks = currentTasks.filter((t) =>
-        t.status === 'queue' && !t.metadata?.archivedAt
+        t.status === 'queue' && !t.metadata?.archivedAt && !attemptedTaskIds.has(t.id)
       );
 
-      // Stop if no capacity or no queued tasks
+      // Stop if no capacity, no queued tasks, or too many consecutive failures
       if (inProgressCount >= maxParallelTasks || queuedTasks.length === 0) {
+        break;
+      }
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        console.warn(`[Queue] Stopping queue processing after ${MAX_CONSECUTIVE_FAILURES} consecutive failures`);
         break;
       }
 
@@ -833,12 +843,20 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       console.log(`[Queue] Auto-promoting task ${nextTask.id} from Queue to In Progress (${inProgressCount + 1}/${maxParallelTasks})`);
       const result = await persistTaskStatus(nextTask.id, 'in_progress');
 
-      // If promotion failed, log error and skip to next task to prevent infinite loop
-      if (!result.success) {
+      if (result.success) {
+        // Reset consecutive failures on success
+        consecutiveFailures = 0;
+      } else {
+        // If promotion failed, log error, mark as attempted, and skip to next task
         console.error(`[Queue] Failed to promote task ${nextTask.id} to In Progress:`, result.error);
-        // Skip this task and continue to next one
-        continue;
+        attemptedTaskIds.add(nextTask.id);
+        consecutiveFailures++;
       }
+    }
+
+    // Log if we had failed tasks
+    if (attemptedTaskIds.size > 0) {
+      console.warn(`[Queue] Skipped ${attemptedTaskIds.size} task(s) that failed to promote`);
     }
   }, [maxParallelTasks]);
 
@@ -1015,7 +1033,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     }
 
     // Persist status change to file and update local state
-    await persistTaskStatus(activeTaskId, newStatus);
+    // Use handleStatusChange to properly handle worktree cleanup dialog
+    await handleStatusChange(activeTaskId, newStatus, task);
 
     // ============================================
     // QUEUE SYSTEM: Auto-process queue when slot opens
@@ -1131,13 +1150,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       />
 
       {/* Queue Settings Modal */}
-      <QueueSettingsModal
-        open={showQueueSettings}
-        onOpenChange={setShowQueueSettings}
-        projectId={projectId ?? ''}
-        currentMaxParallel={maxParallelTasks}
-        onSave={handleSaveQueueSettings}
-      />
+      {projectId && (
+        <QueueSettingsModal
+          open={showQueueSettings}
+          onOpenChange={setShowQueueSettings}
+          projectId={projectId}
+          currentMaxParallel={maxParallelTasks}
+          onSave={handleSaveQueueSettings}
+        />
+      )}
 
       {/* Bulk PR creation dialog */}
       <BulkPRDialog

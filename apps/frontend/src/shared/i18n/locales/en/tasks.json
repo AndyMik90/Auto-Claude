@@ -2,6 +2,7 @@
   "refreshTasks": "Refresh Tasks",
   "status": {
     "backlog": "Backlog",
+    "queue": "Queue",
     "todo": "To Do",
     "in_progress": "In Progress",
     "review": "Review",
