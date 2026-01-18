@@ -816,4 +816,41 @@ export function registerSettingsHandlers(
       }
     }
   );
+
+  // Worktree detection IPC handler
+  ipcMain.handle(
+    IPC_CHANNELS.APP_GET_WORKTREE_INFO,
+    async (): Promise<{ isWorktree: boolean; specNumber: string | null; worktreePath: string | null }> => {
+      try {
+        const cwd = process.cwd();
+        const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\]([0-9]{3})-[^/\\]+/;
+        const match = cwd.match(worktreePattern);
+
+        if (match) {
+          // Extract worktree root path
+          const worktreeRootMatch = cwd.match(/(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/);
+          const worktreeRoot = worktreeRootMatch ? worktreeRootMatch[1] : null;
+
+          return {
+            isWorktree: true,
+            specNumber: match[1], // The captured spec number (e.g., "009")
+            worktreePath: worktreeRoot
+          };
+        }
+
+        return {
+          isWorktree: false,
+          specNumber: null,
+          worktreePath: null
+        };
+      } catch (error) {
+        console.error('[APP_GET_WORKTREE_INFO] Error detecting worktree:', error);
+        return {
+          isWorktree: false,
+          specNumber: null,
+          worktreePath: null
+        };
+      }
+    }
+  );
 }
