@@ -65,15 +65,18 @@ export function AuthStatusIndicator() {
     });
 
     // Request initial usage
-    window.electronAPI.requestUsageUpdate().then((result) => {
-      setIsLoadingUsage(false);
-      if (result.success && result.data) {
-        setUsage(result.data);
-      }
-    }).catch(() => {
-      // Handle errors (IPC failure, network issues, etc.)
-      setIsLoadingUsage(false);
-    });
+    window.electronAPI.requestUsageUpdate()
+      .then((result) => {
+        if (result.success && result.data) {
+          setUsage(result.data);
+        }
+      })
+      .catch((error) => {
+        console.warn('[AuthStatusIndicator] Failed to fetch usage:', error);
+      })
+      .finally(() => {
+        setIsLoadingUsage(false);
+      });
 
     return () => {
       unsubscribe();
@@ -128,10 +131,8 @@ export function AuthStatusIndicator() {
 
   // Get localized provider label for display
   // Uses type-safe mapping with fallback to getProviderLabel for unknown providers
-  const getLocalizedProviderLabel = (provider: string): string => {
-    // Normalize to ApiProvider type
-    const normalizedProvider = provider.toLowerCase() as ApiProvider;
-    const translationKey = PROVIDER_TRANSLATION_KEYS[normalizedProvider];
+  const getLocalizedProviderLabel = (provider: ApiProvider): string => {
+    const translationKey = PROVIDER_TRANSLATION_KEYS[provider];
 
     // If we have a translation key (including providerUnknown), use it
     if (translationKey) {
@@ -143,7 +144,7 @@ export function AuthStatusIndicator() {
     }
 
     // Fallback to getProviderLabel for providers without translation keys
-    return getProviderLabel(normalizedProvider);
+    return getProviderLabel(provider);
   };
 
   const isOAuth = authStatus.type === 'oauth';
