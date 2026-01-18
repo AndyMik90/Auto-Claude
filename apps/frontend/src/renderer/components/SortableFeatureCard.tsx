@@ -66,10 +66,11 @@ export function SortableFeatureCard({
   const getFeatureById = (featureId: string) => roadmap?.features.find(f => f.id === featureId);
 
   // Calculate reverse dependencies on-the-fly if not present in data
-  const reverseDependencies = feature.reverseDependencies ||
-    roadmap?.features
-      .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
-      .map(f => f.id) || [];
+  const reverseDependencies = (feature.reverseDependencies && feature.reverseDependencies.length > 0)
+    ? feature.reverseDependencies
+    : roadmap?.features
+        .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
+        .map(f => f.id) || [];
 
   // Debug: log for troubleshooting
   console.log('[SortableFeatureCard] Reverse Deps Debug:', {
@@ -77,6 +78,7 @@ export function SortableFeatureCard({
     featureTitle: feature.title,
     hasReverseDepsInData: !!feature.reverseDependencies,
     reverseDepsFromData: feature.reverseDependencies,
+    reverseDepsLength: feature.reverseDependencies?.length,
     calculatedReverseDeps: reverseDependencies,
     totalFeatures: roadmap?.features.length,
     featuresWithDeps: roadmap?.features.filter(f => Array.isArray(f.dependencies) && f.dependencies.length > 0).map(f => ({

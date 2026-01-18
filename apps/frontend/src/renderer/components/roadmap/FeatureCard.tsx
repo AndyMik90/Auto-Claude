@@ -24,10 +24,11 @@ export function FeatureCard({
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
   // Calculate reverse dependencies on-the-fly if not present in data
-  const reverseDependencies = feature.reverseDependencies ||
-    features
-      .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
-      .map(f => f.id);
+  const reverseDependencies = (feature.reverseDependencies && feature.reverseDependencies.length > 0)
+    ? feature.reverseDependencies
+    : features
+        .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
+        .map(f => f.id);
 
   // Debug: log for troubleshooting
   console.log('[FeatureCard] Reverse Deps Debug:', {
@@ -35,6 +36,7 @@ export function FeatureCard({
     featureTitle: feature.title,
     hasReverseDepsInData: !!feature.reverseDependencies,
     reverseDepsFromData: feature.reverseDependencies,
+    reverseDepsLength: feature.reverseDependencies?.length,
     calculatedReverseDeps: reverseDependencies,
     totalFeatures: features.length,
     featuresWithDeps: features.filter(f => Array.isArray(f.dependencies) && f.dependencies.length > 0).map(f => ({
