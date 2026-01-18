@@ -455,7 +455,6 @@ describe('ProfileEditDialog - Validation', () => {
 
 describe('ProfileEditDialog - Test Connection Feature', () => {
   const mockOnOpenChange = vi.fn();
-  const mockOnSaved = vi.fn();
   const mockTestConnection = vi.fn();
 
   const mockProfile: APIProfile = {
