@@ -93,7 +93,27 @@ const detectAutoBuildSourcePath = (): string | null => {
     }
   }
 
-  // PRIORITY 3: Standard auto-detection logic
+  // PRIORITY 3: Check user's saved settings
+  const savedSettings = readSettingsFile();
+  const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings };
+
+  if (settings.autoBuildPath) {
+    const markerPath = path.join(settings.autoBuildPath, 'runners', 'spec_runner.py');
+    const exists = existsSync(settings.autoBuildPath) && existsSync(markerPath);
+
+    if (debug) {
+      console.warn(`[detectAutoBuildSourcePath] Saved settings path: ${settings.autoBuildPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+    }
+
+    if (exists) {
+      console.warn(`[detectAutoBuildSourcePath] Using saved settings backend path: ${settings.autoBuildPath}`);
+      return settings.autoBuildPath;
+    } else {
+      console.warn(`[detectAutoBuildSourcePath] Saved settings path is invalid, falling back to standard detection`);
+    }
+  }
+
+  // PRIORITY 4: Standard auto-detection logic (fallback)
   const possiblePaths: string[] = [];
 
   // Development mode paths
