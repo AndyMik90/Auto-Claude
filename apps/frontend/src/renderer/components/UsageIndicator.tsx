@@ -20,6 +20,20 @@ export function UsageIndicator() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
+  // Helper function to format large numbers with units (K, M, B)
+  const formatUsageValue = (value?: number): string | undefined => {
+    if (value === undefined) return undefined;
+
+    if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(2)} B`;
+    } else if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(2)} M`;
+    } else if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(1)} K`;
+    }
+    return value.toString();
+  };
+
   // Helper function to calculate formatted reset time from timestamp
   const formatResetTime = (timestamp?: string): string | undefined => {
     if (!timestamp) return undefined;
@@ -151,14 +165,7 @@ export function UsageIndicator() {
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
                 <span className="text-muted-foreground font-medium">{sessionLabel}</span>
-                <div className="flex items-center gap-2">
-                  {usage.sessionUsageValue !== undefined && usage.sessionUsageLimit !== undefined && (
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {usage.sessionUsageValue.toLocaleString()}/{usage.sessionUsageLimit.toLocaleString()}
-                    </span>
-                  )}
-                  <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
-                </div>
+                <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
               </div>
               {sessionResetTime && (
                 <div className="text-[10px] text-muted-foreground">
@@ -177,6 +184,12 @@ export function UsageIndicator() {
                   style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
                 />
               </div>
+              {/* Raw usage value below the bar */}
+              {usage.sessionUsageValue !== undefined && usage.sessionUsageLimit !== undefined && (
+                <div className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+                  {formatUsageValue(usage.sessionUsageValue)} / {formatUsageValue(usage.sessionUsageLimit)}
+                </div>
+              )}
             </div>
 
             <div className="h-px bg-border" />
@@ -185,14 +198,7 @@ export function UsageIndicator() {
             <div>
               <div className="flex items-center justify-between gap-4 mb-1">
                 <span className="text-muted-foreground font-medium">{weeklyLabel}</span>
-                <div className="flex items-center gap-2">
-                  {usage.weeklyUsageValue !== undefined && usage.weeklyUsageLimit !== undefined && (
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {usage.weeklyUsageValue.toLocaleString()}/{usage.weeklyUsageLimit.toLocaleString()}
-                    </span>
-                  )}
-                  <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
-                </div>
+                <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
               </div>
               {weeklyResetTime && (
                 <div className="text-[10px] text-muted-foreground">
@@ -211,6 +217,12 @@ export function UsageIndicator() {
                   style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
                 />
               </div>
+              {/* Raw usage value below the bar */}
+              {usage.weeklyUsageValue !== undefined && usage.weeklyUsageLimit !== undefined && (
+                <div className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+                  {formatUsageValue(usage.weeklyUsageValue)} / {formatUsageValue(usage.weeklyUsageLimit)}
+                </div>
+              )}
             </div>
 
             <div className="h-px bg-border" />
