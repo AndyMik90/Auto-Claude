@@ -25,6 +25,14 @@ from apps.backend.methodologies.bmad.workflows.architecture import (
     create_architecture,
     load_architecture,
 )
+from apps.backend.methodologies.bmad.workflows.epics import (
+    Epic,
+    EpicsDocument,
+    Story,
+    create_epics,
+    load_epics,
+    prepare_stories,
+)
 from apps.backend.methodologies.bmad.workflows.prd import (
     PRDDocument,
     Requirement,
@@ -46,4 +54,11 @@ __all__ = [
     "create_architecture",
     "load_architecture",
     "ArchitectureDocument",
+    # Epics
+    "create_epics",
+    "load_epics",
+    "prepare_stories",
+    "EpicsDocument",
+    "Epic",
+    "Story",
 ]

@@ -489,12 +489,85 @@ class BMADRunner:
 
         Story Reference: Story 6.5 - Implement BMAD Epic and Story Creation
         """
-        # TODO: Implement in Story 6.5
-        return PhaseResult(
-            success=False,
-            phase_id="epics",
-            error="Epics phase not yet implemented (Story 6.5)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.epics import (
+            create_epics,
+            load_epics,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="epics",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Check if epics already exist
+        self._invoke_progress_callback("Checking for existing epics...", 5.0)
+        existing = load_epics(self._output_dir)
+        if existing:
+            epics_file = self._output_dir / "epics.md"
+            self._invoke_progress_callback("Found existing epics", 100.0)
+            total_stories = sum(len(e.stories) for e in existing.epics)
+            return PhaseResult(
+                success=True,
+                phase_id="epics",
+                message="Epics already exist",
+                artifacts=[str(epics_file)],
+                metadata={
+                    "project_name": existing.project_name,
+                    "num_epics": len(existing.epics),
+                    "num_stories": total_stories,
+                },
+            )
+
+        # Create Epics
+        self._invoke_progress_callback("Creating epics and stories...", 10.0)
+        try:
+            epics_doc = create_epics(
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            epics_file = self._output_dir / "epics.md"
+            epics_json_file = self._output_dir / "epics.json"
+            stories_dir = self._output_dir / "stories"
+
+            # Collect all story file paths
+            story_files = []
+            if stories_dir.exists():
+                story_files = [str(f) for f in stories_dir.glob("*.md")]
+
+            total_stories = sum(len(e.stories) for e in epics_doc.epics)
+
+            if epics_file.exists():
+                return PhaseResult(
+                    success=True,
+                    phase_id="epics",
+                    message=f"Epics created for '{epics_doc.project_name}'",
+                    artifacts=[str(epics_file), str(epics_json_file)] + story_files,
+                    metadata={
+                        "project_name": epics_doc.project_name,
+                        "num_epics": len(epics_doc.epics),
+                        "num_stories": total_stories,
+                        "epics_status": epics_doc.metadata.status,
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="epics",
+                    error="Epics creation completed but artifact file was not created",
+                )
+
+        except Exception as e:
+            logger.error(f"Epics creation failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="epics",
+                error=f"Epics creation failed: {str(e)}",
+            )
 
     def _execute_stories(self) -> PhaseResult:
         """Execute the story preparation phase.
@@ -507,12 +580,66 @@ class BMADRunner:
 
         Story Reference: Story 6.5 - Implement BMAD Epic and Story Creation
         """
-        # TODO: Implement in Story 6.5
-        return PhaseResult(
-            success=False,
-            phase_id="stories",
-            error="Stories phase not yet implemented (Story 6.5)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.epics import (
+            load_epics,
+            prepare_stories,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="stories",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Load epics to check if they exist
+        self._invoke_progress_callback("Loading epics for story preparation...", 5.0)
+        epics_doc = load_epics(self._output_dir)
+        if epics_doc is None:
+            return PhaseResult(
+                success=False,
+                phase_id="stories",
+                error="No epics found. Run epics phase first.",
+            )
+
+        # Prepare stories for development
+        self._invoke_progress_callback("Preparing stories for development...", 20.0)
+        try:
+            ready_stories = prepare_stories(
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            # Collect story file paths
+            stories_dir = self._output_dir / "stories"
+            story_files = []
+            if stories_dir.exists():
+                story_files = [str(f) for f in stories_dir.glob("*.md")]
+
+            self._invoke_progress_callback("Story preparation complete", 100.0)
+
+            return PhaseResult(
+                success=True,
+                phase_id="stories",
+                message=f"Prepared {len(ready_stories)} stories for development",
+                artifacts=story_files,
+                metadata={
+                    "project_name": epics_doc.project_name,
+                    "num_ready_stories": len(ready_stories),
+                    "num_total_stories": len(epics_doc.get_all_stories()),
+                    "story_ids": [s.id for s in ready_stories],
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Story preparation failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="stories",
+                error=f"Story preparation failed: {str(e)}",
+            )
 
     def _execute_dev(self) -> PhaseResult:
         """Execute the development phase.
