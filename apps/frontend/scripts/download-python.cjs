@@ -381,37 +381,72 @@ function verifyChecksum(filePath, expectedChecksum) {
 }
 
 /**
- * Extract a Python.org Windows .exe installer using the /extract flag.
- * The /extract flag extracts the embedded Python distribution without running setup.
+ * Extract a Python.org Windows .exe installer.
+ * Note: The /extract flag doesn't work reliably on ARM64, so we use silent installation
+ * to a custom directory instead. This is more compatible across Windows versions.
  */
 function extractPythonOrgExe(exePath, destDir) {
-  console.log(`[download-python] Extracting Python.org .exe installer to: ${destDir}`);
+  console.log(`[download-python] Installing Python.org .exe to: ${destDir}`);
 
   // Ensure destination exists
   fs.mkdirSync(destDir, { recursive: true });
 
-  // Use /extract flag to extract without running setup
+  // Use silent installation mode with custom target directory
   // /quiet: Don't show progress UI
-  // /extract: Extract to directory instead of installing
-  const result = spawnSync(exePath, ['/quiet', `/extract:${destDir}`], {
+  // /quiet: Install to TargetDir (used by Windows installer)
+  // Important: We use silent install instead of /extract because:
+  // - /extract flag doesn't work reliably on Windows ARM64
+  // - Silent install with TargetDir is more compatible
+  // - The installer will extract and copy Python to the target directory
+  const result = spawnSync(exePath, ['/quiet', `TargetDir=${destDir}`, 'PrependPath=0'], {
     stdio: 'inherit',
   });
 
   if (result.error) {
-    throw new Error(`Failed to extract installer: ${result.error.message}`);
+    throw new Error(`Failed to install Python: ${result.error.message}`);
   }
 
   if (result.status !== 0 && result.status !== 3010) {  // 3010 = success, reboot required (we don't reboot)
-    throw new Error(`Failed to extract installer: exited with code ${result.status}`);
+    throw new Error(`Failed to install Python: exited with code ${result.status}`);
   }
 
-  // Verify extraction succeeded by checking for python.exe
-  const pythonExe = path.join(destDir, 'python.exe');
+  // Verify installation succeeded by checking for python.exe in multiple locations
+  let pythonExe = path.join(destDir, 'python.exe');
   if (!fs.existsSync(pythonExe)) {
-    throw new Error(`Python extraction failed: python.exe not found at ${pythonExe}`);
+    // Try searching in subdirectories (e.g., pythonXY/ or python/)
+    const entries = fs.readdirSync(destDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subDir = path.join(destDir, entry.name);
+        const subPython = path.join(subDir, 'python.exe');
+        if (fs.existsSync(subPython)) {
+          // Found it in subdirectory - need to promote contents up
+          console.log(`[download-python] Found python.exe in subdirectory: ${entry.name}`);
+          // Move all contents from subdirectory up to parent
+          const subEntries = fs.readdirSync(subDir, { withFileTypes: true });
+          for (const subEntry of subEntries) {
+            const oldPath = path.join(subDir, subEntry.name);
+            const newPath = path.join(destDir, subEntry.name);
+            // Handle collision by using rename
+            if (fs.existsSync(newPath)) {
+              fs.rmSync(newPath, { recursive: true, force: true });
+            }
+            fs.renameSync(oldPath, newPath);
+          }
+          // Remove the now-empty subdirectory
+          fs.rmdirSync(subDir);
+          pythonExe = path.join(destDir, 'python.exe');
+          break;
+        }
+      }
+    }
   }
 
-  console.log(`[download-python] Extraction complete`);
+  if (!fs.existsSync(pythonExe)) {
+    throw new Error(`Python installation failed: python.exe not found at ${pythonExe}. Contents: ${fs.readdirSync(destDir).join(', ')}`);
+  }
+
+  console.log(`[download-python] Installation complete`);
 }
 
 /**
