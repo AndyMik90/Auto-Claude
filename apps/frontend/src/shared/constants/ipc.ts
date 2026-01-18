@@ -154,6 +154,7 @@ export const IPC_CHANNELS = {
 
   // App info
   APP_VERSION: 'app:version',
+  APP_GET_WORKTREE_INFO: 'app:getWorktreeInfo',
 
   // Shell operations
   SHELL_OPEN_EXTERNAL: 'shell:openExternal',
