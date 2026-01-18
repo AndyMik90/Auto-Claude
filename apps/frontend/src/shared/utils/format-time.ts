@@ -22,14 +22,14 @@
  *
  * @example
  * formatTimeRemaining('2025-01-20T15:00:00Z', t, {
- *   hoursKey: 'usage:resetsInHours',
- *   daysKey: 'usage:resetsInDays'
+ *   hoursKey: 'common:usage.resetsInHours',
+ *   daysKey: 'common:usage.resetsInDays'
  * })
  */
 export interface FormatTimeRemainingOptions {
-  /** Translation key for hours/minutes format (default: 'usage:resetsInHours') */
+  /** Translation key for hours/minutes format (default: 'common:usage.resetsInHours') */
   hoursKey?: string;
-  /** Translation key for days/hours format (default: 'usage:resetsInDays') */
+  /** Translation key for days/hours format (default: 'common:usage.resetsInDays') */
   daysKey?: string;
 }
 
@@ -40,7 +40,7 @@ export function formatTimeRemaining(
 ): string | undefined {
   if (!timestamp) return undefined;
 
-  const { hoursKey = 'usage:resetsInHours', daysKey = 'usage:resetsInDays' } = options;
+  const { hoursKey = 'common:usage.resetsInHours', daysKey = 'common:usage.resetsInDays' } = options;
 
   try {
     const date = new Date(timestamp);
