@@ -2824,12 +2824,70 @@ export function registerWorktreeHandlers(
   );
 
   /**
+   * Detect the package manager used by a project based on lockfiles
+   */
+  function detectPackageManager(projectPath: string): 'pnpm' | 'yarn' | 'bun' | 'npm' {
+    if (existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
+    if (existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
+    if (existsSync(path.join(projectPath, 'bun.lockb'))) return 'bun';
+    return 'npm';
+  }
+
+  /**
+   * Install dependencies in a worktree directory
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_INSTALL_DEPS,
+    async (_, worktreePath: string): Promise<IPCResult<{ installed: boolean; packageManager: string }>> => {
+      try {
+        if (!existsSync(worktreePath)) {
+          return { success: false, error: 'Worktree path does not exist' };
+        }
+
+        const packageJsonPath = path.join(worktreePath, 'package.json');
+        if (!existsSync(packageJsonPath)) {
+          return { success: false, error: 'No package.json found in worktree' };
+        }
+
+        const packageManager = detectPackageManager(worktreePath);
+
+        // Run the install command synchronously
+        try {
+          execSync(`${packageManager} install`, {
+            cwd: worktreePath,
+            stdio: 'pipe',
+            timeout: 300000, // 5 minute timeout
+            encoding: 'utf-8'
+          });
+
+          return {
+            success: true,
+            data: { installed: true, packageManager }
+          };
+        } catch (installError) {
+          const errorMessage = installError instanceof Error ? installError.message : String(installError);
+          return {
+            success: false,
+            error: `Failed to install dependencies with ${packageManager}: ${errorMessage}`
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: `Failed to install dependencies: ${error instanceof Error ? error.message : String(error)}`
+        };
+      }
+    }
+  );
+
+  /**
    * Launch the app dev server from a worktree directory
    * Detects the project type and runs the appropriate dev command
+   * If autoInstall is true and deps are missing, installs them first
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_LAUNCH_APP,
-    async (_, worktreePath: string): Promise<IPCResult<{ launched: boolean; command: string }>> => {
+    async (_, worktreePath: string, autoInstall?: boolean): Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean }>> => {
       try {
         if (!existsSync(worktreePath)) {
           return { success: false, error: 'Worktree path does not exist' };
@@ -2844,6 +2902,41 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Invalid path: contains unsafe characters' };
         }
 
+        // Detect the package manager used by this project
+        const packageManager = detectPackageManager(worktreePath);
+
+        // Check if dependencies are installed
+        const nodeModulesPath = path.join(worktreePath, 'node_modules');
+        const depsInstalled = existsSync(nodeModulesPath);
+
+        if (!depsInstalled) {
+          if (autoInstall) {
+            // Auto-install dependencies
+            try {
+              execSync(`${packageManager} install`, {
+                cwd: worktreePath,
+                stdio: 'pipe',
+                timeout: 300000, // 5 minute timeout
+                encoding: 'utf-8'
+              });
+            } catch (installError) {
+              const errorMessage = installError instanceof Error ? installError.message : String(installError);
+              return {
+                success: false,
+                error: `Failed to install dependencies with ${packageManager}: ${errorMessage}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager }
+              };
+            }
+          } else {
+            // Return structured error so frontend can offer to install
+            return {
+              success: false,
+              error: `Dependencies not installed. Run "${packageManager} install" in the worktree first.`,
+              data: { launched: false, command: '', depsInstalled: false, packageManager }
+            };
+          }
+        }
+
         // Try to detect the dev command from package.json
         const packageJsonPath = path.join(worktreePath, 'package.json');
         let devCommand: string | null = null;
@@ -2853,15 +2946,15 @@ export function registerWorktreeHandlers(
             const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
             const scripts = packageJson.scripts || {};
 
-            // Priority order for dev commands
+            // Priority order for dev commands, using detected package manager
             if (scripts.dev) {
-              devCommand = 'npm run dev';
+              devCommand = `${packageManager} run dev`;
             } else if (scripts.start) {
-              devCommand = 'npm start';
+              devCommand = packageManager === 'npm' ? 'npm start' : `${packageManager} run start`;
             } else if (scripts.serve) {
-              devCommand = 'npm run serve';
+              devCommand = `${packageManager} run serve`;
             } else if (scripts.develop) {
-              devCommand = 'npm run develop';
+              devCommand = `${packageManager} run develop`;
             }
           } catch {
             // Ignore JSON parse errors

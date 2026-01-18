@@ -104,8 +104,13 @@ export const workspaceMock = {
     }
   }),
 
-  worktreeLaunchApp: async () => ({
+  worktreeLaunchApp: async (_worktreePath: string, _autoInstall?: boolean) => ({
     success: true,
-    data: { launched: true, command: 'npm run dev' }
+    data: { launched: true, command: 'npm run dev', depsInstalled: true, packageManager: 'npm' }
+  }),
+
+  worktreeInstallDeps: async (_worktreePath: string) => ({
+    success: true,
+    data: { installed: true, packageManager: 'npm' }
   })
 };

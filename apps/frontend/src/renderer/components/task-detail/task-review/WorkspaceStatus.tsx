@@ -14,8 +14,11 @@ import {
   GitCommit,
   Code,
   Terminal,
-  Play
+  Play,
+  Package,
+  Download
 } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
@@ -109,6 +112,48 @@ export function WorkspaceStatus({
   const preferredIDE = settings.preferredIDE || 'vscode';
   const preferredTerminal = settings.preferredTerminal || 'system';
 
+  // State for dependency installation
+  const [depsStatus, setDepsStatus] = useState<{
+    missing: boolean;
+    packageManager: string;
+    installing: boolean;
+  }>({ missing: false, packageManager: 'npm', installing: false });
+
+  const handleInstallDeps = async () => {
+    if (!worktreeStatus.worktreePath) return;
+    setDepsStatus(prev => ({ ...prev, installing: true }));
+
+    toast({
+      title: 'Installing dependencies...',
+      description: `Running ${depsStatus.packageManager} install`,
+    });
+
+    try {
+      const result = await window.electronAPI.worktreeInstallDeps(worktreeStatus.worktreePath);
+      if (result.success) {
+        setDepsStatus({ missing: false, packageManager: result.data?.packageManager || 'npm', installing: false });
+        toast({
+          title: 'Dependencies installed',
+          description: 'You can now launch the app',
+        });
+      } else {
+        setDepsStatus(prev => ({ ...prev, installing: false }));
+        toast({
+          title: 'Installation failed',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      setDepsStatus(prev => ({ ...prev, installing: false }));
+      toast({
+        title: 'Installation failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleOpenInIDE = async () => {
     if (!worktreeStatus.worktreePath) return;
     try {
@@ -135,24 +180,50 @@ export function WorkspaceStatus({
     }
   };
 
-  const handleLaunchApp = async () => {
+  const handleLaunchApp = async (autoInstall = false) => {
     if (!worktreeStatus.worktreePath) return;
+
+    if (autoInstall) {
+      setDepsStatus(prev => ({ ...prev, installing: true }));
+      toast({
+        title: 'Installing dependencies...',
+        description: `Running ${depsStatus.packageManager} install`,
+      });
+    }
+
     try {
-      const result = await window.electronAPI.worktreeLaunchApp(worktreeStatus.worktreePath);
+      const result = await window.electronAPI.worktreeLaunchApp(worktreeStatus.worktreePath, autoInstall);
       if (result.success) {
+        setDepsStatus({ missing: false, packageManager: result.data?.packageManager || 'npm', installing: false });
         toast({
           title: t('taskReview:workspace.launchSuccess'),
           description: result.data?.command,
         });
       } else {
-        console.error('Failed to launch app:', result.error);
-        toast({
-          title: t('taskReview:workspace.launchFailed'),
-          description: result.error,
-          variant: 'destructive',
-        });
+        // Check if deps are missing
+        if (result.data?.depsInstalled === false && result.data?.packageManager) {
+          setDepsStatus({
+            missing: true,
+            packageManager: result.data.packageManager,
+            installing: false
+          });
+          // Don't show destructive toast for missing deps - we'll show install button instead
+          toast({
+            title: 'Dependencies not installed',
+            description: `Click "Install Dependencies" to run ${result.data.packageManager} install`,
+          });
+        } else {
+          setDepsStatus(prev => ({ ...prev, installing: false }));
+          console.error('Failed to launch app:', result.error);
+          toast({
+            title: t('taskReview:workspace.launchFailed'),
+            description: result.error,
+            variant: 'destructive',
+          });
+        }
       }
     } catch (err) {
+      setDepsStatus(prev => ({ ...prev, installing: false }));
       console.error('Failed to launch app:', err);
       toast({
         title: t('taskReview:workspace.launchFailed'),
@@ -239,19 +310,74 @@ export function WorkspaceStatus({
           </div>
         )}
 
+        {/* Missing dependencies warning */}
+        {depsStatus.missing && (
+          <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
+            <Package className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-warning">Dependencies not installed</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Run <code className="bg-background/80 px-1 py-0.5 rounded text-[11px]">{depsStatus.packageManager} install</code> to install dependencies
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInstallDeps}
+              disabled={depsStatus.installing}
+              className="h-7 px-2 text-xs flex-shrink-0"
+            >
+              {depsStatus.installing ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  Installing...
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Install
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
         {/* Open in IDE/Terminal/Launch buttons */}
         {worktreeStatus.worktreePath && (
           <div className="flex gap-2 mt-3 flex-wrap">
             <Button
               variant="default"
               size="sm"
-              onClick={handleLaunchApp}
+              onClick={() => handleLaunchApp(false)}
+              disabled={depsStatus.installing}
               className="h-7 px-2 text-xs"
-              title={t('taskReview:workspace.launchAppTooltip')}
+              title={depsStatus.missing ? `Dependencies not installed - click to try anyway or install first` : t('taskReview:workspace.launchAppTooltip')}
             >
               <Play className="h-3.5 w-3.5 mr-1" />
               {t('taskReview:workspace.launchApp')}
             </Button>
+            {depsStatus.missing && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleLaunchApp(true)}
+                disabled={depsStatus.installing}
+                className="h-7 px-2 text-xs"
+                title="Install dependencies and launch app"
+              >
+                {depsStatus.installing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    Installing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    Install & Launch
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
