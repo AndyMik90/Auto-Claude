@@ -280,13 +280,8 @@ def auto_fix_plan(spec_dir: Path) -> bool:
 
     if fixed or json_repaired:
         try:
-<<<<<<< HEAD
-            with safe_open(plan_file, "w") as f:
-                json.dump(plan, f, indent=2, ensure_ascii=False)
-=======
             # Use atomic write to prevent file corruption if interrupted
             write_json_atomic(plan_file, plan, indent=2, ensure_ascii=False)
->>>>>>> upstream/develop
         except OSError:
             return False
         if fixed:
