@@ -404,6 +404,7 @@
     "providerAnthropic": "Anthropic",
     "providerZai": "z.ai",
     "providerZhipu": "ZHIPU AI",
+    "providerUnknown": "Unknown",
     "profile": "Profile",
     "id": "ID",
     "apiEndpoint": "API Endpoint",

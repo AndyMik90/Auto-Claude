@@ -44,6 +44,10 @@ export function formatTimeRemaining(
 
   try {
     const date = new Date(timestamp);
+
+    // Handle invalid dates (isNaN check before using getTime())
+    if (isNaN(date.getTime())) return undefined;
+
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
 

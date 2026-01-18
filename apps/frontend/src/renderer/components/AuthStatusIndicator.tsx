@@ -23,9 +23,19 @@ import {
 } from './ui/tooltip';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
-import { detectProvider, getProviderLabel, getProviderBadgeColor } from '../../shared/utils/provider-detection';
+import { detectProvider, getProviderLabel, getProviderBadgeColor, type ApiProvider } from '../../shared/utils/provider-detection';
 import { formatTimeRemaining } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
+
+/**
+ * Type-safe mapping from ApiProvider to translation keys
+ */
+const PROVIDER_TRANSLATION_KEYS: Readonly<Record<ApiProvider, string>> = {
+  anthropic: 'usage:providerAnthropic',
+  zai: 'usage:providerZai',
+  zhipu: 'usage:providerZhipu',
+  unknown: 'usage:providerUnknown'
+} as const;
 
 export function AuthStatusIndicator() {
   // Subscribe to profile state from settings store
@@ -118,9 +128,23 @@ export function AuthStatusIndicator() {
   };
 
   // Get localized provider label for display
+  // Uses type-safe mapping with fallback to getProviderLabel for unknown providers
   const getLocalizedProviderLabel = (provider: string): string => {
-    const providerKey = `usage:provider${provider.charAt(0).toUpperCase() + provider.slice(1)}`;
-    return t(providerKey as any);
+    // Normalize to ApiProvider type
+    const normalizedProvider = provider.toLowerCase() as ApiProvider;
+    const translationKey = PROVIDER_TRANSLATION_KEYS[normalizedProvider];
+
+    // Try to get translation, fallback to getProviderLabel if key doesn't exist or provider unknown
+    if (translationKey && translationKey !== 'usage:providerUnknown') {
+      const translated = t(translationKey);
+      // If translation returns the key itself (not found), use getProviderLabel fallback
+      if (translated !== translationKey) {
+        return translated;
+      }
+    }
+
+    // Fallback to getProviderLabel for unknown providers or missing translations
+    return getProviderLabel(normalizedProvider);
   };
 
   const isOAuth = authStatus.type === 'oauth';

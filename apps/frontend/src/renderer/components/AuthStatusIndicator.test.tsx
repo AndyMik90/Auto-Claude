@@ -45,8 +45,7 @@ vi.mock('react-i18next', () => ({
       }
       return translations[key] || key;
     }
-  })),
-  Translation: vi.fn(() => ({ t: (key: string) => key }))
+  }))
 }));
 
 /**
