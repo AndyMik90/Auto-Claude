@@ -12,6 +12,7 @@ import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
+import * as PtyManager from './pty-manager';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { escapeShellArg, escapeForWindowsDoubleQuote, buildCdCommand } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
@@ -599,7 +600,8 @@ export function invokeClaude(
 
         const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', tempFile }, extraFlags);
         debugLog('[ClaudeIntegration:invokeClaude] Executing command (temp file method, history-safe)');
-        terminal.pty.write(command);
+        // Use PtyManager.writeToPty for safer write with error handling
+        PtyManager.writeToPty(terminal, command);
         profileManager.markProfileUsed(activeProfile.id);
         finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
         debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
@@ -607,7 +609,8 @@ export function invokeClaude(
       } else if (activeProfile.configDir) {
         const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', configDir: activeProfile.configDir }, extraFlags);
         debugLog('[ClaudeIntegration:invokeClaude] Executing command (configDir method, history-safe)');
-        terminal.pty.write(command);
+        // Use PtyManager.writeToPty for safer write with error handling
+        PtyManager.writeToPty(terminal, command);
         profileManager.markProfileUsed(activeProfile.id);
         finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
         debugLog('[ClaudeIntegration:invokeClaude] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
@@ -623,7 +626,8 @@ export function invokeClaude(
 
     const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
     debugLog('[ClaudeIntegration:invokeClaude] Executing command (default method):', command);
-    terminal.pty.write(command);
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, command);
 
     if (activeProfile) {
       profileManager.markProfileUsed(activeProfile.id);
@@ -690,7 +694,8 @@ export function resumeClaude(
 
     const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
 
-    terminal.pty.write(`${command}\r`);
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, `${command}\r`);
 
     // Only auto-rename if terminal has default name
     // This preserves user-customized names and prevents renaming on every resume
@@ -817,7 +822,8 @@ export async function invokeClaudeAsync(
 
         const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'temp-file', tempFile }, extraFlags);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (temp file method, history-safe)');
-        terminal.pty.write(command);
+        // Use PtyManager.writeToPty for safer write with error handling
+        PtyManager.writeToPty(terminal, command);
         profileManager.markProfileUsed(activeProfile.id);
         finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (temp file) ==========');
@@ -825,7 +831,8 @@ export async function invokeClaudeAsync(
       } else if (activeProfile.configDir) {
         const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'config-dir', configDir: activeProfile.configDir }, extraFlags);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (configDir method, history-safe)');
-        terminal.pty.write(command);
+        // Use PtyManager.writeToPty for safer write with error handling
+        PtyManager.writeToPty(terminal, command);
         profileManager.markProfileUsed(activeProfile.id);
         finalizeClaudeInvoke(terminal, activeProfile, projectPath, startTime, getWindow, onSessionCapture);
         debugLog('[ClaudeIntegration:invokeClaudeAsync] ========== INVOKE CLAUDE COMPLETE (configDir) ==========');
@@ -841,7 +848,8 @@ export async function invokeClaudeAsync(
 
     const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (default method):', command);
-    terminal.pty.write(command);
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, command);
 
     if (activeProfile) {
       profileManager.markProfileUsed(activeProfile.id);
@@ -917,7 +925,8 @@ export async function resumeClaudeAsync(
 
     const command = `${pathPrefix}${escapedClaudeCmd} --continue`;
 
-    terminal.pty.write(`${command}\r`);
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, `${command}\r`);
 
     // Only auto-rename if terminal has default name
     // This preserves user-customized names and prevents renaming on every resume
@@ -1091,14 +1100,16 @@ export async function switchClaudeProfile(
 
     // Send Ctrl+C to interrupt any ongoing operation
     debugLog('[ClaudeIntegration:switchClaudeProfile] Sending Ctrl+C (\\x03)');
-    terminal.pty.write('\x03');
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, '\x03');
 
     // Wait briefly for Ctrl+C to take effect before sending /exit
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Send /exit command
     debugLog('[ClaudeIntegration:switchClaudeProfile] Sending /exit command');
-    terminal.pty.write('/exit\r');
+    // Use PtyManager.writeToPty for safer write with error handling
+    PtyManager.writeToPty(terminal, '/exit\r');
 
     // Wait for Claude to actually exit by monitoring for shell prompt
     const exitResult = await waitForClaudeExit(terminal, { timeout: 5000, pollInterval: 100 });

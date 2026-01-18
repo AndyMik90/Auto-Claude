@@ -133,7 +133,6 @@
     "vitest": "^4.0.16"
   },
   "overrides": {
-    "tar": "^7.5.3",
     "electron-builder-squirrel-windows": "^26.0.12",
     "dmg-builder": "^26.0.12",
     "@electron/rebuild": "4.0.2"
