@@ -164,6 +164,75 @@ export function getNpmExecutablePath(): string {
 }
 
 /**
+ * Find Node.js installation directories on Windows
+ *
+ * Returns array of potential Node.js bin directories where node.exe might be installed.
+ * This is needed because claude.cmd (npm global binary) requires node.exe to be in PATH.
+ *
+ * Search priority:
+ * 1. Program Files\nodejs (standard installer location)
+ * 2. %APPDATA%\npm (user-level npm globals - may contain node.exe with nvm-windows)
+ * 3. NVM for Windows installation directories
+ * 4. Scoop, Chocolatey installations
+ *
+ * @returns Array of existing Node.js bin directories
+ */
+export function findNodeJsDirectories(): string[] {
+  if (!isWindows()) {
+    return [];
+  }
+
+  const homeDir = os.homedir();
+  const candidates: string[] = [
+    // Standard Node.js installer location
+    joinPaths('C:\\Program Files', 'nodejs'),
+    joinPaths('C:\\Program Files (x86)', 'nodejs'),
+
+    // User-level npm global directory (may contain node.exe with nvm-windows)
+    joinPaths(homeDir, 'AppData', 'Roaming', 'npm'),
+
+    // NVM for Windows default location
+    joinPaths(homeDir, 'AppData', 'Roaming', 'nvm'),
+    joinPaths('C:\\Program Files', 'nvm'),
+
+    // Scoop installation
+    joinPaths(homeDir, 'scoop', 'apps', 'nodejs', 'current'),
+
+    // Chocolatey installation
+    joinPaths('C:\\ProgramData', 'chocolatey', 'bin'),
+  ];
+
+  // For NVM, we need to find the active Node.js version directory
+  const nvmPath = joinPaths(homeDir, 'AppData', 'Roaming', 'nvm');
+  if (existsSync(nvmPath)) {
+    try {
+      // Find all version directories (e.g., v20.0.0, v18.17.1)
+      const entries = readdirSync(nvmPath, { withFileTypes: true });
+      const versionDirs = entries
+        .filter((entry) => entry.isDirectory() && /^v\d+\.\d+\.\d+$/.test(entry.name))
+        .sort((a, b) => {
+          // Sort by version descending (newest first)
+          const vA = a.name.slice(1).split('.').map(Number);
+          const vB = b.name.slice(1).split('.').map(Number);
+          for (let i = 0; i < 3; i++) {
+            const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+            if (diff !== 0) return diff;
+          }
+          return 0;
+        })
+        .map((entry) => joinPaths(nvmPath, entry.name));
+
+      candidates.push(...versionDirs);
+    } catch {
+      // Ignore errors reading NVM directory
+    }
+  }
+
+  // Return only existing directories
+  return candidates.filter((dir) => existsSync(dir));
+}
+
+/**
  * Get all Windows shell paths for terminal selection
  *
  * Returns a map of shell types to their possible installation paths.
