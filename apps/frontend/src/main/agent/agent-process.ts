@@ -24,7 +24,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
-import { isWindows, killProcessGracefully } from '../platform';
+import { killProcessGracefully } from '../platform';
 
 /**
  * Type for supported CLI tools
