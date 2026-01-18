@@ -464,6 +464,32 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function hasPackage(sitePackagesDir, pkg) {
+  const pkgPath = path.join(sitePackagesDir, pkg);
+  const initPath = path.join(pkgPath, '__init__.py');
+  const moduleFile = path.join(sitePackagesDir, pkg + '.py');
+  return (fs.existsSync(pkgPath) && fs.existsSync(initPath)) || fs.existsSync(moduleFile);
+}
+
+function hasPydanticCoreBinary(sitePackagesDir) {
+  const pkgDir = path.join(sitePackagesDir, 'pydantic_core');
+  if (!fs.existsSync(pkgDir)) return false;
+
+  const entries = fs.readdirSync(pkgDir);
+  return entries.some((name) => {
+    if (!name.startsWith('_pydantic_core')) return false;
+    const lower = name.toLowerCase();
+    return lower.endsWith('.so') || lower.endsWith('.pyd') || lower.endsWith('.dylib');
+  });
+}
+
+function isCriticalPackageMissing(sitePackagesDir, pkg) {
+  if (pkg === 'pydantic_core') {
+    return !hasPackage(sitePackagesDir, pkg) || !hasPydanticCoreBinary(sitePackagesDir);
+  }
+  return !hasPackage(sitePackagesDir, pkg);
+}
+
 /**
  * Strip unnecessary files from site-packages to reduce bundle size.
  * This removes tests, docs, cache files, and other non-essential content.
@@ -797,6 +823,37 @@ function installPackages(pythonBin, requirementsPath, targetSitePackages) {
   // Strip unnecessary files
   stripSitePackages(targetSitePackages);
 
+  if (!hasPydanticCoreBinary(targetSitePackages)) {
+    console.warn('[download-python] pydantic_core binary missing after strip; reinstalling pydantic-core...');
+    const pipArgs = [
+      '-m', 'pip', 'install',
+      '--no-compile',
+      '--only-binary', 'pydantic-core',
+      '--no-deps',
+      '--target', targetSitePackages,
+      'pydantic-core',
+    ];
+    const result = spawnSync(pythonBin, pipArgs, {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PYTHONDONTWRITEBYTECODE: '1',
+        PYTHONIOENCODING: 'utf-8',
+      },
+    });
+
+    if (result.error) {
+      throw new Error(`Failed to reinstall pydantic-core: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      throw new Error(`pydantic-core reinstall failed with exit code ${result.status}`);
+    }
+
+    if (!hasPydanticCoreBinary(targetSitePackages)) {
+      throw new Error('pydantic_core binary missing after reinstall');
+    }
+  }
+
   // Remove bin/Scripts directory (we don't need console scripts)
   const binDir = path.join(targetSitePackages, 'bin');
   const scriptsDir = path.join(targetSitePackages, 'Scripts');
@@ -862,14 +919,7 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
         .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
-      const missingPackages = criticalPackages.filter(pkg => {
-        const pkgPath = path.join(sitePackagesDir, pkg);
-        const initPath = path.join(pkgPath, '__init__.py');
-        // For single-file modules (like pywintypes.py), check for the file directly
-        const moduleFile = path.join(sitePackagesDir, pkg + '.py');
-        // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
-      });
+      const missingPackages = criticalPackages.filter(pkg => isCriticalPackageMissing(sitePackagesDir, pkg));
 
       if (missingPackages.length > 0) {
         console.log(`[download-python] Critical packages missing or incomplete: ${missingPackages.join(', ')}`);
@@ -969,14 +1019,7 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
         .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
-      const postInstallMissing = criticalPackages.filter(pkg => {
-        const pkgPath = path.join(sitePackagesDir, pkg);
-        const initPath = path.join(pkgPath, '__init__.py');
-        // For single-file modules (like pywintypes.py), check for the file directly
-        const moduleFile = path.join(sitePackagesDir, pkg + '.py');
-        // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
-      });
+      const postInstallMissing = criticalPackages.filter(pkg => isCriticalPackageMissing(sitePackagesDir, pkg));
 
       if (postInstallMissing.length > 0) {
         throw new Error(`Package installation failed - missing critical packages: ${postInstallMissing.join(', ')}`);
