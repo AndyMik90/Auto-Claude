@@ -12,6 +12,7 @@ import {
   Trash2,
   Link,
   AlertTriangle,
+  Package,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -39,6 +40,18 @@ export function FeatureDetailPanel({
   const { t } = useTranslation('common');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
+
+  // Calculate reverse dependencies on-the-fly if not present in data
+  // This handles cases where roadmap was generated before reverse dependencies were tracked
+  const reverseDependencies = feature.reverseDependencies ||
+    features
+      .filter(f => f.dependencies?.includes(feature.id))
+      .map(f => f.id);
+
+  // Debug: log feature data
+  console.log('[FeatureDetailPanel] feature:', feature);
+  console.log('[FeatureDetailPanel] feature.reverseDependencies from data:', feature.reverseDependencies);
+  console.log('[FeatureDetailPanel] calculated reverseDependencies:', reverseDependencies);
 
   const handleDependencyClick = (depId: string) => {
     if (onDependencyClick) {
@@ -174,7 +187,7 @@ export function FeatureDetailPanel({
         {feature.dependencies.length > 0 && (
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-              <Link className="h-4 w-4" />
+              <Package className="h-4 w-4" />
               Dependencies ({feature.dependencies.length})
             </h3>
             <div className="flex flex-wrap gap-1">
@@ -200,6 +213,32 @@ export function FeatureDetailPanel({
                     {isMissing && <AlertTriangle className="h-3 w-3" />}
                     <span>{depFeature?.title || depId}</span>
                     {!isMissing && <ChevronRight className="h-3 w-3" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Reverse Dependencies */}
+        {reverseDependencies && reverseDependencies.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Required By ({reverseDependencies.length})
+            </h3>
+            <div className="flex flex-wrap gap-1">
+              {reverseDependencies.map((depId) => {
+                const depFeature = features.find(f => f.id === depId);
+                return (
+                  <button
+                    key={depId}
+                    className="px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
+                    onClick={() => handleDependencyClick(depId)}
+                    title={depFeature?.title || depId}
+                  >
+                    <span>{depFeature?.title || depId}</span>
+                    <ChevronRight className="h-3 w-3" />
                   </button>
                 );
               })}
