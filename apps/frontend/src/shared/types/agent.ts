@@ -29,14 +29,18 @@ export interface ClaudeUsageData {
  * Returned from API or CLI usage check
  */
 export interface ClaudeUsageSnapshot {
-  /** Session usage percentage (0-100) */
+  /** Session usage percentage (0-100) - represents 5-hour window for most providers */
   sessionPercent: number;
-  /** Weekly usage percentage (0-100) */
+  /** Weekly usage percentage (0-100) - represents 7-day window for Anthropic, monthly for z.ai */
   weeklyPercent: number;
   /** When the session limit resets (human-readable or ISO) */
   sessionResetTime?: string;
   /** When the weekly limit resets (human-readable or ISO) */
   weeklyResetTime?: string;
+  /** ISO timestamp of when the session limit resets (for dynamic countdown calculation) */
+  sessionResetTimestamp?: string;
+  /** ISO timestamp of when the weekly limit resets (for dynamic countdown calculation) */
+  weeklyResetTimestamp?: string;
   /** Profile ID this snapshot belongs to */
   profileId: string;
   /** Profile name for display */
@@ -45,6 +49,21 @@ export interface ClaudeUsageSnapshot {
   fetchedAt: Date;
   /** Which limit is closest to threshold ('session' or 'weekly') */
   limitType?: 'session' | 'weekly';
+  /** Usage window types for this provider */
+  usageWindows?: {
+    /** Label for the session window (e.g., '5-hour', '5-hour window') */
+    sessionWindowLabel: string;
+    /** Label for the weekly window (e.g., '7-day', 'monthly', 'calendar month') */
+    weeklyWindowLabel: string;
+  };
+  /** Raw session usage value (e.g., tokens used) */
+  sessionUsageValue?: number;
+  /** Session usage limit (total quota) */
+  sessionUsageLimit?: number;
+  /** Raw weekly usage value (e.g., tools used) */
+  weeklyUsageValue?: number;
+  /** Weekly usage limit (total quota) */
+  weeklyUsageLimit?: number;
 }
 
 /**
