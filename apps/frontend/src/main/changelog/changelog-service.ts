@@ -176,20 +176,29 @@ export class ChangelogService extends EventEmitter {
   }
 
   /**
+   * Ensure prerequisites are met for changelog generation
+   * Validates auto-build source path and Claude CLI availability
+   */
+  private ensurePrerequisites(): { autoBuildSource: string } {
+    const autoBuildSource = this.getAutoBuildSourcePath();
+    if (!autoBuildSource) {
+      throw new Error('Auto-build source path not found');
+    }
+
+    const claudeInfo = getToolInfo('claude');
+    if (!claudeInfo.found) {
+      throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
+    }
+
+    return { autoBuildSource };
+  }
+
+  /**
    * Get or create the generator instance
    */
   private getGenerator(): ChangelogGenerator {
     if (!this.generator) {
-      const autoBuildSource = this.getAutoBuildSourcePath();
-      if (!autoBuildSource) {
-        throw new Error('Auto-build source path not found');
-      }
-
-      // Verify claude CLI is available using proper detection
-      const claudeInfo = getToolInfo('claude');
-      if (!claudeInfo.found) {
-        throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
-      }
+      const { autoBuildSource } = this.ensurePrerequisites();
 
       const autoBuildEnv = this.loadAutoBuildEnv();
 
@@ -227,16 +236,7 @@ export class ChangelogService extends EventEmitter {
    */
   private getVersionSuggester(): VersionSuggester {
     if (!this.versionSuggester) {
-      const autoBuildSource = this.getAutoBuildSourcePath();
-      if (!autoBuildSource) {
-        throw new Error('Auto-build source path not found');
-      }
-
-      // Verify claude CLI is available using proper detection
-      const claudeInfo = getToolInfo('claude');
-      if (!claudeInfo.found) {
-        throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
-      }
+      const { autoBuildSource } = this.ensurePrerequisites();
 
       this.versionSuggester = new VersionSuggester(
         this.pythonPath,
