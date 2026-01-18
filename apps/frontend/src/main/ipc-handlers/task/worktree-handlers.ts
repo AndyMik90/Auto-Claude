@@ -2824,6 +2824,16 @@ export function registerWorktreeHandlers(
   );
 
   /**
+   * Detect the package manager used by a project based on lockfiles
+   */
+  function detectPackageManager(projectPath: string): 'pnpm' | 'yarn' | 'bun' | 'npm' {
+    if (existsSync(path.join(projectPath, 'pnpm-lock.yaml'))) return 'pnpm';
+    if (existsSync(path.join(projectPath, 'yarn.lock'))) return 'yarn';
+    if (existsSync(path.join(projectPath, 'bun.lockb'))) return 'bun';
+    return 'npm';
+  }
+
+  /**
    * Launch the app dev server from a worktree directory
    * Detects the project type and runs the appropriate dev command
    */
@@ -2844,6 +2854,18 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Invalid path: contains unsafe characters' };
         }
 
+        // Detect the package manager used by this project
+        const packageManager = detectPackageManager(worktreePath);
+
+        // Check if dependencies are installed
+        const nodeModulesPath = path.join(worktreePath, 'node_modules');
+        if (!existsSync(nodeModulesPath)) {
+          return {
+            success: false,
+            error: `Dependencies not installed. Run "${packageManager} install" in the worktree first.`
+          };
+        }
+
         // Try to detect the dev command from package.json
         const packageJsonPath = path.join(worktreePath, 'package.json');
         let devCommand: string | null = null;
@@ -2853,15 +2875,15 @@ export function registerWorktreeHandlers(
             const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
             const scripts = packageJson.scripts || {};
 
-            // Priority order for dev commands
+            // Priority order for dev commands, using detected package manager
             if (scripts.dev) {
-              devCommand = 'npm run dev';
+              devCommand = `${packageManager} run dev`;
             } else if (scripts.start) {
-              devCommand = 'npm start';
+              devCommand = packageManager === 'npm' ? 'npm start' : `${packageManager} run start`;
             } else if (scripts.serve) {
-              devCommand = 'npm run serve';
+              devCommand = `${packageManager} run serve`;
             } else if (scripts.develop) {
-              devCommand = 'npm run develop';
+              devCommand = `${packageManager} run develop`;
             }
           } catch {
             // Ignore JSON parse errors
@@ -2880,11 +2902,13 @@ export function registerWorktreeHandlers(
         // Use the user's preferred terminal (spawn is already imported at the top)
         if (isWindows()) {
           // Windows: Open cmd with the command
-          // Note: 'start' requires an empty title ("") as first arg when the command contains quotes
-          // Also: shell: true mangles nested quotes, so we avoid it
-          const proc = spawn('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', `cd /d "${escapedPath}" && ${devCommand}`], {
+          // Use 'start' with a title to avoid it treating the path as the title
+          // The entire command must go through shell for 'start' to work correctly
+          const fullCommand = `start "Dev Server" cmd.exe /k "cd /d ${escapedPath} && ${devCommand}"`;
+          const proc = spawn('cmd.exe', ['/c', fullCommand], {
             detached: true,
-            stdio: 'ignore'
+            stdio: 'ignore',
+            shell: true
           });
 
           // Handle spawn errors
