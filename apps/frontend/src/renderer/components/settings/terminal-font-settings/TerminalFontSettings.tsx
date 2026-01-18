@@ -6,8 +6,8 @@ import type { TerminalFontSettings } from '../../../stores/terminal-font-setting
 
 // Child components
 import { FontConfigPanel } from './FontConfigPanel';
+import { CursorConfigPanel } from './CursorConfigPanel';
 // TODO: Import other child components once created
-// import { CursorConfigPanel } from './CursorConfigPanel';
 // import { PerformanceConfigPanel } from './PerformanceConfigPanel';
 // import { PresetsPanel } from './PresetsPanel';
 // import { LivePreviewTerminal } from './LivePreviewTerminal';
@@ -181,8 +181,7 @@ export function TerminalFontSettings() {
       </SettingsSection>
 
       {/* Cursor Configuration Panel */}
-      {/* TODO: Uncomment once CursorConfigPanel is implemented */}
-      {/* <SettingsSection
+      <SettingsSection
         title={t('terminalFonts.cursorConfig.title', { defaultValue: 'Cursor Configuration' })}
         description={t('terminalFonts.cursorConfig.description', {
           defaultValue: 'Customize cursor style, blinking behavior, and accent color',
@@ -192,7 +191,7 @@ export function TerminalFontSettings() {
           settings={settings}
           onSettingChange={handleSettingChange}
         />
-      </SettingsSection> */}
+      </SettingsSection>
 
       {/* Performance Configuration Panel */}
       {/* TODO: Uncomment once PerformanceConfigPanel is implemented */}
