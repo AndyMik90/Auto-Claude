@@ -41,8 +41,13 @@ vi.mock('../claude-profile-manager', () => ({
 
 // Mock loadProfilesFile
 const mockLoadProfilesFile = vi.fn(async () => ({
-  profiles: [],
-  activeProfileId: null,
+  profiles: [] as Array<{
+    id: string;
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+  }>,
+  activeProfileId: null as string | null,
   version: 1
 }));
 
@@ -62,7 +67,7 @@ global.fetch = vi.fn(() =>
       five_hour_reset_at: '2025-01-17T15:00:00Z',
       seven_day_reset_at: '2025-01-20T12:00:00Z'
     })
-  } as Response)
+  } as unknown as Response)
 ) as any;
 
 describe('usage-monitor', () => {
@@ -492,7 +497,7 @@ describe('usage-monitor', () => {
         status: 401,
         statusText: 'Unauthorized',
         json: async () => ({ error: 'Invalid token' })
-      } as Response);
+      } as unknown as Response);
 
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -523,7 +528,7 @@ describe('usage-monitor', () => {
         status: 403,
         statusText: 'Forbidden',
         json: async () => ({ error: 'Access denied' })
-      } as Response);
+      } as unknown as Response);
 
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -545,7 +550,7 @@ describe('usage-monitor', () => {
         status: 500,
         statusText: 'Internal Server Error',
         json: async () => ({ error: 'Server error' })
-      } as Response);
+      } as unknown as Response);
 
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -582,7 +587,7 @@ describe('usage-monitor', () => {
         json: async () => {
           throw new SyntaxError('Invalid JSON');
         }
-      } as Response);
+      } as unknown as Response);
 
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -603,7 +608,7 @@ describe('usage-monitor', () => {
         status: 401,
         statusText: 'Unauthorized',
         json: async () => ({ error: 'authentication failed', detail: 'invalid credentials' })
-      } as Response);
+      } as unknown as Response);
 
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -706,7 +711,7 @@ describe('usage-monitor', () => {
         status: 503,
         statusText: 'Service Unavailable',
         json: async () => ({ error: 'z.ai service unavailable' })
-      } as Response);
+      } as unknown as Response);
 
       // Mock API profile with zai baseUrl
       mockLoadProfilesFile.mockResolvedValueOnce({
@@ -738,7 +743,7 @@ describe('usage-monitor', () => {
         status: 502,
         statusText: 'Bad Gateway',
         json: async () => ({ error: 'ZHIPU gateway error' })
-      } as Response);
+      } as unknown as Response);
 
       // Mock API profile with ZHIPU baseUrl
       mockLoadProfilesFile.mockResolvedValueOnce({
