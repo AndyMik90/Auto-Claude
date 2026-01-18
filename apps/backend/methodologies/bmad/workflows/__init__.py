@@ -48,6 +48,14 @@ from apps.backend.methodologies.bmad.workflows.prd import (
     create_prd,
     load_prd,
 )
+from apps.backend.methodologies.bmad.workflows.review import (
+    ReviewFinding,
+    ReviewReport,
+    StoryReviewResult,
+    get_review_status,
+    load_review_report,
+    run_code_review,
+)
 
 __all__ = [
     # Analysis
@@ -78,4 +86,11 @@ __all__ = [
     "load_implementation_result",
     "ImplementationResult",
     "SprintStatus",
+    # Review
+    "run_code_review",
+    "load_review_report",
+    "get_review_status",
+    "ReviewReport",
+    "ReviewFinding",
+    "StoryReviewResult",
 ]

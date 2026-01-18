@@ -789,12 +789,84 @@ class BMADRunner:
 
         Story Reference: Story 6.7 - Implement BMAD Code Review Workflow Integration
         """
-        # TODO: Implement in Story 6.7
-        return PhaseResult(
-            success=False,
-            phase_id="review",
-            error="Review phase not yet implemented (Story 6.7)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.review import (
+            load_review_report,
+            run_code_review,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="review",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Check if review report already exists
+        self._invoke_progress_callback("Checking for existing review...", 5.0)
+        existing = load_review_report(self._output_dir)
+        if existing:
+            report_file = self._output_dir / "review_report.md"
+            self._invoke_progress_callback("Found existing review report", 100.0)
+            return PhaseResult(
+                success=True,
+                phase_id="review",
+                message="Review report already exists",
+                artifacts=[str(report_file)],
+                metadata={
+                    "project_name": existing.project_name,
+                    "overall_status": existing.overall_status,
+                    "stories_reviewed": existing.stories_reviewed,
+                    "stories_passed": existing.stories_passed,
+                },
+            )
+
+        # Run code review
+        self._invoke_progress_callback("Running code review...", 10.0)
+        try:
+            report = run_code_review(
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            report_file = self._output_dir / "review_report.md"
+            report_json_file = self._output_dir / "review_report.json"
+
+            if report_file.exists():
+                artifacts = [str(report_file), str(report_json_file)]
+
+                return PhaseResult(
+                    success=True,
+                    phase_id="review",
+                    message=f"Code review completed: {report.overall_status}",
+                    artifacts=artifacts,
+                    metadata={
+                        "project_name": report.project_name,
+                        "sprint_id": report.sprint_id,
+                        "overall_status": report.overall_status,
+                        "stories_reviewed": report.stories_reviewed,
+                        "stories_passed": report.stories_passed,
+                        "findings_count": len(report.findings),
+                        "critical_findings": sum(
+                            1 for f in report.findings if f.severity == "critical"
+                        ),
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="review",
+                    error="Code review completed but artifact file was not created",
+                )
+
+        except Exception as e:
+            logger.error(f"Code review failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="review",
+                error=f"Code review failed: {str(e)}",
+            )
 
     # =========================================================================
     # Protocol Implementation
