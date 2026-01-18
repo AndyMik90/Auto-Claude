@@ -14,36 +14,10 @@ import { getClaudeProfileManager } from '../claude-profile-manager';
 import { ClaudeUsageSnapshot } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
+import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
 
-/**
- * API Provider type for usage monitoring
- * Determines which usage endpoint to query and how to normalize responses
- */
-export type ApiProvider = 'anthropic' | 'zai' | 'zhipu' | 'unknown';
-
-/**
- * Provider detection patterns
- * Maps baseUrl patterns to provider types
- */
-interface ProviderPattern {
-  provider: ApiProvider;
-  domainPatterns: string[];
-}
-
-const PROVIDER_PATTERNS: readonly ProviderPattern[] = [
-  {
-    provider: 'anthropic',
-    domainPatterns: ['api.anthropic.com']
-  },
-  {
-    provider: 'zai',
-    domainPatterns: ['api.z.ai', 'z.ai']
-  },
-  {
-    provider: 'zhipu',
-    domainPatterns: ['open.bigmodel.cn', 'dev.bigmodel.cn', 'bigmodel.cn']
-  }
-] as const;
+// Re-export for backward compatibility
+export type { ApiProvider };
 
 /**
  * Provider usage endpoint configuration
@@ -160,55 +134,19 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
  * detectProvider('https://unknown.com/api') // returns 'unknown'
  */
 export function detectProvider(baseUrl: string): ApiProvider {
+  // Wrapper around shared detectProvider with debug logging for main process
   const isDebug = process.env.DEBUG === 'true';
 
-  try {
-    // Extract domain from URL
-    const url = new URL(baseUrl);
-    const domain = url.hostname;
+  const provider = sharedDetectProvider(baseUrl);
 
-    if (isDebug) {
-      console.warn('[UsageMonitor:PROVIDER_DETECTION] Detecting provider from baseUrl:', {
-        baseUrl,
-        domain,
-        knownDomains: PROVIDER_PATTERNS.flatMap(p => p.domainPatterns)
-      });
-    }
-
-    // Match against provider patterns
-    for (const pattern of PROVIDER_PATTERNS) {
-      for (const patternDomain of pattern.domainPatterns) {
-        if (domain === patternDomain || domain.endsWith(`.${patternDomain}`)) {
-          if (isDebug) {
-            console.warn('[UsageMonitor:PROVIDER_DETECTION] Matched provider:', {
-              provider: pattern.provider,
-              domain,
-              matchedPattern: patternDomain
-            });
-          }
-          return pattern.provider;
-        }
-      }
-    }
-
-    // No match found
-    if (isDebug) {
-      console.warn('[UsageMonitor:PROVIDER_DETECTION] No provider match found:', {
-        domain,
-        baseUrl
-      });
-    }
-    return 'unknown';
-  } catch (error) {
-    // Invalid URL format
-    if (isDebug) {
-      console.warn('[UsageMonitor:PROVIDER_DETECTION] Invalid URL during provider detection:', {
-        baseUrl,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-    return 'unknown';
+  if (isDebug) {
+    console.warn('[UsageMonitor:PROVIDER_DETECTION] Detected provider:', {
+      baseUrl,
+      provider
+    });
   }
+
+  return provider;
 }
 
 export class UsageMonitor extends EventEmitter {
@@ -730,38 +668,9 @@ export class UsageMonitor extends EventEmitter {
 
         // For other error statuses, try to parse response body to detect auth failures
         // This handles cases where providers might return different status codes for auth errors
+        let errorData: any;
         try {
-          const errorData = await response.json();
-          if (this.isDebug) {
-            console.warn('[UsageMonitor:AUTH_DETECTION] Checking error response for auth failure:', {
-              provider,
-              status: response.status,
-              errorData
-            });
-          }
-
-          // Check for common auth error patterns in response body
-          const authErrorPatterns = [
-            'unauthorized',
-            'authentication',
-            'invalid token',
-            'invalid api key',
-            'expired token',
-            'forbidden',
-            'access denied',
-            'credentials',
-            'auth failed'
-          ];
-
-          const errorText = JSON.stringify(errorData).toLowerCase();
-          const hasAuthError = authErrorPatterns.some(pattern => errorText.includes(pattern));
-
-          if (hasAuthError) {
-            const error = new Error(`API Auth Failure detected in response body (${provider}): ${JSON.stringify(errorData)}`);
-            (error as any).statusCode = response.status; // Include original status code
-            (error as any).detectedInBody = true;
-            throw error;
-          }
+          errorData = await response.json();
         } catch (parseError) {
           // If we can't parse the error response, just log it and continue
           if (this.isDebug) {
@@ -771,6 +680,38 @@ export class UsageMonitor extends EventEmitter {
               parseError
             });
           }
+          return null;
+        }
+
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:AUTH_DETECTION] Checking error response for auth failure:', {
+            provider,
+            status: response.status,
+            errorData
+          });
+        }
+
+        // Check for common auth error patterns in response body
+        const authErrorPatterns = [
+          'unauthorized',
+          'authentication',
+          'invalid token',
+          'invalid api key',
+          'expired token',
+          'forbidden',
+          'access denied',
+          'credentials',
+          'auth failed'
+        ];
+
+        const errorText = JSON.stringify(errorData).toLowerCase();
+        const hasAuthError = authErrorPatterns.some(pattern => errorText.includes(pattern));
+
+        if (hasAuthError) {
+          const error = new Error(`API Auth Failure detected in response body (${provider}): ${JSON.stringify(errorData)}`);
+          (error as any).statusCode = response.status; // Include original status code
+          (error as any).detectedInBody = true;
+          throw error;
         }
 
         return null;
@@ -1017,9 +958,9 @@ export class UsageMonitor extends EventEmitter {
       nextMonth.setMonth(now.getMonth() + 1, 1);
       nextMonth.setHours(0, 0, 0, 0);
       const weeklyResetTimestamp = nextMonth.toISOString();
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-      const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
+      // Use Intl API for locale-aware month name (defaulting to English)
+      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
+      const monthlyResetTime = `1st of ${monthName}`;
 
       return {
         sessionPercent,
@@ -1145,9 +1086,9 @@ export class UsageMonitor extends EventEmitter {
       nextMonth.setMonth(now.getMonth() + 1, 1);
       nextMonth.setHours(0, 0, 0, 0);
       const weeklyResetTimestamp = nextMonth.toISOString();
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-      const monthlyResetTime = `1st of ${monthNames[nextMonth.getMonth()]}`;
+      // Use Intl API for locale-aware month name (defaulting to English)
+      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
+      const monthlyResetTime = `1st of ${monthName}`;
 
       return {
         sessionPercent,

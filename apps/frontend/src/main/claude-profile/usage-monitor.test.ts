@@ -81,57 +81,8 @@ describe('usage-monitor', () => {
     vi.useRealTimers();
   });
 
-  describe('detectProvider', () => {
-    it('should detect Anthropic from api.anthropic.com', () => {
-      const result = detectProvider('https://api.anthropic.com');
-      expect(result).toBe('anthropic');
-    });
-
-    it('should detect Anthropic from api.anthropic.com with path', () => {
-      const result = detectProvider('https://api.anthropic.com/v1/messages');
-      expect(result).toBe('anthropic');
-    });
-
-    it('should detect zai from api.z.ai', () => {
-      const result = detectProvider('https://api.z.ai/api/anthropic');
-      expect(result).toBe('zai');
-    });
-
-    it('should detect zai from z.ai', () => {
-      const result = detectProvider('https://z.ai/api/anthropic');
-      expect(result).toBe('zai');
-    });
-
-    it('should detect zhipu from open.bigmodel.cn', () => {
-      const result = detectProvider('https://open.bigmodel.cn/api/paas/v4');
-      expect(result).toBe('zhipu');
-    });
-
-    it('should detect zhipu from dev.bigmodel.cn', () => {
-      const result = detectProvider('https://dev.bigmodel.cn/api/paas/v4');
-      expect(result).toBe('zhipu');
-    });
-
-    it('should detect zhipu from bigmodel.cn', () => {
-      const result = detectProvider('https://bigmodel.cn/api/paas/v4');
-      expect(result).toBe('zhipu');
-    });
-
-    it('should return unknown for unrecognized domains', () => {
-      const result = detectProvider('https://unknown.com/api');
-      expect(result).toBe('unknown');
-    });
-
-    it('should return unknown for invalid URLs', () => {
-      const result = detectProvider('not-a-url');
-      expect(result).toBe('unknown');
-    });
-
-    it('should handle subdomains correctly', () => {
-      const result = detectProvider('https://sub.api.anthropic.com');
-      expect(result).toBe('anthropic');
-    });
-  });
+  // Note: detectProvider tests removed - now using shared/utils/provider-detection.ts
+  // which has its own comprehensive test suite
 
   describe('getUsageEndpoint', () => {
     it('should return correct endpoint for Anthropic', () => {
