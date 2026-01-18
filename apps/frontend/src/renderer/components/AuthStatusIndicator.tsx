@@ -129,29 +129,9 @@ export function AuthStatusIndicator() {
     };
   }, [activeProfileId, profiles]);
 
-  // Helper function to format timestamp to readable date
-  const formatDate = (timestamp?: number): string | undefined => {
-    if (!timestamp) return undefined;
-    return new Date(timestamp).toLocaleDateString();
-  };
-
   // Helper function to truncate ID for display
   const truncateId = (id: string): string => {
     return id.slice(0, 8);
-  };
-
-  // Provider website URLs
-  const providerWebsites: Record<string, string> = {
-    anthrop: 'https://www.anthropic.com',
-    zai: 'https://z.ai',
-    zhipu: 'https://open.bigmodel.cn'
-  };
-
-  const getProviderWebsite = (provider: string): string | undefined => {
-    if (provider === 'zai') return providerWebsites.zai;
-    if (provider === 'zhipu') return providerWebsites.zhipu;
-    if (provider === 'anthropic') return providerWebsites.anthropic;
-    return undefined;
   };
 
   const isOAuth = authStatus.type === 'oauth';
@@ -221,31 +201,10 @@ export function AuthStatusIndicator() {
                       <span className="text-muted-foreground text-[10px]">ID</span>
                       <span className="font-mono text-[10px] text-muted-foreground">{truncateId(authStatus.id)}</span>
                     </div>
-                    {authStatus.createdAt && (
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-muted-foreground text-[10px]">Created</span>
-                        <span className="text-[10px] text-muted-foreground">{formatDate(authStatus.createdAt)}</span>
-                      </div>
-                    )}
                     {authStatus.baseUrl && (
                       <div className="pt-1">
                         <div className="text-[10px] text-muted-foreground mb-0.5">API Endpoint</div>
                         <div className="text-[10px] font-mono text-foreground break-all">{authStatus.baseUrl}</div>
-                      </div>
-                    )}
-                    {getProviderWebsite(authStatus.provider) && (
-                      <div className="pt-1">
-                        <a
-                          href={getProviderWebsite(authStatus.provider)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-primary hover:underline flex items-center gap-1"
-                        >
-                          Visit {authStatus.providerLabel}
-                          <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
                       </div>
                     )}
                   </div>
