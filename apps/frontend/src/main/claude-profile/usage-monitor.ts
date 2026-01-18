@@ -843,6 +843,141 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
+   * Normalize quota/limit response for z.ai and ZHIPU providers
+   *
+   * Both providers use the same response format with a limits array containing
+   * TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage) items.
+   *
+   * @param data - Raw response data with limits array
+   * @param profileId - Profile identifier
+   * @param profileName - Profile display name
+   * @param providerName - Provider name for logging ('zai' or 'zhipu')
+   * @returns Normalized usage snapshot or null on parse failure
+   */
+  private normalizeQuotaLimitResponse(
+    data: any,
+    profileId: string,
+    profileName: string,
+    providerName: 'zai' | 'zhipu'
+  ): ClaudeUsageSnapshot | null {
+    const logPrefix = providerName.toUpperCase();
+
+    if (this.isDebug) {
+      console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Starting normalization:`, {
+        profileId,
+        profileName,
+        responseKeys: Object.keys(data),
+        hasLimits: !!data.limits,
+        limitsCount: data.limits?.length || 0
+      });
+    }
+
+    try {
+      // Check if response has limits array
+      if (!data || !Array.isArray(data.limits)) {
+        console.warn(`[UsageMonitor:${logPrefix}] Invalid response format - missing limits array:`, {
+          hasData: !!data,
+          hasLimits: !!data?.limits,
+          limitsType: typeof data?.limits
+        });
+        return null;
+      }
+
+      // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
+      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
+      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
+
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Found limit types:`, {
+          hasTokensLimit: !!tokensLimit,
+          hasTimeLimit: !!timeLimit,
+          tokensLimit: tokensLimit ? {
+            type: tokensLimit.type,
+            unit: tokensLimit.unit,
+            number: tokensLimit.number,
+            usage: tokensLimit.usage,
+            currentValue: tokensLimit.currentValue,
+            remaining: tokensLimit.remaining,
+            percentage: tokensLimit.percentage,
+            nextResetTime: tokensLimit.nextResetTime,
+            nextResetDate: tokensLimit.nextResetTime ? new Date(tokensLimit.nextResetTime).toISOString() : undefined
+          } : null,
+          timeLimit: timeLimit ? {
+            type: timeLimit.type,
+            percentage: timeLimit.percentage,
+            currentValue: timeLimit.currentValue,
+            remaining: timeLimit.remaining
+          } : null
+        });
+      }
+
+      // Extract percentages
+      const sessionPercent = tokensLimit?.percentage !== undefined
+        ? Math.round(tokensLimit.percentage)
+        : 0;
+
+      const weeklyPercent = timeLimit?.percentage !== undefined
+        ? Math.round(timeLimit.percentage)
+        : 0;
+
+      if (this.isDebug) {
+        console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Extracted usage:`, {
+          sessionPercent,
+          weeklyPercent,
+          limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
+        });
+      }
+
+      // Extract reset time from API response
+      // The API provides nextResetTime as a Unix timestamp (milliseconds) for TOKENS_LIMIT
+      const now = new Date();
+      let sessionResetTimestamp: string;
+
+      if (tokensLimit?.nextResetTime && typeof tokensLimit.nextResetTime === 'number') {
+        // Use the reset time from the API response (Unix timestamp in ms)
+        sessionResetTimestamp = new Date(tokensLimit.nextResetTime).toISOString();
+      } else {
+        // Fallback: calculate as 5 hours from now
+        sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
+      }
+
+      // Calculate monthly reset time (1st of next month)
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(now.getMonth() + 1, 1);
+      nextMonth.setHours(0, 0, 0, 0);
+      const weeklyResetTimestamp = nextMonth.toISOString();
+      // Use Intl API for locale-aware month name (defaulting to English)
+      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
+      const monthlyResetTime = `1st of ${monthName}`;
+
+      return {
+        sessionPercent,
+        weeklyPercent,
+        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
+        weeklyResetTime: monthlyResetTime,
+        sessionResetTimestamp,
+        weeklyResetTimestamp,
+        profileId,
+        profileName,
+        fetchedAt: new Date(),
+        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
+        usageWindows: {
+          sessionWindowLabel: '5 Hours Quota',
+          weeklyWindowLabel: 'Monthly Tools Quota'
+        },
+        // Extract raw usage values for display in tooltip
+        sessionUsageValue: tokensLimit?.currentValue,
+        sessionUsageLimit: tokensLimit?.usage,
+        weeklyUsageValue: timeLimit?.currentValue,
+        weeklyUsageLimit: timeLimit?.usage
+      };
+    } catch (error) {
+      console.error(`[UsageMonitor:${logPrefix}] Failed to parse quota/limit response:`, error, 'Raw data:', data);
+      return null;
+    }
+  }
+
+  /**
    * Normalize z.ai API response to ClaudeUsageSnapshot
    *
    * Expected endpoint: https://api.z.ai/api/monitor/usage/quota/limit
@@ -874,119 +1009,8 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
-    if (this.isDebug) {
-      console.warn('[UsageMonitor:ZAI_NORMALIZATION] Starting normalization:', {
-        profileId,
-        profileName,
-        responseKeys: Object.keys(data),
-        hasLimits: !!data.limits,
-        limitsCount: data.limits?.length || 0
-      });
-    }
-
-    try {
-      // Check if response has limits array
-      if (!data || !Array.isArray(data.limits)) {
-        console.warn('[UsageMonitor:ZAI] Invalid response format - missing limits array:', {
-          hasData: !!data,
-          hasLimits: !!data?.limits,
-          limitsType: typeof data?.limits
-        });
-        return null;
-      }
-
-      // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
-      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
-      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
-
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:ZAI_NORMALIZATION] Found limit types:', {
-          hasTokensLimit: !!tokensLimit,
-          hasTimeLimit: !!timeLimit,
-          tokensLimit: tokensLimit ? {
-            type: tokensLimit.type,
-            unit: tokensLimit.unit,
-            number: tokensLimit.number,
-            usage: tokensLimit.usage,
-            currentValue: tokensLimit.currentValue,
-            remaining: tokensLimit.remaining,
-            percentage: tokensLimit.percentage,
-            nextResetTime: tokensLimit.nextResetTime,
-            nextResetDate: tokensLimit.nextResetTime ? new Date(tokensLimit.nextResetTime).toISOString() : undefined
-          } : null,
-          timeLimit: timeLimit ? {
-            type: timeLimit.type,
-            percentage: timeLimit.percentage,
-            currentValue: timeLimit.currentValue,
-            remaining: timeLimit.remaining
-          } : null
-        });
-      }
-
-      // Extract percentages
-      const sessionPercent = tokensLimit?.percentage !== undefined
-        ? Math.round(tokensLimit.percentage)
-        : 0;
-
-      const weeklyPercent = timeLimit?.percentage !== undefined
-        ? Math.round(timeLimit.percentage)
-        : 0;
-
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:ZAI_NORMALIZATION] Extracted usage:', {
-          sessionPercent,
-          weeklyPercent,
-          limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
-        });
-      }
-
-      // Extract reset time from API response
-      // The API provides nextResetTime as a Unix timestamp (milliseconds) for TOKENS_LIMIT
-      const now = new Date();
-      let sessionResetTimestamp: string;
-
-      if (tokensLimit?.nextResetTime && typeof tokensLimit.nextResetTime === 'number') {
-        // Use the reset time from the API response (Unix timestamp in ms)
-        sessionResetTimestamp = new Date(tokensLimit.nextResetTime).toISOString();
-      } else {
-        // Fallback: calculate as 5 hours from now
-        sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
-      }
-
-      // Calculate monthly reset time (1st of next month)
-      const nextMonth = new Date(now);
-      nextMonth.setMonth(now.getMonth() + 1, 1);
-      nextMonth.setHours(0, 0, 0, 0);
-      const weeklyResetTimestamp = nextMonth.toISOString();
-      // Use Intl API for locale-aware month name (defaulting to English)
-      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
-      const monthlyResetTime = `1st of ${monthName}`;
-
-      return {
-        sessionPercent,
-        weeklyPercent,
-        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
-        weeklyResetTime: monthlyResetTime,
-        sessionResetTimestamp,
-        weeklyResetTimestamp,
-        profileId,
-        profileName,
-        fetchedAt: new Date(),
-        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
-        usageWindows: {
-          sessionWindowLabel: '5 Hours Quota',
-          weeklyWindowLabel: 'Monthly Tools Quota'
-        },
-        // Extract raw usage values for display in tooltip
-        sessionUsageValue: tokensLimit?.currentValue,
-        sessionUsageLimit: tokensLimit?.usage,
-        weeklyUsageValue: timeLimit?.currentValue,
-        weeklyUsageLimit: timeLimit?.usage
-      };
-    } catch (error) {
-      console.error('[UsageMonitor:ZAI] Failed to parse quota/limit response:', error, 'Raw data:', data);
-      return null;
-    }
+    // Delegate to shared quota/limit response normalization
+    return this.normalizeQuotaLimitResponse(data, profileId, profileName, 'zai');
   }
 
   /**
@@ -1002,119 +1026,8 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot | null {
-    if (this.isDebug) {
-      console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Starting normalization:', {
-        profileId,
-        profileName,
-        responseKeys: Object.keys(data),
-        hasLimits: !!data.limits,
-        limitsCount: data.limits?.length || 0
-      });
-    }
-
-    try {
-      // Check if response has limits array
-      if (!data || !Array.isArray(data.limits)) {
-        console.warn('[UsageMonitor:ZHIPU] Invalid response format - missing limits array:', {
-          hasData: !!data,
-          hasLimits: !!data?.limits,
-          limitsType: typeof data?.limits
-        });
-        return null;
-      }
-
-      // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
-      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
-      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
-
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Found limit types:', {
-          hasTokensLimit: !!tokensLimit,
-          hasTimeLimit: !!timeLimit,
-          tokensLimit: tokensLimit ? {
-            type: tokensLimit.type,
-            unit: tokensLimit.unit,
-            number: tokensLimit.number,
-            usage: tokensLimit.usage,
-            currentValue: tokensLimit.currentValue,
-            remaining: tokensLimit.remaining,
-            percentage: tokensLimit.percentage,
-            nextResetTime: tokensLimit.nextResetTime,
-            nextResetDate: tokensLimit.nextResetTime ? new Date(tokensLimit.nextResetTime).toISOString() : undefined
-          } : null,
-          timeLimit: timeLimit ? {
-            type: timeLimit.type,
-            percentage: timeLimit.percentage,
-            currentValue: timeLimit.currentValue,
-            remaining: timeLimit.remaining
-          } : null
-        });
-      }
-
-      // Extract percentages
-      const sessionPercent = tokensLimit?.percentage !== undefined
-        ? Math.round(tokensLimit.percentage)
-        : 0;
-
-      const weeklyPercent = timeLimit?.percentage !== undefined
-        ? Math.round(timeLimit.percentage)
-        : 0;
-
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:ZHIPU_NORMALIZATION] Extracted usage:', {
-          sessionPercent,
-          weeklyPercent,
-          limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session'
-        });
-      }
-
-      // Extract reset time from API response
-      // The API provides nextResetTime as a Unix timestamp (milliseconds) for TOKENS_LIMIT
-      const now = new Date();
-      let sessionResetTimestamp: string;
-
-      if (tokensLimit?.nextResetTime && typeof tokensLimit.nextResetTime === 'number') {
-        // Use the reset time from the API response (Unix timestamp in ms)
-        sessionResetTimestamp = new Date(tokensLimit.nextResetTime).toISOString();
-      } else {
-        // Fallback: calculate as 5 hours from now
-        sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
-      }
-
-      // Calculate monthly reset time (1st of next month)
-      const nextMonth = new Date(now);
-      nextMonth.setMonth(now.getMonth() + 1, 1);
-      nextMonth.setHours(0, 0, 0, 0);
-      const weeklyResetTimestamp = nextMonth.toISOString();
-      // Use Intl API for locale-aware month name (defaulting to English)
-      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
-      const monthlyResetTime = `1st of ${monthName}`;
-
-      return {
-        sessionPercent,
-        weeklyPercent,
-        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
-        weeklyResetTime: monthlyResetTime,
-        sessionResetTimestamp,
-        weeklyResetTimestamp,
-        profileId,
-        profileName,
-        fetchedAt: new Date(),
-        limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
-        usageWindows: {
-          sessionWindowLabel: '5 Hours Quota',
-          weeklyWindowLabel: 'Monthly Tools Quota'
-        },
-        // Extract raw usage values for display in tooltip
-        sessionUsageValue: tokensLimit?.currentValue,
-        sessionUsageLimit: tokensLimit?.usage,
-        weeklyUsageValue: timeLimit?.currentValue,
-        weeklyUsageLimit: timeLimit?.usage
-      };
-    } catch (error) {
-      console.error('[UsageMonitor:ZHIPU] Failed to parse quota/limit response:', error, 'Raw data:', data);
-      return null;
-    }
+    // Delegate to shared quota/limit response normalization
+    return this.normalizeQuotaLimitResponse(data, profileId, profileName, 'zhipu');
   }
 
   /**
