@@ -48,11 +48,6 @@ export function FeatureDetailPanel({
       .filter(f => f.dependencies?.includes(feature.id))
       .map(f => f.id);
 
-  // Debug: log feature data
-  console.log('[FeatureDetailPanel] feature:', feature);
-  console.log('[FeatureDetailPanel] feature.reverseDependencies from data:', feature.reverseDependencies);
-  console.log('[FeatureDetailPanel] calculated reverseDependencies:', reverseDependencies);
-
   const handleDependencyClick = (depId: string) => {
     if (onDependencyClick) {
       onDependencyClick(depId);
