@@ -601,5 +601,68 @@
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
     }
+  },
+  "terminalFonts": {
+    "title": "Terminal Fonts",
+    "description": "Customize terminal font appearance and behavior",
+    "fontConfig": {
+      "fontFamily": "Font Family",
+      "fontFamilyDescription": "Primary monospace font for terminal text",
+      "selectFont": "Select a font...",
+      "searchFont": "Search fonts...",
+      "noFonts": "No fonts found",
+      "fontChain": "Font chain:",
+      "fontSize": "Font Size",
+      "fontSizeDescription": "Base font size in pixels (10-24px)",
+      "fontWeight": "Font Weight",
+      "fontWeightDescription": "Font weight from 100 (thin) to 900 (black), in steps of 100",
+      "commonWeights": "Common: 400 (normal), 600 (semi-bold), 700 (bold)",
+      "lineHeight": "Line Height",
+      "lineHeightDescription": "Line height as a multiple of font size (1.0-2.0)",
+      "letterSpacing": "Letter Spacing",
+      "letterSpacingDescription": "Horizontal spacing between characters (-2 to 5px)"
+    },
+    "cursorConfig": {
+      "title": "Cursor Settings",
+      "description": "Customize cursor appearance and behavior",
+      "cursorStyle": "Cursor Style",
+      "cursorStyleDescription": "Shape of the terminal cursor",
+      "cursorBlink": "Cursor Blinking",
+      "cursorBlinkDescription": "Enable or disable cursor animation",
+      "cursorAccentColor": "Cursor Accent Color",
+      "cursorAccentColorDescription": "Color of the terminal cursor"
+    },
+    "performanceConfig": {
+      "title": "Performance",
+      "description": "Terminal performance and memory settings",
+      "scrollback": "Scrollback Limit",
+      "scrollbackDescription": "Maximum number of lines to keep in terminal history",
+      "scrollbackPresets": "Quick Presets"
+    },
+    "presets": {
+      "title": "Quick Presets",
+      "description": "Apply pre-configured terminal font settings or save your own",
+      "builtin": "Built-in Presets",
+      "builtinDescription": "Click to apply a pre-configured preset",
+      "vscode": "Consolas 14px, block cursor",
+      "intellij": "JetBrains Mono 13px, block cursor",
+      "macos": "SF Mono 13px, block cursor",
+      "ubuntu": "Ubuntu Mono 13px, block cursor",
+      "reset": "Reset to Defaults",
+      "resetDescription": "Restore the default settings for your operating system",
+      "resetToOS": "Reset to {{os}} defaults",
+      "resetButton": "Reset to OS Default",
+      "custom": "Custom Presets",
+      "customDescription": "Save your current configuration as a custom preset",
+      "presetNamePlaceholder": "Preset name...",
+      "savePreset": "Save current configuration as a preset",
+      "applyPreset": "Apply this preset",
+      "deletePreset": "Delete this preset",
+      "noCustomPresets": "No custom presets yet. Save your current configuration to get started."
+    },
+    "livePreview": {
+      "title": "Live Preview",
+      "description": "Preview your terminal font changes in real-time"
+    }
   }
 }

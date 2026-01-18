@@ -601,5 +601,68 @@
       "openai": "Ceci ressemble à une API OpenAI. Vous aurez besoin d'une clé API.",
       "createOpenaiKey": "Créer une clé API OpenAI"
     }
+  },
+  "terminalFonts": {
+    "title": "Polices de Terminal",
+    "description": "Personnaliser l'apparence et le comportement des polices de terminal",
+    "fontConfig": {
+      "fontFamily": "Famille de Police",
+      "fontFamilyDescription": "Police monospace principale pour le texte du terminal",
+      "selectFont": "Sélectionner une police...",
+      "searchFont": "Rechercher des polices...",
+      "noFonts": "Aucune police trouvée",
+      "fontChain": "Chaîne de polices :",
+      "fontSize": "Taille de Police",
+      "fontSizeDescription": "Taille de police de base en pixels (10-24px)",
+      "fontWeight": "Graisse de Police",
+      "fontWeightDescription": "Graisse de police de 100 (maigre) à 900 (noir), par incréments de 100",
+      "commonWeights": "Courantes : 400 (normal), 600 (semi-gras), 700 (gras)",
+      "lineHeight": "Hauteur de Ligne",
+      "lineHeightDescription": "Hauteur de ligne comme multiple de la taille de police (1.0-2.0)",
+      "letterSpacing": "Espacement des Lettres",
+      "letterSpacingDescription": "Espacement horizontal entre les caractères (-2 à 5px)"
+    },
+    "cursorConfig": {
+      "title": "Paramètres de Curseur",
+      "description": "Personnaliser l'apparence et le comportement du curseur",
+      "cursorStyle": "Style de Curseur",
+      "cursorStyleDescription": "Forme du curseur de terminal",
+      "cursorBlink": "Clignotement du Curseur",
+      "cursorBlinkDescription": "Activer ou désactiver l'animation du curseur",
+      "cursorAccentColor": "Couleur d'Accent du Curseur",
+      "cursorAccentColorDescription": "Couleur du curseur de terminal"
+    },
+    "performanceConfig": {
+      "title": "Performance",
+      "description": "Paramètres de performance et de mémoire du terminal",
+      "scrollback": "Limite de Défilement",
+      "scrollbackDescription": "Nombre maximum de lignes à conserver dans l'historique du terminal",
+      "scrollbackPresets": "Préréglages Rapides"
+    },
+    "presets": {
+      "title": "Préréglages Rapides",
+      "description": "Appliquer des paramètres de police prédéfinis ou sauvegarder les vôtres",
+      "builtin": "Préréglages Intégrés",
+      "builtinDescription": "Cliquer pour appliquer une préréglage prédéfini",
+      "vscode": "Consolas 14px, curseur bloc",
+      "intellij": "JetBrains Mono 13px, curseur bloc",
+      "macos": "SF Mono 13px, curseur bloc",
+      "ubuntu": "Ubuntu Mono 13px, curseur bloc",
+      "reset": "Réinitialiser aux Valeurs par Défaut",
+      "resetDescription": "Restaurer les paramètres par défaut de votre système d'exploitation",
+      "resetToOS": "Réinitialiser aux valeurs par défaut {{os}}",
+      "resetButton": "Réinitialiser aux Valeurs par Défaut de l'OS",
+      "custom": "Préréglages Personnalisés",
+      "customDescription": "Sauvegarder votre configuration actuelle comme un préréglage personnalisé",
+      "presetNamePlaceholder": "Nom du préréglage...",
+      "savePreset": "Sauvegarder la configuration actuelle comme un préréglage",
+      "applyPreset": "Appliquer ce préréglage",
+      "deletePreset": "Supprimer ce préréglage",
+      "noCustomPresets": "Aucun préréglage personnalisé pour le moment. Sauvegardez votre configuration actuelle pour commencer."
+    },
+    "livePreview": {
+      "title": "Aperçu en Direct",
+      "description": "Prévisualiser les changements de police de terminal en temps réel"
+    }
   }
 }

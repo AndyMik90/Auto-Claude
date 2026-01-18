@@ -8,8 +8,8 @@ import type { TerminalFontSettings } from '../../../stores/terminal-font-setting
 import { FontConfigPanel } from './FontConfigPanel';
 import { CursorConfigPanel } from './CursorConfigPanel';
 import { PerformanceConfigPanel } from './PerformanceConfigPanel';
+import { PresetsPanel } from './PresetsPanel';
 // TODO: Import other child components once created
-// import { PresetsPanel } from './PresetsPanel';
 // import { LivePreviewTerminal } from './LivePreviewTerminal';
 
 /**
@@ -207,8 +207,7 @@ export function TerminalFontSettings() {
       </SettingsSection>
 
       {/* Presets Panel */}
-      {/* TODO: Uncomment once PresetsPanel is implemented */}
-      {/* <SettingsSection
+      <SettingsSection
         title={t('terminalFonts.presets.title', { defaultValue: 'Quick Presets' })}
         description={t('terminalFonts.presets.description', {
           defaultValue: 'Apply pre-configured presets from popular IDEs and terminals',
@@ -219,7 +218,7 @@ export function TerminalFontSettings() {
           onReset={handleReset}
           currentSettings={settings}
         />
-      </SettingsSection> */}
+      </SettingsSection>
 
       {/* Live Preview Terminal */}
       {/* TODO: Uncomment once LivePreviewTerminal is implemented */}

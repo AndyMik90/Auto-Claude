@@ -1,0 +1,348 @@
+import { useState, useEffect } from 'react';
+import { Monitor, RotateCcw, Save, Trash2, FolderOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../../../lib/utils';
+import { Label } from '../../ui/label';
+import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
+import { TERMINAL_PRESETS, useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
+import { getOS } from '../../../lib/os-detection';
+
+interface PresetsPanelProps {
+  currentSettings: TerminalFontSettings;
+  onPresetApply: (presetName: string) => void;
+  onReset: () => void;
+}
+
+// Storage key for custom presets
+const CUSTOM_PRESETS_STORAGE_KEY = 'terminal-font-custom-presets';
+
+// Built-in presets configuration
+const BUILTIN_PRESETS = [
+  {
+    id: 'vscode',
+    name: 'VS Code',
+    description: 'settings:terminalFonts.presets.vscode',
+    icon: Monitor,
+  },
+  {
+    id: 'intellij',
+    name: 'IntelliJ IDEA',
+    description: 'settings:terminalFonts.presets.intellij',
+    icon: Monitor,
+  },
+  {
+    id: 'macos',
+    name: 'macOS Terminal',
+    description: 'settings:terminalFonts.presets.macos',
+    icon: Monitor,
+  },
+  {
+    id: 'ubuntu',
+    name: 'Ubuntu Terminal',
+    description: 'settings:terminalFonts.presets.ubuntu',
+    icon: Monitor,
+  },
+];
+
+interface CustomPreset {
+  id: string;
+  name: string;
+  settings: TerminalFontSettings;
+  createdAt: number;
+}
+
+/**
+ * Presets panel for quick application of pre-configured terminal font settings.
+ * Provides:
+ * - Built-in presets (VS Code, IntelliJ, macOS Terminal, Ubuntu Terminal)
+ * - Reset to OS default button
+ * - Custom preset management (save, list, apply, delete)
+ *
+ * Custom presets are stored in localStorage under 'terminal-font-custom-presets'
+ */
+export function PresetsPanel({ currentSettings, onPresetApply, onReset }: PresetsPanelProps) {
+  const { t } = useTranslation(['settings', 'common']);
+
+  // Get store actions for applying custom presets
+  const applySettings = useTerminalFontSettingsStore((state) => state.applySettings);
+
+  // State for custom presets
+  const [customPresets, setCustomPresets] = useState<CustomPreset[]>([]);
+
+  // State for new preset name input
+  const [newPresetName, setNewPresetName] = useState('');
+
+  // Load custom presets from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as CustomPreset[];
+        setCustomPresets(parsed);
+      }
+    } catch {
+      // If localStorage is unavailable or corrupted, start with empty list
+      setCustomPresets([]);
+    }
+  }, []);
+
+  // Save custom presets to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (customPresets.length > 0) {
+        localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(customPresets));
+      } else {
+        localStorage.removeItem(CUSTOM_PRESETS_STORAGE_KEY);
+      }
+    } catch {
+      // Silently fail if localStorage is unavailable
+    }
+  }, [customPresets]);
+
+  // Handle applying a built-in preset
+  const handleApplyBuiltInPreset = (presetId: string) => {
+    onPresetApply(presetId);
+  };
+
+  // Handle reset to OS defaults
+  const handleResetToDefaults = () => {
+    onReset();
+  };
+
+  // Handle saving current configuration as a custom preset
+  const handleSaveCustomPreset = () => {
+    const trimmedName = newPresetName.trim();
+    if (!trimmedName) return;
+
+    // Check for duplicate names
+    const isDuplicate = customPresets.some((preset) => preset.name === trimmedName);
+    if (isDuplicate) {
+      // TODO: Show error toast (will be implemented in parent component)
+      return;
+    }
+
+    const newPreset: CustomPreset = {
+      id: `custom-${Date.now()}`,
+      name: trimmedName,
+      settings: { ...currentSettings },
+      createdAt: Date.now(),
+    };
+
+    setCustomPresets((prev) => [...prev, newPreset]);
+    setNewPresetName('');
+  };
+
+  // Handle applying a custom preset
+  const handleApplyCustomPreset = (preset: CustomPreset) => {
+    // Apply all settings from the preset using the store's applySettings method
+    applySettings(preset.settings);
+  };
+
+  // Handle deleting a custom preset
+  const handleDeleteCustomPreset = (presetId: string) => {
+    setCustomPresets((prev) => prev.filter((preset) => preset.id !== presetId));
+  };
+
+  // Get current OS name for reset button label
+  const currentOS = getOS();
+
+  return (
+    <div className="space-y-6">
+        {/* Built-in Presets */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-foreground">
+            {t('settings:terminalFonts.presets.builtin', { defaultValue: 'Built-in Presets' })}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('settings:terminalFonts.presets.builtinDescription', {
+              defaultValue: 'Click to apply a pre-configured preset',
+            })}
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+            {BUILTIN_PRESETS.map((preset) => {
+              const Icon = preset.icon;
+              return (
+                <button
+                  type="button"
+                  key={preset.id}
+                  onClick={() => handleApplyBuiltInPreset(preset.id)}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    'border-border hover:border-primary/50 hover:bg-accent/50'
+                  )}
+                  title={t(preset.description)}
+                >
+                  <Icon className="h-5 w-5" />
+                  <div className="text-center">
+                    <div className="text-sm font-medium">{preset.name}</div>
+                    <div className="text-xs text-muted-foreground">{t(preset.description)}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Reset to OS Default */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-foreground">
+            {t('settings:terminalFonts.presets.reset', { defaultValue: 'Reset to Defaults' })}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('settings:terminalFonts.presets.resetDescription', {
+              defaultValue: 'Restore the default settings for your operating system',
+            })}
+          </p>
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleResetToDefaults}
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                'border-border hover:border-primary/50 hover:bg-accent/50 text-sm font-medium'
+              )}
+              title={t('settings:terminalFonts.presets.resetToOS', {
+                defaultValue: `Reset to ${currentOS === 'windows' ? 'Windows' : currentOS === 'macos' ? 'macOS' : 'Linux'} defaults`,
+              })}
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>
+                {t('settings:terminalFonts.presets.resetButton', {
+                  defaultValue: 'Reset to OS Default',
+                })}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Presets */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            {t('settings:terminalFonts.presets.custom', { defaultValue: 'Custom Presets' })}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('settings:terminalFonts.presets.customDescription', {
+              defaultValue: 'Save your current configuration as a custom preset',
+            })}
+          </p>
+
+          {/* Save New Custom Preset */}
+          <div className="flex items-center gap-2 max-w-md pt-1">
+            <input
+              type="text"
+              value={newPresetName}
+              onChange={(e) => setNewPresetName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveCustomPreset();
+                }
+              }}
+              placeholder={t('settings:terminalFonts.presets.presetNamePlaceholder', {
+                defaultValue: 'Preset name...',
+              })}
+              className={cn(
+                'flex-1 h-10 px-3 rounded-lg',
+                'border border-border bg-card',
+                'text-sm text-foreground',
+                'focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary',
+                'transition-colors duration-200'
+              )}
+            />
+            <button
+              type="button"
+              onClick={handleSaveCustomPreset}
+              disabled={!newPresetName.trim()}
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors',
+                'bg-primary text-primary-foreground hover:bg-primary/90',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary',
+                'text-sm font-medium'
+              )}
+              title={t('settings:terminalFonts.presets.savePreset', {
+                defaultValue: 'Save current configuration as a preset',
+              })}
+            >
+              <Save className="h-4 w-4" />
+              <span>
+                {t('common:actions.save', { defaultValue: 'Save' })}
+              </span>
+            </button>
+          </div>
+
+          {/* List of Custom Presets */}
+          {customPresets.length > 0 && (
+            <div className="space-y-2 pt-2">
+              {customPresets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className={cn(
+                    'flex items-center justify-between p-3 rounded-lg border',
+                    'border-border bg-card',
+                    'transition-colors'
+                  )}
+                >
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-foreground">{preset.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {preset.settings.fontFamily[0]}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCustomPreset(preset)}
+                      className={cn(
+                        'inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors',
+                        'bg-primary text-primary-foreground hover:bg-primary/90',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'text-xs font-medium'
+                      )}
+                      title={t('settings:terminalFonts.presets.applyPreset', {
+                        defaultValue: 'Apply this preset',
+                      })}
+                    >
+                      <FolderOpen className="h-3 w-3" />
+                      <span>{t('common:actions.apply', { defaultValue: 'Apply' })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomPreset(preset.id)}
+                      className={cn(
+                        'inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors',
+                        'hover:bg-destructive/10 text-destructive hover:text-destructive',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'text-xs font-medium'
+                      )}
+                      title={t('settings:terminalFonts.presets.deletePreset', {
+                        defaultValue: 'Delete this preset',
+                      })}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>{t('common:actions.delete', { defaultValue: 'Delete' })}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {customPresets.length === 0 && (
+            <div className="p-6 rounded-lg border border-dashed border-border text-center">
+              <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {t('settings:terminalFonts.presets.noCustomPresets', {
+                  defaultValue: 'No custom presets yet. Save your current configuration to get started.',
+                })}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
