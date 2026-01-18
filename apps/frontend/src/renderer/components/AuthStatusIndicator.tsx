@@ -134,8 +134,8 @@ export function AuthStatusIndicator() {
     const normalizedProvider = provider.toLowerCase() as ApiProvider;
     const translationKey = PROVIDER_TRANSLATION_KEYS[normalizedProvider];
 
-    // Try to get translation, fallback to getProviderLabel if key doesn't exist or provider unknown
-    if (translationKey && translationKey !== 'common:usage.providerUnknown') {
+    // If we have a translation key (including providerUnknown), use it
+    if (translationKey) {
       const translated = t(translationKey);
       // If translation returns the key itself (not found), use getProviderLabel fallback
       if (translated !== translationKey) {
@@ -143,7 +143,7 @@ export function AuthStatusIndicator() {
       }
     }
 
-    // Fallback to getProviderLabel for unknown providers or missing translations
+    // Fallback to getProviderLabel for providers without translation keys
     return getProviderLabel(normalizedProvider);
   };
 

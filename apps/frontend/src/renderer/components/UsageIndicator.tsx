@@ -18,21 +18,27 @@ import { formatTimeRemaining } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
-  const { t } = useTranslation(['common']);
+  const { t, i18n } = useTranslation(['common']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
-  // Helper function to format large numbers with units (K, M, B)
+  // Helper function to format large numbers with locale-aware compact notation
   const formatUsageValue = (value?: number): string | undefined => {
     if (value === undefined) return undefined;
 
-    if (value >= 1_000_000_000) {
-      return `${(value / 1_000_000_000).toFixed(2)} B`;
-    } else if (value >= 1_000_000) {
-      return `${(value / 1_000_000).toFixed(2)} M`;
-    } else if (value >= 1_000) {
-      return `${(value / 1_000).toFixed(1)} K`;
+    // Use Intl.NumberFormat for locale-aware compact number formatting
+    // Fallback to toString() if Intl is not available
+    if (typeof Intl !== 'undefined' && Intl.NumberFormat) {
+      try {
+        return new Intl.NumberFormat(i18n.language, {
+          notation: 'compact',
+          compactDisplay: 'short',
+          maximumFractionDigits: 2
+        }).format(value);
+      } catch {
+        // Intl may fail in some environments, fall back to toString()
+      }
     }
     return value.toString();
   };
