@@ -91,7 +91,8 @@
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "orphaned": "(orphaned)"
   },
   "selection": {
     "select": "Select",

@@ -3,10 +3,11 @@ import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/con
 import type { IPCResult, Task, TaskMetadata } from '../../../shared/types';
 import path from 'path';
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
+import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
-import { findTaskAndProject } from './shared';
+import { findTaskAndProject, forceDeleteWorktree } from './shared';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -232,6 +233,19 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
           console.warn(`[TASK_DELETE] Deleted spec directory: ${specDir}`);
         } else {
           console.warn(`[TASK_DELETE] Spec directory not found: ${specDir}`);
+        }
+
+        // Also delete any associated worktree using shared utility
+        const worktreePath = findTaskWorktree(project.path, task.specId);
+        if (worktreePath && existsSync(worktreePath)) {
+          console.warn(`[TASK_DELETE] Found worktree to delete: ${worktreePath}`);
+          const deleteResult = forceDeleteWorktree(worktreePath, project.path);
+          if (!deleteResult.success) {
+            console.error(`[TASK_DELETE] Failed to delete worktree: ${deleteResult.error}`);
+            // Continue with task deletion even if worktree deletion fails
+          } else {
+            console.warn(`[TASK_DELETE] Deleted worktree via ${deleteResult.method}: ${worktreePath}`);
+          }
         }
 
         // Invalidate cache since a task was deleted
