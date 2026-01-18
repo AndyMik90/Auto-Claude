@@ -2838,8 +2838,9 @@ export function registerWorktreeHandlers(
    * Detect the project type based on files present in the project directory.
    * Returns 'node' for JavaScript/TypeScript projects, 'python' for Python projects, etc.
    */
-  type ProjectType = 'node' | 'python' | 'rust' | 'go' | 'unknown';
+  type ProjectType = 'node' | 'python' | 'rust' | 'go' | 'java' | 'dotnet' | 'ruby' | 'php' | 'unknown';
   type PythonPackageManager = 'uv' | 'poetry' | 'pipenv' | 'pip';
+  type JavaBuildTool = 'maven' | 'gradle';
 
   function detectProjectType(projectPath: string): ProjectType {
     // Check for Node.js project indicators
@@ -2868,7 +2869,41 @@ export function registerWorktreeHandlers(
       return 'go';
     }
 
+    // Check for Java project (Maven or Gradle)
+    if (existsSync(path.join(projectPath, 'pom.xml')) ||
+        existsSync(path.join(projectPath, 'build.gradle')) ||
+        existsSync(path.join(projectPath, 'build.gradle.kts'))) {
+      return 'java';
+    }
+
+    // Check for .NET project
+    if (readdirSync(projectPath).some(f => f.endsWith('.csproj') || f.endsWith('.sln') || f.endsWith('.fsproj'))) {
+      return 'dotnet';
+    }
+
+    // Check for Ruby project
+    if (existsSync(path.join(projectPath, 'Gemfile'))) {
+      return 'ruby';
+    }
+
+    // Check for PHP project
+    if (existsSync(path.join(projectPath, 'composer.json')) ||
+        existsSync(path.join(projectPath, 'artisan'))) {
+      return 'php';
+    }
+
     return 'unknown';
+  }
+
+  /**
+   * Detect the Java build tool used by the project.
+   */
+  function detectJavaBuildTool(projectPath: string): JavaBuildTool {
+    if (existsSync(path.join(projectPath, 'build.gradle')) ||
+        existsSync(path.join(projectPath, 'build.gradle.kts'))) {
+      return 'gradle';
+    }
+    return 'maven';
   }
 
   /**
@@ -3594,10 +3629,226 @@ export function registerWorktreeHandlers(
               data: { launched: false, command: '', depsInstalled, packageManager: pythonPkgManager, projectType }
             };
           }
+        } else if (projectType === 'rust') {
+          // Rust project handling
+          packageManager = 'cargo';
+
+          // Check if Cargo.lock exists (indicates dependencies resolved)
+          depsInstalled = existsSync(path.join(worktreePath, 'Cargo.lock'));
+
+          if (!depsInstalled && autoInstall) {
+            const installResult = await runCommandAsync('cargo', ['build'], worktreePath);
+            if (!installResult.success) {
+              return {
+                success: false,
+                error: `Failed to build with cargo: ${installResult.error}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+            depsInstalled = true;
+          }
+
+          // Rust dev command is typically cargo run
+          devCommand = 'cargo run';
+
+        } else if (projectType === 'go') {
+          // Go project handling
+          packageManager = 'go';
+
+          // Check if go.sum exists (indicates dependencies downloaded)
+          depsInstalled = existsSync(path.join(worktreePath, 'go.sum'));
+
+          if (!depsInstalled && autoInstall) {
+            const installResult = await runCommandAsync('go', ['mod', 'download'], worktreePath);
+            if (!installResult.success) {
+              return {
+                success: false,
+                error: `Failed to download Go modules: ${installResult.error}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+            depsInstalled = true;
+          }
+
+          // Go dev command
+          devCommand = 'go run .';
+
+        } else if (projectType === 'java') {
+          // Java project handling (Maven or Gradle)
+          const javaBuildTool = detectJavaBuildTool(worktreePath);
+          packageManager = javaBuildTool;
+
+          if (javaBuildTool === 'gradle') {
+            // Check for Gradle wrapper or installed gradle
+            const hasGradlew = existsSync(path.join(worktreePath, isWindows() ? 'gradlew.bat' : 'gradlew'));
+            const gradleCmd = hasGradlew ? (isWindows() ? 'gradlew.bat' : './gradlew') : 'gradle';
+
+            // Check if build dir exists
+            depsInstalled = existsSync(path.join(worktreePath, 'build')) ||
+                           existsSync(path.join(worktreePath, '.gradle'));
+
+            if (!depsInstalled && autoInstall) {
+              const installResult = await runCommandAsync(gradleCmd, ['build', '-x', 'test'], worktreePath);
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to build with Gradle: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+                };
+              }
+              depsInstalled = true;
+            }
+
+            // Try bootRun for Spring Boot, otherwise run
+            const buildGradle = existsSync(path.join(worktreePath, 'build.gradle'))
+              ? readFileSync(path.join(worktreePath, 'build.gradle'), 'utf-8')
+              : '';
+            if (buildGradle.includes('spring-boot') || buildGradle.includes('org.springframework.boot')) {
+              devCommand = `${gradleCmd} bootRun`;
+            } else {
+              devCommand = `${gradleCmd} run`;
+            }
+          } else {
+            // Maven
+            const hasMvnw = existsSync(path.join(worktreePath, isWindows() ? 'mvnw.cmd' : 'mvnw'));
+            const mvnCmd = hasMvnw ? (isWindows() ? 'mvnw.cmd' : './mvnw') : 'mvn';
+
+            // Check if target dir exists
+            depsInstalled = existsSync(path.join(worktreePath, 'target'));
+
+            if (!depsInstalled && autoInstall) {
+              const installResult = await runCommandAsync(mvnCmd, ['install', '-DskipTests'], worktreePath);
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to build with Maven: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+                };
+              }
+              depsInstalled = true;
+            }
+
+            // Try spring-boot:run for Spring Boot, otherwise exec:java
+            const pomXml = readFileSync(path.join(worktreePath, 'pom.xml'), 'utf-8');
+            if (pomXml.includes('spring-boot')) {
+              devCommand = `${mvnCmd} spring-boot:run`;
+            } else {
+              devCommand = `${mvnCmd} exec:java`;
+            }
+          }
+
+        } else if (projectType === 'dotnet') {
+          // .NET project handling
+          packageManager = 'dotnet';
+
+          // Check if obj/bin dirs exist
+          depsInstalled = existsSync(path.join(worktreePath, 'obj')) ||
+                         existsSync(path.join(worktreePath, 'bin'));
+
+          if (!depsInstalled && autoInstall) {
+            const installResult = await runCommandAsync('dotnet', ['restore'], worktreePath);
+            if (!installResult.success) {
+              return {
+                success: false,
+                error: `Failed to restore .NET packages: ${installResult.error}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+            depsInstalled = true;
+          }
+
+          // .NET dev command with watch for hot reload
+          devCommand = 'dotnet watch run';
+
+        } else if (projectType === 'ruby') {
+          // Ruby project handling
+          packageManager = 'bundler';
+
+          // Check if Gemfile.lock exists
+          depsInstalled = existsSync(path.join(worktreePath, 'Gemfile.lock'));
+
+          if (!depsInstalled && autoInstall) {
+            const installResult = await runCommandAsync('bundle', ['install'], worktreePath);
+            if (!installResult.success) {
+              return {
+                success: false,
+                error: `Failed to install gems: ${installResult.error}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+            depsInstalled = true;
+          }
+
+          // Detect Ruby framework
+          if (existsSync(path.join(worktreePath, 'config.ru')) ||
+              existsSync(path.join(worktreePath, 'config', 'application.rb'))) {
+            // Rails app
+            devCommand = 'bundle exec rails server';
+          } else if (existsSync(path.join(worktreePath, 'app.rb'))) {
+            devCommand = 'bundle exec ruby app.rb';
+          } else {
+            // Look for main.rb or similar
+            const rubyFiles = ['main.rb', 'server.rb', 'app.rb'];
+            for (const file of rubyFiles) {
+              if (existsSync(path.join(worktreePath, file))) {
+                devCommand = `bundle exec ruby ${file}`;
+                break;
+              }
+            }
+          }
+
+          if (!devCommand) {
+            return {
+              success: false,
+              error: 'No Ruby entry point found. Expected Rails app, config.ru, or main.rb/app.rb.',
+              data: { launched: false, command: '', depsInstalled, packageManager, projectType }
+            };
+          }
+
+        } else if (projectType === 'php') {
+          // PHP project handling
+          packageManager = 'composer';
+
+          // Check if vendor dir exists
+          depsInstalled = existsSync(path.join(worktreePath, 'vendor'));
+
+          if (!depsInstalled && autoInstall) {
+            const installResult = await runCommandAsync('composer', ['install'], worktreePath);
+            if (!installResult.success) {
+              return {
+                success: false,
+                error: `Failed to install Composer packages: ${installResult.error}`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+            depsInstalled = true;
+          }
+
+          // Detect PHP framework
+          if (existsSync(path.join(worktreePath, 'artisan'))) {
+            // Laravel
+            devCommand = 'php artisan serve';
+          } else if (existsSync(path.join(worktreePath, 'bin', 'console'))) {
+            // Symfony
+            devCommand = 'php bin/console server:run';
+          } else if (existsSync(path.join(worktreePath, 'public', 'index.php'))) {
+            // Generic PHP with public folder
+            devCommand = 'php -S localhost:8000 -t public';
+          } else if (existsSync(path.join(worktreePath, 'index.php'))) {
+            // Simple PHP
+            devCommand = 'php -S localhost:8000';
+          } else {
+            return {
+              success: false,
+              error: 'No PHP entry point found. Expected Laravel (artisan), Symfony, or index.php.',
+              data: { launched: false, command: '', depsInstalled, packageManager, projectType }
+            };
+          }
+
         } else {
           return {
             success: false,
-            error: 'Unknown project type. Expected package.json (Node) or pyproject.toml/requirements.txt (Python).',
+            error: 'Unknown project type. Supported: Node.js, Python, Rust, Go, Java, .NET, Ruby, PHP.',
             data: { launched: false, command: '', projectType }
           };
         }
