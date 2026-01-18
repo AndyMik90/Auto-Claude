@@ -151,10 +151,9 @@ describe('usage-monitor', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       monitor.start();
-      const callCountAfterStart = consoleSpy.mock.calls.length;
       monitor.start(); // Second call should be ignored
 
-      // Should not have added more calls (already running)
+      // Should have logged a warning that it's already running
       expect(consoleSpy.mock.calls.length).toBeGreaterThan(0);
 
       consoleSpy.mockRestore();
