@@ -1,6 +1,7 @@
 import path from 'path';
 import { getAugmentedEnv, getAugmentedEnvAsync } from './env-utils';
 import { getToolPath, getToolPathAsync } from './cli-tool-manager';
+import { findNodeJsDirectories } from './platform';
 
 export type ClaudeCliInvocation = {
   command: string;
@@ -25,13 +26,32 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
       .map((entry) => path.normalize(entry))
       .includes(normalizedCommandDir);
 
-  if (hasCommandDir) {
+  // Collect directories to add
+  let dirsToAdd = hasCommandDir ? [] : [commandDir];
+
+  // On Windows, if running claude.cmd, also add Node.js directories to PATH
+  // This is needed because claude.cmd requires node.exe to execute
+  if (process.platform === 'win32' && /\.cmd$/i.test(command)) {
+    const nodeDirs = findNodeJsDirectories();
+    // Filter out directories already in PATH
+    for (const nodeDir of nodeDirs) {
+      const normalizedNodeDir = path.normalize(nodeDir);
+      const hasNodeDir = pathEntries
+        .map((entry) => path.normalize(entry).toLowerCase())
+        .includes(normalizedNodeDir.toLowerCase());
+      if (!hasNodeDir) {
+        dirsToAdd.push(nodeDir);
+      }
+    }
+  }
+
+  if (dirsToAdd.length === 0) {
     return env;
   }
 
   return {
     ...env,
-    PATH: [commandDir, currentPath].filter(Boolean).join(pathSeparator),
+    PATH: [...dirsToAdd, currentPath].filter(Boolean).join(pathSeparator),
   };
 }
 

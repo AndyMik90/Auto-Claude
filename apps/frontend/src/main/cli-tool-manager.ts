@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, findNodeJsDirectories } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -942,7 +942,19 @@ class CLIToolManager {
 
       const needsShell = shouldUseShell(trimmedCmd);
       const cmdDir = path.dirname(unquotedCmd);
-      const env = getAugmentedEnv(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
+
+      // Prepare additional paths for environment augmentation
+      let additionalPaths = cmdDir && cmdDir !== '.' ? [cmdDir] : [];
+
+      // On Windows, if validating claude.cmd, also add Node.js directories to PATH
+      // This is needed because claude.cmd requires node.exe to execute
+      if (isWindows() && /\.cmd$/i.test(unquotedCmd)) {
+        const nodeDirs = findNodeJsDirectories();
+        additionalPaths = [...additionalPaths, ...nodeDirs];
+        console.warn('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
+      }
+
+      const env = getAugmentedEnv(additionalPaths);
 
       let version: string;
 
@@ -1081,7 +1093,19 @@ class CLIToolManager {
 
       const needsShell = shouldUseShell(trimmedCmd);
       const cmdDir = path.dirname(unquotedCmd);
-      const env = await getAugmentedEnvAsync(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
+
+      // Prepare additional paths for environment augmentation
+      let additionalPaths = cmdDir && cmdDir !== '.' ? [cmdDir] : [];
+
+      // On Windows, if validating claude.cmd, also add Node.js directories to PATH
+      // This is needed because claude.cmd requires node.exe to execute
+      if (isWindows() && /\.cmd$/i.test(unquotedCmd)) {
+        const nodeDirs = findNodeJsDirectories();
+        additionalPaths = [...additionalPaths, ...nodeDirs];
+        console.warn('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
+      }
+
+      const env = await getAugmentedEnvAsync(additionalPaths);
 
       let stdout: string;
 

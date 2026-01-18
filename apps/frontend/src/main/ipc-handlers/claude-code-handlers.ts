@@ -19,6 +19,7 @@ import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationI
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
+import { findNodeJsDirectories } from '../platform';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -45,9 +46,19 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
 
     // Augment PATH with the CLI directory for proper resolution
     const cliDir = path.dirname(cliPath);
+    let pathEntries = [cliDir];
+
+    // On Windows, if validating claude.cmd, also add Node.js directories to PATH
+    // This is needed because claude.cmd requires node.exe to execute
+    if (isWindows && /\.cmd$/i.test(cliPath)) {
+      const nodeDirs = findNodeJsDirectories();
+      pathEntries = [...pathEntries, ...nodeDirs];
+      console.log('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
+    }
+
     const env = {
       ...process.env,
-      PATH: cliDir ? `${cliDir}${path.delimiter}${process.env.PATH || ''}` : process.env.PATH,
+      PATH: pathEntries.filter(Boolean).concat(process.env.PATH || '').join(path.delimiter),
     };
 
     let stdout: string;
