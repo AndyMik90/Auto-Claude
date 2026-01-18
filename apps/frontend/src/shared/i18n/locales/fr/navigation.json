@@ -79,5 +79,11 @@
     "pathChangeWarningDescription": "Le changement d'installation CLI utilisera un binaire Claude Code différent. Les sessions en cours continueront à utiliser l'installation précédente jusqu'à leur redémarrage.",
     "switchInstallationConfirm": "Changer",
     "versionUnknown": "version inconnue"
+  },
+  "worktree": {
+    "badge": "Worktree",
+    "tooltip": "Vous travaillez dans un worktree isolé pour cette tâche",
+    "inWorktree": "Travail dans le worktree : {{name}}",
+    "inMain": "Espace de travail principal"
   }
 }
