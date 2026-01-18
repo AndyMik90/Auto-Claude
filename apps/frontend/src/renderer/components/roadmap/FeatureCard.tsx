@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ExternalLink, Play, TrendingUp, Package, Link, AlertTriangle, RefreshCw, ChevronRight } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -11,6 +12,7 @@ import {
   ROADMAP_IMPACT_COLORS,
 } from '../../../shared/constants';
 import type { FeatureCardProps } from './types';
+import { getReverseDependencies } from './utils';
 
 export function FeatureCard({
   feature,
@@ -21,14 +23,11 @@ export function FeatureCard({
   onDependencyClick,
   features,
 }: FeatureCardProps) {
+  const { t } = useTranslation(['roadmap', 'common']);
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
-  // Calculate reverse dependencies on-the-fly if not present in data
-  const reverseDependencies = (feature.reverseDependencies && feature.reverseDependencies.length > 0)
-    ? feature.reverseDependencies
-    : features
-        .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
-        .map(f => f.id);
+  // Calculate reverse dependencies using shared utility
+  const reverseDependencies = getReverseDependencies(feature, features);
 
   return (
     <Card className="p-4 hover:bg-muted/50 cursor-pointer transition-colors" onClick={onClick}>
@@ -55,10 +54,10 @@ export function FeatureCard({
                 <TooltipTrigger asChild>
                   <Badge variant="outline" className="text-xs text-primary border-primary/50">
                     <TrendingUp className="h-3 w-3 mr-1" />
-                    Competitor Insight
+                    {t('featureCard.build')}
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>This feature addresses competitor pain points</TooltipContent>
+                <TooltipContent>{t('featureCard.build')}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -73,7 +72,7 @@ export function FeatureCard({
                 <div className="mb-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
                     <Package className="w-3 h-3" />
-                    <span>Dependencies ({feature.dependencies.length})</span>
+                    <span>{t('featureCard.dependenciesCount', { count: feature.dependencies.length })}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {feature.dependencies.map(depId => {
@@ -119,7 +118,7 @@ export function FeatureCard({
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
                     <Link className="w-3 h-3" />
-                    <span>Required By ({reverseDependencies.length})</span>
+                    <span>{t('featureCard.requiredByCount', { count: reverseDependencies.length })}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {reverseDependencies.map(depId => {
@@ -153,7 +152,7 @@ export function FeatureCard({
               {feature.dependencyValidation?.hasCircular && (
                 <div className="mt-2 p-1.5 bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-md flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-400">
                   <RefreshCw className="w-3 h-3" />
-                  <span>Circular dependency detected</span>
+                  <span>{t('featureCard.circularDependency')}</span>
                 </div>
               )}
             </div>
@@ -169,7 +168,7 @@ export function FeatureCard({
             }}
           >
             <ExternalLink className="h-3 w-3 mr-1" />
-            Go to Task
+            {t('featureCard.goToTask')}
           </Button>
         ) : (
           feature.status !== 'done' && (
@@ -182,7 +181,7 @@ export function FeatureCard({
               }}
             >
               <Play className="h-3 w-3 mr-1" />
-              Build
+              {t('featureCard.build')}
             </Button>
           )
         )}

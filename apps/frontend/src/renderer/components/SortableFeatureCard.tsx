@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../lib/utils';
@@ -18,6 +19,7 @@ import {
   ROADMAP_IMPACT_COLORS
 } from '../../shared/constants';
 import type { RoadmapFeature, Roadmap } from '../../shared/types';
+import { getReverseDependencies } from './roadmap/utils';
 
 interface SortableFeatureCardProps {
   feature: RoadmapFeature;
@@ -34,6 +36,7 @@ export function SortableFeatureCard({
   onConvertToSpec,
   onGoToTask
 }: SortableFeatureCardProps) {
+  const { t } = useTranslation(['roadmap', 'common']);
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
   const {
@@ -65,12 +68,10 @@ export function SortableFeatureCard({
   // Helper function to get a feature by ID
   const getFeatureById = (featureId: string) => roadmap?.features.find(f => f.id === featureId);
 
-  // Calculate reverse dependencies on-the-fly if not present in data
-  const reverseDependencies = (feature.reverseDependencies && feature.reverseDependencies.length > 0)
-    ? feature.reverseDependencies
-    : roadmap?.features
-        .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
-        .map(f => f.id) || [];
+  // Calculate reverse dependencies using shared utility
+  const reverseDependencies = roadmap?.features
+    ? getReverseDependencies(feature, roadmap.features)
+    : [];
 
   return (
     <div
@@ -110,7 +111,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Phase: {phaseName}
+                    {t('sortableFeatureCard.phaseLabel', { name: phaseName })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -125,7 +126,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    This feature addresses competitor pain points
+                    {t('sortableFeatureCard.addressesCompetitorPainPoints')}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -144,7 +145,7 @@ export function SortableFeatureCard({
                 }}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                Task
+                {t('featureCard.task')}
               </Button>
             ) : (
               feature.status !== 'done' &&
@@ -159,7 +160,7 @@ export function SortableFeatureCard({
                   }}
                 >
                   <Play className="h-3 w-3 mr-1" />
-                  Build
+                  {t('featureCard.build')}
                 </Button>
               )
             )}
@@ -198,7 +199,7 @@ export function SortableFeatureCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {feature.votes} votes from user feedback
+                {t('sortableFeatureCard.votesFromUserFeedback', { count: feature.votes })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -214,7 +215,7 @@ export function SortableFeatureCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                Imported from {feature.source?.provider}
+                {t('sortableFeatureCard.importedFrom', { provider: feature.source?.provider })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -234,7 +235,7 @@ export function SortableFeatureCard({
                       }}
                     >
                       <Package className="h-2.5 w-2.5" />
-                      <span>{feature.dependencies.length} deps</span>
+                      <span>{t('sortableFeatureCard.depsCount', { count: feature.dependencies.length })}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -263,7 +264,7 @@ export function SortableFeatureCard({
                       }}
                     >
                       <Link className="h-2.5 w-2.5" />
-                      <span>{reverseDependencies.length} required by</span>
+                      <span>{t('sortableFeatureCard.requiredByCount', { count: reverseDependencies.length })}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -291,7 +292,7 @@ export function SortableFeatureCard({
                       <span>circular</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>Circular dependency detected</TooltipContent>
+                  <TooltipContent>{t('sortableFeatureCard.circularDependency')}</TooltipContent>
                 </Tooltip>
               )}
             </div>

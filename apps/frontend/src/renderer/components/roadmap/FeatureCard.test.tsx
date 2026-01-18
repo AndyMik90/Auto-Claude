@@ -27,6 +27,31 @@ vi.mock('../../stores/roadmap-store', () => ({
   useRoadmapStore: vi.fn()
 }));
 
+// Mock i18n
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, params?: Record<string, unknown>) => {
+      // Simple mock translation function
+      const translations: Record<string, string> = {
+        'featureCard.dependenciesCount': 'Dependencies ({{count}})',
+        'featureCard.requiredByCount': 'Required By ({{count}})',
+        'featureCard.circularDependency': 'Circular dependency detected',
+        'featureCard.goToTask': 'Go to Task',
+        'featureCard.build': 'Build',
+        'featureCard.task': 'Task'
+      };
+
+      let result = translations[key] || key;
+      if (params) {
+        Object.entries(params).forEach(([paramKey, value]) => {
+          result = result.replace(`{{${paramKey}}}`, String(value));
+        });
+      }
+      return result;
+    }
+  })
+}));
+
 import { useRoadmapStore } from '../../stores/roadmap-store';
 
 // Test feature data

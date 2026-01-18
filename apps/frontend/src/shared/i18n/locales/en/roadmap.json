@@ -15,5 +15,61 @@
     "convertToSpec": "Convert to Spec",
     "viewInRoadmap": "View in Roadmap",
     "closePanel": "Close panel"
+  },
+  "featureCard": {
+    "dependencies": "Dependencies",
+    "dependenciesCount": "Dependencies ({{count}})",
+    "requiredBy": "Required By",
+    "requiredByCount": "Required By ({{count}})",
+    "circularDependency": "Circular dependency detected",
+    "circularDependencyAriaLabel": "Circular dependency detected",
+    "build": "Build",
+    "buildAriaLabel": "Build this feature",
+    "task": "Task",
+    "taskAriaLabel": "Go to linked task",
+    "goToTask": "Go to Task",
+    "depsCount": "{{count}} deps",
+    "requiredByCount": "{{count}} required by"
+  },
+  "featureDetailPanel": {
+    "title": "Feature Details",
+    "descriptionLabel": "Description",
+    "rationale": "Rationale",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Acceptance Criteria",
+    "metrics": {
+      "complexity": "Complexity",
+      "impact": "Impact",
+      "dependencies": "Dependencies"
+    },
+    "dependenciesSection": {
+      "dependencies": "Dependencies ({{count}})",
+      "requiredBy": "Required By ({{count}})",
+      "notFound": "Dependency '{{id}}' not found in roadmap"
+    },
+    "competitorInsights": {
+      "title": "Addresses Competitor Pain Points",
+      "source": "{{source}}",
+      "severity": "{{severity}} severity"
+    },
+    "actions": {
+      "convertToAutoBuild": "Convert to Auto-Build Task",
+      "goToTask": "Go to Task"
+    },
+    "deleteConfirmation": {
+      "title": "Delete Feature?",
+      "message": "This will permanently remove \"{{title}}\" from your roadmap.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
+  },
+  "sortableFeatureCard": {
+    "phaseLabel": "Phase: {{name}}",
+    "addressesCompetitorPainPoints": "This feature addresses competitor pain points",
+    "votesFromUserFeedback": "{{count}} votes from user feedback",
+    "importedFrom": "Imported from {{provider}}",
+    "depsCount": "{{count}} deps",
+    "requiredByCount": "{{count}} required by",
+    "circularDependency": "Circular dependency detected"
   }
 }
