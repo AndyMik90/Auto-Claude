@@ -65,6 +65,12 @@ export function SortableFeatureCard({
   // Helper function to get a feature by ID
   const getFeatureById = (featureId: string) => roadmap?.features.find(f => f.id === featureId);
 
+  // Calculate reverse dependencies on-the-fly if not present in data
+  const reverseDependencies = feature.reverseDependencies ||
+    roadmap?.features
+      .filter(f => f.dependencies?.includes(feature.id))
+      .map(f => f.id) || [];
+
   return (
     <div
       ref={setNodeRef}
@@ -214,7 +220,7 @@ export function SortableFeatureCard({
         </div>
 
         {/* Dependencies - compact indicator */}
-        {(feature.dependencies?.length > 0 || feature.reverseDependencies && feature.reverseDependencies.length > 0) && (
+        {(feature.dependencies?.length > 0 || reverseDependencies.length > 0) && (
           <div className="mt-2 pt-2 border-t border-border/50">
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
               {feature.dependencies?.length > 0 && (
@@ -246,7 +252,7 @@ export function SortableFeatureCard({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {feature.reverseDependencies && feature.reverseDependencies.length > 0 && (
+              {reverseDependencies.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -256,20 +262,20 @@ export function SortableFeatureCard({
                       }}
                     >
                       <Link className="h-2.5 w-2.5" />
-                      <span>{feature.reverseDependencies.length} required by</span>
+                      <span>{reverseDependencies.length} required by</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-1">
                       <p className="text-xs font-medium">Required by:</p>
-                      {feature.reverseDependencies.slice(0, 3).map(depId => {
+                      {reverseDependencies.slice(0, 3).map(depId => {
                         const dep = getFeatureById(depId);
                         return (
                           <p key={depId} className="text-xs">{dep?.title || depId}</p>
                         );
                       })}
-                      {feature.reverseDependencies.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{feature.reverseDependencies.length - 3} more</p>
+                      {reverseDependencies.length > 3 && (
+                        <p className="text-xs text-muted-foreground">+{reverseDependencies.length - 3} more</p>
                       )}
                     </div>
                   </TooltipContent>
