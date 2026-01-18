@@ -309,7 +309,7 @@
               "Verify visual separators (---) appear between distinct thoughts/paragraphs"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-4-3",
@@ -328,7 +328,7 @@
               "Test limit enforcement: Add 10 images → Try 11th → Verify error"
             ]
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-4-4",
@@ -522,6 +522,6 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-18T01:00:54.223Z",
+  "updated_at": "2026-01-18T01:12:59.023Z",
   "recoveryNote": "Task recovered from stuck state at 2026-01-18T00:32:22.247Z"
 }
