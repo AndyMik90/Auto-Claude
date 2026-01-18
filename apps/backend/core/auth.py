@@ -155,7 +155,7 @@ def decrypt_token(encrypted_token: str) -> str:
         )
 
     # Check for obviously invalid characters that suggest corruption
-    # Encrypted data should be alphanumeric, +, /, or = (base64-like)
+    # Accepts both standard base64 (+/) and URL-safe base64 (-_) to be permissive
     if not all(c.isalnum() or c in "+-_/=" for c in encrypted_data):
         raise ValueError(
             "Encrypted token contains invalid characters. "
@@ -238,10 +238,8 @@ def _decrypt_token_macos(encrypted_data: str) -> str:
     Raises:
         ValueError: If decryption fails or Claude CLI not available
     """
-    # Find claude binary using platform module's detection
-    claude_path = find_executable("claude", get_claude_detection_paths())
-
-    if not claude_path:
+    # Verify Claude CLI is installed (required for future decryption implementation)
+    if not find_executable("claude", get_claude_detection_paths()):
         raise ValueError(
             "Claude Code CLI not found. Please install it from https://code.claude.com"
         )
@@ -517,8 +515,10 @@ def get_auth_token() -> str | None:
         try:
             token = decrypt_token(token)
         except ValueError:
-            # Decryption failed, return None to trigger error in require_auth_token()
-            return None
+            # Decryption failed - return encrypted token so client validation
+            # (validate_token_not_encrypted) can provide specific error message.
+            # This is consistent with env var handling above.
+            return token
     return token
 
 
