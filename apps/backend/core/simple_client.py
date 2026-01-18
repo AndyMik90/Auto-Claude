@@ -25,7 +25,7 @@ from pathlib import Path
 
 from agents.tools_pkg import get_agent_config, get_default_thinking_level
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
-from core.auth import get_sdk_env_vars, require_auth_token
+from core.auth import get_sdk_env_vars, is_encrypted_token, require_auth_token
 from core.client import find_claude_cli
 from phase_config import get_thinking_budget
 
@@ -67,6 +67,21 @@ def create_simple_client(
     """
     # Get authentication
     oauth_token = require_auth_token()
+
+    # Validate token is not encrypted before passing to SDK
+    # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
+    # If we still have an encrypted token here, it means decryption failed or was skipped
+    if is_encrypted_token(oauth_token):
+        raise ValueError(
+            "Authentication token is in encrypted format and cannot be used.\n\n"
+            "The token decryption process failed or was not attempted.\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file\n\n"
+            "Note: Encrypted tokens require the Claude Code CLI to be installed\n"
+            "      and accessible in your PATH for automatic decryption."
+        )
+
     import os
 
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token

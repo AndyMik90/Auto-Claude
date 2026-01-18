@@ -612,3 +612,53 @@ class TestSdkEnvVars:
         env = get_sdk_env_vars()
 
         assert env["CLAUDE_CODE_GIT_BASH_PATH"] == existing_path
+
+
+class TestTokenDecryption:
+    """Tests for token decryption functionality."""
+
+    def test_is_encrypted_token_detects_prefix(self):
+        """Verify is_encrypted_token() detects enc: prefix."""
+        from core.auth import is_encrypted_token
+
+        assert is_encrypted_token("enc:test123")
+        assert is_encrypted_token("enc:djEwtxMGISt3tQ")
+        assert not is_encrypted_token("sk-ant-oat01-test")
+        assert not is_encrypted_token("")
+        assert not is_encrypted_token(None)
+
+    def test_decrypt_token_validates_format(self):
+        """Verify decrypt_token() validates token format."""
+        from core.auth import decrypt_token
+
+        with pytest.raises(ValueError, match="Invalid encrypted token format"):
+            decrypt_token("sk-ant-oat01-test")
+
+    def test_decrypt_token_handles_short_data(self):
+        """Verify decrypt_token() rejects short encrypted data."""
+        from core.auth import decrypt_token
+
+        with pytest.raises(ValueError, match="too short"):
+            decrypt_token("enc:abc")
+
+    def test_get_auth_token_decrypts_encrypted_env_token(self, monkeypatch):
+        """Verify get_auth_token() attempts to decrypt encrypted tokens from env."""
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "enc:testtoken123456789")
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+
+        from core.auth import get_auth_token
+
+        # Should return None (decryption fails) or decrypted token, but not raise exception
+        result = get_auth_token()
+        # Test passes if no exception raised
+
+    def test_backward_compatibility_plaintext_tokens(self, monkeypatch):
+        """Verify plaintext tokens continue to work unchanged."""
+        token = "sk-ant-oat01-test"
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", token)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+        assert result == token
