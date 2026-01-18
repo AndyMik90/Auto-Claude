@@ -79,5 +79,11 @@
     "pathChangeWarningDescription": "Switching CLI installations will use a different Claude Code binary. Any running sessions will continue using the previous installation until restarted.",
     "switchInstallationConfirm": "Switch",
     "versionUnknown": "version unknown"
+  },
+  "worktree": {
+    "badge": "Worktree",
+    "tooltip": "You are working in an isolated worktree for this task",
+    "inWorktree": "Working in worktree: {{name}}",
+    "inMain": "Main workspace"
   }
 }
