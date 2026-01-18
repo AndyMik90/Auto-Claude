@@ -45,8 +45,24 @@ export function FeatureDetailPanel({
   // This handles cases where roadmap was generated before reverse dependencies were tracked
   const reverseDependencies = feature.reverseDependencies ||
     features
-      .filter(f => f.dependencies?.includes(feature.id))
+      .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
       .map(f => f.id);
+
+  // Debug: log for troubleshooting
+  console.log('[FeatureDetailPanel] Reverse Deps Debug:', {
+    featureId: feature.id,
+    featureTitle: feature.title,
+    hasReverseDepsInData: !!feature.reverseDependencies,
+    reverseDepsFromData: feature.reverseDependencies,
+    calculatedReverseDeps: reverseDependencies,
+    totalFeatures: features.length,
+    featuresWithDeps: features.filter(f => Array.isArray(f.dependencies) && f.dependencies.length > 0).map(f => ({
+      id: f.id,
+      title: f.title,
+      deps: f.dependencies,
+      hasThisFeature: Array.isArray(f.dependencies) && f.dependencies.includes(feature.id)
+    }))
+  });
 
   const handleDependencyClick = (depId: string) => {
     if (onDependencyClick) {

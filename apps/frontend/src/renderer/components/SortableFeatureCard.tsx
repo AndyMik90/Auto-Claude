@@ -68,17 +68,23 @@ export function SortableFeatureCard({
   // Calculate reverse dependencies on-the-fly if not present in data
   const reverseDependencies = feature.reverseDependencies ||
     roadmap?.features
-      .filter(f => f.dependencies?.includes(feature.id))
+      .filter(f => Array.isArray(f.dependencies) && f.dependencies.includes(feature.id))
       .map(f => f.id) || [];
 
   // Debug: log for troubleshooting
-  console.log('[SortableFeatureCard]', {
+  console.log('[SortableFeatureCard] Reverse Deps Debug:', {
     featureId: feature.id,
     featureTitle: feature.title,
     hasReverseDepsInData: !!feature.reverseDependencies,
     reverseDepsFromData: feature.reverseDependencies,
     calculatedReverseDeps: reverseDependencies,
-    allFeatures: roadmap?.features.map(f => ({ id: f.id, title: f.title, deps: f.dependencies }))
+    totalFeatures: roadmap?.features.length,
+    featuresWithDeps: roadmap?.features.filter(f => Array.isArray(f.dependencies) && f.dependencies.length > 0).map(f => ({
+      id: f.id,
+      title: f.title,
+      deps: f.dependencies,
+      hasThisFeature: Array.isArray(f.dependencies) && f.dependencies.includes(feature.id)
+    }))
   });
 
   return (
