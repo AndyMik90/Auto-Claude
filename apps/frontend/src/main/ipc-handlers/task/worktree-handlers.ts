@@ -2835,6 +2835,183 @@ export function registerWorktreeHandlers(
   }
 
   /**
+   * Detect the project type based on files present in the project directory.
+   * Returns 'node' for JavaScript/TypeScript projects, 'python' for Python projects, etc.
+   */
+  function detectProjectType(projectPath: string): 'node' | 'python' | 'unknown' {
+    // Check for Node.js project indicators
+    if (existsSync(path.join(projectPath, 'package.json'))) {
+      return 'node';
+    }
+
+    // Check for Python project indicators
+    if (
+      existsSync(path.join(projectPath, 'pyproject.toml')) ||
+      existsSync(path.join(projectPath, 'setup.py')) ||
+      existsSync(path.join(projectPath, 'requirements.txt')) ||
+      existsSync(path.join(projectPath, 'Pipfile')) ||
+      existsSync(path.join(projectPath, 'setup.cfg'))
+    ) {
+      return 'python';
+    }
+
+    // Could extend to detect other project types:
+    // - Rust: Cargo.toml
+    // - Go: go.mod
+    // - Java: pom.xml, build.gradle
+    // - .NET: *.csproj, *.sln
+
+    return 'unknown';
+  }
+
+  /**
+   * Detect the Python virtual environment path if it exists.
+   * Returns the path to the venv directory or null if not found.
+   */
+  function detectPythonVenv(projectPath: string): string | null {
+    // Common virtual environment directory names
+    const venvDirs = ['.venv', 'venv', 'env', '.env'];
+
+    for (const dir of venvDirs) {
+      const venvPath = path.join(projectPath, dir);
+      // Check for activation script to verify it's a valid venv
+      const activatePath = isWindows()
+        ? path.join(venvPath, 'Scripts', 'activate.bat')
+        : path.join(venvPath, 'bin', 'activate');
+
+      if (existsSync(activatePath)) {
+        return venvPath;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the Python executable path from a virtual environment.
+   */
+  function getPythonExecutable(venvPath: string | null): string {
+    if (venvPath) {
+      return isWindows()
+        ? path.join(venvPath, 'Scripts', 'python.exe')
+        : path.join(venvPath, 'bin', 'python');
+    }
+    return 'python';
+  }
+
+  /**
+   * Detect the dev command for a Python project.
+   * Checks common patterns for web frameworks and scripts.
+   */
+  function detectPythonDevCommand(projectPath: string, pythonExe: string): string | null {
+    // Check pyproject.toml for scripts
+    const pyprojectPath = path.join(projectPath, 'pyproject.toml');
+    if (existsSync(pyprojectPath)) {
+      try {
+        const content = readFileSync(pyprojectPath, 'utf-8');
+
+        // Check for uvicorn/fastapi (common ASGI servers)
+        if (content.includes('uvicorn') || content.includes('fastapi')) {
+          // Try to find the main module
+          const mainModule = detectPythonMainModule(projectPath);
+          if (mainModule) {
+            return `${pythonExe} -m uvicorn ${mainModule}:app --reload`;
+          }
+        }
+
+        // Check for Flask
+        if (content.includes('flask')) {
+          return `${pythonExe} -m flask run --reload`;
+        }
+
+        // Check for Django
+        if (content.includes('django')) {
+          if (existsSync(path.join(projectPath, 'manage.py'))) {
+            return `${pythonExe} manage.py runserver`;
+          }
+        }
+      } catch {
+        // Ignore read errors
+      }
+    }
+
+    // Check for Django manage.py
+    if (existsSync(path.join(projectPath, 'manage.py'))) {
+      return `${pythonExe} manage.py runserver`;
+    }
+
+    // Check for common entry points
+    const entryPoints = ['main.py', 'app.py', 'run.py', 'server.py'];
+    for (const entry of entryPoints) {
+      if (existsSync(path.join(projectPath, entry))) {
+        return `${pythonExe} ${entry}`;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Try to detect the main module name for Python web frameworks.
+   */
+  function detectPythonMainModule(projectPath: string): string | null {
+    // Common patterns for ASGI/WSGI apps
+    const patterns = [
+      { file: 'main.py', module: 'main' },
+      { file: 'app.py', module: 'app' },
+      { file: 'server.py', module: 'server' },
+      { file: path.join('src', 'main.py'), module: 'src.main' },
+      { file: path.join('app', 'main.py'), module: 'app.main' }
+    ];
+
+    for (const { file, module } of patterns) {
+      if (existsSync(path.join(projectPath, file))) {
+        return module;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if Python dependencies are installed in the virtual environment.
+   */
+  function arePythonDepsInstalled(venvPath: string | null): boolean {
+    if (!venvPath) {
+      // No venv means we can't easily check - assume not installed
+      return false;
+    }
+
+    // Check if site-packages has content
+    const sitePackagesPath = isWindows()
+      ? path.join(venvPath, 'Lib', 'site-packages')
+      : path.join(venvPath, 'lib'); // On Unix, there's a python version subdirectory
+
+    try {
+      if (isWindows()) {
+        const contents = readdirSync(sitePackagesPath);
+        return contents.length > 5; // Basic packages + project deps
+      } else {
+        // On Unix, check for lib/python*/site-packages
+        const libContents = readdirSync(sitePackagesPath);
+        for (const entry of libContents) {
+          if (entry.startsWith('python')) {
+            const pythonSitePackages = path.join(sitePackagesPath, entry, 'site-packages');
+            if (existsSync(pythonSitePackages)) {
+              const contents = readdirSync(pythonSitePackages);
+              return contents.length > 5;
+            }
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+
+    return false;
+  }
+
+  /**
    * Run a command asynchronously and return a promise
    * This avoids blocking the main process during long-running operations
    */
@@ -3141,7 +3318,7 @@ export function registerWorktreeHandlers(
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_LAUNCH_APP,
-    async (_, worktreePath: string, autoInstall?: boolean): Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean }>> => {
+    async (_, worktreePath: string, autoInstall?: boolean): Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean; projectType?: string }>> => {
       try {
         if (!existsSync(worktreePath)) {
           return { success: false, error: 'Worktree path does not exist' };
@@ -3161,76 +3338,150 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Invalid path: contains unsafe characters' };
         }
 
-        // Detect the package manager used by this project
-        const packageManager = detectPackageManager(worktreePath);
-
-        // Check if dependencies are installed
-        // Must verify node_modules is a real directory with contents, not a broken symlink
-        const nodeModulesPath = path.join(worktreePath, 'node_modules');
-        let depsInstalled = false;
-        try {
-          const stats = statSync(nodeModulesPath);
-          if (stats.isDirectory()) {
-            // Check if it has actual contents (at least a few packages)
-            const contents = readdirSync(nodeModulesPath);
-            depsInstalled = contents.length > 5; // Real installs have many packages
-          }
-        } catch {
-          // Path doesn't exist or is inaccessible
-          depsInstalled = false;
-        }
-
-        if (!depsInstalled) {
-          if (autoInstall) {
-            // Auto-install dependencies asynchronously to avoid blocking the UI
-            const installResult = await runCommandAsync(packageManager, ['install'], worktreePath);
-            if (!installResult.success) {
-              return {
-                success: false,
-                error: `Failed to install dependencies with ${packageManager}: ${installResult.error}`,
-                data: { launched: false, command: '', depsInstalled: false, packageManager }
-              };
-            }
-          } else {
-            // Return structured error so frontend can offer to install
-            return {
-              success: false,
-              error: `Dependencies not installed. Run "${packageManager} install" in the worktree first.`,
-              data: { launched: false, command: '', depsInstalled: false, packageManager }
-            };
-          }
-        }
-
-        // Try to detect the dev command from package.json
-        const packageJsonPath = path.join(worktreePath, 'package.json');
+        // Detect project type to determine how to launch
+        const projectType = detectProjectType(worktreePath);
         let devCommand: string | null = null;
+        let packageManager: string | undefined;
+        let depsInstalled = false;
 
-        if (existsSync(packageJsonPath)) {
+        if (projectType === 'node') {
+          // Node.js project handling
+          packageManager = detectPackageManager(worktreePath);
+
+          // Check if dependencies are installed
+          // Must verify node_modules is a real directory with contents, not a broken symlink
+          const nodeModulesPath = path.join(worktreePath, 'node_modules');
           try {
-            const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-            const scripts = packageJson.scripts || {};
-
-            // Priority order for dev commands, using detected package manager
-            // All package managers (npm, pnpm, yarn, bun) support shorthand `start` without `run`
-            if (scripts.dev) {
-              devCommand = `${packageManager} run dev`;
-            } else if (scripts.start) {
-              devCommand = `${packageManager} start`;
-            } else if (scripts.serve) {
-              devCommand = `${packageManager} run serve`;
-            } else if (scripts.develop) {
-              devCommand = `${packageManager} run develop`;
+            const stats = statSync(nodeModulesPath);
+            if (stats.isDirectory()) {
+              // Check if it has actual contents (at least a few packages)
+              const contents = readdirSync(nodeModulesPath);
+              depsInstalled = contents.length > 5; // Real installs have many packages
             }
           } catch {
-            // Ignore JSON parse errors
+            // Path doesn't exist or is inaccessible
+            depsInstalled = false;
           }
-        }
 
-        // If no valid dev script was found, return an error
-        if (!devCommand) {
+          if (!depsInstalled) {
+            if (autoInstall) {
+              // Auto-install dependencies asynchronously to avoid blocking the UI
+              const installResult = await runCommandAsync(packageManager, ['install'], worktreePath);
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to install dependencies with ${packageManager}: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+                };
+              }
+              depsInstalled = true;
+            } else {
+              // Return structured error so frontend can offer to install
+              return {
+                success: false,
+                error: `Dependencies not installed. Run "${packageManager} install" in the worktree first.`,
+                data: { launched: false, command: '', depsInstalled: false, packageManager, projectType }
+              };
+            }
+          }
+
+          // Try to detect the dev command from package.json
+          const packageJsonPath = path.join(worktreePath, 'package.json');
+          if (existsSync(packageJsonPath)) {
+            try {
+              const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+              const scripts = packageJson.scripts || {};
+
+              // Priority order for dev commands, using detected package manager
+              // All package managers (npm, pnpm, yarn, bun) support shorthand `start` without `run`
+              if (scripts.dev) {
+                devCommand = `${packageManager} run dev`;
+              } else if (scripts.start) {
+                devCommand = `${packageManager} start`;
+              } else if (scripts.serve) {
+                devCommand = `${packageManager} run serve`;
+              } else if (scripts.develop) {
+                devCommand = `${packageManager} run develop`;
+              }
+            } catch {
+              // Ignore JSON parse errors
+            }
+          }
+
+          if (!devCommand) {
+            return {
+              success: false,
+              error: 'No dev script found in package.json. Expected one of: dev, start, serve, develop',
+              data: { launched: false, command: '', depsInstalled, packageManager, projectType }
+            };
+          }
+        } else if (projectType === 'python') {
+          // Python project handling
+          const venvPath = detectPythonVenv(worktreePath);
+          const pythonExe = getPythonExecutable(venvPath);
+          depsInstalled = arePythonDepsInstalled(venvPath);
+
+          if (!venvPath) {
+            return {
+              success: false,
+              error: 'No Python virtual environment found. Create one with "python -m venv .venv" first.',
+              data: { launched: false, command: '', depsInstalled: false, projectType }
+            };
+          }
+
+          if (!depsInstalled) {
+            if (autoInstall) {
+              // Try to install dependencies
+              const reqsPath = path.join(worktreePath, 'requirements.txt');
+              const pyprojectPath = path.join(worktreePath, 'pyproject.toml');
+
+              let installResult: { success: boolean; error?: string };
+              if (existsSync(pyprojectPath)) {
+                // Use pip install -e . for projects with pyproject.toml
+                installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-e', '.'], worktreePath);
+              } else if (existsSync(reqsPath)) {
+                // Use pip install -r requirements.txt
+                installResult = await runCommandAsync(pythonExe, ['-m', 'pip', 'install', '-r', 'requirements.txt'], worktreePath);
+              } else {
+                return {
+                  success: false,
+                  error: 'No pyproject.toml or requirements.txt found to install dependencies.',
+                  data: { launched: false, command: '', depsInstalled: false, projectType }
+                };
+              }
+
+              if (!installResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to install Python dependencies: ${installResult.error}`,
+                  data: { launched: false, command: '', depsInstalled: false, projectType }
+                };
+              }
+              depsInstalled = true;
+            } else {
+              return {
+                success: false,
+                error: 'Python dependencies not installed. Run "pip install -r requirements.txt" in your virtual environment.',
+                data: { launched: false, command: '', depsInstalled: false, projectType }
+              };
+            }
+          }
+
+          // Detect the dev command for Python
+          devCommand = detectPythonDevCommand(worktreePath, pythonExe);
+
+          if (!devCommand) {
+            return {
+              success: false,
+              error: 'No Python run command detected. Expected manage.py, main.py, app.py, or a web framework configuration.',
+              data: { launched: false, command: '', depsInstalled, projectType }
+            };
+          }
+        } else {
           return {
             success: false,
-            error: 'No dev script found in package.json. Expected one of: dev, start, serve, develop'
+            error: 'Unknown project type. Expected package.json (Node) or pyproject.toml/requirements.txt (Python).',
+            data: { launched: false, command: '', projectType }
           };
         }
 
@@ -3381,7 +3632,7 @@ export function registerWorktreeHandlers(
           }
         }
 
-        return { success: true, data: { launched: true, command: devCommand, depsInstalled: true, packageManager } };
+        return { success: true, data: { launched: true, command: devCommand, depsInstalled: true, packageManager, projectType } };
       } catch (error) {
         console.error('Failed to launch app:', error);
         return {
