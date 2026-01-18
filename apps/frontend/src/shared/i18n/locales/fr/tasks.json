@@ -178,7 +178,8 @@
     "maxImagesError": "Maximum de {{count}} images autorisées",
     "invalidTypeError": "Type d'image invalide. Autorisés : {{types}}",
     "removeImage": "Supprimer l'image",
-    "processingError": "Échec du traitement de l'image"
+    "processingError": "Échec du traitement de l'image",
+    "inputHint": "Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne. Collez des captures d'écran directement (Ctrl+V) ou glissez-déposez des images."
   },
   "review": {
     "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."

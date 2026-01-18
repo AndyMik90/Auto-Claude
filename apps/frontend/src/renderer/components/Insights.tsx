@@ -652,7 +652,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line. Paste screenshots directly (Ctrl+V) or drag and drop images.
+          {t('tasks:feedback.inputHint')}
         </p>
       </div>
       </div>
