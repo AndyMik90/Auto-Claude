@@ -645,19 +645,138 @@ class BMADRunner:
         """Execute the development phase.
 
         Integrates with BMAD dev-story workflow for implementation.
-        Produces implemented_code artifact.
+        Implements stories from the backlog in priority order.
+        Produces dev-logs/*.json and sprint-status.json artifacts.
 
         Returns:
             PhaseResult with success status and artifacts
 
         Story Reference: Story 6.6 - Implement BMAD Dev-Story Workflow Integration
         """
-        # TODO: Implement in Story 6.6
-        return PhaseResult(
-            success=False,
-            phase_id="dev",
-            error="Dev phase not yet implemented (Story 6.6)",
+        # Import here to avoid circular imports
+        from apps.backend.methodologies.bmad.workflows.dev import (
+            get_implementation_status,
+            get_next_story,
+            implement_story,
         )
+
+        # Check if output directory is configured
+        if self._output_dir is None:
+            return PhaseResult(
+                success=False,
+                phase_id="dev",
+                error="No output directory configured. Set spec_dir in task_config.metadata.",
+            )
+
+        # Get current implementation status
+        self._invoke_progress_callback("Checking implementation status...", 5.0)
+        status = get_implementation_status(self._output_dir)
+
+        if not status["has_epics"]:
+            return PhaseResult(
+                success=False,
+                phase_id="dev",
+                error="No epics found. Run epics phase first.",
+            )
+
+        # Check if there are stories to implement
+        stories_total = status["stories"]["total"]
+        stories_done = status["stories"]["done"]
+
+        if stories_done == stories_total and stories_total > 0:
+            # All stories already implemented
+            self._invoke_progress_callback("All stories already implemented", 100.0)
+            return PhaseResult(
+                success=True,
+                phase_id="dev",
+                message=f"All {stories_total} stories already implemented",
+                artifacts=[str(self._output_dir / "sprint-status.json")],
+                metadata={
+                    "stories_total": stories_total,
+                    "stories_completed": stories_done,
+                    "all_complete": True,
+                },
+            )
+
+        # Get next story to implement
+        self._invoke_progress_callback("Finding next story to implement...", 10.0)
+        next_story = get_next_story(self._output_dir)
+
+        if next_story is None:
+            # No stories ready (may be blocked by dependencies)
+            in_progress = status["stories"]["in_progress"]
+            if in_progress > 0:
+                return PhaseResult(
+                    success=True,
+                    phase_id="dev",
+                    message=f"{in_progress} stories in progress, none ready to start",
+                    artifacts=[str(self._output_dir / "sprint-status.json")],
+                    metadata=status["stories"],
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="dev",
+                    error="No stories available for implementation",
+                )
+
+        # Implement the next story
+        self._invoke_progress_callback(
+            f"Implementing story {next_story.id}: {next_story.title}...", 20.0
+        )
+
+        try:
+            result = implement_story(
+                story_id=next_story.id,
+                output_dir=self._output_dir,
+                progress_callback=self._invoke_progress_callback,
+            )
+
+            if result.success:
+                # Collect artifacts
+                artifacts = []
+                sprint_status_file = self._output_dir / "sprint-status.json"
+                if sprint_status_file.exists():
+                    artifacts.append(str(sprint_status_file))
+
+                dev_log_file = (
+                    self._output_dir / "dev-logs" / f"{next_story.id.lower()}-implementation.json"
+                )
+                if dev_log_file.exists():
+                    artifacts.append(str(dev_log_file))
+
+                self._invoke_progress_callback(
+                    f"Story {next_story.id} ready for implementation", 100.0
+                )
+
+                return PhaseResult(
+                    success=True,
+                    phase_id="dev",
+                    message=f"Story {next_story.id} ({next_story.title}) prepared for implementation",
+                    artifacts=artifacts,
+                    metadata={
+                        "story_id": next_story.id,
+                        "story_title": next_story.title,
+                        "story_priority": next_story.priority,
+                        "story_points": next_story.story_points,
+                        "status": result.status,
+                        "stories_remaining": stories_total - stories_done - 1,
+                    },
+                )
+            else:
+                return PhaseResult(
+                    success=False,
+                    phase_id="dev",
+                    error=result.error or "Failed to implement story",
+                )
+
+        except Exception as e:
+            logger.error(f"Dev phase failed: {e}")
+            return PhaseResult(
+                success=False,
+                phase_id="dev",
+                error=f"Dev phase failed: {str(e)}",
+            )
 
     def _execute_review(self) -> PhaseResult:
         """Execute the code review phase.
