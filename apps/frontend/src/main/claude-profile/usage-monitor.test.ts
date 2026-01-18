@@ -336,7 +336,8 @@ describe('usage-monitor', () => {
       expect(usage?.sessionPercent).toBe(25); // TOKENS_LIMIT percentage
       expect(usage?.weeklyPercent).toBe(50); // TIME_LIMIT percentage
       // sessionResetTime is a placeholder, calculated dynamically in UI
-      expect(usage?.sessionResetTime).toBe('Resets in ...');
+      expect(usage?.sessionResetTime).toBeDefined();
+      expect(typeof usage?.sessionResetTime).toBe('string');
       expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
     });
 

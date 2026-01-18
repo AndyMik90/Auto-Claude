@@ -78,6 +78,14 @@ export function formatTimeRemaining(
  * Used in usage-monitor.ts for backend time formatting.
  * Returns simple "2h 30m" or "3d 5h" format.
  *
+ * NOTE: This function returns hardcoded English strings ('Unknown', 'Expired')
+ * because i18n is not available in the main process. These sentinel values
+ * flow into ClaudeUsageSnapshot and should be replaced with localized text
+ * in the renderer process before displaying to users.
+ *
+ * FUTURE: Consider returning structured data (e.g., { status: 'unknown' })
+ * instead of strings to allow renderer-side localization.
+ *
  * @param timestamp - ISO timestamp string
  * @returns Formatted time string, or 'Unknown'/'Expired' for special cases
  */

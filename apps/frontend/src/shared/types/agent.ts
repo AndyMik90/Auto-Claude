@@ -33,9 +33,20 @@ export interface ClaudeUsageSnapshot {
   sessionPercent: number;
   /** Weekly usage percentage (0-100) - represents 7-day window for Anthropic, monthly for z.ai */
   weeklyPercent: number;
-  /** When the session limit resets (human-readable or ISO) */
+  /**
+   * When the session limit resets (human-readable or ISO)
+   *
+   * NOTE: This value may contain hardcoded English strings ('Unknown', 'Expired', 'Resets in ...')
+   * from the main process. Renderer components should use the sessionResetTimestamp field
+   * with formatTimeRemaining() to generate localized countdown text when available.
+   */
   sessionResetTime?: string;
-  /** When the weekly limit resets (human-readable or ISO) */
+  /**
+   * When the weekly limit resets (human-readable or ISO)
+   *
+   * NOTE: This value may contain hardcoded English strings ('Unknown', '1st of January', etc.)
+   * from the main process. Renderer components should localize these values before display.
+   */
   weeklyResetTime?: string;
   /** ISO timestamp of when the session limit resets (for dynamic countdown calculation) */
   sessionResetTimestamp?: string;
