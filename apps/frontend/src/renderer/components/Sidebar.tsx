@@ -50,7 +50,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
 import { UpdateBanner } from './UpdateBanner';
-import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
+import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig, WorktreeInfo } from '../../shared/types';
 
 export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
 
@@ -111,6 +111,7 @@ export function Sidebar({
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
+  const [worktreeInfo, setWorktreeInfo] = useState<WorktreeInfo | null>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -207,6 +208,24 @@ export function Sidebar({
     checkGit();
   }, [selectedProject]);
 
+  // Load worktree info on mount
+  useEffect(() => {
+    const loadWorktreeInfo = async () => {
+      try {
+        const info = await window.electronAPI.getWorktreeInfo();
+        setWorktreeInfo(info);
+      } catch (error) {
+        console.error('Failed to load worktree info:', error);
+        setWorktreeInfo(null);
+      }
+    };
+    loadWorktreeInfo();
+  }, []);
+
+  const handleAddProject = () => {
+    setShowAddProjectModal(true);
+  };
+
   const handleProjectAdded = (project: Project, needsInit: boolean) => {
     if (needsInit) {
       setPendingProject(project);
@@ -294,8 +313,20 @@ export function Sidebar({
     <TooltipProvider>
       <div className="flex h-full w-64 flex-col bg-sidebar border-r border-border">
         {/* Header with drag area - extra top padding for macOS traffic lights */}
-        <div className="electron-drag flex h-14 items-center px-4 pt-6">
+        <div className="electron-drag flex h-14 items-center px-4 pt-6 gap-2">
           <span className="electron-no-drag text-lg font-bold text-primary">Auto Claude</span>
+          {worktreeInfo?.isWorktree && worktreeInfo.specNumber && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="electron-no-drag inline-flex items-center rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-foreground border border-border">
+                  {t('navigation:worktree.badge')}/{worktreeInfo.specNumber}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t('navigation:worktree.tooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         <Separator className="mt-2" />
