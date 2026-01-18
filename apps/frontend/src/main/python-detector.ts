@@ -93,12 +93,10 @@ export function findPythonCommand(): string | null {
         return cmd;
       } else {
         console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
-        continue;
       }
     } catch {
       // Command not found or errored, try next
       console.warn(`[Python] Command not found or errored: ${cmd}`);
-      continue;
     }
   }
 

@@ -38,7 +38,7 @@ export async function existsAsync(filePath: string): Promise<boolean> {
 }
 
 // Cache for npm global prefix to avoid repeated async calls
-let npmGlobalPrefixCache: string | null | undefined = undefined;
+let npmGlobalPrefixCache: string | null | undefined ;
 let npmGlobalPrefixCachePromise: Promise<string | null> | null = null;
 
 /**

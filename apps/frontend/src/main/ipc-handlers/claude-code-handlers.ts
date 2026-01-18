@@ -745,7 +745,6 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         console.log('[Claude Code] Opened terminal:', cmd);
         break;
       } catch {
-        continue;
       }
     }
 
