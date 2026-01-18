@@ -61,7 +61,9 @@ export interface TaskAPI {
   worktreeOpenInIDE: (worktreePath: string, ide: SupportedIDE, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeOpenInTerminal: (worktreePath: string, terminal: SupportedTerminal, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeDetectTools: () => Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>>;
-  worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean) => Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean }>>;
+  worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean) => Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean; pid?: number }>>;
+  worktreeStopApp: (worktreePath: string) => Promise<IPCResult<{ stopped: boolean; killed: number }>>;
+  worktreeAppStatus: (worktreePath: string) => Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>>;
   worktreeInstallDeps: (worktreePath: string) => Promise<IPCResult<{ installed: boolean; packageManager: string }>>;
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
   unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
@@ -168,8 +170,14 @@ export const createTaskAPI = (): TaskAPI => ({
   worktreeDetectTools: (): Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_DETECT_TOOLS),
 
-  worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean): Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean }>> =>
+  worktreeLaunchApp: (worktreePath: string, autoInstall?: boolean): Promise<IPCResult<{ launched: boolean; command: string; depsInstalled?: boolean; packageManager?: string; installing?: boolean; pid?: number }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_LAUNCH_APP, worktreePath, autoInstall),
+
+  worktreeStopApp: (worktreePath: string): Promise<IPCResult<{ stopped: boolean; killed: number }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_STOP_APP, worktreePath),
+
+  worktreeAppStatus: (worktreePath: string): Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_APP_STATUS, worktreePath),
 
   worktreeInstallDeps: (worktreePath: string): Promise<IPCResult<{ installed: boolean; packageManager: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_INSTALL_DEPS, worktreePath),

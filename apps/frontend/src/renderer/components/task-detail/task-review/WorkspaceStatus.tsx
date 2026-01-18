@@ -15,10 +15,11 @@ import {
   Code,
   Terminal,
   Play,
+  Square,
   Package,
   Download
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
@@ -119,6 +120,32 @@ export function WorkspaceStatus({
     installing: boolean;
   }>({ missing: false, packageManager: 'npm', installing: false });
 
+  // State for app running status
+  const [appStatus, setAppStatus] = useState<{
+    running: boolean;
+    stopping: boolean;
+  }>({ running: false, stopping: false });
+
+  // Check app status on mount and when worktreePath changes
+  useEffect(() => {
+    const checkAppStatus = async () => {
+      if (!worktreeStatus.worktreePath) return;
+      try {
+        const result = await window.electronAPI.worktreeAppStatus(worktreeStatus.worktreePath);
+        if (result.success) {
+          setAppStatus(prev => ({ ...prev, running: result.data?.running || false }));
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+
+    checkAppStatus();
+    // Poll every 5 seconds to detect if app was stopped externally
+    const interval = setInterval(checkAppStatus, 5000);
+    return () => clearInterval(interval);
+  }, [worktreeStatus.worktreePath]);
+
   const handleInstallDeps = async () => {
     if (!worktreeStatus.worktreePath) return;
     setDepsStatus(prev => ({ ...prev, installing: true }));
@@ -195,6 +222,7 @@ export function WorkspaceStatus({
       const result = await window.electronAPI.worktreeLaunchApp(worktreeStatus.worktreePath, autoInstall);
       if (result.success) {
         setDepsStatus(prev => ({ missing: false, packageManager: result.data?.packageManager || prev.packageManager, installing: false }));
+        setAppStatus({ running: true, stopping: false });
         toast({
           title: t('taskReview:workspace.launchSuccess'),
           description: result.data?.command,
@@ -227,6 +255,36 @@ export function WorkspaceStatus({
       console.error('Failed to launch app:', err);
       toast({
         title: t('taskReview:workspace.launchFailed'),
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleStopApp = async () => {
+    if (!worktreeStatus.worktreePath) return;
+    setAppStatus(prev => ({ ...prev, stopping: true }));
+
+    try {
+      const result = await window.electronAPI.worktreeStopApp(worktreeStatus.worktreePath);
+      if (result.success) {
+        setAppStatus({ running: false, stopping: false });
+        toast({
+          title: 'App stopped',
+          description: `Terminated ${result.data?.killed || 0} process${(result.data?.killed || 0) !== 1 ? 'es' : ''}`,
+        });
+      } else {
+        setAppStatus(prev => ({ ...prev, stopping: false }));
+        toast({
+          title: 'Failed to stop app',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      setAppStatus(prev => ({ ...prev, stopping: false }));
+      toast({
+        title: 'Failed to stop app',
         description: err instanceof Error ? err.message : 'Unknown error',
         variant: 'destructive',
       });
@@ -342,21 +400,44 @@ export function WorkspaceStatus({
           </div>
         )}
 
-        {/* Open in IDE/Terminal/Launch buttons */}
+        {/* Open in IDE/Terminal/Launch/Stop buttons */}
         {worktreeStatus.worktreePath && (
           <div className="flex gap-2 mt-3 flex-wrap">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => handleLaunchApp(false)}
-              disabled={depsStatus.installing}
-              className="h-7 px-2 text-xs"
-              title={depsStatus.missing ? `Dependencies not installed - click to try anyway or install first` : t('taskReview:workspace.launchAppTooltip')}
-            >
-              <Play className="h-3.5 w-3.5 mr-1" />
-              {t('taskReview:workspace.launchApp')}
-            </Button>
-            {depsStatus.missing && (
+            {appStatus.running ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleStopApp}
+                disabled={appStatus.stopping}
+                className="h-7 px-2 text-xs"
+                title="Stop the running dev server"
+              >
+                {appStatus.stopping ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    Stopping...
+                  </>
+                ) : (
+                  <>
+                    <Square className="h-3.5 w-3.5 mr-1" />
+                    Stop App
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => handleLaunchApp(false)}
+                disabled={depsStatus.installing}
+                className="h-7 px-2 text-xs"
+                title={depsStatus.missing ? `Dependencies not installed - click to try anyway or install first` : t('taskReview:workspace.launchAppTooltip')}
+              >
+                <Play className="h-3.5 w-3.5 mr-1" />
+                {t('taskReview:workspace.launchApp')}
+              </Button>
+            )}
+            {!appStatus.running && depsStatus.missing && (
               <Button
                 variant="secondary"
                 size="sm"

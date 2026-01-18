@@ -23,6 +23,7 @@ import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { escapePathForShell, escapePathForAppleScript } from './shell-escape';
 import { killProcessGracefully, isWindows, isMacOS } from '../../platform';
+import { processRegistry, type TrackedProcess, type ProjectType } from '../../process-registry';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -3244,6 +3245,74 @@ export function registerWorktreeHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to launch app'
+        };
+      }
+    }
+  );
+
+  /**
+   * Stop the app dev server for a worktree
+   * Kills all tracked processes for this worktree
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_STOP_APP,
+    async (_, worktreePath: string): Promise<IPCResult<{ stopped: boolean; killed: number }>> => {
+      try {
+        if (!worktreePath) {
+          return { success: false, error: 'Worktree path is required' };
+        }
+
+        const result = await processRegistry.killByWorktree(worktreePath);
+
+        if (result.errors.length > 0) {
+          console.warn('Some processes failed to terminate:', result.errors);
+        }
+
+        return {
+          success: true,
+          data: { stopped: true, killed: result.killed }
+        };
+      } catch (error) {
+        console.error('Failed to stop app:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to stop app'
+        };
+      }
+    }
+  );
+
+  /**
+   * Get the running status of dev server for a worktree
+   * Returns list of tracked processes
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_WORKTREE_APP_STATUS,
+    async (_, worktreePath: string): Promise<IPCResult<{ running: boolean; processes: Array<{ pid: number; command: string; startedAt: string }> }>> => {
+      try {
+        if (!worktreePath) {
+          return { success: false, error: 'Worktree path is required' };
+        }
+
+        const processes = processRegistry.getByWorktree(worktreePath);
+        const running = processes.length > 0;
+
+        return {
+          success: true,
+          data: {
+            running,
+            processes: processes.map(p => ({
+              pid: p.pid,
+              command: p.command,
+              startedAt: p.startedAt
+            }))
+          }
+        };
+      } catch (error) {
+        console.error('Failed to get app status:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get app status'
         };
       }
     }

@@ -106,7 +106,17 @@ export const workspaceMock = {
 
   worktreeLaunchApp: async (_worktreePath: string, _autoInstall?: boolean) => ({
     success: true,
-    data: { launched: true, command: 'npm run dev', depsInstalled: true, packageManager: 'npm' }
+    data: { launched: true, command: 'npm run dev', depsInstalled: true, packageManager: 'npm', pid: 12345 }
+  }),
+
+  worktreeStopApp: async (_worktreePath: string) => ({
+    success: true,
+    data: { stopped: true, killed: 1 }
+  }),
+
+  worktreeAppStatus: async (_worktreePath: string) => ({
+    success: true,
+    data: { running: false, processes: [] }
   }),
 
   worktreeInstallDeps: async (_worktreePath: string) => ({
