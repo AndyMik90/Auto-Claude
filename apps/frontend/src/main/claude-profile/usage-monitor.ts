@@ -640,10 +640,8 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Step 4: Fetch usage from provider endpoint
-      // Provider-specific authentication: Anthropic uses Bearer token, z.ai/ZHIPU use token directly
-      const authHeader = provider === 'anthropic'
-        ? `Bearer ${credential}`
-        : credential;
+      // All providers use Bearer token authentication (RFC 6750)
+      const authHeader = `Bearer ${credential}`;
 
       const response = await fetch(usageEndpoint, {
         method: 'GET',
