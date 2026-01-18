@@ -2952,6 +2952,148 @@ export function registerWorktreeHandlers(
   }
 
   /**
+   * Kill worktree processes and return the count of processes killed.
+   * Used by Stop App handler to report how many processes were terminated.
+   */
+  async function killWorktreeProcessesWithCount(worktreePath: string): Promise<number> {
+    let killedCount = 0;
+
+    if (isWindows()) {
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+
+      try {
+        const findProc = spawn('powershell', [
+          '-Command',
+          `Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'node.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like '*${normalizedPath}*' } | Select-Object -ExpandProperty ProcessId`
+        ], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        const pids = stdout.trim().split(/\r?\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('taskkill', ['/F', '/PID', pid], { stdio: 'ignore' });
+            killedCount++;
+          } catch {
+            // Ignore errors killing individual processes
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    } else {
+      try {
+        const findProc = spawn('pgrep', ['-f', worktreePath], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        const pids = stdout.trim().split(/\n/).filter(pid => pid.match(/^\d+$/));
+        for (const pid of pids) {
+          try {
+            spawn('kill', ['-9', pid], { stdio: 'ignore' });
+            killedCount++;
+          } catch {
+            // Ignore errors
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    // Brief delay to let processes terminate
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return killedCount;
+  }
+
+  /**
+   * Discover running processes for a worktree path.
+   * Returns array of PIDs that are running with command lines containing this path.
+   */
+  async function discoverWorktreeProcesses(worktreePath: string): Promise<Array<{ pid: number; command: string }>> {
+    const processes: Array<{ pid: number; command: string }> = [];
+
+    if (isWindows()) {
+      const normalizedPath = worktreePath.replace(/\\/g, '\\\\');
+
+      try {
+        const findProc = spawn('powershell', [
+          '-Command',
+          `Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'node.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like '*${normalizedPath}*' } | Select-Object ProcessId, CommandLine | ConvertTo-Json`
+        ], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        if (stdout.trim()) {
+          try {
+            const result = JSON.parse(stdout);
+            // Handle both single object and array responses
+            const items = Array.isArray(result) ? result : [result];
+            for (const item of items) {
+              if (item.ProcessId) {
+                processes.push({
+                  pid: item.ProcessId,
+                  command: item.CommandLine || 'unknown'
+                });
+              }
+            }
+          } catch {
+            // Ignore JSON parse errors
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    } else {
+      try {
+        // Get PIDs and commands on Unix
+        const findProc = spawn('pgrep', ['-f', '-l', worktreePath], { stdio: 'pipe' });
+
+        let stdout = '';
+        findProc.stdout?.on('data', (data) => { stdout += data.toString(); });
+
+        await new Promise<void>((resolve) => {
+          findProc.on('close', () => resolve());
+          findProc.on('error', () => resolve());
+        });
+
+        const lines = stdout.trim().split(/\n/).filter(line => line.trim());
+        for (const line of lines) {
+          const match = line.match(/^(\d+)\s+(.+)$/);
+          if (match) {
+            processes.push({
+              pid: parseInt(match[1], 10),
+              command: match[2]
+            });
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    return processes;
+  }
+
+  /**
    * Install dependencies in a worktree directory
    */
   ipcMain.handle(
@@ -3262,15 +3404,22 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Worktree path is required' };
         }
 
-        const result = await processRegistry.killByWorktree(worktreePath);
+        // Kill processes discovered by working directory (node.exe, python.exe running from this path)
+        // This is the primary mechanism since Launch App opens terminal windows
+        const killedByPath = await killWorktreeProcessesWithCount(worktreePath);
 
-        if (result.errors.length > 0) {
-          console.warn('Some processes failed to terminate:', result.errors);
+        // Also clean up any explicitly registered processes
+        const registryResult = await processRegistry.killByWorktree(worktreePath);
+
+        const totalKilled = killedByPath + registryResult.killed;
+
+        if (registryResult.errors.length > 0) {
+          console.warn('Some processes failed to terminate:', registryResult.errors);
         }
 
         return {
           success: true,
-          data: { stopped: true, killed: result.killed }
+          data: { stopped: true, killed: totalKilled }
         };
       } catch (error) {
         console.error('Failed to stop app:', error);
@@ -3294,19 +3443,34 @@ export function registerWorktreeHandlers(
           return { success: false, error: 'Worktree path is required' };
         }
 
-        const processes = processRegistry.getByWorktree(worktreePath);
-        const running = processes.length > 0;
+        // Check both the registry and actual running processes
+        // Registry may be empty since Launch App opens terminal windows
+        const registeredProcesses = processRegistry.getByWorktree(worktreePath);
+        const discoveredProcesses = await discoverWorktreeProcesses(worktreePath);
+
+        // Merge results, preferring registered processes (which have more metadata)
+        const registeredPids = new Set(registeredProcesses.map(p => p.pid));
+        const allProcesses: Array<{ pid: number; command: string; startedAt: string }> = [
+          ...registeredProcesses.map(p => ({
+            pid: p.pid,
+            command: p.command,
+            startedAt: p.startedAt
+          })),
+          // Add discovered processes that aren't already in registry
+          ...discoveredProcesses
+            .filter(p => !registeredPids.has(p.pid))
+            .map(p => ({
+              pid: p.pid,
+              command: p.command,
+              startedAt: new Date().toISOString() // Unknown start time
+            }))
+        ];
+
+        const running = allProcesses.length > 0;
 
         return {
           success: true,
-          data: {
-            running,
-            processes: processes.map(p => ({
-              pid: p.pid,
-              command: p.command,
-              startedAt: p.startedAt
-            }))
-          }
+          data: { running, processes: allProcesses }
         };
       } catch (error) {
         console.error('Failed to get app status:', error);
