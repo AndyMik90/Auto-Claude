@@ -349,6 +349,7 @@ export interface ElectronAPI {
 
   // App info
   getAppVersion: () => Promise<string>;
+  getWorktreeInfo: () => Promise<import('./settings').WorktreeInfo>;
 
   // Roadmap operations
   getRoadmap: (projectId: string) => Promise<IPCResult<Roadmap | null>>;

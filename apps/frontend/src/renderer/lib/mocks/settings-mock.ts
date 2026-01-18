@@ -32,6 +32,11 @@ export const settingsMock = {
 
   // App Info
   getAppVersion: async () => '0.1.0-browser',
+  getWorktreeInfo: async () => ({
+    isWorktree: false,
+    specNumber: null,
+    worktreePath: null
+  }),
 
   // App Update Operations (mock - no updates in browser mode)
   checkAppUpdate: async () => ({ success: true, data: null }),
