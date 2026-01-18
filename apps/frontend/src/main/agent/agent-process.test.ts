@@ -123,13 +123,14 @@ vi.mock('../cli-tool-manager', () => ({
     }
     return { found: false, path: undefined, source: 'user-config', message: `${tool} not found` };
   }),
-  deriveGitBashPath: vi.fn(() => null),
   clearCache: vi.fn()
 }));
 
 // Mock env-utils to avoid blocking environment augmentation
 vi.mock('../env-utils', () => ({
-  getAugmentedEnv: vi.fn(() => ({ ...process.env }))
+  getAugmentedEnv: vi.fn(() => ({ ...process.env })),
+  getGitBashEnv: vi.fn(() => ({})),
+  deriveGitBashPath: vi.fn(() => null)
 }));
 
 // Mock fs.existsSync for getAutoBuildSourcePath path validation
