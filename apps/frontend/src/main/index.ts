@@ -1,3 +1,13 @@
+// Polyfill CommonJS require for ESM compatibility
+// This MUST be at the very top, before any imports that might trigger Sentry's
+// require-in-the-middle hooks. Sentry's hooks expect require.cache to exist,
+// which is only available in CommonJS. Without this, node-pty native module
+// loading fails with "ReferenceError: require is not defined".
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+// Make require globally available for Sentry's require-in-the-middle hooks
+globalThis.require = require;
+
 // Load .env file FIRST before any other imports that might use process.env
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
