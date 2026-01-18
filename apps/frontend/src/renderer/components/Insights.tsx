@@ -597,7 +597,7 @@ export function Insights({ projectId }: InsightsProps) {
                     e.stopPropagation();
                     handleRemoveImage(image.id);
                   }}
-                  aria-label="Remove image"
+                  aria-label={t('accessibility.removeImageAriaLabel')}
                 >
                   <X className="h-3 w-3" />
                 </button>
