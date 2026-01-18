@@ -13,6 +13,7 @@ import type {
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
+import { readSettingsFileAsync } from '../settings-utils';
 
 /**
  * Message processor result
@@ -86,6 +87,12 @@ export class InsightsExecutor extends EventEmitter {
 
     // Get process environment
     const processEnv = await this.config.getProcessEnv();
+
+    // Set YOLO mode environment variable if enabled in settings
+    const settings = await readSettingsFileAsync();
+    if (settings?.dangerouslySkipPermissions === true) {
+      processEnv['AUTO_CLAUDE_SKIP_PERMISSIONS'] = '1';
+    }
 
     // Write conversation history to temp file to avoid Windows command-line length limit
     const historyFile = path.join(

@@ -43,6 +43,10 @@ async def bash_security_hook(
     if input_data.get("tool_name") != "Bash":
         return {}
 
+    # YOLO mode: skip all validation when env var is set
+    if os.environ.get("AUTO_CLAUDE_SKIP_PERMISSIONS", "").lower() in ("1", "true"):
+        return {}
+
     # Validate tool_input structure before accessing
     tool_input = input_data.get("tool_input")
 

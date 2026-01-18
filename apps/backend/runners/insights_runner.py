@@ -9,6 +9,7 @@ about a codebase. It can also suggest tasks based on the conversation.
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -190,11 +191,14 @@ Current question: {message}"""
     )
 
     try:
+        # Check YOLO mode from environment
+        yolo_mode = os.environ.get("AUTO_CLAUDE_SKIP_PERMISSIONS", "").lower() in ("1", "true")
+
         # Build options dict - only include max_thinking_tokens if not None
         options_kwargs = {
             "model": resolve_model_id(model),  # Resolve via API Profile if configured
             "system_prompt": system_prompt,
-            "allowed_tools": ["Read", "Glob", "Grep"],
+            "allowed_tools": ["Read", "Glob", "Grep"] + (["Bash"] if yolo_mode else []),
             "max_turns": 30,  # Allow sufficient turns for codebase exploration
             "cwd": str(project_path),
         }
@@ -202,6 +206,11 @@ Current question: {message}"""
         # Only add thinking tokens if the thinking level is not "none"
         if max_thinking_tokens is not None:
             options_kwargs["max_thinking_tokens"] = max_thinking_tokens
+
+        # Add YOLO mode settings if enabled
+        if yolo_mode:
+            options_kwargs["permission_mode"] = "bypassPermissions"
+            options_kwargs["extra_args"] = {"dangerously-skip-permissions": None}
 
         # Create Claude SDK client with appropriate settings for insights
         client = ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
