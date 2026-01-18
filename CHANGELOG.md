@@ -1,3 +1,14 @@
+## [Unreleased]
+
+### ✨ New Features
+
+- Windows ARM64 native support with dedicated installer and auto-updates
+  - Native ARM64 performance on Windows 11 ARM64 devices
+  - Separate update manifest (latest-arm64.yml) for ARM64-specific updates
+  - Note: Initial ARM64 builds may be unsigned (SmartScreen warnings expected)
+
+---
+
 ## 2.7.4 - Terminal & Workflow Enhancements
 
 ### ✨ New Features

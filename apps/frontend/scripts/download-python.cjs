@@ -134,13 +134,19 @@ const BASE_URL = `https://github.com/indygreg/python-build-standalone/releases/d
 // Output directory for downloaded Python (relative to frontend root)
 const OUTPUT_DIR = 'python-runtime';
 
-// SHA256 checksums for verification (from python-build-standalone release)
-// These must be updated when changing PYTHON_VERSION or RELEASE_TAG
-// Get checksums from: https://github.com/indygreg/python-build-standalone/releases/download/{RELEASE_TAG}/SHA256SUMS
+// SHA256 checksums for verification
+// python-build-standalone checksums: https://github.com/indygreg/python-build-standalone/releases/download/{RELEASE_TAG}/SHA256SUMS
+// Python.org checksums: https://www.python.org/downloads/ (look for "Files" section with hashes)
+// To get the correct checksum for Python.org .exe:
+//   1. Download the installer: https://www.python.org/ftp/python/3.12.8/python-3.12.8-arm64.exe
+//   2. Run: certutil -hashfile python-3.12.8-arm64.exe SHA256  (Windows)
+//   3.      or: shasum -a 256 python-3.12.8-arm64.exe  (macOS/Linux via WSL)
+//   4. Compare with official hash from python.org downloads page
 const CHECKSUMS = {
   'darwin-arm64': 'abe1de2494bb8b243fd507944f4d50292848fa00685d5288c858a72623a16635',
   'darwin-x64': '867c1af10f204224b571f8f2593fc9eb580fe0c2376224d1096ebe855ad8c722',
   'win32-x64': '1a702b3463cf87ec0d2e33902a47e95456053b0178fe96bd673c1dbb554f5d15',
+  'win32-arm64': '',  // TODO: Obtain from https://www.python.org/downloads/release/python-3128/ (Files section)
   'linux-x64': '698e53b264a9bcd35cfa15cd680c4d78b0878fa529838844b5ffd0cd661d6bc2',
   'linux-arm64': 'fb983ec85952513f5f013674fcbf4306b1a142c50fcfd914c2c3f00c61a874b0',
 };
@@ -190,26 +196,41 @@ function getDownloadInfo(platform, arch) {
   const version = PYTHON_VERSION;
 
   // Map platform/arch to python-build-standalone naming
+  // Note: win32-arm64 uses Python.org official installer instead of python-build-standalone
+  //       (which doesn't support Windows ARM64)
   const configs = {
     'darwin-arm64': {
       filename: `cpython-${version}+${RELEASE_TAG}-aarch64-apple-darwin-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'darwin-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-apple-darwin-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'win32-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
+    },
+    'win32-arm64': {
+      // Python.org official ARM64 installer for Windows
+      // Download URL: https://www.python.org/ftp/python/3.12.8/python-3.12.8-arm64.exe
+      filename: `python-${version}-arm64.exe`,
+      extractDir: 'python',
+      source: 'python-org',
+      url: `https://www.python.org/ftp/python/${version}/python-${version}-arm64.exe`,
     },
     'linux-x64': {
       filename: `cpython-${version}+${RELEASE_TAG}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
     'linux-arm64': {
       filename: `cpython-${version}+${RELEASE_TAG}-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz`,
       extractDir: 'python',
+      source: 'python-build-standalone',
     },
   };
 
@@ -224,12 +245,13 @@ function getDownloadInfo(platform, arch) {
   const ebPlatform = toElectronBuilderPlatform(nodePlatform);
 
   return {
-    url: `${BASE_URL}/${config.filename}`,
+    url: config.url || `${BASE_URL}/${config.filename}`,  // Use custom URL if provided (e.g., Python.org for win32-arm64)
     filename: config.filename,
     extractDir: config.extractDir,
     outputDir: `${ebPlatform}-${arch}`,  // e.g., "mac-arm64", "win-x64", "linux-x64"
     nodePlatform,  // For internal checks (darwin, win32, linux)
     checksum: CHECKSUMS[key],
+    source: config.source,  // Source of the distribution (python-build-standalone, python-org)
   };
 }
 
@@ -354,6 +376,40 @@ function verifyChecksum(filePath, expectedChecksum) {
 
   console.log(`[download-python] Checksum verified: ${hash.substring(0, 16)}...`);
   return true;
+}
+
+/**
+ * Extract a Python.org Windows .exe installer using the /extract flag.
+ * The /extract flag extracts the embedded Python distribution without running setup.
+ */
+function extractPythonOrgExe(exePath, destDir) {
+  console.log(`[download-python] Extracting Python.org .exe installer to: ${destDir}`);
+
+  // Ensure destination exists
+  fs.mkdirSync(destDir, { recursive: true });
+
+  // Use /extract flag to extract without running setup
+  // /quiet: Don't show progress UI
+  // /extract: Extract to directory instead of installing
+  const result = spawnSync(exePath, ['/quiet', `/extract:${destDir}`], {
+    stdio: 'inherit',
+  });
+
+  if (result.error) {
+    throw new Error(`Failed to extract installer: ${result.error.message}`);
+  }
+
+  if (result.status !== 0 && result.status !== 3010) {  // 3010 = success, reboot required (we don't reboot)
+    throw new Error(`Failed to extract installer: exited with code ${result.status}`);
+  }
+
+  // Verify extraction succeeded by checking for python.exe
+  const pythonExe = path.join(destDir, 'python.exe');
+  if (!fs.existsSync(pythonExe)) {
+    throw new Error(`Python extraction failed: python.exe not found at ${pythonExe}`);
+  }
+
+  console.log(`[download-python] Extraction complete`);
 }
 
 /**
@@ -930,8 +986,14 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       verifyChecksum(archivePath, info.checksum);
     }
 
-    // Extract
-    extractTarGz(archivePath, platformDir);
+    // Extract based on source
+    if (info.source === 'python-org') {
+      // Python.org .exe installer - extract directly
+      extractPythonOrgExe(archivePath, platformDir);
+    } else {
+      // python-build-standalone tar.gz
+      extractTarGz(archivePath, platformDir);
+    }
 
     // Verify binary exists
     if (!fs.existsSync(pythonBin)) {
@@ -1007,6 +1069,7 @@ async function downloadAllPlatforms() {
     { platform: 'darwin', arch: 'arm64' },
     { platform: 'darwin', arch: 'x64' },
     { platform: 'win32', arch: 'x64' },
+    { platform: 'win32', arch: 'arm64' },
     { platform: 'linux', arch: 'x64' },
     { platform: 'linux', arch: 'arm64' },
   ];
