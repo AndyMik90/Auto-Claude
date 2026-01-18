@@ -5,7 +5,8 @@ import type {
   IPCResult,
   SourceEnvConfig,
   SourceEnvCheckResult,
-  ToolDetectionResult
+  ToolDetectionResult,
+  WorktreeInfo
 } from '../../shared/types';
 
 export interface SettingsAPI {
@@ -23,6 +24,7 @@ export interface SettingsAPI {
 
   // App Info
   getAppVersion: () => Promise<string>;
+  getWorktreeInfo: () => Promise<WorktreeInfo>;
 
   // Auto-Build Source Environment
   getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
@@ -55,6 +57,9 @@ export const createSettingsAPI = (): SettingsAPI => ({
   // App Info
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_VERSION),
+
+  getWorktreeInfo: (): Promise<WorktreeInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_GET_WORKTREE_INFO),
 
   // Auto-Build Source Environment
   getSourceEnv: (): Promise<IPCResult<SourceEnvConfig>> =>

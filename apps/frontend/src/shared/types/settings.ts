@@ -301,3 +301,10 @@ export interface SourceEnvCheckResult {
   sourcePath?: string;
   error?: string;
 }
+
+// Worktree detection information
+export interface WorktreeInfo {
+  isWorktree: boolean;
+  specNumber: string | null;
+  worktreePath: string | null;
+}
