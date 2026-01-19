@@ -44,11 +44,14 @@ export function UsageIndicator() {
   };
 
   // Get formatted reset times (calculated dynamically from timestamps)
+  // Note: We don't fall back to sessionResetTime/weeklyResetTime when formatTimeRemaining
+  // returns undefined because those may contain stale "Resets in ..." placeholders from the
+  // backend that are incorrect after the window has reset.
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ?? usage?.sessionResetTime)
+    ? formatTimeRemaining(usage.sessionResetTimestamp, t)
     : usage?.sessionResetTime;
   const weeklyResetTime = usage?.weeklyResetTimestamp
-    ? (formatTimeRemaining(usage.weeklyResetTimestamp, t) ?? usage?.weeklyResetTime)
+    ? formatTimeRemaining(usage.weeklyResetTimestamp, t)
     : usage?.weeklyResetTime;
 
   useEffect(() => {
