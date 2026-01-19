@@ -265,6 +265,19 @@ export class ProjectStore {
       console.warn('[ProjectStore] Project not found for id:', projectId);
       return [];
     }
+
+    // WORKTREE ISOLATION: If running from a worktree, override project path to use worktree root
+    const cwd = process.cwd();
+    const worktreeMatch = cwd.match(/\.auto-claude\/worktrees\/tasks\/(\d{3}-[^\/]+)/);
+    if (worktreeMatch) {
+      const worktreeFullName = worktreeMatch[1];
+      const worktreeSpecNumber = worktreeFullName.match(/^(\d{3})/)?.[1];
+      const worktreeRoot = cwd.substring(0, cwd.indexOf(worktreeMatch[0]) + worktreeMatch[0].length);
+
+      console.warn(`[ProjectStore] Worktree mode detected (${worktreeSpecNumber}), overriding project path from "${project.path}" to "${worktreeRoot}"`);
+      project.path = worktreeRoot;
+    }
+
     console.warn('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
 
     const allTasks: Task[] = [];

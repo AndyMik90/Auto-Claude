@@ -55,7 +55,24 @@ export function getUpdateCachePath(): string {
  * Get the effective source path (considers override from updates and settings)
  */
 export function getEffectiveSourcePath(): string {
-  // First, check user settings for configured autoBuildPath
+  // PRIORITY 1: Check if running from a worktree
+  const cwd = process.cwd();
+  const worktreeMatch = cwd.match(/\.auto-claude\/worktrees\/tasks\/(\d{3})-[^/]+/);
+
+  if (worktreeMatch) {
+    const specNumber = worktreeMatch[1];
+    const worktreeRoot = cwd.substring(0, cwd.indexOf(worktreeMatch[0]) + worktreeMatch[0].length);
+    const worktreeBackendPath = path.join(worktreeRoot, 'apps', 'backend');
+    const worktreeMarkerPath = path.join(worktreeBackendPath, 'runners', 'spec_runner.py');
+
+    if (existsSync(worktreeMarkerPath)) {
+      console.warn(`[path-resolver] Worktree mode detected (${specNumber}), using: ${worktreeBackendPath}`);
+      return worktreeBackendPath;
+    }
+    console.warn(`[path-resolver] Worktree mode detected (${specNumber}), but backend not found at: ${worktreeBackendPath}`);
+  }
+
+  // PRIORITY 2: Check user settings for configured autoBuildPath
   try {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json');
     if (existsSync(settingsPath)) {
