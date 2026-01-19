@@ -373,20 +373,17 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                           Stuck
                         </Badge>
                       ) : state.isIncomplete ? (
-                        <>
-                          <Badge variant="warning" className="text-xs flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Incomplete
-                          </Badge>
-                        </>
+                        <Badge variant="warning" className="text-xs flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Incomplete
+                        </Badge>
                       ) : (
-                        <>
-                           <Badge
-                             variant={getStatusBadgeVariant(task.status, state.isStuck)}
-                             className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
-                           >
-                             {t(TASK_STATUS_LABELS[task.status])}
-                           </Badge>
+                        <Badge
+                          variant={getStatusBadgeVariant(task.status, state.isStuck)}
+                          className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
+                        >
+                          {t(TASK_STATUS_LABELS[task.status])}
+                        </Badge>
                           {task.status === 'human_review' && task.reviewReason && (
                             <Badge
                               variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
