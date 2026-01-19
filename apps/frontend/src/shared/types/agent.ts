@@ -37,6 +37,10 @@ export interface ClaudeUsageSnapshot {
   sessionResetTime?: string;
   /** When the weekly limit resets (human-readable or ISO) */
   weeklyResetTime?: string;
+  /** Sonnet weekly usage percentage (0-100), if applicable */
+  sonnetWeeklyPercent?: number;
+  /** When the Sonnet weekly limit resets (human-readable or ISO) */
+  sonnetWeeklyResetTime?: string;
   /** Profile ID this snapshot belongs to */
   profileId: string;
   /** Profile name for display */
