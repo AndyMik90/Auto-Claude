@@ -3,6 +3,7 @@ import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 import { app } from 'electron';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
+import { isWindows as platformIsWindows } from './platform';
 
 /**
  * Get the path to the bundled Python executable.
@@ -17,7 +18,7 @@ export function getBundledPythonPath(): string | null {
   }
 
   const resourcesPath = process.resourcesPath;
-  const isWindows = process.platform === 'win32';
+  const isWindows = platformIsWindows();
 
   // Bundled Python location in packaged app
   const pythonPath = isWindows
@@ -52,7 +53,7 @@ function findHomebrewPython(): string | null {
  * @returns The Python command to use, or null if none found
  */
 export function findPythonCommand(): string | null {
-  const isWindows = process.platform === 'win32';
+  const isWindows = platformIsWindows();
 
   // 1. Check for bundled Python first (packaged apps only)
   const bundledPython = getBundledPythonPath();
@@ -186,7 +187,7 @@ export function getDefaultPythonCommand(): string {
   }
 
   // Fall back to system Python
-  if (process.platform === 'win32') {
+  if (platformIsWindows()) {
     return 'python';
   }
   return findHomebrewPython() || 'python3';
@@ -435,7 +436,7 @@ export function validatePythonPath(pythonPath: string): PythonPathValidation {
     }
 
     // Security check 4: Must be executable (Unix) or .exe (Windows)
-    if (process.platform !== 'win32' && !isExecutable(normalizedPath)) {
+    if (!platformIsWindows() && !isExecutable(normalizedPath)) {
       return {
         valid: false,
         reason: 'File exists but is not executable'
