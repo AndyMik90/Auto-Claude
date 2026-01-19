@@ -378,14 +378,17 @@ Examples:
                     result = subprocess.run(run_cmd)
                     sys.exit(result.returncode)
                 except FileNotFoundError:
-                    print("Error: Could not start coding phase - executable not found")
+                    debug_error("spec_runner", "Could not start coding phase - executable not found")
+                    print_status("Could not start coding phase - executable not found", "error")
                     sys.exit(1)
                 except OSError as e:
-                    print(f"Error starting coding phase: {e}")
+                    debug_error("spec_runner", f"Error starting coding phase: {e}")
+                    print_status(f"Error starting coding phase: {e}", "error")
                     sys.exit(1)
                 except KeyboardInterrupt:
+                    debug_error("spec_runner", "Coding phase interrupted by user")
                     print("\n\nCoding phase interrupted.")
-                    sys.exit(130)
+                    sys.exit(1)
             else:
                 # On Unix/macOS, os.execv() works correctly - replaces current process
                 os.execv(sys.executable, run_cmd)
