@@ -50,7 +50,7 @@ ls /mnt/wslg/versions.txt && cat /mnt/wslg/versions.txt
 ```
 
 Expected output should show WSLg version (e.g., v1.0.71 or later):
-```
+```text
 WSLg 1.0.71
 Weston 10.0.1
 Mesa 24.0.5
@@ -148,7 +148,7 @@ app.whenReady().then(() => {
 **Problem:** Sentry SDK requires initialization before `app.whenReady()` but accessing `app.getVersion()` fails on WSL2 when app is not ready.
 
 **Error Message:**
-```
+```text
 Error: Sentry SDK should be initialized before the Electron app 'ready' event is fired
 ```
 
@@ -198,7 +198,7 @@ initSentryMain();
 **Problem:** electron-log's preload script path resolution fails on WSL2.
 
 **Error Message:**
-```
+```text
 Unable to load preload script: /home/user/projects/Auto-Claude/node_modules/electron-log/src/renderer/electron-log-preload.js
 ```
 
@@ -484,7 +484,7 @@ npm start
 **Impact:** Non-critical. The app uses software rendering and works fine.
 
 **Example:**
-```
+```text
 libva error: vaGetDriverNameByIndex() failed with unknown libva error
 ```
 

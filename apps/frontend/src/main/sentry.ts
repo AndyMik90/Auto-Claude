@@ -124,11 +124,11 @@ export function initSentryMain(): void {
   let appVersion: string;
   try {
     appVersion = app.getVersion();
-  } catch (error) {
+  } catch {
     // WSL2: app may not be ready yet, use fallback
     try {
       const pkg = require('../../../package.json');
-      appVersion = pkg.version || 'unknown';
+      appVersion = pkg.version ?? 'dev';
     } catch {
       appVersion = 'dev';
     }

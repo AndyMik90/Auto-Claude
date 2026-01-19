@@ -55,11 +55,23 @@ function isBetaVersion(): boolean {
 }
 
 // Enhanced logging for beta versions (lazy check - safe for WSL2)
-if (isBetaVersion()) {
-  log.transports.file.level = 'debug';
-  log.info('Beta version detected - enhanced logging enabled');
-} else {
-  log.transports.file.level = 'info';
+const enableBetaLogging = (): void => {
+  if (isBetaVersion()) {
+    log.transports.file.level = 'debug';
+    log.info('Beta version detected - enhanced logging enabled');
+  } else {
+    log.transports.file.level = 'info';
+  }
+};
+
+// Initial check
+enableBetaLogging();
+
+// Re-check after app is ready (WSL2: app may not be ready at module load time)
+if (app && typeof app.whenReady === 'function') {
+  app.whenReady().then(enableBetaLogging).catch(() => {
+    // Ignore: fallback to default log level
+  });
 }
 
 /**
