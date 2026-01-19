@@ -637,7 +637,7 @@ export const TaskCard = memo(function TaskCard({
                 onClick={handleStartStop}
               >
                 <Play className="mr-1.5 h-3 w-3" />
-                {t('actions.restart')}
+                {t('tasks:actions.restartTask')}
               </Button>
             ) : (task.status === 'backlog' || task.status === 'in_progress') && (
               <Button

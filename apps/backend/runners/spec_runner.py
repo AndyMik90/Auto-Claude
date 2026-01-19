@@ -105,6 +105,7 @@ from core.sentry import capture_exception, init_sentry
 
 init_sentry(component="spec-runner")
 
+from core.file_utils import write_json_atomic
 from debug import debug, debug_error, debug_section, debug_success
 from phase_config import resolve_model_id
 from review import ReviewState
@@ -391,10 +392,7 @@ Examples:
                     plan_data = json.loads(plan_path.read_text(encoding="utf-8"))
                     plan_data["planStatus"] = "awaiting_review"
                     plan_data["status"] = "stopped"  # Mark as stopped for review
-                    plan_path.write_text(
-                        json.dumps(plan_data, indent=2, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
+                    write_json_atomic(plan_path, plan_data, indent=2, ensure_ascii=False)
                     debug(
                         "spec_runner",
                         "Set planStatus to 'awaiting_review' for frontend",

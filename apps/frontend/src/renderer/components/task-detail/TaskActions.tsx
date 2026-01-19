@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Play, Square, CheckCircle2, RotateCcw, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
@@ -133,7 +133,13 @@ export function TaskActions({
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="text-sm text-muted-foreground space-y-3">
-                <p dangerouslySetInnerHTML={{ __html: t('dialogs:deleteTask.confirmMessage', { title: task.title }) }} />
+                <p>
+                  <Trans
+                    i18nKey="dialogs:deleteTask.confirmMessage"
+                    values={{ title: task.title }}
+                    components={{ strong: <strong className="text-foreground" /> }}
+                  />
+                </p>
                 <p className="text-destructive">
                   {t('dialogs:deleteTask.warningMessage')}
                 </p>
