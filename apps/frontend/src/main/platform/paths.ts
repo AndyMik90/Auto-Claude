@@ -8,7 +8,47 @@
 import * as path from 'path';
 import * as os from 'os';
 import { existsSync, readdirSync } from 'fs';
-import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension, sortNvmVersionDirs } from './index';
+import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
+
+/**
+ * Sort NVM version directories by semantic version (newest first)
+ *
+ * Filters directory entries to only valid semver directories (e.g., v20.0.0)
+ * and sorts them in descending order so newer versions are tried first.
+ *
+ * @param entries - Directory entries from readdirSync with withFileTypes
+ * @returns Array of directory names sorted by version (newest first)
+ *
+ * @example
+ * const entries = [
+ *   { name: 'v18.0.0', isDirectory: () => true },
+ *   { name: 'v20.0.0', isDirectory: () => true },
+ *   { name: '.DS_Store', isDirectory: () => false },
+ * ];
+ * sortNvmVersionDirs(entries); // ['v20.0.0', 'v18.0.0']
+ */
+export function sortNvmVersionDirs(
+  entries: Array<{ name: string; isDirectory(): boolean }>
+): string[] {
+  // Regex to match valid semver directories: v20.0.0, v18.17.1, etc.
+  // This prevents NaN from malformed versions (e.g., v20.abc.1) breaking sort
+  const semverRegex = /^v\d+\.\d+\.\d+$/;
+
+  return entries
+    .filter((entry) => entry.isDirectory() && semverRegex.test(entry.name))
+    .sort((a, b) => {
+      // Parse version numbers: v20.0.0 -> [20, 0, 0]
+      const vA = a.name.slice(1).split('.').map(Number);
+      const vB = b.name.slice(1).split('.').map(Number);
+      // Compare major, minor, patch in order (descending)
+      for (let i = 0; i < 3; i++) {
+        const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+        if (diff !== 0) return diff;
+      }
+      return 0;
+    })
+    .map((entry) => entry.name);
+}
 
 /**
  * Resolve Claude CLI executable path
