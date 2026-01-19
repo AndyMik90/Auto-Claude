@@ -112,7 +112,7 @@ def load_all_insights(spec_dir: Path) -> list[dict[str, Any]]:
         try:
             with open(session_file, encoding="utf-8") as f:
                 insights.append(json.load(f))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             # Skip corrupted files
             continue
 

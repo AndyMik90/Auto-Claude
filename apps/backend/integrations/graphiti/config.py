@@ -520,7 +520,7 @@ class GraphitiState:
         try:
             with open(marker_file, encoding="utf-8") as f:
                 return cls.from_dict(json.load(f))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return None
 
     def record_error(self, error_msg: str) -> None:

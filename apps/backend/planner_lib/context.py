@@ -49,15 +49,21 @@ class ContextLoader:
         index_file = self.spec_dir / "project_index.json"
         project_index = {}
         if index_file.exists():
-            with open(index_file, encoding="utf-8") as f:
-                project_index = json.load(f)
+            try:
+                with open(index_file, encoding="utf-8") as f:
+                    project_index = json.load(f)
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                pass  # Use empty dict on error
 
         # Read context.json
         context_file = self.spec_dir / "context.json"
         task_context = {}
         if context_file.exists():
-            with open(context_file, encoding="utf-8") as f:
-                task_context = json.load(f)
+            try:
+                with open(context_file, encoding="utf-8") as f:
+                    task_context = json.load(f)
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                pass  # Use empty dict on error
 
         # Determine services involved
         services = task_context.get("scoped_services", [])

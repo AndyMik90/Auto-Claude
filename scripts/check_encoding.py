@@ -41,6 +41,9 @@ class EncodingChecker:
         except UnicodeDecodeError:
             self.issues.append(f"{filepath}: File is not UTF-8 encoded")
             return False
+        except OSError as e:
+            self.issues.append(f"{filepath}: Cannot read file ({e})")
+            return False
 
         file_issues = []
 

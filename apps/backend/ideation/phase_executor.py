@@ -181,7 +181,7 @@ class PhaseExecutor:
                 with open(hints_file, encoding="utf-8") as f:
                     hints_data = json.load(f)
                     graph_hints = hints_data.get("hints_by_type", {})
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 pass
 
         # Write context file

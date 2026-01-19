@@ -56,7 +56,7 @@ def count_subtasks(spec_dir: Path) -> tuple[int, int]:
                     completed += 1
 
         return completed, total
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return 0, 0
 
 
@@ -94,7 +94,7 @@ def count_subtasks_detailed(spec_dir: Path) -> dict:
                     result["pending"] += 1
 
         return result
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return result
 
 
@@ -230,7 +230,7 @@ def print_progress_summary(spec_dir: Path, show_next: bool = True) -> None:
                         f"  {icon(Icons.ARROW_RIGHT)} Next: {highlight(next_id)} - {next_desc}"
                     )
 
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             pass
     else:
         print()
@@ -355,7 +355,7 @@ def get_plan_summary(spec_dir: Path) -> dict:
 
         return summary
 
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return {
             "workflow_type": None,
             "total_phases": 0,
@@ -396,7 +396,7 @@ def get_current_phase(spec_dir: Path) -> dict | None:
 
         return None
 
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return None
 
 
@@ -470,7 +470,7 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
 
         return None
 
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return None
 
 

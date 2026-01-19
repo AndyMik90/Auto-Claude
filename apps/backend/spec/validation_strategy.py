@@ -161,7 +161,7 @@ def detect_project_type(project_dir: Path) -> str:
             if "@angular/core" in all_deps:
                 return "angular_spa"
             return "nodejs"
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return "nodejs"
 
     # Check for Python projects

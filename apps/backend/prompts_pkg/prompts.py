@@ -321,7 +321,7 @@ Subtasks with previous attempts:
 
         return ""
 
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return ""
 
 
@@ -405,7 +405,7 @@ def is_first_run(spec_dir: Path) -> bool:
         # Check if any phase has subtasks
         total_subtasks = sum(len(phase.get("subtasks", [])) for phase in phases)
         return total_subtasks == 0
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         # If we can't read the file, treat as first run
         return True
 

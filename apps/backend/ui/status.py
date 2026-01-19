@@ -126,7 +126,7 @@ class StatusManager:
                 data = json.load(f)
             self._status = BuildStatus.from_dict(data)
             return self._status
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return BuildStatus()
 
     def _do_write(self) -> None:

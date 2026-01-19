@@ -160,7 +160,7 @@ class LinearManager:
         try:
             with open(plan_file, encoding="utf-8") as f:
                 return json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return None
 
     def get_subtasks_for_sync(self) -> list[dict]:

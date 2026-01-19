@@ -107,7 +107,7 @@ class RecoveryManager:
         try:
             with open(self.attempt_history_file, encoding="utf-8") as f:
                 return json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             self._init_attempt_history()
             with open(self.attempt_history_file, encoding="utf-8") as f:
                 return json.load(f)
@@ -123,7 +123,7 @@ class RecoveryManager:
         try:
             with open(self.build_commits_file, encoding="utf-8") as f:
                 return json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             self._init_build_commits()
             with open(self.build_commits_file, encoding="utf-8") as f:
                 return json.load(f)

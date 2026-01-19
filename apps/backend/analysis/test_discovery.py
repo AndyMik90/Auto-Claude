@@ -302,7 +302,7 @@ class TestDiscovery:
         try:
             with open(package_json, encoding="utf-8") as f:
                 pkg = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return
 
         deps = pkg.get("dependencies", {})

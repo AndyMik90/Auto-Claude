@@ -250,7 +250,7 @@ class DataCleaner:
         try:
             with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             # Corrupted file, mark for deletion
             if not dry_run:
                 file_size = file_path.stat().st_size
@@ -380,7 +380,7 @@ class DataCleaner:
 
                 result.pruned_index_entries += pruned
 
-            except (OSError, json.JSONDecodeError, KeyError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError, KeyError):
                 result.errors.append(f"Error pruning index: {index_path}")
 
     async def _clean_audit_logs(

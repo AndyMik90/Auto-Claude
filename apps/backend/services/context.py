@@ -153,7 +153,7 @@ class ServiceContextGenerator:
                     context.dependencies.extend(
                         [d for d in deps if d not in context.dependencies]
                     )
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 pass
 
     def _discover_api_patterns(self, service_path: Path, context: ServiceContext):
@@ -193,7 +193,7 @@ class ServiceContextGenerator:
                     for name in ["dev", "start", "build", "test", "lint"]:
                         if name in scripts:
                             context.common_commands[name] = f"npm run {name}"
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 pass
 
         # From Makefile

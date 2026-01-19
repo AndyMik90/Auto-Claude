@@ -40,7 +40,7 @@ def update_codebase_map(spec_dir: Path, discoveries: dict[str, str]) -> None:
         try:
             with open(map_file, encoding="utf-8") as f:
                 codebase_map = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             codebase_map = {}
     else:
         codebase_map = {}
@@ -97,5 +97,5 @@ def load_codebase_map(spec_dir: Path) -> dict[str, str]:
         codebase_map.pop("_metadata", None)
         return codebase_map
 
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return {}

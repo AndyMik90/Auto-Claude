@@ -102,7 +102,7 @@ class ReviewState:
         try:
             with open(state_file, encoding="utf-8") as f:
                 return cls.from_dict(json.load(f))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return cls()
 
     def is_approved(self) -> bool:

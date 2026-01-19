@@ -75,7 +75,7 @@ def run_context_discovery(
 
                     with open(context_file, "w", encoding="utf-8") as f:
                         json.dump(ctx, f, indent=2)
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 context_file.unlink(missing_ok=True)
                 return False, "Invalid context.json created"
 
