@@ -908,6 +908,53 @@ describe('claude-integration-handler - Helper Functions', () => {
     });
   });
 
+  describe('escapeShellCommand', () => {
+    it('should add & call operator for PowerShell on Windows', async () => {
+      mockPlatform('win32');
+      const { escapeShellCommand } = await import('../claude-integration-handler');
+
+      // PowerShell needs & to execute commands with -- flags
+      // Without &, PowerShell interprets -- as the decrement operator
+      const result = escapeShellCommand('C:\\Users\\test\\claude.exe', 'powershell');
+      expect(result).toBe('& "C:\\Users\\test\\claude.exe"');
+    });
+
+    it('should NOT add & call operator for cmd.exe on Windows', async () => {
+      mockPlatform('win32');
+      const { escapeShellCommand } = await import('../claude-integration-handler');
+
+      const result = escapeShellCommand('C:\\Users\\test\\claude.exe', 'cmd');
+      expect(result).toBe('"C:\\Users\\test\\claude.exe"');
+      expect(result).not.toContain('&');
+    });
+
+    it('should default to cmd.exe style when shellType is undefined on Windows', async () => {
+      mockPlatform('win32');
+      const { escapeShellCommand } = await import('../claude-integration-handler');
+
+      const result = escapeShellCommand('C:\\Users\\test\\claude.exe');
+      expect(result).toBe('"C:\\Users\\test\\claude.exe"');
+      expect(result).not.toContain('&');
+    });
+
+    it('should use single quotes on Unix', async () => {
+      mockPlatform('darwin');
+      const { escapeShellCommand } = await import('../claude-integration-handler');
+
+      const result = escapeShellCommand('/usr/local/bin/claude');
+      expect(result).toBe("'/usr/local/bin/claude'");
+    });
+
+    it('should escape special characters in PowerShell path', async () => {
+      mockPlatform('win32');
+      const { escapeShellCommand } = await import('../claude-integration-handler');
+
+      // Paths with special chars like % should be escaped
+      const result = escapeShellCommand('C:\\Users\\test%user\\claude.exe', 'powershell');
+      expect(result).toBe('& "C:\\Users\\test%%user\\claude.exe"');
+    });
+  });
+
   describe('finalizeClaudeInvoke', () => {
     it('should set terminal title to "Claude" for default profile when terminal has default name', async () => {
       const { finalizeClaudeInvoke } = await import('../claude-integration-handler');
