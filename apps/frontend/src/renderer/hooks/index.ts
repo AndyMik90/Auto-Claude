@@ -8,3 +8,4 @@ export {
   type AgentSettingsSource,
 } from './useResolvedAgentSettings';
 export { useVirtualizedTree } from './useVirtualizedTree';
+export { useMemoriesDir } from './useMemoriesDir';

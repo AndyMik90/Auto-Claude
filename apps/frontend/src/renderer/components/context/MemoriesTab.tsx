@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   RefreshCw,
   Database,
@@ -18,6 +18,7 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '../../lib/utils';
+import { useMemoriesDir } from '../../hooks';
 import { MemoryCard } from './MemoryCard';
 import { InfoItem } from './InfoItem';
 import { memoryFilterCategories } from './constants';
@@ -79,20 +80,7 @@ export function MemoriesTab({
 }: MemoriesTabProps) {
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
-
-  // Fetch platform-specific memories directory path for display
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
+  const memoriesDir = useMemoriesDir();
 
   // Calculate memory counts by category
   const memoryCounts = useMemo(() => {

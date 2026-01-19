@@ -5,5 +5,16 @@
       "titleSuffix": "(JSON Error)",
       "description": "⚠️ JSON Parse Error: {{error}}\n\nThe implementation_plan.json file is malformed. Run the backend auto-fix or manually repair the file."
     }
+  },
+  "memory": {
+    "ladybugNotInstalled": "LadybugDB is not installed",
+    "pythonNotFound": "Python not found. Please install Python 3.12 or later.",
+    "visualStudioRequired": "Visual Studio Build Tools required",
+    "downloadBuildTools": "Download Visual Studio Build Tools",
+    "graphMemoryRequiresPython": "Graph memory requires Python 3.12+ with LadybugDB. No Docker needed.",
+    "databaseReady": "Ready",
+    "databaseWillBeCreated": "Will be created on first use",
+    "requiresLadybugDB": "Requires LadybugDB",
+    "graphMemoryReady": "Graph memory is ready to use"
   }
 }

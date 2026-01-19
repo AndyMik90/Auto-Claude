@@ -66,7 +66,7 @@ export function InfrastructureStatus({
       {/* Database Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {infrastructureStatus?.memory.databaseExists ? (
+          {infrastructureStatus?.memory?.databaseExists ? (
             <Database className="h-4 w-4 text-success" />
           ) : (
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -74,7 +74,7 @@ export function InfrastructureStatus({
           <span className="text-xs text-foreground">Database</span>
         </div>
         <div className="flex items-center gap-2">
-          {infrastructureStatus?.memory.databaseExists ? (
+          {infrastructureStatus?.memory?.databaseExists ? (
             <span className="text-xs text-success">Ready</span>
           ) : ladybugInstalled ? (
             <span className="text-xs text-muted-foreground">Will be created on first use</span>
@@ -85,7 +85,7 @@ export function InfrastructureStatus({
       </div>
 
       {/* Available Databases */}
-      {infrastructureStatus?.memory.databases && infrastructureStatus.memory.databases.length > 0 && (
+      {infrastructureStatus?.memory?.databases && infrastructureStatus.memory.databases.length > 0 && (
         <div className="text-xs text-muted-foreground">
           Available databases: {infrastructureStatus.memory.databases.join(', ')}
         </div>
@@ -104,7 +104,7 @@ export function InfrastructureStatus({
       )}
 
       {/* Error Display */}
-      {infrastructureStatus?.memory.error && (
+      {infrastructureStatus?.memory?.error && (
         <p className="text-xs text-destructive">
           {infrastructureStatus.memory.error}
         </p>

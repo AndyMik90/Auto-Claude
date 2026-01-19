@@ -25,6 +25,7 @@ import {
   SelectValue
 } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
+import { useMemoriesDir } from '../../hooks';
 import type { GraphitiLLMProvider, GraphitiEmbeddingProvider, AppSettings } from '../../../shared/types';
 
 interface GraphitiStepProps {
@@ -143,25 +144,13 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const [kuzuAvailable, setKuzuAvailable] = useState<boolean | null>(null);
   const [ladybugInstalled, setLadybugInstalled] = useState<boolean | null>(null);
   const [ladybugError, setLadybugError] = useState<string | null>(null);
+  const [databaseExists, setDatabaseExists] = useState<boolean>(false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
     database: null,
     provider: null
   });
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
-
-  // Fetch platform-specific memories directory path
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
+  const memoriesDir = useMemoriesDir();
 
   // Check LadybugDB/Kuzu availability on mount
   useEffect(() => {
@@ -170,12 +159,17 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
       try {
         const result = await window.electronAPI.getMemoryInfrastructureStatus();
         const memory = result?.data?.memory;
-        setKuzuAvailable(result?.success && memory?.kuzuInstalled ? true : false);
-        setLadybugInstalled(memory?.ladybugInstalled ?? null);
+        // Use explicit boolean conversion for clarity
+        const isKuzuInstalled = Boolean(result?.success && memory?.kuzuInstalled);
+        const isLadybugInstalled = memory?.ladybugInstalled ?? false;
+        setKuzuAvailable(isKuzuInstalled);
+        setLadybugInstalled(isLadybugInstalled);
         setLadybugError(memory?.ladybugError ?? null);
+        setDatabaseExists(memory?.databaseExists ?? false);
       } catch {
         setKuzuAvailable(false);
         setLadybugInstalled(false);
+        setDatabaseExists(false);
       } finally {
         setIsCheckingInfra(false);
       }
@@ -859,7 +853,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                 )}
 
                 {/* Database will be created notice (when LadybugDB is installed but no DB yet) */}
-                {ladybugInstalled === true && kuzuAvailable === false && (
+                {ladybugInstalled === true && kuzuAvailable === true && !databaseExists && (
                   <Card className="border border-info/30 bg-info/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
@@ -879,7 +873,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                 )}
 
                 {/* LadybugDB ready notice */}
-                {ladybugInstalled === true && kuzuAvailable === true && (
+                {ladybugInstalled === true && kuzuAvailable === true && databaseExists && (
                   <Card className="border border-success/30 bg-success/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">

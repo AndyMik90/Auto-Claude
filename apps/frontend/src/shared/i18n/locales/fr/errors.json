@@ -5,5 +5,16 @@
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "memory": {
+    "ladybugNotInstalled": "LadybugDB n'est pas installé",
+    "pythonNotFound": "Python non trouvé. Veuillez installer Python 3.12 ou une version ultérieure.",
+    "visualStudioRequired": "Visual Studio Build Tools requis",
+    "downloadBuildTools": "Télécharger Visual Studio Build Tools",
+    "graphMemoryRequiresPython": "La mémoire graphique nécessite Python 3.12+ avec LadybugDB. Pas besoin de Docker.",
+    "databaseReady": "Prêt",
+    "databaseWillBeCreated": "Sera créé lors de la première utilisation",
+    "requiresLadybugDB": "Nécessite LadybugDB",
+    "graphMemoryReady": "La mémoire graphique est prête à utiliser"
   }
 }

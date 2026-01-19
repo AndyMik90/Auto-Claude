@@ -19,6 +19,7 @@ import {
 } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { OllamaModelSelector } from '../onboarding/OllamaModelSelector';
+import { useMemoriesDir } from '../../hooks';
 import type { ProjectEnvConfig, ProjectSettings as ProjectSettingsType, GraphitiEmbeddingProvider } from '../../../shared/types';
 
 interface SecuritySettingsProps {
@@ -55,25 +56,12 @@ export function SecuritySettings({
   });
 
   // Platform-specific memories directory path
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
+  const memoriesDir = useMemoriesDir();
 
   // Sync parent's showOpenAIKey prop to local state
   useEffect(() => {
     setShowApiKey(prev => ({ ...prev, openai: showOpenAIKey }));
   }, [showOpenAIKey]);
-
-  // Fetch platform-specific memories directory path
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
 
   const embeddingProvider = envConfig?.graphitiProviderConfig?.embeddingProvider || 'ollama';
 
