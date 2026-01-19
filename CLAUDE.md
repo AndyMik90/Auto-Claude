@@ -44,7 +44,7 @@ autonomous-coding/
 **Requirements:**
 - Python 3.12 or 3.13 (required for backend - 3.14 not yet supported due to missing wheels)
 - Node.js (for frontend)
-- uv (auto-installed by installer script, or install manually: https://docs.astral.sh/uv/)
+- uv (auto-installed by installer script, or [install manually](https://docs.astral.sh/uv/))
 
 ```bash
 # Install all dependencies from root (auto-installs uv, uses it for fast Python installs)
