@@ -147,6 +147,7 @@ describe('Claude Profile IPC Integration', () => {
 
     // Import and call the registration function
     const { registerTerminalHandlers } = await import('../../main/ipc-handlers/terminal-handlers');
+    // biome-ignore lint/suspicious/noExplicitAny: Mock objects for testing
     registerTerminalHandlers(mockTerminalManager as any, () => mockBrowserWindow as any);
   });
 
@@ -166,7 +167,7 @@ describe('Claude Profile IPC Integration', () => {
         name: 'New Account'
       });
 
-      const result = await handleProfileSave!(null, newProfile) as IPCResult<ClaudeProfile>;
+      const result = (await handleProfileSave?.(null, newProfile)) as IPCResult<ClaudeProfile>;
 
       expect(result.success).toBe(true);
       expect(mockProfileManager.generateProfileId).toHaveBeenCalledWith('New Account');
@@ -185,7 +186,7 @@ describe('Claude Profile IPC Integration', () => {
         name: 'Existing Account'
       });
 
-      const result = await handleProfileSave!(null, existingProfile) as IPCResult<ClaudeProfile>;
+      const result = (await handleProfileSave?.(null, existingProfile)) as IPCResult<ClaudeProfile>;
 
       expect(result.success).toBe(true);
       expect(mockProfileManager.generateProfileId).not.toHaveBeenCalled();
@@ -201,9 +202,9 @@ describe('Claude Profile IPC Integration', () => {
         configDir: path.join(TEST_DIR, 'new-profile-config')
       });
 
-      await handleProfileSave!(null, profile);
+      await handleProfileSave?.(null, profile);
 
-      expect(existsSync(profile.configDir!)).toBe(true);
+      expect(existsSync(profile.configDir ?? '')).toBe(true);
     });
 
     it('should not create config directory for default profile', async () => {
@@ -215,9 +216,9 @@ describe('Claude Profile IPC Integration', () => {
         configDir: path.join(TEST_DIR, 'should-not-exist')
       });
 
-      await handleProfileSave!(null, profile);
+      await handleProfileSave?.(null, profile);
 
-      expect(existsSync(profile.configDir!)).toBe(false);
+      expect(existsSync(profile.configDir ?? '')).toBe(false);
     });
 
     it('should handle save errors gracefully', async () => {
@@ -229,7 +230,7 @@ describe('Claude Profile IPC Integration', () => {
       });
 
       const profile = createTestProfile();
-      const result = await handleProfileSave!(null, profile) as IPCResult;
+      const result = (await handleProfileSave?.(null, profile)) as IPCResult;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database error');
@@ -256,7 +257,7 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(profile);
 
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
+      const result = (await handleProfileInit?.(null, 'test-profile')) as IPCResult;
 
       expect(result.success).toBe(true);
       expect(mockProfileManager.getProfile).toHaveBeenCalledWith('test-profile');
@@ -279,7 +280,7 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(profile);
 
-      await handleProfileInit!(null, 'test-profile');
+      await handleProfileInit?.(null, 'test-profile');
 
       expect(mockTerminalManager.write).toHaveBeenCalled();
 
@@ -302,7 +303,7 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(profile);
 
-      await handleProfileInit!(null, 'default');
+      await handleProfileInit?.(null, 'default');
 
       expect(mockTerminalManager.write).toHaveBeenCalled();
 
@@ -324,7 +325,7 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(profile);
 
-      await handleProfileInit!(null, 'test-profile');
+      await handleProfileInit?.(null, 'test-profile');
 
       expect(mockBrowserWindow.webContents.send).toHaveBeenCalledWith(
         'terminal:authCreated',
@@ -342,7 +343,7 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(null);
 
-      const result = await handleProfileInit!(null, 'nonexistent') as IPCResult;
+      const result = (await handleProfileInit?.(null, 'nonexistent')) as IPCResult;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Profile not found');
@@ -361,7 +362,7 @@ describe('Claude Profile IPC Integration', () => {
         error: 'Max terminals reached'
       });
 
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
+      const result = (await handleProfileInit?.(null, 'test-profile')) as IPCResult;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Max terminals reached');
@@ -379,9 +380,9 @@ describe('Claude Profile IPC Integration', () => {
 
       mockProfileManager.getProfile.mockReturnValue(profile);
 
-      await handleProfileInit!(null, 'test-profile');
+      await handleProfileInit?.(null, 'test-profile');
 
-      expect(existsSync(profile.configDir!)).toBe(true);
+      expect(existsSync(profile.configDir ?? '')).toBe(true);
     });
 
     it('should handle initialization errors gracefully', async () => {
@@ -392,7 +393,7 @@ describe('Claude Profile IPC Integration', () => {
         throw new Error('Internal error');
       });
 
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
+      const result = (await handleProfileInit?.(null, 'test-profile')) as IPCResult;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Internal error');
