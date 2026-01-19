@@ -20,7 +20,6 @@
     "dependencies": "Dépendances",
     "dependenciesCount": "Dépendances ({{count}})",
     "requiredBy": "Requis par",
-    "requiredByCount": "Requis par ({{count}})",
     "circularDependency": "Dépendance circulaire détectée",
     "circularDependencyAriaLabel": "Dépendance circulaire détectée",
     "build": "Construire",
