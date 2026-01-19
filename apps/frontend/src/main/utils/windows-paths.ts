@@ -14,6 +14,7 @@ import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import os from 'os';
+import { isWindows } from '../platform';
 
 const execFileAsync = promisify(execFile);
 
@@ -89,7 +90,7 @@ export function getWindowsExecutablePaths(
   logPrefix: string = '[Windows Paths]'
 ): string[] {
   // Only run on Windows
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return [];
   }
 
@@ -136,7 +137,7 @@ export function findWindowsExecutableViaWhere(
   executable: string,
   logPrefix: string = '[Windows Where]'
 ): string | null {
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return null;
   }
 
@@ -186,7 +187,7 @@ export async function getWindowsExecutablePathsAsync(
   logPrefix: string = '[Windows Paths]'
 ): Promise<string[]> {
   // Only run on Windows
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return [];
   }
 
@@ -239,7 +240,7 @@ export async function findWindowsExecutableViaWhereAsync(
   executable: string,
   logPrefix: string = '[Windows Where]'
 ): Promise<string | null> {
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return null;
   }
 
