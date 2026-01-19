@@ -135,14 +135,8 @@ import {
   type WindowsToolPaths,
 } from '../windows-paths';
 
-// Import platform module to access mocked isWindows
-import * as platformModule from '../../platform';
-
-// Helper to get mocked existsSync
-const getMockedExistsSync = () => vi.mocked(require('fs').existsSync);
+// Helper to get mocked execFileSync
 const getMockedExecFileSync = () => vi.mocked(childProcess.execFileSync);
-const getMockedExecFile = () => vi.mocked(childProcess.execFile);
-const getMockedIsWindows = () => vi.mocked(platformModule.isWindows);
 
 // Helper to configure execFile mock behavior for async tests
 function setupExecFileMock(stdout: string, shouldError = false) {

@@ -20,7 +20,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, isLinux, getWhichCommand } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names

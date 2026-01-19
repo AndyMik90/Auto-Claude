@@ -11,7 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
-import { isWindows, isMacOS, isLinux, getCurrentOS, getWhichCommand } from '../platform';
+import { isWindows, isMacOS, getCurrentOS, getWhichCommand } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);

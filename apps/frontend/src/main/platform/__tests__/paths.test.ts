@@ -6,8 +6,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
 import type { PathLike } from 'fs';
 

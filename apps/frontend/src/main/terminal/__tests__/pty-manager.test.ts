@@ -149,7 +149,7 @@ describe('PTY Manager Module', () => {
 
     describeWindows('spawns Windows shell with correct configuration', () => {
       it('uses COMSPEC when no preferred terminal', () => {
-        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        spawnPtyProcess('C:\\Users\\Test', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           'C:\\Windows\\System32\\cmd.exe', // COMSPEC value
           [],      // No args for Windows
@@ -172,7 +172,7 @@ describe('PTY Manager Module', () => {
           preferredTerminal: 'powershell',
         });
 
-        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        spawnPtyProcess('C:\\Users\\Test', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           WIN_PATHS.powershell,
           [],
@@ -196,7 +196,7 @@ describe('PTY Manager Module', () => {
           preferredTerminal: 'gitbash',
         });
 
-        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        spawnPtyProcess('C:\\Users\\Test', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           WIN_PATHS.gitbash,
           [],
@@ -210,7 +210,7 @@ describe('PTY Manager Module', () => {
       });
 
       it('includes profile environment variables', () => {
-        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24, {
+        spawnPtyProcess('C:\\Users\\Test', 80, 24, {
           CUSTOM_VAR: 'custom_value',
         });
 
@@ -230,7 +230,7 @@ describe('PTY Manager Module', () => {
         process.env.DEBUG = 'true';
         process.env.ANTHROPIC_API_KEY = 'sk-test-key';
 
-        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        spawnPtyProcess('C:\\Users\\Test', 80, 24);
 
         const envArg = mockPtySpawn.mock.calls[0][2].env as any;
         expect(envArg.DEBUG).toBeUndefined();
@@ -241,7 +241,7 @@ describe('PTY Manager Module', () => {
     describeUnix('spawns Unix shell with correct configuration', () => {
       it('uses SHELL environment variable', () => {
         process.env.SHELL = '/bin/bash';
-        const result = spawnPtyProcess('/home/user', 80, 24);
+        spawnPtyProcess('/home/user', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           '/bin/bash',
           ['-l'], // Unix uses -l flag
@@ -254,7 +254,7 @@ describe('PTY Manager Module', () => {
 
       it('falls back to /bin/zsh when SHELL is not set', () => {
         delete process.env.SHELL;
-        const result = spawnPtyProcess('/home/user', 80, 24);
+        spawnPtyProcess('/home/user', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           '/bin/zsh',
           ['-l'],
@@ -265,7 +265,7 @@ describe('PTY Manager Module', () => {
       });
 
       it('uses cwd parameter', () => {
-        const result = spawnPtyProcess('/custom/cwd', 80, 24);
+        spawnPtyProcess('/custom/cwd', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           expect.any(String),
           expect.any(Array),
@@ -276,7 +276,7 @@ describe('PTY Manager Module', () => {
       });
 
       it('uses dimensions', () => {
-        const result = spawnPtyProcess('/home/user', 120, 40);
+        spawnPtyProcess('/home/user', 120, 40);
         expect(mockPtySpawn).toHaveBeenCalledWith(
           expect.any(String),
           expect.any(Array),
@@ -438,18 +438,6 @@ describe('PTY Manager Module', () => {
     });
 
     it('serializes writes per terminal to prevent interleaving', async () => {
-      const terminal2: TerminalProcess = {
-        id: 'term-2',
-        pty: {
-          write: vi.fn(),
-          on: vi.fn(),
-        } as any,
-        isClaudeMode: false,
-        cwd: '/home/user',
-        outputBuffer: '',
-        title: 'Test Terminal 2',
-      };
-
       // Write to same terminal twice
       writeToPty(mockTerminal, 'data1');
       writeToPty(mockTerminal, 'data2');
