@@ -183,7 +183,6 @@ except Exception as e:
       case 'minor':
         newVersion = `${major}.${minor + 1}.0`;
         break;
-      case 'patch':
       default:
         newVersion = `${major}.${minor}.${patch + 1}`;
         break;

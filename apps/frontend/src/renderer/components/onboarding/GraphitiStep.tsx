@@ -237,7 +237,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                      config.llmProvider === 'groq' ? config.groqApiKey :
                      config.llmProvider === 'openrouter' ? config.openrouterApiKey :
                      config.llmProvider === 'azure_openai' ? config.azureOpenaiApiKey :
-                     config.llmProvider === 'ollama' ? '' :  // Ollama doesn't need API key
+                     config.llmProvider === 'ollama' ? '' :
                      config.embeddingProvider === 'openai' ? config.openaiApiKey :
                      config.embeddingProvider === 'openrouter' ? config.openrouterApiKey : '';
 
