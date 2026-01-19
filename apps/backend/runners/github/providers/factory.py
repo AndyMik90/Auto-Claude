@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from .gitea_provider import GiteaProvider
 from .github_provider import GitHubProvider
 from .protocol import GitProvider, ProviderType
 
@@ -93,10 +94,7 @@ def get_provider(
         )
 
     if provider_type == ProviderType.GITEA:
-        raise NotImplementedError(
-            "Gitea provider not yet implemented. "
-            "See providers/gitea_provider.py.stub for interface."
-        )
+        return GiteaProvider(_repo=repo, **kwargs)
 
     if provider_type == ProviderType.AZURE_DEVOPS:
         raise NotImplementedError(
@@ -114,7 +112,7 @@ def list_available_providers() -> list[ProviderType]:
     Returns:
         List of available ProviderType values
     """
-    available = [ProviderType.GITHUB]  # Built-in
+    available = [ProviderType.GITHUB, ProviderType.GITEA]  # Built-in
 
     # Add registered providers
     for provider_type in _PROVIDER_REGISTRY:
@@ -140,8 +138,8 @@ def is_provider_available(provider_type: ProviderType | str) -> bool:
         except ValueError:
             return False
 
-    # GitHub is always available
-    if provider_type == ProviderType.GITHUB:
+    # Built-in providers are always available
+    if provider_type in (ProviderType.GITHUB, ProviderType.GITEA):
         return True
 
     # Check registry
