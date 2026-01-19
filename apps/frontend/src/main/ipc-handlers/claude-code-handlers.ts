@@ -18,8 +18,7 @@ import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
-import { isSecurePath } from '../utils/windows-paths';
-import { normalizeExecutablePath } from '../platform';
+import { isSecurePath, isWindows as platformIsWindows, isMacOS, getCurrentOS, normalizeExecutablePath } from '../platform';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -37,7 +36,7 @@ const VERSION_LIST_CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour for version lis
  */
 async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string | null]> {
   try {
-    const isWindows = process.platform === 'win32';
+    const isWindows = platformIsWindows();
 
     // Normalize the path on Windows to handle missing extensions
     // e.g., C:\...\npm\claude -> C:\...\npm\claude.cmd
@@ -108,7 +107,7 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   const installations: ClaudeInstallationInfo[] = [];
   const seenPaths = new Set<string>();
   const homeDir = os.homedir();
-  const isWindows = process.platform === 'win32';
+  const isWindows = platformIsWindows();
 
   // Get detection paths from cli-tool-manager (single source of truth)
   const detectionPaths = getClaudeDetectionPaths(homeDir);
@@ -166,7 +165,7 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   }
 
   // 3. Homebrew paths (macOS) - from getClaudeDetectionPaths
-  if (process.platform === 'darwin') {
+  if (isMacOS()) {
     for (const p of detectionPaths.homebrewPaths) {
       await addInstallation(p, 'homebrew');
     }
@@ -313,7 +312,7 @@ async function fetchAvailableVersions(): Promise<string[]> {
  * @param version - The version to install (e.g., "1.0.5")
  */
 function getInstallVersionCommand(version: string): string {
-  if (process.platform === 'win32') {
+  if (platformIsWindows()) {
     // Windows: kill running Claude processes first, then install specific version
     return `taskkill /IM claude.exe /F 2>nul; claude install --force ${version}`;
   } else {
@@ -327,7 +326,7 @@ function getInstallVersionCommand(version: string): string {
  * @param isUpdate - If true, Claude is already installed and we just need to update
  */
 function getInstallCommand(isUpdate: boolean): string {
-  if (process.platform === 'win32') {
+  if (platformIsWindows()) {
     if (isUpdate) {
       // Update: kill running Claude processes first, then update with --force
       return 'taskkill /IM claude.exe /F 2>nul; claude install --force latest';
@@ -392,14 +391,14 @@ export function escapeGitBashCommand(str: string): string {
  * Supports macOS, Windows, and Linux terminals
  */
 export async function openTerminalWithCommand(command: string): Promise<void> {
-  const platform = process.platform;
+  const platform = getCurrentOS();
   const settings = readSettingsFile();
   const preferredTerminal = settings?.preferredTerminal as string | undefined;
 
   console.log('[Claude Code] Platform:', platform);
   console.log('[Claude Code] Preferred terminal:', preferredTerminal);
 
-  if (platform === 'darwin') {
+  if (isMacOS()) {
     // macOS: Use AppleScript to open terminal with command
     const escapedCommand = escapeAppleScriptString(command);
     let script: string;

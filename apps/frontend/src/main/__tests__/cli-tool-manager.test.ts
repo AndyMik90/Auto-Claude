@@ -17,10 +17,10 @@ import {
 } from '../cli-tool-manager';
 import {
   findWindowsExecutableViaWhere,
-  findWindowsExecutableViaWhereAsync,
-  isSecurePath
+  findWindowsExecutableViaWhereAsync
 } from '../utils/windows-paths';
 import { findExecutable, findExecutableAsync } from '../env-utils';
+import { isSecurePath } from '../platform';
 
 type SpawnOptions = Parameters<(typeof import('../env-utils'))['getSpawnOptions']>[1];
 type MockDirent = import('fs').Dirent<import('node:buffer').NonSharedBuffer>;
@@ -168,6 +168,15 @@ vi.mock('../utils/windows-paths', () => ({
   getWindowsExecutablePathsAsync: vi.fn(() => Promise.resolve([])),
   WINDOWS_GIT_PATHS: {}
 }));
+
+// Mock platform module - preserve original implementations but mock isSecurePath
+vi.mock('../platform', async () => {
+  const actualPlatform = await vi.importActual<typeof import('../platform')>('../platform');
+  return {
+    ...actualPlatform,
+    isSecurePath: vi.fn(() => true)
+  };
+});
 
 describe('cli-tool-manager - Claude CLI NVM detection', () => {
   beforeEach(() => {
@@ -717,16 +726,24 @@ describe('cli-tool-manager - Claude CLI Windows where.exe detection', () => {
 
     // Simulate where.exe returning path with .cmd extension (preferred over no extension)
     vi.mocked(findWindowsExecutableViaWhere).mockReturnValue(
-      'D:\\Program Files\\nvm4w\\nodejs\\claude.cmd'
+      'D:\\\\Program Files\\\\nvm4w\\\\nodejs\\\\claude.cmd'
     );
 
-    vi.mocked(existsSync).mockReturnValue(true);
+    // Mock existsSync to only return true for the where.exe path
+    vi.mocked(existsSync).mockImplementation((filePath) => {
+      const pathStr = String(filePath);
+      // Only the where.exe result should exist
+      if (pathStr.includes('nvm4w') && pathStr.includes('claude.cmd')) {
+        return true;
+      }
+      return false;
+    });
     vi.mocked(execFileSync).mockReturnValue('claude-code version 1.0.0\n');
 
     const result = getToolInfo('claude');
 
     expect(result.found).toBe(true);
-    expect(result.path).toBe('D:\\Program Files\\nvm4w\\nodejs\\claude.cmd');
+    expect(result.path).toBe('D:\\\\Program Files\\\\nvm4w\\\\nodejs\\\\claude.cmd');
     expect(result.path).toMatch(/\.(cmd|exe)$/i);
   });
 

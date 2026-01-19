@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -48,7 +48,6 @@ import {
   WINDOWS_GIT_PATHS,
   findWindowsExecutableViaWhere,
   findWindowsExecutableViaWhereAsync,
-  isSecurePath,
 } from './utils/windows-paths';
 
 /**
@@ -96,25 +95,32 @@ interface CacheEntry {
 function isWrongPlatformPath(pathStr: string | undefined): boolean {
   if (!pathStr) return false;
 
+  // Strip quotes before platform check - quotes are handled by validation
+  let cleanPath = pathStr.trim();
+  if ((cleanPath.startsWith('"') && cleanPath.endsWith('"')) ||
+      (cleanPath.startsWith("'") && cleanPath.endsWith("'"))) {
+    cleanPath = cleanPath.slice(1, -1);
+  }
+
   if (isWindows()) {
     // On Windows, reject Unix-style absolute paths (starting with /)
     // but allow relative paths and Windows paths
-    if (pathStr.startsWith('/') && !pathStr.startsWith('//')) {
+    if (cleanPath.startsWith('/') && !cleanPath.startsWith('//')) {
       // Unix absolute path on Windows
       return true;
     }
   } else {
     // On Unix (macOS/Linux), reject Windows-style paths
     // Windows paths have: drive letter (C:), backslashes, or specific Windows paths
-    if (/^[A-Za-z]:[/\\]/.test(pathStr)) {
+    if (/^[A-Za-z]:[/\\]/.test(cleanPath)) {
       // Drive letter path (C:\, D:/, etc.)
       return true;
     }
-    if (pathStr.includes('\\')) {
+    if (cleanPath.includes('\\')) {
       // Contains backslashes (Windows path separators)
       return true;
     }
-    if (pathStr.includes('AppData') || pathStr.includes('Program Files')) {
+    if (cleanPath.includes('AppData') || cleanPath.includes('Program Files')) {
       // Contains Windows-specific directory names
       return true;
     }
@@ -731,7 +737,7 @@ class CLIToolManager {
           ? unquotedPath.slice(1, -1)
           : unquotedPath;
 
-        if (isWindows() && !isSecurePath(cleanPath)) {
+        if (isWindows() && !isPathSecure(cleanPath)) {
           console.warn(
             `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
           );
@@ -961,7 +967,7 @@ class CLIToolManager {
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (!isSecurePath(normalizedCmd)) {
+        if (!isPathSecure(normalizedCmd)) {
           return {
             valid: false,
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
@@ -1104,7 +1110,7 @@ class CLIToolManager {
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (!isSecurePath(normalizedCmd)) {
+        if (!isPathSecure(normalizedCmd)) {
           return {
             valid: false,
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
@@ -1303,7 +1309,7 @@ class CLIToolManager {
           ? unquotedPath.slice(1, -1)
           : unquotedPath;
 
-        if (isWindows() && !isSecurePath(cleanPath)) {
+        if (isWindows() && !isPathSecure(cleanPath)) {
           console.warn(
             `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
           );
