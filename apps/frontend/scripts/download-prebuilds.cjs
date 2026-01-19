@@ -123,9 +123,8 @@ function downloadFile(url, destPath) {
           });
         })
         .on('error', (err) => {
-          // Delete partial file on error
           fs.unlink(destPath, () => {
-            // Ignore unlink errors
+            // Intentionally ignoring unlink errors for partial file cleanup
           });
           reject(err);
         });

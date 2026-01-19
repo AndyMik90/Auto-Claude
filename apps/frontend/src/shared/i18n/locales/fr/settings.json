@@ -414,9 +414,10 @@
     "authenticated": "Authentifié",
     "needsAuth": "Auth requise",
     "authenticate": "Authentifier",
+    "authenticating": "Authentification...",
     "setActive": "Définir actif",
     "manualTokenEntry": "Saisie manuelle du token",
-    "runSetupToken": "Exécutez claude setup-token pour obtenir votre token",
+    "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
     "tokenPlaceholder": "sk-ant-oat01-...",
     "emailPlaceholder": "Email (optionnel, pour l'affichage)",
     "saveToken": "Enregistrer le token",
@@ -467,6 +468,11 @@
       "terminalErrorDescription": "Échec de la création du terminal : {{error}}",
       "authProcessFailed": "Le processus d'authentification n'a pas pu démarrer",
       "authProcessFailedDescription": "Le terminal d'authentification n'a pas pu être créé. Veuillez réessayer ou consulter les logs pour plus de détails."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
+      "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
+      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
     }
   },
   "debug": {

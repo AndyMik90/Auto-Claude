@@ -64,7 +64,8 @@ import type {
   ClaudeProfile,
   ClaudeAutoSwitchSettings,
   ClaudeAuthResult,
-  ClaudeUsageSnapshot
+  ClaudeUsageSnapshot,
+  TerminalProfileChangedEvent
 } from './agent';
 import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult } from './settings';
 import type { AppUpdateInfo, AppUpdateProgress, AppUpdateAvailableEvent, AppUpdateDownloadedEvent } from './app-update';
@@ -237,7 +238,9 @@ export interface ElectronAPI {
     email?: string;
     success: boolean;
     message?: string;
-    detectedAt: string
+    detectedAt: string;
+    /** If true, user should complete onboarding in terminal before closing */
+    needsOnboarding?: boolean;
   }) => void) => () => void;
   /** Listen for auth terminal creation - allows UI to display the OAuth terminal */
   onTerminalAuthCreated: (callback: (info: {
@@ -249,8 +252,24 @@ export interface ElectronAPI {
   onTerminalClaudeBusy: (callback: (id: string, isBusy: boolean) => void) => () => void;
   /** Listen for Claude exit (user closed Claude within terminal, returned to shell) */
   onTerminalClaudeExit: (callback: (id: string) => void) => () => void;
+  /** Listen for onboarding complete (Claude shows ready state after login/onboarding) */
+  onTerminalOnboardingComplete: (callback: (info: {
+    terminalId: string;
+    profileId?: string;
+    detectedAt: string;
+  }) => void) => () => void;
   /** Listen for pending Claude resume notifications (for deferred resume on tab activation) */
   onTerminalPendingResume: (callback: (id: string, sessionId?: string) => void) => () => void;
+  /** Listen for profile change events - terminals need to be recreated with new profile env vars */
+  onTerminalProfileChanged: (callback: (event: TerminalProfileChangedEvent) => void) => () => void;
+  /** Listen for OAuth code input requests (manual OAuth flow) */
+  onTerminalOAuthCodeNeeded: (callback: (info: {
+    terminalId: string;
+    profileId: string;
+    profileName: string
+  }) => void) => () => void;
+  /** Submit OAuth code from user (for manual OAuth flow) */
+  submitOAuthCode: (terminalId: string, code: string) => Promise<IPCResult>;
 
   // Claude profile management (multi-account support)
   getClaudeProfiles: () => Promise<IPCResult<ClaudeProfileSettings>>;
@@ -260,10 +279,14 @@ export interface ElectronAPI {
   setActiveClaudeProfile: (profileId: string) => Promise<IPCResult>;
   /** Switch terminal to use a different Claude profile (restarts Claude with new config) */
   switchClaudeProfile: (terminalId: string, profileId: string) => Promise<IPCResult>;
-  /** Initialize authentication for a Claude profile */
+  /** Initialize authentication for a Claude profile (legacy - uses hidden terminal) */
   initializeClaudeProfile: (profileId: string) => Promise<IPCResult>;
   /** Set OAuth token for a profile (used when capturing from terminal) */
   setClaudeProfileToken: (profileId: string, token: string, email?: string) => Promise<IPCResult>;
+  /** Prepare authentication for a Claude profile - returns terminal config for embedded terminal */
+  authenticateClaudeProfile: (profileId: string) => Promise<IPCResult<{ terminalId: string; configDir: string }>>;
+  /** Check if a profile has been authenticated (by checking .claude.json) */
+  verifyClaudeProfileAuth: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
   /** Get auto-switch settings */
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */

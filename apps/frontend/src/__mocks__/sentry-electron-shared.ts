@@ -16,17 +16,17 @@ export type SentryInitOptions = {
 };
 
 export function init(_options: SentryInitOptions): void {
-  // Mock implementation - does nothing
+  // Mock: no-op for tests
 }
 
 export function captureException(_error: Error): void {
-  // Mock implementation - does nothing
+  // Mock: no-op for tests
 }
 
 export function withScope(callback: (scope: SentryScope) => void): void {
   callback({
     setContext: () => {
-      // Mock implementation - does nothing
-    },
+      // Mock: no-op for tests
+    }
   });
 }
