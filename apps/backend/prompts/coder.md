@@ -678,10 +678,85 @@ The next session has no memory. You are the only one who can fix it efficiently.
 
 ## STEP 8: UPDATE implementation_plan.json
 
-After successful verification, update the subtask:
+After successful verification, update the subtask status to "completed".
 
+### CRITICAL: Correct JSON Update Syntax
+
+The implementation_plan.json has a **NESTED structure**:
 ```json
-"status": "completed"
+{
+  "phases": [
+    {
+      "subtasks": [
+        { "id": "subtask-1-1", "status": "pending" }
+      ]
+    }
+  ]
+}
+```
+
+**Use this EXACT jq command** (replace SUBTASK_ID with your subtask id):
+
+```bash
+# Get the spec directory path
+SPEC_DIR="./.auto-claude/specs/YOUR-SPEC-NAME"  # Adjust path as needed
+
+# Update subtask status using correct nested path
+jq '(.phases[].subtasks[] | select(.id == "SUBTASK_ID") | .status) = "completed"' \
+  "$SPEC_DIR/implementation_plan.json" > /tmp/plan_updated.json && \
+  mv /tmp/plan_updated.json "$SPEC_DIR/implementation_plan.json"
+
+# Verify the update worked
+grep -A2 '"id": "SUBTASK_ID"' "$SPEC_DIR/implementation_plan.json"
+```
+
+### Common WRONG Syntax (DO NOT USE):
+
+```bash
+# ❌ WRONG - subtasks is not at root level
+jq '.subtasks["subtask-1-1"].status = "completed"' ...
+
+# ❌ WRONG - missing proper path to nested subtasks
+jq '.subtasks[] | select(.id == "subtask-1-1") | .status = "completed"' ...
+
+# ❌ WRONG - this only selects, doesn't update
+jq '.phases[].subtasks[] | select(.id == "subtask-1-1")' ...
+```
+
+### Correct Syntax Explained:
+
+```bash
+# ✅ CORRECT - Full path with parentheses for in-place update
+jq '(.phases[].subtasks[] | select(.id == "SUBTASK_ID") | .status) = "completed"'
+#   ^-- parentheses required for assignment to work on nested path
+```
+
+### Alternative: Use Python for JSON update
+
+If jq is unavailable or complex, use Python:
+
+```python
+import json
+from pathlib import Path
+
+spec_dir = Path("./.auto-claude/specs/YOUR-SPEC-NAME")  # Adjust path
+plan_file = spec_dir / "implementation_plan.json"
+
+with open(plan_file) as f:
+    plan = json.load(f)
+
+# Update subtask status
+subtask_id = "subtask-1-1"  # Replace with your subtask ID
+for phase in plan.get("phases", []):
+    for subtask in phase.get("subtasks", []):
+        if subtask.get("id") == subtask_id:
+            subtask["status"] = "completed"
+            break
+
+with open(plan_file, "w") as f:
+    json.dump(plan, f, indent=2)
+
+print(f"Updated {subtask_id} to completed")
 ```
 
 **ONLY change the status field. Never modify:**

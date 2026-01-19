@@ -190,6 +190,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         subtasks: [],
         logs: [],
         metadata: taskMetadata,
+        specsPath: specDir,  // Include specsPath so Files tab works immediately
         createdAt: new Date(),
         updatedAt: new Date()
       };

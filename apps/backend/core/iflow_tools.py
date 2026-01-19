@@ -215,10 +215,12 @@ class ToolContext:
 
         Logic:
         - If path is absolute, use as-is
-        - If path contains '.auto-claude/specs' or is a spec file, resolve relative to spec_dir
+        - If path contains '.auto-claude/specs', extract and use spec_dir + filename only
+        - If it's a known spec file (by name), use spec_dir
         - Otherwise resolve relative to project_dir
         """
         path = Path(file_path)
+        path_str = str(file_path)
 
         if path.is_absolute():
             return path.resolve()
@@ -229,17 +231,21 @@ class ToolContext:
             'context.json', 'project_index.json', 'complexity_assessment.json',
             'task_metadata.json', 'task_logs.json', 'graph_hints.json',
             'research.json', 'critique_report.json', 'qa_report.md',
+            'build-progress.txt', 'qa_report.md',
         }
 
         file_name = path.name
-        path_str = str(file_path)
 
-        # If it's a known spec file or path contains .auto-claude, use spec_dir
-        if file_name in spec_files or '.auto-claude' in path_str:
+        # IMPORTANT: If path already contains .auto-claude/specs, extract just the filename
+        # to avoid creating nested directories like .auto-claude/specs/XXX/.auto-claude/specs/XXX/
+        if '.auto-claude/specs' in path_str or '.auto-claude\\specs' in path_str:
+            if self.spec_dir and file_name in spec_files:
+                logger.debug(f"[iFlow Tools] Extracting filename from nested path: {path_str} -> {file_name}")
+                return (self.spec_dir / file_name).resolve()
+
+        # If it's a known spec file by name, use spec_dir directly
+        if file_name in spec_files:
             if self.spec_dir:
-                # If path has subdirectories, preserve them
-                if '/' in path_str or '\\' in path_str:
-                    return (self.spec_dir / path).resolve()
                 return (self.spec_dir / file_name).resolve()
 
         # Default: resolve relative to project_dir
@@ -264,6 +270,13 @@ def execute_read(args: dict, context: ToolContext) -> dict:
     file_path = args.get("file_path", "")
     offset = args.get("offset", 1)
     limit = args.get("limit")
+
+    # Validate required parameter
+    if not file_path or not file_path.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: file_path. Please specify the file to read."
+        }
 
     try:
         path = context.resolve_path(file_path)
@@ -331,6 +344,14 @@ def execute_write(args: dict, context: ToolContext) -> dict:
     file_path = args.get("file_path", "")
     content = args.get("content", "")
 
+    # Validate required parameters
+    if not file_path or not file_path.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: file_path. Please specify the file to write to."
+        }
+    # Note: content can be empty string (valid for creating empty file)
+
     try:
         path = context.resolve_path(file_path)
 
@@ -374,6 +395,19 @@ def execute_edit(args: dict, context: ToolContext) -> dict:
     old_string = args.get("old_string", "")
     new_string = args.get("new_string", "")
     replace_all = args.get("replace_all", False)
+
+    # Validate required parameters
+    if not file_path or not file_path.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: file_path. Please specify the file to edit."
+        }
+    if not old_string:
+        return {
+            "success": False,
+            "error": "Missing required parameter: old_string. Please specify the text to find and replace."
+        }
+    # Note: new_string can be empty (valid for deleting text)
 
     try:
         path = context.resolve_path(file_path)
@@ -445,6 +479,13 @@ def execute_bash(args: dict, context: ToolContext) -> dict:
     """
     command = args.get("command", "")
     timeout = args.get("timeout", 120)
+
+    # Validate required parameters
+    if not command or not command.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: command. Please specify the bash command to execute."
+        }
 
     try:
         # Security validation if hook is provided
@@ -518,6 +559,13 @@ def execute_glob(args: dict, context: ToolContext) -> dict:
     pattern = args.get("pattern", "")
     base_path = args.get("path", ".")
 
+    # Validate required parameters
+    if not pattern or not pattern.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: pattern. Please specify a glob pattern (e.g., '**/*.py', 'src/**/*.ts')."
+        }
+
     try:
         search_dir = context.resolve_path(base_path)
 
@@ -579,6 +627,13 @@ def execute_grep(args: dict, context: ToolContext) -> dict:
     pattern = args.get("pattern", "")
     base_path = args.get("path", ".")
     file_glob = args.get("glob", "**/*")
+
+    # Validate required parameters
+    if not pattern or not pattern.strip():
+        return {
+            "success": False,
+            "error": "Missing required parameter: pattern. Please specify a regex pattern to search for."
+        }
 
     try:
         search_dir = context.resolve_path(base_path)
@@ -683,25 +738,29 @@ def execute_tool(tool_name: str, args: dict | str | None, context: ToolContext) 
             "error": f"Unknown tool: {tool_name}"
         }
 
-    # Ensure args is a dict
+    # Ensure args is a dict - handle various malformed formats from iFlow models
     if args is None:
         args = {}
     elif isinstance(args, str):
         # Try to parse as JSON if it's a string
         try:
-            import json
-            args = json.loads(args) if args else {}
+            parsed = json.loads(args) if args else {}
+            # Handle double-encoded JSON
+            if isinstance(parsed, str):
+                try:
+                    parsed = json.loads(parsed)
+                except json.JSONDecodeError:
+                    logger.warning(f"[iFlow Tools] Double-decoded but still string: {parsed[:100]}")
+                    parsed = {}
+            args = parsed if isinstance(parsed, dict) else {}
         except json.JSONDecodeError:
-            return {
-                "success": False,
-                "error": f"Invalid tool arguments (not valid JSON): {args[:200]}"
-            }
+            logger.warning(f"[iFlow Tools] Invalid JSON arguments for {tool_name}: {args[:200]}")
+            # Return empty dict to allow tool to report missing required params
+            args = {}
 
     if not isinstance(args, dict):
-        return {
-            "success": False,
-            "error": f"Invalid tool arguments type: {type(args).__name__}"
-        }
+        logger.warning(f"[iFlow Tools] Args not a dict after parsing: {type(args).__name__} = {str(args)[:100]}")
+        args = {}
 
     logger.info(f"[iFlow Tools] Executing {tool_name} with args: {_summarize_args(args)}")
 

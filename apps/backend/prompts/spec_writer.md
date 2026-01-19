@@ -62,9 +62,11 @@ Before writing, think about:
 
 Create `spec.md` using this EXACT template structure:
 
+**CRITICAL**: Use the EXACT task name from `requirements.json` (`task_description` field). Do NOT translate, rephrase, or create a new name - preserve the user's original wording exactly.
+
 ```bash
 cat > spec.md << 'SPEC_EOF'
-# Specification: [Task Name from requirements.json]
+# Specification: [EXACT task_description from requirements.json - DO NOT CHANGE]
 
 ## Overview
 

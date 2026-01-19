@@ -216,9 +216,11 @@ Based on the workflow type and services involved, create the implementation plan
 
 ### Plan Structure
 
+**IMPORTANT**: The `feature` field MUST contain the ORIGINAL task name from `requirements.json` (`task_description` field). Do NOT translate, rephrase, or create a new name - preserve it exactly as the user wrote it.
+
 ```json
 {
-  "feature": "Short descriptive name for this task/feature",
+  "feature": "COPY EXACTLY from requirements.json task_description - DO NOT CHANGE",
   "workflow_type": "feature|refactor|investigation|migration|simple",
   "workflow_rationale": "Why this workflow type was chosen",
   "phases": [

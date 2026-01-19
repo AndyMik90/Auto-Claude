@@ -37,13 +37,36 @@ DEFAULT_IFLOW_BASE_URL = "https://apis.iflow.cn/v1"
 DEFAULT_IFLOW_MODEL = "deepseek-v3"
 
 # Models known to have issues with tool calling
-# These will use heredoc-based file creation instead
+# These will automatically fallback to TOOL_FALLBACK_MODEL
 MODELS_WITHOUT_TOOL_SUPPORT = {
     "kimi-k2",      # Has issues with tool_call_id
     "qwen3-max",    # Inconsistent tool support
     "glm-4.6",      # No tool support
     "glm-4.7",      # No tool support
 }
+
+# Models that have unreliable tool support (sometimes work, sometimes don't)
+# These will get extra warnings but not automatic fallback
+MODELS_WITH_UNRELIABLE_TOOLS = {
+    "deepseek-v3.2",  # Sometimes returns empty tool arguments
+}
+
+# Fallback model when selected model doesn't support tools
+TOOL_FALLBACK_MODEL = "deepseek-v3"
+
+# Fallback chain for rate limits - try these models in order when current model hits rate limits
+# After 2 rate limit retries, automatically switch to next model in chain
+# NOTE: Only include models that are actually supported by iFlow API
+RATE_LIMIT_FALLBACK_CHAIN = [
+    "deepseek-v3",
+    "qwen3-coder-plus",  # Works well with tools (verified in testing)
+    # "qwen3-coder" removed - iFlow returns 435 "Model not support" error
+    # "glm-4.7" removed - iFlow returns "Model not support" error
+    # "deepseek-v3.2" removed - unreliable tool arguments
+]
+
+# Number of rate limit retries before switching to fallback model
+RATE_LIMIT_RETRIES_BEFORE_FALLBACK = 2
 
 # Model-specific configurations
 IFLOW_MODEL_CONFIGS = {
@@ -84,6 +107,43 @@ IFLOW_MODEL_CONFIGS = {
         "recommended_for": [],
     },
 }
+
+
+def filter_thinking_content(text: str) -> str:
+    """
+    Filter out thinking content from model responses.
+
+    Some models (e.g., qwen3-*-thinking, kimi-k2) output their internal reasoning
+    process wrapped in <think>...</think> tags. This function removes that content
+    to provide cleaner output to the user.
+
+    Args:
+        text: Raw model response text
+
+    Returns:
+        Text with thinking content removed
+    """
+    import re
+
+    if not text:
+        return text
+
+    # Remove <think>...</think> blocks (including multiline)
+    # Handle various tag formats: <think>, </think>, <thinking>, </thinking>
+    filtered = re.sub(r'<think(?:ing)?[^>]*>.*?</think(?:ing)?>', '', text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Also remove orphaned closing tags (in case thinking wasn't properly closed)
+    filtered = re.sub(r'</think(?:ing)?>', '', filtered, flags=re.IGNORECASE)
+
+    # Clean up excessive whitespace that may remain
+    filtered = re.sub(r'\n{3,}', '\n\n', filtered)
+    filtered = filtered.strip()
+
+    # Log if content was filtered
+    if len(filtered) < len(text) * 0.5:  # More than 50% was thinking
+        logger.debug(f"[iFlow] Filtered thinking content: {len(text)} -> {len(filtered)} chars")
+
+    return filtered
 
 
 @dataclass
@@ -418,16 +478,19 @@ def create_iflow_agent_client(
             f"your work through thorough testing."
         )
 
-    # Check if model supports tool calling
+    # Check if model supports tool calling - if not, fallback to a model that does
+    original_model = None
     if enable_tools and model in MODELS_WITHOUT_TOOL_SUPPORT:
+        original_model = model
+        model = TOOL_FALLBACK_MODEL
         logger.warning(
-            f"[iFlow] Model '{model}' doesn't support tool calling well. "
-            f"Disabling tools and using heredoc-based file creation."
+            f"[iFlow] Model '{original_model}' doesn't support tool calling. "
+            f"Automatically switching to '{model}' for this phase."
         )
-        enable_tools = False
 
     logger.info(
         f"[iFlow] Creating agent client: model={model}, agent_type={agent_type}, tools={enable_tools}"
+        + (f" (fallback from {original_model})" if original_model else "")
     )
 
     return IFlowAgentClient(
@@ -438,6 +501,7 @@ def create_iflow_agent_client(
         spec_dir=spec_dir,
         enable_tools=enable_tools,
         max_turns=max_turns,
+        original_model=original_model,  # Track if there was a fallback
     )
 
 
@@ -506,6 +570,7 @@ class IFlowAgentClient:
         spec_dir: Path | None = None,
         enable_tools: bool = True,
         max_turns: int = 100,
+        original_model: str | None = None,  # Original model if fallback occurred
     ):
         self.config = config
         self.model = model
@@ -514,12 +579,19 @@ class IFlowAgentClient:
         self.spec_dir = spec_dir
         self.enable_tools = enable_tools
         self.max_turns = max_turns
+        self.original_model = original_model  # Tracks model fallback for UI display
         self._client = None
         self._conversation_history: list[dict] = []
         self._pending_query: str | None = None
         self._last_response: str | None = None
         self._tool_context = None
         self._current_turn = 0
+        self._fallback_message_sent = False  # Track if we've sent the fallback notification
+        self._unreliable_model_warned = False  # Track if we've warned about unreliable model
+        self._consecutive_tool_errors = 0  # Track consecutive tool call errors
+        self._max_consecutive_errors = 10  # Break out after this many consecutive errors
+        self._total_tokens_used = 0  # Track cumulative token usage
+        self._max_total_tokens = 500000  # Stop if we exceed this (500k tokens)
 
     @property
     def client(self):
@@ -556,6 +628,8 @@ class IFlowAgentClient:
         """
         self._pending_query = prompt
         self._current_turn = 0
+        self._consecutive_tool_errors = 0  # Reset error counter for new query
+        self._total_tokens_used = 0  # Reset token counter for new query
 
     async def receive_response(self):
         """
@@ -595,12 +669,41 @@ class IFlowAgentClient:
         try:
             logger.info(f"[iFlow] Starting agent loop with {self.model} (tools={'enabled' if self.enable_tools else 'disabled'})...")
 
+            # Emit fallback notification for UI if model was switched
+            if self.original_model and not self._fallback_message_sent:
+                self._fallback_message_sent = True
+                fallback_msg = (
+                    f"⚠️ Model '{self.original_model}' doesn't support tool calling. "
+                    f"Automatically switched to '{self.model}' for this phase."
+                )
+                logger.warning(f"[iFlow] {fallback_msg}")
+                yield AssistantMessage(content=[TextBlock(text=f"[{fallback_msg}]")])
+
+            # Warn about unreliable models
+            if self.model in MODELS_WITH_UNRELIABLE_TOOLS and not self._unreliable_model_warned:
+                self._unreliable_model_warned = True
+                warn_msg = (
+                    f"⚠️ Model '{self.model}' has unreliable tool support. "
+                    f"If tool calls fail repeatedly, consider using 'deepseek-v3' instead."
+                )
+                logger.warning(f"[iFlow] {warn_msg}")
+                yield AssistantMessage(content=[TextBlock(text=f"[{warn_msg}]")])
+
             while self._current_turn < self.max_turns:
                 self._current_turn += 1
                 logger.info(f"[iFlow] Turn {self._current_turn}/{self.max_turns}")
 
                 # Truncate messages to avoid token explosion
-                truncated_messages = self._truncate_messages(messages, max_messages=30)
+                # Reduced from 30 to 15 messages for better token control
+                truncated_messages = self._truncate_messages(messages, max_messages=15)
+
+                # Estimate and log token usage for this request
+                estimated_chars = sum(len(str(m.get("content", ""))) for m in truncated_messages)
+                estimated_tokens = estimated_chars // 4  # Rough estimate: 4 chars per token
+                logger.info(
+                    f"[iFlow] Request estimate: {len(truncated_messages)} messages, "
+                    f"~{estimated_chars} chars, ~{estimated_tokens} tokens"
+                )
 
                 # Build request kwargs
                 request_kwargs = {
@@ -617,33 +720,194 @@ class IFlowAgentClient:
                 # Make API call (non-streaming for tool support)
                 response = self.client.chat.completions.create(**request_kwargs)
 
-                # Log token usage if available
+                # Log token usage if available and track cumulative
                 if hasattr(response, 'usage') and response.usage:
                     usage = response.usage
+                    self._total_tokens_used += usage.total_tokens
                     logger.info(
                         f"[iFlow] Token usage - prompt: {usage.prompt_tokens}, "
                         f"completion: {usage.completion_tokens}, "
-                        f"total: {usage.total_tokens}"
+                        f"total: {usage.total_tokens}, "
+                        f"cumulative: {self._total_tokens_used}"
                     )
+
+                    # Emit token usage to UI every 5 turns or on significant usage
+                    if self._current_turn % 5 == 0 or usage.total_tokens > 10000:
+                        token_msg = (
+                            f"📊 [{self.model}] Turn {self._current_turn}: "
+                            f"+{usage.total_tokens:,} tokens "
+                            f"(total: {self._total_tokens_used:,})"
+                        )
+                        yield AssistantMessage(content=[TextBlock(text=f"[{token_msg}]")])
+
+                    # Check if we've exceeded token budget
+                    if self._total_tokens_used > self._max_total_tokens:
+                        error_msg = (
+                            f"\n\n[Agent stopped: exceeded token budget "
+                            f"({self._total_tokens_used:,} tokens used, limit: {self._max_total_tokens:,}). "
+                            f"The task may be too complex or the model is inefficient.]"
+                        )
+                        logger.error(f"[iFlow] {error_msg}")
+                        yield AssistantMessage(content=[TextBlock(text=error_msg)])
+                        self._pending_query = None
+                        return
 
                 # Check for errors
                 if hasattr(response, 'status') and response.status:
                     status_code = str(response.status)
                     error_msg = getattr(response, 'msg', 'Unknown error')
                     if status_code not in ('200', 'None', ''):
-                        # Handle rate limit with retry
-                        if status_code == '449' or 'rate limit' in str(error_msg).lower():
+                        # Log full error details for debugging
+                        logger.warning(
+                            f"[iFlow] API error - status: {status_code}, msg: {error_msg}, "
+                            f"full response: {response}"
+                        )
+
+                        # Handle rate limit with retry and auto-fallback to different model
+                        # Note: iFlow uses 429 for "Concurrency limit reached" and 449 for other rate limits
+                        if status_code in ('429', '449') or 'rate limit' in str(error_msg).lower() or 'throttling' in str(error_msg).lower():
                             import time
-                            retry_delay = 30  # seconds
-                            logger.warning(f"[iFlow] Rate limit hit, waiting {retry_delay}s before retry...")
-                            yield AssistantMessage(content=[TextBlock(text=f"[Rate limit hit, waiting {retry_delay}s...]")])
+
+                            # Track rate limit retries
+                            if not hasattr(self, '_rate_limit_retries'):
+                                self._rate_limit_retries = 0
+                            if not hasattr(self, '_tried_models'):
+                                self._tried_models = {self.model}
+                            self._rate_limit_retries += 1
+
+                            # After RATE_LIMIT_RETRIES_BEFORE_FALLBACK retries, try switching to a different model
+                            if self._rate_limit_retries >= RATE_LIMIT_RETRIES_BEFORE_FALLBACK:
+                                # Find next available model in fallback chain
+                                fallback_model = None
+                                for candidate in RATE_LIMIT_FALLBACK_CHAIN:
+                                    if candidate not in self._tried_models:
+                                        fallback_model = candidate
+                                        break
+
+                                if fallback_model:
+                                    old_model = self.model
+                                    self.model = fallback_model
+                                    self._tried_models.add(fallback_model)
+                                    self._rate_limit_retries = 0  # Reset counter for new model
+
+                                    fallback_msg = (
+                                        f"🔄 Model '{old_model}' hit rate limit. "
+                                        f"Automatically switching to '{fallback_model}'."
+                                    )
+                                    logger.warning(f"[iFlow] {fallback_msg}")
+                                    yield AssistantMessage(content=[TextBlock(text=f"[{fallback_msg}]")])
+
+                                    # Check if new model needs tool fallback
+                                    if self.enable_tools and fallback_model in MODELS_WITHOUT_TOOL_SUPPORT:
+                                        self.enable_tools = False
+                                        logger.warning(f"[iFlow] Fallback model '{fallback_model}' doesn't support tools, disabling.")
+                                        yield AssistantMessage(content=[
+                                            TextBlock(text=f"[Note: '{fallback_model}' doesn't support tools, using heredoc mode]")
+                                        ])
+
+                                    self._current_turn -= 1
+                                    continue  # Retry with new model
+
+                            MAX_RATE_LIMIT_RETRIES = 5
+                            if self._rate_limit_retries > MAX_RATE_LIMIT_RETRIES:
+                                error_text = (
+                                    f"Rate limit exceeded after trying {len(self._tried_models)} model(s). "
+                                    f"All available models are overloaded. Please try again later."
+                                )
+                                logger.error(f"[iFlow] {error_text}")
+                                yield AssistantMessage(content=[TextBlock(text=error_text)])
+                                break
+
+                            retry_delay = 30 * self._rate_limit_retries  # Exponential backoff
+                            logger.warning(
+                                f"[iFlow] Rate limit hit (attempt {self._rate_limit_retries}/{RATE_LIMIT_RETRIES_BEFORE_FALLBACK} before model switch), "
+                                f"waiting {retry_delay}s before retry..."
+                            )
+                            yield AssistantMessage(content=[
+                                TextBlock(text=f"[Rate limit hit ({self._rate_limit_retries}/{RATE_LIMIT_RETRIES_BEFORE_FALLBACK}), waiting {retry_delay}s... Will switch model if persists]")
+                            ])
                             time.sleep(retry_delay)
                             self._current_turn -= 1  # Don't count this as a turn
                             continue  # Retry the same request
 
+                        # Handle 5xx server errors with retry
+                        if status_code and status_code.startswith('5'):
+                            import time
+
+                            # Track server error retries
+                            if not hasattr(self, '_server_error_retries'):
+                                self._server_error_retries = 0
+                            self._server_error_retries += 1
+
+                            MAX_SERVER_ERROR_RETRIES = 3
+                            if self._server_error_retries > MAX_SERVER_ERROR_RETRIES:
+                                error_text = (
+                                    f"⚠️ iFlow server error (code {status_code}) after {MAX_SERVER_ERROR_RETRIES} retries. "
+                                    f"Model '{self.model}' may be unavailable or unstable. "
+                                    f"Try a different model like 'deepseek-v3'."
+                                )
+                                logger.error(f"[iFlow] {error_text}")
+                                yield AssistantMessage(content=[TextBlock(text=error_text)])
+                                break
+
+                            retry_delay = 10 * self._server_error_retries  # 10s, 20s, 30s
+                            logger.warning(
+                                f"[iFlow] Server error {status_code} (attempt {self._server_error_retries}/{MAX_SERVER_ERROR_RETRIES}), "
+                                f"waiting {retry_delay}s before retry..."
+                            )
+                            yield AssistantMessage(content=[
+                                TextBlock(text=f"[⚠️ iFlow server error {status_code} ({self._server_error_retries}/{MAX_SERVER_ERROR_RETRIES}), retrying in {retry_delay}s...]")
+                            ])
+                            time.sleep(retry_delay)
+                            self._current_turn -= 1  # Don't count this as a turn
+                            continue  # Retry the same request
+
+                        # Handle 435 "Model not support" - immediately switch to next model
+                        if status_code == '435' or 'not support' in str(error_msg).lower():
+                            if not hasattr(self, '_tried_models'):
+                                self._tried_models = {self.model}
+                            self._tried_models.add(self.model)
+
+                            # Find next available model in fallback chain
+                            fallback_model = None
+                            for candidate in RATE_LIMIT_FALLBACK_CHAIN:
+                                if candidate not in self._tried_models:
+                                    fallback_model = candidate
+                                    break
+
+                            if fallback_model:
+                                old_model = self.model
+                                self.model = fallback_model
+                                self._tried_models.add(fallback_model)
+
+                                fallback_msg = (
+                                    f"⚠️ Model '{old_model}' not supported (error 435). "
+                                    f"Switching to '{fallback_model}'."
+                                )
+                                logger.warning(f"[iFlow] {fallback_msg}")
+                                yield AssistantMessage(content=[TextBlock(text=f"[{fallback_msg}]")])
+
+                                # Check if new model needs tool fallback
+                                if self.enable_tools and fallback_model in MODELS_WITHOUT_TOOL_SUPPORT:
+                                    self.enable_tools = False
+                                    logger.warning(f"[iFlow] Fallback model '{fallback_model}' doesn't support tools.")
+                                    yield AssistantMessage(content=[
+                                        TextBlock(text=f"[Note: '{fallback_model}' doesn't support tools, using heredoc mode]")
+                                    ])
+
+                                self._current_turn -= 1
+                                continue  # Retry with new model
+
+                            # No more fallback models available
+                            error_text = (
+                                f"Model '{self.model}' not supported and no fallback models available. "
+                                f"Tried models: {', '.join(self._tried_models)}"
+                            )
+                            logger.error(f"[iFlow] {error_text}")
+                            yield AssistantMessage(content=[TextBlock(text=error_text)])
+                            break
+
                         error_text = f"iFlow API Error (status {status_code}): {error_msg}"
-                        if 'not support' in str(error_msg).lower():
-                            error_text += f"\n\nModel '{self.model}' may not support function calling."
                         logger.error(f"[iFlow] {error_text}")
                         yield AssistantMessage(content=[TextBlock(text=error_text)])
                         break
@@ -655,6 +919,12 @@ class IFlowAgentClient:
                     yield AssistantMessage(content=[TextBlock(text="Error: No response from model")])
                     break
 
+                # Reset error counters on successful response
+                if hasattr(self, '_rate_limit_retries'):
+                    self._rate_limit_retries = 0
+                if hasattr(self, '_server_error_retries'):
+                    self._server_error_retries = 0
+
                 message = choice.message
                 finish_reason = choice.finish_reason
 
@@ -663,9 +933,12 @@ class IFlowAgentClient:
 
                 # Handle text content
                 if message.content:
-                    content_blocks.append(TextBlock(text=message.content))
-                    # Yield text incrementally (simulate streaming)
-                    yield AssistantMessage(content=[TextBlock(text=message.content)])
+                    # Filter out thinking content from "thinking" models
+                    filtered_content = filter_thinking_content(message.content)
+                    if filtered_content:  # Only yield if there's content after filtering
+                        content_blocks.append(TextBlock(text=filtered_content))
+                        # Yield text incrementally (simulate streaming)
+                        yield AssistantMessage(content=[TextBlock(text=filtered_content)])
 
                 # Handle tool calls
                 tool_calls = getattr(message, 'tool_calls', None)
@@ -681,16 +954,40 @@ class IFlowAgentClient:
                         tool_id = tool_call.id
 
                         # Parse arguments - handle both string and dict formats
+                        # iFlow models sometimes return malformed arguments:
+                        # - Raw strings instead of JSON objects
+                        # - Double-encoded JSON strings
+                        # - JSON that decodes to non-dict types
+                        # - Empty strings or null values
                         try:
                             import json
                             raw_args = tool_call.function.arguments
+
+                            # Debug logging for tool arguments
+                            logger.debug(
+                                f"[iFlow] Tool '{tool_name}' raw_args: "
+                                f"type={type(raw_args).__name__}, "
+                                f"value={repr(raw_args)[:200] if raw_args else '<empty>'}"
+                            )
+
                             if isinstance(raw_args, str):
-                                tool_args = json.loads(raw_args) if raw_args else {}
+                                parsed = json.loads(raw_args) if raw_args else {}
+                                # Handle double-encoded JSON (string that parses to another string)
+                                if isinstance(parsed, str):
+                                    try:
+                                        parsed = json.loads(parsed)
+                                    except (json.JSONDecodeError, TypeError):
+                                        # If still a string, try to extract key-value pairs
+                                        logger.warning(f"[iFlow] Tool args decoded to string, not dict: {parsed[:100]}")
+                                        parsed = {}
+                                # Ensure result is a dict
+                                tool_args = parsed if isinstance(parsed, dict) else {}
                             elif isinstance(raw_args, dict):
                                 tool_args = raw_args
                             else:
                                 tool_args = {}
-                        except (json.JSONDecodeError, TypeError):
+                        except (json.JSONDecodeError, TypeError) as e:
+                            logger.warning(f"[iFlow] Failed to parse tool arguments: {e}")
                             tool_args = {}
 
                         logger.info(f"[iFlow] Executing tool: {tool_name}")
@@ -713,6 +1010,40 @@ class IFlowAgentClient:
                             result_text = "Error: Tool context not available (no project_dir or spec_dir)"
                             is_error = True
 
+                        # Track consecutive errors to break out of error loops
+                        if is_error:
+                            self._consecutive_tool_errors += 1
+
+                            # For unreliable models, switch to fallback after 5 errors
+                            if (self.model in MODELS_WITH_UNRELIABLE_TOOLS and
+                                self._consecutive_tool_errors >= 5 and
+                                self.model != TOOL_FALLBACK_MODEL):
+                                old_model = self.model
+                                self.model = TOOL_FALLBACK_MODEL
+                                self._consecutive_tool_errors = 0  # Reset for new model
+                                switch_msg = (
+                                    f"🔄 Model '{old_model}' had 5 consecutive tool errors. "
+                                    f"Switching to '{self.model}' for better reliability."
+                                )
+                                logger.warning(f"[iFlow] {switch_msg}")
+                                yield AssistantMessage(content=[TextBlock(text=f"[{switch_msg}]")])
+                                # Don't return, continue with new model
+
+                            elif self._consecutive_tool_errors >= self._max_consecutive_errors:
+                                token_info = f" ({self._total_tokens_used:,} tokens used)" if self._total_tokens_used > 0 else ""
+                                error_msg = (
+                                    f"\n\n[Agent stopped: {self._consecutive_tool_errors} consecutive tool call errors{token_info}. "
+                                    f"The model may not be properly using the tool interface. "
+                                    f"Last error: {result_text[:200]}]"
+                                )
+                                logger.error(f"[iFlow] Stopping due to consecutive errors: {error_msg}")
+                                yield AssistantMessage(content=[TextBlock(text=error_msg)])
+                                self._pending_query = None
+                                return
+                        else:
+                            # Reset counter on successful tool call
+                            self._consecutive_tool_errors = 0
+
                         # Yield tool result
                         tool_result_block = ToolResultBlock(
                             tool_use_id=tool_id,
@@ -721,11 +1052,24 @@ class IFlowAgentClient:
                         )
                         yield UserMessage(content=[tool_result_block])
 
+                        # Truncate tool result to avoid token explosion
+                        # Max 8000 chars per tool result (~2000 tokens)
+                        MAX_TOOL_RESULT_CHARS = 8000
+                        truncated_result = result_text
+                        if len(result_text) > MAX_TOOL_RESULT_CHARS:
+                            truncated_result = (
+                                result_text[:MAX_TOOL_RESULT_CHARS] +
+                                f"\n\n[... truncated, {len(result_text) - MAX_TOOL_RESULT_CHARS} more chars ...]"
+                            )
+                            logger.info(
+                                f"[iFlow] Truncated tool result: {len(result_text)} -> {len(truncated_result)} chars"
+                            )
+
                         # Store result for next API call
                         tool_results.append({
                             "tool_call_id": tool_id,
                             "role": "tool",
-                            "content": result_text,
+                            "content": truncated_result,
                         })
 
                     # Add assistant message with tool calls to history
@@ -762,29 +1106,178 @@ class IFlowAgentClient:
                         {"role": "assistant", "content": message.content or ""}
                     )
 
-                    self._last_response = message.content
+                    # Filter thinking content for display and file extraction
+                    filtered_response = filter_thinking_content(message.content) if message.content else ""
+                    self._last_response = filtered_response
                     self._pending_query = None
 
                     # Post-process: Extract and write files from heredoc patterns
                     # (fallback for models that don't use tools properly)
-                    if message.content:
-                        files_written = self._extract_and_write_files(message.content)
+                    if filtered_response:
+                        files_written = self._extract_and_write_files(filtered_response)
                         if files_written:
                             logger.info(f"[iFlow] Auto-created files from response: {files_written}")
+
+                    # Emit final token usage summary
+                    if self._total_tokens_used > 0:
+                        summary_msg = (
+                            f"✅ [{self.model}] Session complete: {self._current_turn} turns, "
+                            f"{self._total_tokens_used:,} tokens used"
+                        )
+                        yield AssistantMessage(content=[TextBlock(text=f"[{summary_msg}]")])
 
                     break
 
             else:
                 # Max turns reached
                 logger.warning(f"[iFlow] Max turns ({self.max_turns}) reached")
+
+                # Emit token usage with max turns warning
+                token_info = ""
+                if self._total_tokens_used > 0:
+                    token_info = f" ({self._total_tokens_used:,} tokens used)"
+
                 yield AssistantMessage(
-                    content=[TextBlock(text=f"\n\n[Agent stopped: max turns ({self.max_turns}) reached]")]
+                    content=[TextBlock(text=f"\n\n[Agent stopped: max turns ({self.max_turns}) reached{token_info}]")]
                 )
                 self._pending_query = None
 
         except Exception as e:
             error_str = str(e)
             logger.error(f"[iFlow] Agent loop failed: {e}", exc_info=True)
+
+            # Check for rate limit error in exception
+            is_rate_limit = (
+                'rate' in error_str.lower() and 'limit' in error_str.lower() or
+                'throttling' in error_str.lower() or
+                'concurrency' in error_str.lower() or
+                '429' in error_str or
+                '449' in error_str or
+                'RateLimitError' in type(e).__name__
+            )
+
+            if is_rate_limit:
+                import time
+
+                # Track rate limit retries and tried models
+                if not hasattr(self, '_rate_limit_retries'):
+                    self._rate_limit_retries = 0
+                if not hasattr(self, '_tried_models'):
+                    self._tried_models = {self.model}
+                self._rate_limit_retries += 1
+
+                # After RATE_LIMIT_RETRIES_BEFORE_FALLBACK retries, try switching model
+                if self._rate_limit_retries >= RATE_LIMIT_RETRIES_BEFORE_FALLBACK:
+                    # Find next available model in fallback chain
+                    fallback_model = None
+                    for candidate in RATE_LIMIT_FALLBACK_CHAIN:
+                        if candidate not in self._tried_models:
+                            fallback_model = candidate
+                            break
+
+                    if fallback_model:
+                        old_model = self.model
+                        self.model = fallback_model
+                        self._tried_models.add(fallback_model)
+                        self._rate_limit_retries = 0
+
+                        fallback_msg = (
+                            f"🔄 Model '{old_model}' hit rate limit. "
+                            f"Automatically switching to '{fallback_model}'."
+                        )
+                        logger.warning(f"[iFlow] {fallback_msg}")
+                        yield AssistantMessage(content=[TextBlock(text=f"[{fallback_msg}]")])
+
+                        # Check if new model needs tool fallback
+                        if self.enable_tools and fallback_model in MODELS_WITHOUT_TOOL_SUPPORT:
+                            self.enable_tools = False
+                            logger.warning(f"[iFlow] Fallback model '{fallback_model}' doesn't support tools.")
+                            yield AssistantMessage(content=[
+                                TextBlock(text=f"[Note: '{fallback_model}' doesn't support tools, using heredoc mode]")
+                            ])
+
+                        # Reset and retry with new model
+                        self._current_turn = 0
+                        self._conversation_history = []
+                        async for msg in self.receive_response():
+                            yield msg
+                        return
+
+                MAX_RATE_LIMIT_RETRIES = 5
+                if self._rate_limit_retries <= MAX_RATE_LIMIT_RETRIES:
+                    # Retry with exponential backoff
+                    retry_delay = 30 * self._rate_limit_retries
+                    logger.warning(
+                        f"[iFlow] Rate limit exception (attempt {self._rate_limit_retries}/{RATE_LIMIT_RETRIES_BEFORE_FALLBACK} before model switch), "
+                        f"waiting {retry_delay}s before retry..."
+                    )
+                    yield AssistantMessage(content=[
+                        TextBlock(text=f"[Rate limit hit ({self._rate_limit_retries}/{RATE_LIMIT_RETRIES_BEFORE_FALLBACK}), waiting {retry_delay}s... Will switch model if persists]")
+                    ])
+                    time.sleep(retry_delay)
+                    # Reset turn counter and retry
+                    self._current_turn = 0
+                    self._conversation_history = []
+                    # Re-run the query
+                    async for msg in self.receive_response():
+                        yield msg
+                    return
+
+                # Max retries exceeded and no more fallback models
+                error_msg = (
+                    f"Rate limit error after trying {len(self._tried_models)} model(s). "
+                    f"All available models are overloaded. Please try again later."
+                )
+                logger.error(f"[iFlow] {error_msg}")
+                yield AssistantMessage(content=[TextBlock(text=error_msg)])
+                self._pending_query = None
+                return
+
+            # Check for connection errors (network issues, timeouts)
+            is_connection_error = (
+                'connection' in error_str.lower() or
+                'timeout' in error_str.lower() or
+                'timed out' in error_str.lower() or
+                'connect' in error_str.lower() and 'error' in error_str.lower() or
+                'ConnectionError' in type(e).__name__ or
+                'TimeoutError' in type(e).__name__
+            )
+
+            if is_connection_error:
+                import time
+
+                # Track connection error retries
+                if not hasattr(self, '_connection_error_retries'):
+                    self._connection_error_retries = 0
+                self._connection_error_retries += 1
+
+                MAX_CONNECTION_RETRIES = 3
+                if self._connection_error_retries <= MAX_CONNECTION_RETRIES:
+                    retry_delay = 15 * self._connection_error_retries  # 15s, 30s, 45s
+                    logger.warning(
+                        f"[iFlow] Connection error (attempt {self._connection_error_retries}/{MAX_CONNECTION_RETRIES}), "
+                        f"retrying in {retry_delay}s..."
+                    )
+                    yield AssistantMessage(content=[
+                        TextBlock(text=f"[⚠️ Connection error ({self._connection_error_retries}/{MAX_CONNECTION_RETRIES}), retrying in {retry_delay}s...]")
+                    ])
+                    time.sleep(retry_delay)
+                    # Reset turn counter and retry
+                    self._current_turn = 0
+                    # Re-run the query
+                    async for msg in self.receive_response():
+                        yield msg
+                    return
+
+                # Max retries exceeded
+                error_msg = (
+                    f"Connection error after {self._connection_error_retries} attempts. "
+                    f"iFlow API may be unreachable. Check your network connection."
+                )
+                logger.error(f"[iFlow] {error_msg}")
+                yield AssistantMessage(content=[TextBlock(text=error_msg)])
+                self._pending_query = None
+                return
 
             # Check if it's a tool_call_id error - retry without tools
             if "tool_call_id" in error_str.lower() or "400" in error_str:
@@ -963,6 +1456,20 @@ class IFlowAgentClient:
         Returns:
             Truncated message list
         """
+        # First, estimate total chars and truncate aggressively if needed
+        # Rough estimate: 4 chars per token, target ~50k tokens max = 200k chars
+        MAX_TOTAL_CHARS = 200000
+        total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+
+        if total_chars > MAX_TOTAL_CHARS:
+            # Need aggressive truncation - reduce max_messages
+            reduction_factor = MAX_TOTAL_CHARS / total_chars
+            max_messages = max(5, int(max_messages * reduction_factor))
+            logger.warning(
+                f"[iFlow] Content too large ({total_chars} chars), "
+                f"reducing max_messages to {max_messages}"
+            )
+
         if len(messages) <= max_messages:
             return messages
 

@@ -322,7 +322,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
           return {
             ...t,
-            title: plan.feature || t.title,
+            // FIX: Preserve user's original title - don't overwrite with plan.feature
+            // The title was set by the user during task creation and should remain unchanged
+            // plan.feature is a generated field that may differ from user's intent
+            title: t.title,
             subtasks,
             status,
             reviewReason,
