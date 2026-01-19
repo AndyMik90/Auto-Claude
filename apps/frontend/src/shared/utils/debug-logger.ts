@@ -3,6 +3,8 @@
  * Only logs when DEBUG=true in environment
  */
 
+import { isWindows } from '../platform';
+
 /**
  * Case-insensitive environment variable lookup for Windows compatibility
  * On Windows, environment variables are case-insensitive (DEBUG, debug, Debug all work)
@@ -15,7 +17,7 @@ const getEnvVarCaseInsensitive = (name: string): string | undefined => {
 
   // On Windows, environment variables are case-insensitive
   // Node.js may return keys with different casing depending on how they were set
-  if (typeof process.platform !== 'undefined' && process.platform === 'win32') {
+  if (isWindows()) {
     const upperName = name.toUpperCase();
     for (const [key, value] of Object.entries(process.env)) {
       if (key.toUpperCase() === upperName) {

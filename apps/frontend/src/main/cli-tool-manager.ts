@@ -729,6 +729,7 @@ class CLIToolManager {
       // expandWindowsEnvVars handles the fallback values if env vars are not set
       const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
       const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
+      const programData = expandWindowsEnvVars('%PROGRAMDATA%');
       const windowsPaths = [
         joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
         joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),
@@ -736,6 +737,8 @@ class CLIToolManager {
         joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
         // Scoop package manager
         joinPaths(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
+        // Chocolatey package manager
+        joinPaths(programData, 'chocolatey', 'lib', 'gh-cli', 'tools', 'gh.exe'),
       ];
 
       for (const ghPath of windowsPaths) {
@@ -768,7 +771,7 @@ class CLIToolManager {
    * 1. User configuration (if valid for current platform)
    * 2. Homebrew claude (macOS)
    * 3. System PATH
-   * 4. Windows where.exe (Windows only - finds executables via PATH + Registry)
+   * 4. Windows where.exe (Windows only - finds executables via PATH + Registry, including nvm-windows)
    * 5. NVM paths (Unix only - checks Node.js version managers)
    * 6. Platform-specific standard locations
    *
@@ -826,6 +829,7 @@ class CLIToolManager {
     }
 
     // 4. Windows where.exe detection (Windows only - most reliable for custom installs)
+    // Note: nvm-windows installations are found via where.exe since they add Node.js to PATH
     if (isWindows()) {
       const whereClaudePath = findWindowsExecutableViaWhere('claude', '[Claude CLI]');
       if (whereClaudePath) {
@@ -836,6 +840,7 @@ class CLIToolManager {
     }
 
     // 5. NVM paths (Unix only) - check before platform paths for better Node.js integration
+    // On Windows, nvm-windows is handled by where.exe above since it adds Node.js to PATH
     if (isUnix()) {
       try {
         if (existsSync(paths.nvmVersionsDir)) {
@@ -1386,6 +1391,14 @@ class CLIToolManager {
       // e.g., C:\...\npm\gh -> C:\...\npm\gh.cmd
       const normalizedCmd = normalizeExecutablePath(ghCmd);
 
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(normalizedCmd)) {
+        return {
+          valid: false,
+          message: `Invalid GitHub CLI path: contains dangerous characters or patterns`,
+        };
+      }
+
       const { stdout } = await execFileAsync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
@@ -1658,12 +1671,13 @@ class CLIToolManager {
       } else {
         const validation = await this.validateGitAsync(this.userConfig.gitPath);
         if (validation.valid) {
+          const effectivePath = validation.normalizedPath ?? this.userConfig.gitPath;
           return {
             found: true,
-            path: this.userConfig.gitPath,
+            path: effectivePath,
             version: validation.version,
             source: 'user-config',
-            message: `Using user-configured Git: ${this.userConfig.gitPath}`,
+            message: `Using user-configured Git: ${effectivePath}`,
           };
         }
         console.warn(`[Git] User-configured path invalid: ${validation.message}`);
@@ -1764,12 +1778,13 @@ class CLIToolManager {
       } else {
         const validation = await this.validateGitHubCLIAsync(this.userConfig.githubCLIPath);
         if (validation.valid) {
+          const effectivePath = validation.normalizedPath ?? this.userConfig.githubCLIPath;
           return {
             found: true,
-            path: this.userConfig.githubCLIPath,
+            path: effectivePath,
             version: validation.version,
             source: 'user-config',
-            message: `Using user-configured GitHub CLI: ${this.userConfig.githubCLIPath}`,
+            message: `Using user-configured GitHub CLI: ${effectivePath}`,
           };
         }
         console.warn(`[GitHub CLI] User-configured path invalid: ${validation.message}`);

@@ -367,7 +367,7 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
       ? 'winget install --id GitHub.cli'
       : isMacOS()
         ? 'brew install gh'
-        : 'See https://cli.github.com/';
+        : 'sudo apt install gh  # Ubuntu/Debian\nsudo dnf install gh  # Fedora\nsudo pacman -S gh  # Arch\nSee https://cli.github.com/ for other distros';
     result.error = `GitHub CLI (gh) is not installed. Install it with:\n  ${installInstructions}`;
     result.errorKey = 'errors:github.cliNotInstalled';
     result.errorParams = { instructions: installInstructions };

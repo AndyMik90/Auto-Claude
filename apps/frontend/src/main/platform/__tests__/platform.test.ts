@@ -803,8 +803,9 @@ describe('Platform Module', () => {
       it('prioritizes .exe over extensionless files', () => {
         mockedExistsSync.mockImplementation((path) => {
           const p = path as string;
+          const basename = p.split(/[\\/]/).pop() || '';
           if (p.endsWith('tool.exe')) return true;
-          if (p.endsWith('tool') && !p.includes('.')) return true;
+          if (basename === 'tool') return true;
           return false;
         });
 
@@ -828,7 +829,7 @@ describe('Platform Module', () => {
       it('finds executable in PATH', () => {
         mockedExistsSync.mockImplementation((path) => {
           const p = normalizePath(String(path));
-          return p !== null && p.endsWith('/bin/tool');
+          return p?.endsWith('/bin/tool') ?? false;
         });
 
         const result = findExecutable('tool');

@@ -31,6 +31,8 @@ export const WINDOWS_GIT_PATHS: WindowsToolPaths = {
     '%PROGRAMFILES(X86)%\\Git\\cmd',
     '%LOCALAPPDATA%\\Programs\\Git\\cmd',
     '%USERPROFILE%\\scoop\\apps\\git\\current\\cmd',
+    // Chocolatey package manager path
+    '%PROGRAMDATA%\\chocolatey\\lib\\git\\tools\\cmd',
     '%PROGRAMFILES%\\Git\\bin',
     '%PROGRAMFILES(X86)%\\Git\\bin',
     '%PROGRAMFILES%\\Git\\mingw64\\bin',

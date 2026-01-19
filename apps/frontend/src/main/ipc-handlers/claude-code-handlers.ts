@@ -431,7 +431,7 @@ export function escapeBashCommand(str: string): string {
 function spawnTerminal(
   command: string,
   args: string[],
-  options?: { detached?: boolean; stdio?: any }
+  options?: { detached?: boolean; stdio?: 'ignore' | 'inherit' | 'pipe' }
 ): boolean {
   try {
     const resolvedCmd = findExecutable(command) || command;
@@ -599,9 +599,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       } else if (terminalId === 'gitbash') {
         // Git Bash - use the passed command (escaped for bash context)
         const escapedBashCommand = escapeGitBashCommand(command);
+        const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
+        const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
         const gitBashPaths = [
-          'C:\\Program Files\\Git\\git-bash.exe',
-          'C:\\Program Files (x86)\\Git\\git-bash.exe',
+          joinPaths(programFiles, 'Git', 'git-bash.exe'),
+          joinPaths(programFilesX86, 'Git', 'git-bash.exe'),
         ];
         const gitBashPath = gitBashPaths.find(p => existsSync(p));
         if (gitBashPath) {
@@ -881,7 +883,7 @@ function checkProfileAuthentication(configDir: string): AuthCheckResult {
       const data = JSON.parse(content);
 
       // Check for oauthAccount with emailAddress
-      if (data.oauthAccount && data.oauthAccount.emailAddress) {
+      if (data.oauthAccount?.emailAddress) {
         return {
           authenticated: true,
           email: data.oauthAccount.emailAddress,
@@ -907,7 +909,7 @@ function checkProfileAuthentication(configDir: string): AuthCheckResult {
         };
       }
 
-      if (data.oauthAccount && data.oauthAccount.emailAddress) {
+      if (data.oauthAccount?.emailAddress) {
         return {
           authenticated: true,
           email: data.oauthAccount.emailAddress,
@@ -947,7 +949,7 @@ export function registerClaudeCodeHandlers(): void {
         console.warn('[Claude Code] Checking version...');
 
         // Get installed version via cli-tool-manager
-        let detectionResult;
+        let detectionResult: ReturnType<typeof getToolInfo>;
         try {
           detectionResult = getToolInfo('claude');
           console.warn('[Claude Code] Detection result:', JSON.stringify(detectionResult, null, 2));

@@ -20,7 +20,8 @@ import {
 } from "../../../shared/constants";
 import { getGitHubConfig, githubFetch } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
-import { getAugmentedEnv, findExecutable } from "../../env-utils";
+import { getAugmentedEnv } from "../../env-utils";
+import { getToolPath } from "../../cli-tool-manager";
 import { getMemoryService, getDefaultDbPath } from "../../memory-service";
 import type { Project, AppSettings } from "../../../shared/types";
 import { createContextLogger } from "./utils/logger";
@@ -1372,7 +1373,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             throw new Error("Invalid PR number");
           }
           // Use execFileSync with arguments array to prevent command injection
-          const ghPath = findExecutable('gh') || 'gh';
+          const ghPath = getToolPath('gh');
           const diff = execFileSync(ghPath, ["pr", "diff", String(prNumber)], {
             cwd: project.path,
             encoding: "utf-8",
@@ -1842,7 +1843,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           try {
             writeFileSync(tmpFile, body, "utf-8");
             // Use execFileSync with arguments array to prevent command injection
-            const ghPath = findExecutable('gh') || 'gh';
+            const ghPath = getToolPath('gh');
             execFileSync(ghPath, ["pr", "comment", String(prNumber), "--body-file", tmpFile], {
               cwd: project.path,
               env: getAugmentedEnv(),
@@ -1957,7 +1958,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Use execFileSync with arguments array to prevent command injection
-          const ghPath = findExecutable('gh') || 'gh';
+          const ghPath = getToolPath('gh');
           execFileSync(ghPath, ["pr", "merge", String(prNumber), `--${mergeMethod}`], {
             cwd: project.path,
             env: getAugmentedEnv(),
@@ -2393,7 +2394,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           // Use gh pr update-branch to sync with base branch (async to avoid blocking main process)
           // --rebase is not used to avoid force-push requirements
-          const ghPath = findExecutable('gh') || 'gh';
+          const ghPath = getToolPath('gh');
           await execFileAsync(ghPath, ["pr", "update-branch", String(prNumber)], {
             cwd: project.path,
             env: getAugmentedEnv(),
