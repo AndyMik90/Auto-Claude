@@ -7,9 +7,9 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const platform = require('./platform');
 
-const isWindows = os.platform() === 'win32';
+const isWindows = platform.isWindows();
 const rootDir = path.join(__dirname, '..');
 const backendDir = path.join(rootDir, 'apps', 'backend');
 const testsDir = path.join(rootDir, 'tests');
