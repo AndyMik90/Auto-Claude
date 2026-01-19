@@ -83,8 +83,8 @@ def apply_single_task_changes(
             # Addition - need to determine where to add
             if change.change_type == ChangeType.ADD_IMPORT:
                 # Add import at top
-                # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
-                has_trailing_newline = content.endswith(("\n", "\r\n", "\r"))
+                # Content is already normalized to LF, so only check for \n
+                has_trailing_newline = content.endswith("\n")
                 lines = content.splitlines()
                 import_end = find_import_end(lines, file_path)
                 # Strip trailing newline from content_after to prevent double newlines
@@ -155,8 +155,8 @@ def combine_non_conflicting_changes(
 
     # Add imports
     if imports:
-        # Use splitlines() to handle all line ending styles (LF, CRLF, CR)
-        has_trailing_newline = content.endswith(("\n", "\r\n", "\r"))
+        # Content is already normalized to LF, so only check for \n
+        has_trailing_newline = content.endswith("\n")
         lines = content.splitlines()
         import_end = find_import_end(lines, file_path)
         for imp in imports:

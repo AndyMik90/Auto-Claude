@@ -147,7 +147,7 @@ def test_detect_repo_structure_python(tmp_path):
 
     # Create pyproject.toml
     pyproject = project_dir / "pyproject.toml"
-    pyproject.write_text("[tool.poetry]\\nname = 'test'", encoding="utf-8")
+    pyproject.write_text("[tool.poetry]\nname = 'test'", encoding="utf-8")
 
     gatherer = PRContextGatherer(project_dir, 1)
 
