@@ -533,11 +533,10 @@ def initialize_timeline_tracking(
                         files_to_modify.extend(subtask.get("files", []))
 
         # Get the current branch point commit
+        # Note: run_git() already handles capture_output and encoding internally
         result = run_git(
             ["rev-parse", "HEAD"],
             cwd=project_dir,
-            capture_output=True,
-            encoding="utf-8",
         )
         branch_point = result.stdout.strip() if result.returncode == 0 else None
 
