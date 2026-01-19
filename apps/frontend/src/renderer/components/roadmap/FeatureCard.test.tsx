@@ -100,6 +100,22 @@ const mockFeatures: RoadmapFeature[] = [
     reverseDependencies: [],
     acceptanceCriteria: [],
     userStories: []
+  },
+  {
+    // Feature with NO dependencies at all (for testing empty state)
+    id: 'feat-4',
+    title: 'Feature 4',
+    description: 'Test feature 4',
+    rationale: 'Test rationale 4',
+    priority: 'could',
+    complexity: 'low',
+    impact: 'low',
+    status: 'planned',
+    phaseId: 'phase-3',
+    dependencies: [],
+    reverseDependencies: [],
+    acceptanceCriteria: [],
+    userStories: []
   }
 ];
 
@@ -182,7 +198,7 @@ describe('FeatureCard Dependencies', () => {
     const mockClick = vi.fn();
     renderWithWrapper(
       <FeatureCard
-        feature={mockFeatures[1]}
+        feature={mockFeatures[3]}
         features={mockFeatures}
         onClick={mockClick}
         onConvertToSpec={vi.fn()}
