@@ -652,7 +652,6 @@ describe('Platform Module', () => {
     });
 
     describeWindows('provides case-insensitive access on Windows', () => {
-      // biome-ignore lint/complexity/useLiteralKeys: Platform-specific test setup
       beforeEach(() => {
         // Simulate Windows environment with different casing
         process.env.PATH = 'C:\\Windows\\System32';
@@ -692,7 +691,7 @@ describe('Platform Module', () => {
     });
 
     describeUnix('provides case-sensitive access on Unix', () => {
-      // biome-ignore lint/complexity/useLiteralKeys: Platform-specific test setup
+      // biome-ignore lint/suspicious/noDuplicateTestHooks: Platform-specific test setup for Unix (different from Windows)
       beforeEach(() => {
         // Clear any case variants from Windows tests
         delete (process.env as Record<string, string>)['Path'];
@@ -738,7 +737,6 @@ describe('Platform Module', () => {
     });
 
     describeWindows('finds executables with Windows extensions', () => {
-      // biome-ignore lint/complexity/useLiteralKeys: Platform-specific test setup
       beforeEach(() => {
         // Set up a mock PATH for testing
         process.env.PATH = 'C:\\Tools\\Bin;C:\\Windows\\System32';
@@ -816,7 +814,7 @@ describe('Platform Module', () => {
     });
 
     describeUnix('finds executables without extensions', () => {
-      // biome-ignore lint/complexity/useLiteralKeys: Platform-specific test setup
+      // biome-ignore lint/suspicious/noDuplicateTestHooks: Platform-specific test setup for Unix (different from Windows)
       beforeEach(() => {
         // Set up a mock PATH for testing
         process.env.PATH = '/usr/local/bin:/usr/bin:/bin';
@@ -830,7 +828,9 @@ describe('Platform Module', () => {
         const result = findExecutable('tool');
         expect(result).toBeTruthy();
         expect(result).toContain('tool');
-        expect(result!.endsWith('tool')).toBe(true);
+        if (result) {
+          expect(result.endsWith('tool')).toBe(true);
+        }
       });
 
       it('returns null when executable not found', () => {
