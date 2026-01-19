@@ -31,6 +31,16 @@ function GitLabIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+// Gitea icon component (tea cup)
+function GiteaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="gitea-icon-title">
+      <title id="gitea-icon-title">Gitea</title>
+      <path d="M9.35 21.5v-1.5h5.3v1.5H9.35Zm-4.5-3v-6q0-2.075 1.175-3.775T9.1 6.1V3.5h5.8v2.6q1.9.925 3.075 2.625T19.15 12.5v6h-14.3Zm1.5-1.5h11.3v-4.5q0-2.075-1.325-3.538Q14.9 7.5 12.5 7.5q-2.4 0-3.725 1.463Q7.35 10.425 7.35 12.5v4.5Zm10.5 0H6.15h11.7Zm2.65-5.75v-1.5h2v1.5h-2Zm-4.25-5.2-1.05-1.1 1.4-1.4 1.05 1.1-1.4 1.4ZM11.5 5V2.5h1V5h-1Zm-5.75.95-1.4-1.4L5.4 3.5l1.4 1.4-1.05 1.05ZM1 11.25v-1.5h2v1.5H1Z"/>
+    </svg>
+  );
+}
 import {
   FullScreenDialog,
   FullScreenDialogContent,
@@ -93,6 +103,7 @@ const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },
+  { id: 'gitea', icon: GiteaIcon },
   { id: 'memory', icon: Database }
 ];
 

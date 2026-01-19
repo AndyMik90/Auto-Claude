@@ -6,6 +6,7 @@ import { SecuritySettings } from '../../project-settings/SecuritySettings';
 import { LinearIntegration } from '../integrations/LinearIntegration';
 import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
+import { GiteaIntegration } from '../integrations/GiteaIntegration';
 import { InitializationGuard } from '../common/InitializationGuard';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -161,6 +162,32 @@ export function SectionRouter({
               setShowGitLabToken={setShowGitLabToken}
               gitLabConnectionStatus={gitLabConnectionStatus}
               isCheckingGitLab={isCheckingGitLab}
+              projectPath={project.path}
+              settings={settings}
+              setSettings={setSettings}
+            />
+          </InitializationGuard>
+        </SettingsSection>
+      );
+
+    case 'gitea':
+      return (
+        <SettingsSection
+          title={t('projectSections.gitea.integrationTitle')}
+          description={t('projectSections.gitea.integrationDescription')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.gitea.integrationTitle')}
+            description={t('projectSections.gitea.syncDescription')}
+          >
+            <GiteaIntegration
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+              showGiteaToken={false}
+              setShowGiteaToken={() => {}}
+              giteaConnectionStatus={null}
+              isCheckingGitea={false}
               projectPath={project.path}
               settings={settings}
               setSettings={setSettings}

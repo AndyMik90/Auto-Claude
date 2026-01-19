@@ -1,0 +1,118 @@
+{
+  "title": "Gitea Issues",
+  "states": {
+    "open": "Open",
+    "closed": "Closed"
+  },
+  "complexity": {
+    "simple": "Simple",
+    "standard": "Standard",
+    "complex": "Complex"
+  },
+  "header": {
+    "open": "open",
+    "searchPlaceholder": "Search issues..."
+  },
+  "filters": {
+    "open": "Open",
+    "closed": "Closed",
+    "all": "All"
+  },
+  "empty": {
+    "noMatch": "No issues match your search",
+    "selectIssue": "Select an issue to view details"
+  },
+  "notConnected": {
+    "title": "Gitea Not Connected",
+    "description": "Configure your Gitea instance URL, token, and project in project settings to sync issues.",
+    "openSettings": "Open Settings"
+  },
+  "detail": {
+    "comments": "comments",
+    "viewTask": "View Task",
+    "createTask": "Create Task",
+    "taskLinked": "Task Linked",
+    "taskId": "Task ID",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "assignees": "Assignees",
+    "milestone": "Milestone"
+  },
+  "settings": {
+    "enableIssues": "Enable Gitea Issues",
+    "enableIssuesDescription": "Sync issues from Gitea and create tasks automatically",
+    "instance": "Gitea Instance",
+    "instanceDescription": "Enter your self-hosted Gitea instance URL",
+    "connectedVia": "Connected to Gitea",
+    "authenticatedAs": "Authenticated as",
+    "useDifferentToken": "Use Different Token",
+    "authentication": "Gitea Authentication",
+    "personalAccessToken": "Personal Access Token",
+    "tokenScope": "Create a token with",
+    "scopeRepo": "repo",
+    "scopeFrom": "scope from",
+    "giteaSettings": "Gitea Settings",
+    "project": "Repository",
+    "enterManually": "Enter Manually",
+    "loadingProjects": "Loading repositories...",
+    "selectProject": "Select a repository...",
+    "searchProjects": "Search repositories...",
+    "noMatchingProjects": "No matching repositories",
+    "noProjectsFound": "No repositories found",
+    "selected": "Selected",
+    "projectFormat": "Format:",
+    "projectFormatExample": "(e.g., myorg/myproject)",
+    "connectionStatus": "Connection Status",
+    "checking": "Checking...",
+    "connectedTo": "Connected to",
+    "notConnected": "Not connected",
+    "issuesAvailable": "Issues Available",
+    "issuesAvailableDescription": "Access Gitea Issues from the sidebar to view, investigate, and create tasks from issues.",
+    "defaultBranch": "Default Branch",
+    "defaultBranchDescription": "Base branch for creating task worktrees",
+    "loadingBranches": "Loading branches...",
+    "autoDetect": "Auto-detect (main/master)",
+    "searchBranches": "Search branches...",
+    "noMatchingBranches": "No matching branches",
+    "noBranchesFound": "No branches found",
+    "branchFromNote": "All new tasks will branch from",
+    "autoSyncOnLoad": "Auto-Sync on Load",
+    "autoSyncDescription": "Automatically fetch issues when the project loads"
+  },
+  "pullRequests": {
+    "title": "Gitea Pull Requests",
+    "newPR": "New Pull Request",
+    "selectPR": "Select a pull request to view details",
+    "states": {
+      "open": "Open",
+      "closed": "Closed",
+      "merged": "Merged"
+    },
+    "filters": {
+      "open": "Open",
+      "closed": "Closed",
+      "merged": "Merged",
+      "all": "All"
+    }
+  },
+  "prReview": {
+    "runReview": "Run AI Review",
+    "reviewing": "Reviewing...",
+    "followupReview": "Follow-up Review",
+    "newCommits": "new commit",
+    "newCommitsPlural": "new commits",
+    "cancel": "Cancel",
+    "postFindings": "Post Findings",
+    "posting": "Posting...",
+    "postedTo": "Posted to Gitea",
+    "approve": "Approve",
+    "approving": "Approving...",
+    "merge": "Merge PR",
+    "merging": "Merging...",
+    "aiReviewResult": "AI Review Result",
+    "followupReviewResult": "Follow-up Review",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "labels": "Labels"
+  }
+}

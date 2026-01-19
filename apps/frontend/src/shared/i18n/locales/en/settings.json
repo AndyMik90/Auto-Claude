@@ -344,6 +344,13 @@
       "integrationDescription": "Connect to GitLab for issue tracking",
       "syncDescription": "Sync with GitLab Issues"
     },
+    "gitea": {
+      "title": "Gitea",
+      "description": "Gitea issues sync",
+      "integrationTitle": "Gitea Integration",
+      "integrationDescription": "Connect to your self-hosted Gitea instance for issue tracking",
+      "syncDescription": "Sync with Gitea Issues"
+    },
     "memory": {
       "title": "Memory",
       "description": "Graphiti memory backend",
