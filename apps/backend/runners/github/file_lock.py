@@ -238,7 +238,8 @@ def atomic_write(filepath: str | Path, mode: str = "w", encoding: str = "utf-8")
 
     try:
         # Open temp file with requested mode and encoding
-        with os.fdopen(fd, mode, encoding=encoding) as f:
+        # Only use encoding for text modes (not binary modes)
+        with os.fdopen(fd, mode, encoding=encoding if "b" not in mode else None) as f:
             yield f
 
         # Atomic replace - succeeds or fails completely
