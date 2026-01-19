@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Plus,
   Settings,
-  Trash2,
   LayoutGrid,
   Terminal,
   Map,
@@ -50,6 +49,7 @@ import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
+import { UpdateBanner } from './UpdateBanner';
 import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
 
 export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
@@ -102,7 +102,6 @@ export function Sidebar({
   const { t } = useTranslation(['navigation', 'dialogs', 'common']);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
-  const selectProject = useProjectStore((state) => state.selectProject);
   const settings = useSettingsStore((state) => state.settings);
 
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -207,10 +206,6 @@ export function Sidebar({
     };
     checkGit();
   }, [selectedProject]);
-
-  const handleAddProject = () => {
-    setShowAddProjectModal(true);
-  };
 
   const handleProjectAdded = (project: Project, needsInit: boolean) => {
     if (needsInit) {
@@ -327,6 +322,9 @@ export function Sidebar({
 
         {/* Rate Limit Indicator - shows when Claude is rate limited */}
         <RateLimitIndicator />
+
+        {/* Update Banner - shows when app update is available */}
+        <UpdateBanner />
 
         {/* Bottom section with Settings, Help, and New Task */}
         <div className="p-4 space-y-3">

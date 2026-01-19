@@ -319,7 +319,9 @@ async def run_autonomous_agent(
                 task_logger.set_session(iteration)
         else:
             # Switch to coding phase after planning
+            just_transitioned_from_planning = False
             if is_planning_phase:
+                just_transitioned_from_planning = True
                 is_planning_phase = False
                 current_log_phase = LogPhase.CODING
                 emit_phase(ExecutionPhase.CODING, "Starting implementation")
@@ -338,8 +340,35 @@ async def run_autonomous_agent(
                     print_status("Phase transition synced to main project", "success")
 
             if not next_subtask:
-                print("No pending subtasks found - build may be complete!")
-                break
+                # FIX for Issue #495: Race condition after planning phase
+                # The implementation_plan.json may not be fully flushed to disk yet,
+                # or there may be a brief delay before subtasks become available.
+                # Retry with exponential backoff before giving up.
+                if just_transitioned_from_planning:
+                    print_status(
+                        "Waiting for implementation plan to be ready...", "progress"
+                    )
+                    for retry_attempt in range(3):
+                        delay = (retry_attempt + 1) * 2  # 2s, 4s, 6s
+                        await asyncio.sleep(delay)
+                        next_subtask = get_next_subtask(spec_dir)
+                        if next_subtask:
+                            # Update subtask_id and phase_name after successful retry
+                            subtask_id = next_subtask.get("id")
+                            phase_name = next_subtask.get("phase_name")
+                            print_status(
+                                f"Found subtask {subtask_id} after {delay}s delay",
+                                "success",
+                            )
+                            break
+                        print_status(
+                            f"Retry {retry_attempt + 1}/3: No subtask found yet...",
+                            "warning",
+                        )
+
+                if not next_subtask:
+                    print("No pending subtasks found - build may be complete!")
+                    break
 
             # Get attempt count for recovery context
             attempt_count = recovery_manager.get_attempt_count(subtask_id)

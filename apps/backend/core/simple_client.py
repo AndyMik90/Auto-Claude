@@ -25,7 +25,11 @@ from pathlib import Path
 
 from agents.tools_pkg import get_agent_config, get_default_thinking_level
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
-from core.auth import get_sdk_env_vars, require_auth_token
+from core.auth import (
+    get_sdk_env_vars,
+    require_auth_token,
+    validate_token_not_encrypted,
+)
 from core.client import find_claude_cli
 from phase_config import get_thinking_budget
 
@@ -67,6 +71,12 @@ def create_simple_client(
     """
     # Get authentication
     oauth_token = require_auth_token()
+
+    # Validate token is not encrypted before passing to SDK
+    # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
+    # If we still have an encrypted token here, it means decryption failed or was skipped
+    validate_token_not_encrypted(oauth_token)
+
     import os
 
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
@@ -96,8 +106,11 @@ def create_simple_client(
         "max_turns": max_turns,
         "cwd": str(cwd.resolve()) if cwd else None,
         "env": sdk_env,
-        "max_thinking_tokens": max_thinking_tokens,
     }
+
+    # Only add max_thinking_tokens if not None (Haiku doesn't support extended thinking)
+    if max_thinking_tokens is not None:
+        options_kwargs["max_thinking_tokens"] = max_thinking_tokens
 
     # Add CLI path if found
     if cli_path:
