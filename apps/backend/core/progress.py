@@ -231,7 +231,7 @@ def print_progress_summary(spec_dir: Path, show_next: bool = True) -> None:
                     )
 
         except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-            pass
+            pass  # Ignore corrupted/unreadable progress files
     else:
         print()
         print_status("No implementation subtasks yet - planner needs to run", "pending")

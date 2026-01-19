@@ -182,7 +182,7 @@ class PhaseExecutor:
                     hints_data = json.load(f)
                     graph_hints = hints_data.get("hints_by_type", {})
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-                pass
+                pass  # Use empty hints if file is corrupted/unreadable
 
         # Write context file
         context_data = {
