@@ -44,7 +44,7 @@ export class ChangelogService extends EventEmitter {
   private _pythonPath: string | null = null;
   private claudePath: string;
   private autoBuildSourcePath: string = '';
-  private cachedEnv: Record<string, string> | null = null;
+  private _cachedEnv: Record<string, string> | null = null;
   private debugEnabled: boolean | null = null;
   private generator: ChangelogGenerator | null = null;
   private versionSuggester: VersionSuggester | null = null;
@@ -485,7 +485,7 @@ export class ChangelogService extends EventEmitter {
    * Suggest version using AI analysis of git commits
    */
   async suggestVersionFromCommits(
-    projectPath: string,
+    _projectPath: string,
     commits: import('../../shared/types').GitCommit[],
     currentVersion?: string
   ): Promise<{ version: string; reason: string }> {
