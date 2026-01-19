@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand, getVenvPythonPath } from '../../../platform';
+import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand, getVenvPythonPath, getEnvVar } from '../../../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -36,12 +36,14 @@ function createFallbackRunnerEnv(): Record<string, string> {
   const fallbackEnv: Record<string, string> = {};
 
   for (const key of safeEnvVars) {
-    if (process.env[key]) {
-      fallbackEnv[key] = process.env[key]!;
+    const value = getEnvVar(key);
+    if (value) {
+      fallbackEnv[key] = value;
     }
   }
 
   // Also include any CLAUDE_ or ANTHROPIC_ prefixed vars needed for auth
+  // Use case-insensitive access on Windows for these prefixed vars
   for (const [key, value] of Object.entries(process.env)) {
     if ((key.startsWith('CLAUDE_') || key.startsWith('ANTHROPIC_')) && value) {
       fallbackEnv[key] = value;

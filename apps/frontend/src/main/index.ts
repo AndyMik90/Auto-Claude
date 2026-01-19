@@ -53,7 +53,7 @@ import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager } from './claude-profile-manager';
 import type { AppSettings } from '../shared/types';
-import { isMacOS, isWindows } from './platform';
+import { isMacOS, isWindows, getEnvVar } from './platform';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Window sizing constants
@@ -227,8 +227,9 @@ function createWindow(): void {
   });
 
   // Load the renderer
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  const rendererUrl = getEnvVar('ELECTRON_RENDERER_URL');
+  if (is.dev && rendererUrl) {
+    mainWindow.loadURL(rendererUrl);
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }

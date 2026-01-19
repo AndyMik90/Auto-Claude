@@ -7,7 +7,7 @@ import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager
 import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
-import { pathsAreEqual } from '../platform';
+import { pathsAreEqual, getPathDelimiter } from '../platform';
 
 /**
  * Configuration manager for insights service
@@ -115,7 +115,7 @@ export class InsightsConfig {
     const pythonEnv = pythonEnvManager.getPythonEnv();
     const autoBuildSource = this.getAutoBuildSourcePath();
     const pythonPathParts = (pythonEnv.PYTHONPATH ?? '')
-      .split(path.delimiter)
+      .split(getPathDelimiter())
       .map((entry) => entry.trim())
       .filter(Boolean)
       .map((entry) => path.resolve(entry));
@@ -131,7 +131,7 @@ export class InsightsConfig {
       }
     }
 
-    const combinedPythonPath = pythonPathParts.join(path.delimiter);
+    const combinedPythonPath = pythonPathParts.join(getPathDelimiter());
 
     // Use getAugmentedEnv() to ensure common tool paths (claude, dotnet, etc.)
     // are available even when app is launched from Finder/Dock.

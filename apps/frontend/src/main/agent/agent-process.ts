@@ -140,7 +140,7 @@ export class AgentProcessManager {
   private detectAndSetCliPath(toolName: CliTool): Record<string, string> {
     const env: Record<string, string> = {};
     const envVarName = CLI_TOOL_ENV_MAP[toolName];
-    if (!process.env[envVarName]) {
+    if (!getEnvVar(envVarName)) {
       try {
         const toolInfo = getToolInfo(toolName);
         if (toolInfo.found && toolInfo.path) {

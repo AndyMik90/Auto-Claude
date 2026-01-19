@@ -19,7 +19,7 @@ import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
-import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar } from '../platform';
+import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar, findExecutable, getPathDelimiter } from '../platform';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
 import semver from 'semver';
@@ -56,7 +56,7 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     const pathValue = getEnvVar('PATH') || '';
     const env = {
       ...process.env,
-      PATH: cliDir ? `${cliDir}${path.delimiter}${pathValue}` : pathValue,
+      PATH: cliDir ? `${cliDir}${getPathDelimiter()}${pathValue}` : pathValue,
     };
 
     let stdout: string;
@@ -156,13 +156,15 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   // 2. Check system PATH via which/where
   try {
     if (isWindows) {
-      const result = await execFileAsync('where', ['claude'], { timeout: 5000 });
+      const wherePath = findExecutable('where') || 'where';
+      const result = await execFileAsync(wherePath, ['claude'], { timeout: 5000 });
       const paths = result.stdout.trim().split('\n').filter(p => p.trim());
       for (const p of paths) {
         await addInstallation(p.trim(), 'system-path');
       }
     } else {
-      const result = await execFileAsync('which', ['-a', 'claude'], { timeout: 5000 });
+      const whichPath = findExecutable('which') || 'which';
+      const result = await execFileAsync(whichPath, ['-a', 'claude'], { timeout: 5000 });
       const paths = result.stdout.trim().split('\n').filter(p => p.trim());
       for (const p of paths) {
         await addInstallation(p.trim(), 'system-path');
@@ -416,6 +418,26 @@ export function escapeBashCommand(str: string): string {
  * Uses the user's preferred terminal from settings
  * Supports macOS, Windows, and Linux terminals
  */
+
+/**
+ * Helper function to spawn a terminal emulator with proper path resolution
+ * Uses findExecutable() to cross-platform compatibility
+ */
+function spawnTerminal(
+  command: string,
+  args: string[],
+  options?: { detached?: boolean; stdio?: any }
+): boolean {
+  try {
+    const resolvedCmd = findExecutable(command) || command;
+    spawn(resolvedCmd, args, { detached: true, stdio: 'ignore', ...options }).unref();
+    return true;
+  } catch (err) {
+    console.warn(`[Claude Code] Failed to spawn terminal ${command}:`, err);
+    return false;
+  }
+}
+
 export async function openTerminalWithCommand(command: string): Promise<void> {
   const platform = getCurrentOS();
   const settings = readSettingsFile();
@@ -472,15 +494,16 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       `;
     } else if (terminalId === 'kitty') {
       // Kitty - use command line
-      spawn('kitty', ['--', 'bash', '-c', command], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('kitty', ['--', 'bash', '-c', command]);
       return;
     } else if (terminalId === 'alacritty') {
       // Alacritty - use command line
-      spawn('open', ['-a', 'Alacritty', '--args', '-e', 'bash', '-c', command], { detached: true, stdio: 'ignore' }).unref();
+      const openPath = findExecutable('open') || 'open';
+      spawn(openPath, ['-a', 'Alacritty', '--args', '-e', 'bash', '-c', command], { detached: true, stdio: 'ignore' }).unref();
       return;
     } else if (terminalId === 'wezterm') {
       // WezTerm - use command line
-      spawn('wezterm', ['start', '--', 'bash', '-c', command], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('wezterm', ['start', '--', 'bash', '-c', command]);
       return;
     } else if (terminalId === 'ghostty') {
       // Ghostty
@@ -531,7 +554,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     }
 
     console.warn('[Claude Code] Running AppleScript...');
-    execFileSync('osascript', ['-e', script], { stdio: 'pipe' });
+    const osascriptPath = findExecutable('osascript') || 'osascript';
+    execFileSync(osascriptPath, ['-e', script], { stdio: 'pipe' });
 
   } else if (platform === 'win32') {
     // Windows: Use appropriate terminal
@@ -723,58 +747,58 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 
     // Try to use preferred terminal if specified
     if (terminalId === 'gnometerminal') {
-      spawn('gnome-terminal', ['--', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('gnome-terminal', ['--', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'konsole') {
-      spawn('konsole', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('konsole', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'xfce4terminal') {
-      spawn('xfce4-terminal', ['-e', `bash -c "${bashCommand}"`], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('xfce4-terminal', ['-e', `bash -c "${bashCommand}"`]);
       return;
     } else if (terminalId === 'lxterminal') {
-      spawn('lxterminal', ['-e', `bash -c "${bashCommand}"`], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('lxterminal', ['-e', `bash -c "${bashCommand}"`]);
       return;
     } else if (terminalId === 'mate-terminal') {
-      spawn('mate-terminal', ['-e', `bash -c "${bashCommand}"`], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('mate-terminal', ['-e', `bash -c "${bashCommand}"`]);
       return;
     } else if (terminalId === 'tilix') {
-      spawn('tilix', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('tilix', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'terminator') {
-      spawn('terminator', ['-e', `bash -c "${bashCommand}"`], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('terminator', ['-e', `bash -c "${bashCommand}"`]);
       return;
     } else if (terminalId === 'guake') {
-      spawn('guake', ['-e', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('guake', ['-e', bashCommand]);
       return;
     } else if (terminalId === 'yakuake') {
-      spawn('yakuake', ['-e', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('yakuake', ['-e', bashCommand]);
       return;
     } else if (terminalId === 'kitty') {
-      spawn('kitty', ['--', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('kitty', ['--', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'alacritty') {
-      spawn('alacritty', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('alacritty', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'wezterm') {
-      spawn('wezterm', ['start', '--', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('wezterm', ['start', '--', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'hyper') {
-      spawn('hyper', [], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('hyper', []);
       return;
     } else if (terminalId === 'tabby') {
-      spawn('tabby', [], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('tabby', []);
       return;
     } else if (terminalId === 'xterm') {
-      spawn('xterm', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('xterm', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'urxvt') {
-      spawn('urxvt', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('urxvt', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'st') {
-      spawn('st', ['-e', 'bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('st', ['-e', 'bash', '-c', bashCommand]);
       return;
     } else if (terminalId === 'foot') {
-      spawn('foot', ['bash', '-c', bashCommand], { detached: true, stdio: 'ignore' }).unref();
+      spawnTerminal('foot', ['bash', '-c', bashCommand]);
       return;
     }
 
@@ -792,12 +816,10 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 
     let opened = false;
     for (const { cmd, args } of terminals) {
-      try {
-        spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+      if (spawnTerminal(cmd, args)) {
         opened = true;
         console.warn('[Claude Code] Opened terminal:', cmd);
         break;
-      } catch {
       }
     }
 

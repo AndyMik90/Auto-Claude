@@ -12,7 +12,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import { app } from 'electron';
-import { isWindows, getExecutableExtension, joinPaths, getVenvPythonPath } from './platform';
+import { isWindows, getExecutableExtension, joinPaths, getVenvPythonPath, getPathDelimiter } from './platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -173,7 +173,7 @@ function getMemoryPythonEnv(): Record<string, string> {
       // Merge paths: bundled site-packages takes precedence
       const existingPath = baseEnv.PYTHONPATH || '';
       baseEnv.PYTHONPATH = existingPath
-        ? `${bundledSitePackages}${path.delimiter}${existingPath}`
+        ? `${bundledSitePackages}${getPathDelimiter()}${existingPath}`
         : bundledSitePackages;
     }
   }

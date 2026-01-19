@@ -20,7 +20,7 @@ import type { BrowserWindow } from 'electron';
 import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
-import { getCurrentOS, isMacOS, isWindows } from '../platform';
+import { getCurrentOS, isMacOS, isWindows, findExecutable } from '../platform';
 import { parseEnvFile } from './utils';
 
 const settingsPath = getSettingsPath();
@@ -473,12 +473,14 @@ export function registerSettingsHandlers(
 
         if (isMacOS()) {
           // macOS: Use execFileSync with argument array to prevent injection
-          execFileSync('open', ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });
+          const openPath = findExecutable('open') || 'open';
+          execFileSync(openPath, ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });
         } else if (isWindows()) {
           // Windows: Use cmd.exe directly with argument array
           // /C tells cmd to execute the command and terminate
           // /K keeps the window open after executing cd
-          execFileSync('cmd.exe', ['/K', 'cd', '/d', resolvedPath], {
+          const cmdPath = findExecutable('cmd') || 'cmd.exe';
+          execFileSync(cmdPath, ['/K', 'cd', '/d', resolvedPath], {
             stdio: 'ignore',
             windowsHide: false,
             shell: false  // Explicitly disable shell to prevent injection
@@ -496,7 +498,8 @@ export function registerSettingsHandlers(
           let opened = false;
           for (const { cmd, args, useCwd } of terminals) {
             try {
-              execFileSync(cmd, args, {
+              const resolvedCmd = findExecutable(cmd) || cmd;
+              execFileSync(resolvedCmd, args, {
                 stdio: 'ignore',
                 ...(useCwd ? { cwd: resolvedPath } : {})
               });

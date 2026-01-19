@@ -20,7 +20,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, joinPaths, isSecurePath } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, joinPaths, isSecurePath, findExecutable } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
@@ -1158,7 +1158,8 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
       const appPath = config.paths.darwin?.[0];
       if (appPath && existsSync(appPath)) {
         // Use 'open' command with execFileAsync to prevent shell injection
-        await execFileAsync('open', ['-a', path.basename(appPath, '.app'), dirPath]);
+        const openPath = findExecutable('open') || 'open';
+        await execFileAsync(openPath, ['-a', path.basename(appPath, '.app'), dirPath]);
         return { success: true };
       }
     }
@@ -1222,7 +1223,8 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
       if (terminal === 'system') {
         // Use AppleScript to open Terminal.app at the directory
         const script = `tell application "Terminal" to do script "cd '${escapedPath}'"`;
-        await execFileAsync('osascript', ['-e', script]);
+        const osascriptPath = findExecutable('osascript') || 'osascript';
+        await execFileAsync(osascriptPath, ['-e', script]);
       } else if (terminal === 'iterm2') {
         // Use AppleScript to open iTerm2 at the directory
         const script = `tell application "iTerm"
@@ -1231,10 +1233,12 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
             write text "cd '${escapedPath}'"
           end tell
         end tell`;
-        await execFileAsync('osascript', ['-e', script]);
+        const osascriptPath = findExecutable('osascript') || 'osascript';
+        await execFileAsync(osascriptPath, ['-e', script]);
       } else if (terminal === 'warp') {
         // Warp can be opened with just the directory using execFileAsync
-        await execFileAsync('open', ['-a', 'Warp', dirPath]);
+        const openPath = findExecutable('open') || 'open';
+        await execFileAsync(openPath, ['-a', 'Warp', dirPath]);
       } else {
         // For other terminals, use execFileAsync with arguments array
         await execFileAsync(commands[0], [...commands.slice(1), dirPath]);
@@ -1243,7 +1247,8 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
       // Windows: Start terminal at directory using spawn to avoid shell injection
       if (terminal === 'system') {
         // Use spawn with proper argument separation
-        spawn('cmd.exe', ['/K', 'cd', '/d', dirPath], { detached: true, stdio: 'ignore' }).unref();
+        const cmdPath = findExecutable('cmd') || 'cmd.exe';
+        spawn(cmdPath, ['/K', 'cd', '/d', dirPath], { detached: true, stdio: 'ignore' }).unref();
       } else if (commands.length > 0) {
         spawn(commands[0], [...commands.slice(1), dirPath], { detached: true, stdio: 'ignore' }).unref();
       }
@@ -1252,15 +1257,26 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
       if (terminal === 'system') {
         // Try common terminal emulators with proper argument arrays
         try {
-          await execFileAsync('x-terminal-emulator', ['--working-directory', dirPath, '-e', 'bash']);
+          const termPath = findExecutable('x-terminal-emulator');
+          if (termPath) {
+            await execFileAsync(termPath, ['--working-directory', dirPath, '-e', 'bash']);
+          } else {
+            throw new Error('x-terminal-emulator not found');
+          }
         } catch {
           try {
-            await execFileAsync('gnome-terminal', ['--working-directory', dirPath]);
+            const gnomeTerminalPath = findExecutable('gnome-terminal');
+            if (gnomeTerminalPath) {
+              await execFileAsync(gnomeTerminalPath, ['--working-directory', dirPath]);
+            } else {
+              throw new Error('gnome-terminal not found');
+            }
           } catch {
             // xterm doesn't have --working-directory, use -e with a script
             // Escape the path for shell use within the xterm command
             const escapedPath = escapeSingleQuotedPath(dirPath);
-            await execFileAsync('xterm', ['-e', `cd '${escapedPath}' && bash`]);
+            const xtermPath = findExecutable('xterm') || 'xterm';
+            await execFileAsync(xtermPath, ['-e', `cd '${escapedPath}' && bash`]);
           }
         }
       } else {

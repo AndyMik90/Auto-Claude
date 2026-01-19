@@ -2393,7 +2393,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           // Use gh pr update-branch to sync with base branch (async to avoid blocking main process)
           // --rebase is not used to avoid force-push requirements
-          await execFileAsync("gh", ["pr", "update-branch", String(prNumber)], {
+          const ghPath = findExecutable('gh') || 'gh';
+          await execFileAsync(ghPath, ["pr", "update-branch", String(prNumber)], {
             cwd: project.path,
             env: getAugmentedEnv(),
           });
