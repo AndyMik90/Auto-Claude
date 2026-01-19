@@ -569,3 +569,855 @@ class GiteaClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit - close the client."""
         await self.close()
+
+    # =========================================================================
+    # Pull Request Operations
+    # =========================================================================
+
+    async def get_pr(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> dict[str, Any]:
+        """
+        Get a pull request by index.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index (Gitea uses index, not number)
+
+        Returns:
+            PR data dictionary
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}"
+        return await self.get(endpoint)
+
+    async def list_prs(
+        self,
+        owner: str,
+        repo: str,
+        state: str = "open",
+        sort: str = "recentupdate",
+        labels: list[str] | None = None,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        List pull requests.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            state: PR state (open, closed, all)
+            sort: Sort by (oldest, recentupdate, leastupdate, mostcomment, leastcomment, priority)
+            labels: Filter by labels
+            page: Page number (1-indexed)
+            limit: Number of items per page
+
+        Returns:
+            List of PR data dictionaries
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls"
+        params: dict[str, Any] = {
+            "state": state,
+            "sort": sort,
+            "page": page,
+            "limit": limit,
+        }
+
+        if labels:
+            params["labels"] = ",".join(labels)
+
+        return await self.get(endpoint, params=params)
+
+    async def get_pr_diff(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> str:
+        """
+        Get PR diff in unified format.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+
+        Returns:
+            Unified diff string
+        """
+        # Gitea returns diff when .diff is appended to the PR URL
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}.diff"
+        return await self.get(endpoint, raw_response=True, timeout=60.0)
+
+    async def get_pr_files(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        Get files changed in a PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of file change objects with filename, status, additions, deletions, etc.
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/files"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    async def create_review(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        body: str,
+        event: str = "COMMENT",
+        comments: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a review on a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            body: Review body text
+            event: Review event (APPROVE, REQUEST_CHANGES, COMMENT)
+            comments: Optional inline comments list
+
+        Returns:
+            Created review data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/reviews"
+        data: dict[str, Any] = {
+            "body": body,
+            "event": event.upper(),
+        }
+
+        if comments:
+            data["comments"] = comments
+
+        return await self.post(endpoint, data=data)
+
+    async def merge_pr(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        merge_style: str = "merge",
+        title: str | None = None,
+        message: str | None = None,
+        delete_branch: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Merge a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            merge_style: Merge style (merge, rebase, rebase-merge, squash, fast-forward-only)
+            title: Optional commit title (for squash)
+            message: Optional commit message
+            delete_branch: Whether to delete the source branch after merge
+
+        Returns:
+            Merge result data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/merge"
+        data: dict[str, Any] = {
+            "Do": merge_style,
+            "delete_branch_after_merge": delete_branch,
+        }
+
+        if title:
+            data["MergeTitleField"] = title
+        if message:
+            data["MergeMessageField"] = message
+
+        return await self.post(endpoint, data=data)
+
+    async def close_pr(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> dict[str, Any]:
+        """
+        Close a pull request without merging.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+
+        Returns:
+            Updated PR data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}"
+        data = {"state": "closed"}
+        return await self.patch(endpoint, data=data)
+
+    async def get_pr_commits(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        Get commits in a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of commit objects
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/commits"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    # =========================================================================
+    # Issue Operations
+    # =========================================================================
+
+    async def get_issue(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> dict[str, Any]:
+        """
+        Get an issue by index.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue index
+
+        Returns:
+            Issue data dictionary
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}"
+        return await self.get(endpoint)
+
+    async def list_issues(
+        self,
+        owner: str,
+        repo: str,
+        state: str = "open",
+        labels: list[str] | None = None,
+        milestone: str | None = None,
+        assignee: str | None = None,
+        mentioned: str | None = None,
+        page: int = 1,
+        limit: int = 100,
+        include_prs: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        List issues.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            state: Issue state (open, closed, all)
+            labels: Filter by labels
+            milestone: Filter by milestone name
+            assignee: Filter by assignee username
+            mentioned: Filter by mentioned username
+            page: Page number
+            limit: Items per page
+            include_prs: Whether to include pull requests (Gitea treats PRs as issues)
+
+        Returns:
+            List of issue data dictionaries
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues"
+        params: dict[str, Any] = {
+            "state": state,
+            "page": page,
+            "limit": limit,
+            "type": "issues" if not include_prs else "all",
+        }
+
+        if labels:
+            params["labels"] = ",".join(labels)
+        if milestone:
+            params["milestone"] = milestone
+        if assignee:
+            params["assignee"] = assignee
+        if mentioned:
+            params["mentioned"] = mentioned
+
+        return await self.get(endpoint, params=params)
+
+    async def create_issue(
+        self,
+        owner: str,
+        repo: str,
+        title: str,
+        body: str = "",
+        labels: list[int] | None = None,
+        assignees: list[str] | None = None,
+        milestone: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new issue.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            title: Issue title
+            body: Issue body
+            labels: List of label IDs to apply
+            assignees: List of usernames to assign
+            milestone: Milestone ID
+
+        Returns:
+            Created issue data
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues"
+        data: dict[str, Any] = {
+            "title": title,
+            "body": body,
+        }
+
+        if labels:
+            data["labels"] = labels
+        if assignees:
+            data["assignees"] = assignees
+        if milestone is not None:
+            data["milestone"] = milestone
+
+        return await self.post(endpoint, data=data)
+
+    async def close_issue(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> dict[str, Any]:
+        """
+        Close an issue.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue index
+
+        Returns:
+            Updated issue data
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}"
+        data = {"state": "closed"}
+        return await self.patch(endpoint, data=data)
+
+    async def add_comment(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        body: str,
+    ) -> dict[str, Any]:
+        """
+        Add a comment to an issue or PR.
+
+        Note: In Gitea, PRs and issues share the same comment API.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+            body: Comment body
+
+        Returns:
+            Created comment data
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/comments"
+        data = {"body": body}
+        return await self.post(endpoint, data=data)
+
+    async def list_comments(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        since: str | None = None,
+        before: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        List comments on an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+            since: Only comments after this time (ISO 8601 format)
+            before: Only comments before this time (ISO 8601 format)
+
+        Returns:
+            List of comment data
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/comments"
+        params: dict[str, Any] = {}
+
+        if since:
+            params["since"] = since
+        if before:
+            params["before"] = before
+
+        return await self.get(endpoint, params=params if params else None)
+
+    # =========================================================================
+    # Label Operations
+    # =========================================================================
+
+    async def get_labels(
+        self,
+        owner: str,
+        repo: str,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        List all labels in a repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of label data
+        """
+        endpoint = f"/repos/{owner}/{repo}/labels"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    async def get_issue_labels(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> list[dict[str, Any]]:
+        """
+        Get labels on an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+
+        Returns:
+            List of label data
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/labels"
+        return await self.get(endpoint)
+
+    async def add_labels(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        labels: list[int],
+    ) -> list[dict[str, Any]]:
+        """
+        Add labels to an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+            labels: List of label IDs to add
+
+        Returns:
+            Updated list of labels on the issue
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/labels"
+        data = {"labels": labels}
+        return await self.post(endpoint, data=data)
+
+    async def replace_labels(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        labels: list[int],
+    ) -> list[dict[str, Any]]:
+        """
+        Replace all labels on an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+            labels: List of label IDs to set
+
+        Returns:
+            Updated list of labels
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/labels"
+        data = {"labels": labels}
+        return await self.put(endpoint, data=data)
+
+    async def remove_label(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        label_id: int,
+    ) -> None:
+        """
+        Remove a label from an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+            label_id: Label ID to remove
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/labels/{label_id}"
+        await self.delete(endpoint)
+
+    async def clear_labels(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+    ) -> None:
+        """
+        Clear all labels from an issue or PR.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: Issue/PR index
+        """
+        endpoint = f"/repos/{owner}/{repo}/issues/{index}/labels"
+        await self.delete(endpoint)
+
+    async def create_label(
+        self,
+        owner: str,
+        repo: str,
+        name: str,
+        color: str,
+        description: str = "",
+        exclusive: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Create a new label in a repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            name: Label name
+            color: Color hex code (without #)
+            description: Label description
+            exclusive: Whether this label is exclusive (can only be applied once per issue)
+
+        Returns:
+            Created label data
+        """
+        endpoint = f"/repos/{owner}/{repo}/labels"
+        data: dict[str, Any] = {
+            "name": name,
+            "color": color.lstrip("#"),  # Gitea expects color without #
+            "description": description,
+            "exclusive": exclusive,
+        }
+        return await self.post(endpoint, data=data)
+
+    async def get_label(
+        self,
+        owner: str,
+        repo: str,
+        label_id: int,
+    ) -> dict[str, Any]:
+        """
+        Get a label by ID.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            label_id: Label ID
+
+        Returns:
+            Label data
+        """
+        endpoint = f"/repos/{owner}/{repo}/labels/{label_id}"
+        return await self.get(endpoint)
+
+    async def delete_label(
+        self,
+        owner: str,
+        repo: str,
+        label_id: int,
+    ) -> None:
+        """
+        Delete a label from a repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            label_id: Label ID to delete
+        """
+        endpoint = f"/repos/{owner}/{repo}/labels/{label_id}"
+        await self.delete(endpoint)
+
+    # =========================================================================
+    # Repository Operations
+    # =========================================================================
+
+    async def get_repo(
+        self,
+        owner: str,
+        repo: str,
+    ) -> dict[str, Any]:
+        """
+        Get repository information.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+
+        Returns:
+            Repository data including default_branch, permissions, etc.
+        """
+        endpoint = f"/repos/{owner}/{repo}"
+        return await self.get(endpoint)
+
+    async def get_default_branch(
+        self,
+        owner: str,
+        repo: str,
+    ) -> str:
+        """
+        Get the default branch of a repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+
+        Returns:
+            Default branch name (e.g., "main", "master")
+        """
+        repo_data = await self.get_repo(owner, repo)
+        return repo_data.get("default_branch", "main")
+
+    async def check_permissions(
+        self,
+        owner: str,
+        repo: str,
+        username: str,
+    ) -> str:
+        """
+        Check a user's permission level on the repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            username: Username to check
+
+        Returns:
+            Permission level (admin, write, read, none)
+        """
+        endpoint = f"/repos/{owner}/{repo}/collaborators/{username}/permission"
+        try:
+            result = await self.get(endpoint)
+            # Gitea returns permission in format: {"permission": "admin|write|read"}
+            return result.get("permission", "none")
+        except GiteaAPIError as e:
+            if e.status_code == 404:
+                return "none"
+            raise
+
+    async def list_collaborators(
+        self,
+        owner: str,
+        repo: str,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        List repository collaborators.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of collaborator data with permissions
+        """
+        endpoint = f"/repos/{owner}/{repo}/collaborators"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    async def get_branch(
+        self,
+        owner: str,
+        repo: str,
+        branch: str,
+    ) -> dict[str, Any]:
+        """
+        Get branch information.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            branch: Branch name
+
+        Returns:
+            Branch data including latest commit
+        """
+        endpoint = f"/repos/{owner}/{repo}/branches/{branch}"
+        return await self.get(endpoint)
+
+    async def list_branches(
+        self,
+        owner: str,
+        repo: str,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        List repository branches.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of branch data
+        """
+        endpoint = f"/repos/{owner}/{repo}/branches"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    # =========================================================================
+    # User Operations
+    # =========================================================================
+
+    async def get_current_user(self) -> dict[str, Any]:
+        """
+        Get the currently authenticated user.
+
+        Returns:
+            User data for the authenticated user
+        """
+        return await self.get("/user")
+
+    async def get_user(self, username: str) -> dict[str, Any]:
+        """
+        Get a user by username.
+
+        Args:
+            username: The username to look up
+
+        Returns:
+            User data
+        """
+        endpoint = f"/users/{username}"
+        return await self.get(endpoint)
+
+    # =========================================================================
+    # Review Operations (additional)
+    # =========================================================================
+
+    async def list_pr_reviews(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        page: int = 1,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        List reviews on a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            page: Page number
+            limit: Items per page
+
+        Returns:
+            List of review data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/reviews"
+        params = {"page": page, "limit": limit}
+        return await self.get(endpoint, params=params)
+
+    async def get_pr_review(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        review_id: int,
+    ) -> dict[str, Any]:
+        """
+        Get a specific review on a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            review_id: Review ID
+
+        Returns:
+            Review data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/reviews/{review_id}"
+        return await self.get(endpoint)
+
+    async def submit_pr_review(
+        self,
+        owner: str,
+        repo: str,
+        index: int,
+        review_id: int,
+        body: str,
+        event: str = "COMMENT",
+    ) -> dict[str, Any]:
+        """
+        Submit a pending review.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            index: PR index
+            review_id: Review ID
+            body: Review body
+            event: Review event (APPROVE, REQUEST_CHANGES, COMMENT)
+
+        Returns:
+            Submitted review data
+        """
+        endpoint = f"/repos/{owner}/{repo}/pulls/{index}/reviews/{review_id}"
+        data = {"body": body, "event": event.upper()}
+        return await self.post(endpoint, data=data)
