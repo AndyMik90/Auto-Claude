@@ -1,10 +1,16 @@
 #!/usr/bin/env node
+/**
+ * Packaging script that downloads bundled Python, stages runtime modules,
+ * and builds the Electron app for the requested platforms and architectures.
+ *
+ * Usage: node scripts/package-with-python.cjs [--mac|--win|--linux] [--x64|--arm64|--universal]
+ */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { isWindows, getCurrentPlatform } = require('../src/shared/platform.cjs');
+const { isWindows, getCurrentPlatform, toNodePlatform } = require('../src/shared/platform.cjs');
 const { downloadPython } = require('./download-python.cjs');
 
 const args = process.argv.slice(2);
@@ -66,7 +72,9 @@ function resolveArchs() {
 
   for (const arch of archs) {
     if (!['x64', 'arm64'].includes(arch)) {
-      throw new Error(`Unsupported arch for bundled Python: ${arch}. Supported: x64, arm64.`);
+      throw new Error(
+        `Host architecture '${arch}' is not supported for bundled Python. Please specify --x64 or --arm64 explicitly.`
+      );
     }
   }
 
@@ -99,11 +107,6 @@ function runCommand(command, commandArgs, cwd, env) {
     const code = result.status ?? 1;
     throw new Error(`Command "${command}" failed with exit code ${code}.`);
   }
-}
-
-function toNodePlatform(platform) {
-  const map = { mac: 'darwin', win: 'win32', linux: 'linux', darwin: 'darwin', win32: 'win32' };
-  return map[platform] || platform;
 }
 
 function resolvePackageDir(baseDir, pkgName) {

@@ -25,10 +25,22 @@ function isUnix() {
   return isMacOS() || isLinux();
 }
 
+function toNodePlatform(platform) {
+  const map = {
+    mac: 'darwin',
+    win: 'win32',
+    darwin: 'darwin',
+    win32: 'win32',
+    linux: 'linux',
+  };
+  return map[platform] || platform;
+}
+
 module.exports = {
   getCurrentPlatform,
   isWindows,
   isMacOS,
   isLinux,
   isUnix,
+  toNodePlatform,
 };
