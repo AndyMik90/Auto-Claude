@@ -644,20 +644,25 @@ describe('Platform Module', () => {
   });
 
   describe('getEnvVar', () => {
-    const originalEnv = process.env;
+    // Clone original env for proper restoration (works on case-insensitive Windows)
+    const originalEnv = { ...process.env };
 
     afterEach(() => {
       // Restore original environment after each test
-      process.env = originalEnv;
+      process.env = { ...originalEnv };
     });
 
     describeWindows('provides case-insensitive access on Windows', () => {
       beforeEach(() => {
         // Simulate Windows environment with different casing
-        process.env.PATH = 'C:\\Windows\\System32';
-        process.env.Path = 'C:\\Windows\\System32\\different';
-        process.env.USERPROFILE = 'C:\\Users\\TestUser';
-        process.env.userprofile = 'C:\\Users\\TestUser\\different';
+        // Use spread to ensure we get a fresh object
+        process.env = {
+          ...originalEnv,
+          PATH: 'C:\\Windows\\System32',
+          Path: 'C:\\Windows\\System32\\different',
+          USERPROFILE: 'C:\\Users\\TestUser',
+          userprofile: 'C:\\Users\\TestUser\\different'
+        };
       });
 
       it('finds environment variable regardless of case (PATH)', () => {
@@ -693,16 +698,12 @@ describe('Platform Module', () => {
     describeUnix('provides case-sensitive access on Unix', () => {
       // biome-ignore lint/suspicious/noDuplicateTestHooks: Platform-specific test setup for Unix (different from Windows)
       beforeEach(() => {
-        // Clear any case variants from Windows tests
-        delete (process.env as Record<string, string>)['Path'];
-        delete (process.env as Record<string, string>)['path'];
-        delete (process.env as Record<string, string>)['USERPROFILE'];
-        delete (process.env as Record<string, string>)['userprofile'];
-        delete (process.env as Record<string, string>)['UsErPrOfIlE'];
-
-        // Simulate Unix environment (case-sensitive)
-        process.env.PATH = '/usr/bin:/bin';
-        process.env.USER = 'testuser';
+        // Create a case-sensitive environment for Unix testing
+        // Use a fresh plain object with only Unix-specific keys
+        process.env = {
+          PATH: '/usr/bin:/bin',
+          USER: 'testuser'
+        };
         // Note: On Unix, PATH and Path are different variables
       });
 
@@ -815,6 +816,10 @@ describe('Platform Module', () => {
 
     describeUnix('finds executables without extensions', () => {
       // biome-ignore lint/suspicious/noDuplicateTestHooks: Platform-specific test setup for Unix (different from Windows)
+      // Helper to normalize paths for cross-platform test assertions
+      const normalizePath = (p: string | null): string | null =>
+        p ? p.replace(/\\/g, '/') : null;
+
       beforeEach(() => {
         // Set up a mock PATH for testing
         process.env.PATH = '/usr/local/bin:/usr/bin:/bin';
@@ -822,14 +827,16 @@ describe('Platform Module', () => {
 
       it('finds executable in PATH', () => {
         mockedExistsSync.mockImplementation((path) => {
-          return typeof path === 'string' && path.endsWith('/bin/tool');
+          const p = normalizePath(String(path));
+          return p !== null && p.endsWith('/bin/tool');
         });
 
         const result = findExecutable('tool');
         expect(result).toBeTruthy();
-        expect(result).toContain('tool');
-        if (result) {
-          expect(result.endsWith('tool')).toBe(true);
+        const normalized = normalizePath(result);
+        expect(normalized).toContain('tool');
+        if (normalized) {
+          expect(normalized.endsWith('tool')).toBe(true);
         }
       });
 
@@ -842,17 +849,19 @@ describe('Platform Module', () => {
 
       it('searches additional paths when provided', () => {
         mockedExistsSync.mockImplementation((path) => {
-          return typeof path === 'string' && path.includes('custom') && path.endsWith('custom');
+          const p = normalizePath(String(path));
+          return p !== null && p.includes('custom') && p.endsWith('custom');
         });
 
         const result = findExecutable('custom', ['/opt/custom/bin']);
         expect(result).toBeTruthy();
-        expect(result).toContain('custom');
+        expect(normalizePath(result)).toContain('custom');
       });
 
       it('searches PATH in order and returns first match', () => {
         mockedExistsSync.mockImplementation((path) => {
-          const p = path as string;
+          const p = normalizePath(String(path));
+          if (!p) return false;
           // Match in first directory
           if (p.includes('/usr/local/bin/node')) return true;
           // Also match in second directory (should not be returned)
@@ -862,8 +871,9 @@ describe('Platform Module', () => {
 
         const result = findExecutable('node');
         expect(result).toBeTruthy();
-        expect(result).toContain('/usr/local/bin/node');
-        expect(result).not.toContain('/usr/bin/node');
+        const normalized = normalizePath(result);
+        expect(normalized).toContain('/usr/local/bin/node');
+        expect(normalized).not.toContain('/usr/bin/node');
       });
     });
 
