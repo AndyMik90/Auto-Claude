@@ -96,7 +96,8 @@ function runCommand(command, commandArgs, cwd, env) {
   }
 
   if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+    const code = result.status ?? 1;
+    throw new Error(`Command "${command}" failed with exit code ${code}.`);
   }
 }
 
