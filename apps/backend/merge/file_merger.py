@@ -161,7 +161,9 @@ def combine_non_conflicting_changes(
         import_end = find_import_end(lines, file_path)
         for imp in imports:
             # Strip trailing newline from content_after to prevent double newlines
-            import_content = imp.content_after.rstrip("\n\r") if imp.content_after else ""
+            import_content = (
+                imp.content_after.rstrip("\n\r") if imp.content_after else ""
+            )
             if import_content and import_content not in content:
                 lines.insert(import_end, import_content)
                 import_end += 1
