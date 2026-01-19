@@ -236,7 +236,9 @@ export function expandWindowsEnvVars(pathPattern: string): string {
   for (const [pattern, value] of Object.entries(envVars)) {
     // Only replace if we have a valid value (skip replacement if empty)
     if (value) {
-      expanded = expanded.replace(new RegExp(pattern, 'gi'), value);
+      // Escape special regex characters in the pattern (e.g., parentheses in %PROGRAMFILES(X86)%)
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expanded = expanded.replace(new RegExp(escapedPattern, 'gi'), value);
     }
   }
 

@@ -791,7 +791,7 @@ class CLIToolManager {
           ? unquotedPath.slice(1, -1)
           : unquotedPath;
 
-        if (isWindows() && !isPathSecure(cleanPath)) {
+        if (!isPathSecure(cleanPath)) {
           console.warn(
             `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
           );
@@ -1228,6 +1228,13 @@ class CLIToolManager {
         stdout = result.stdout;
       } else {
         // For .exe files and non-Windows, use execFileAsync
+        // Security validation: reject paths with dangerous patterns
+        if (!isPathSecure(normalizedCmd)) {
+          return {
+            valid: false,
+            message: `Claude CLI path failed security validation: ${unquotedCmd}`,
+          };
+        }
         const result = await execFileAsync(normalizedCmd, ['--version'], {
           encoding: 'utf-8',
           timeout: 5000,
@@ -1246,6 +1253,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `Claude CLI ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
@@ -1268,6 +1276,14 @@ class CLIToolManager {
       const parts = pythonCmd.split(' ');
       const cmd = parts[0];
       const args = [...parts.slice(1), '--version'];
+
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(cmd)) {
+        return {
+          valid: false,
+          message: `Invalid Python path: contains dangerous characters or patterns`,
+        };
+      }
 
       const { stdout } = await execFileAsync(cmd, args, {
         encoding: 'utf-8',
@@ -1325,6 +1341,14 @@ class CLIToolManager {
       // e.g., C:\Program Files\Git\git -> C:\Program Files\Git\git.exe
       const normalizedCmd = normalizeExecutablePath(gitCmd);
 
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(normalizedCmd)) {
+        return {
+          valid: false,
+          message: `Invalid Git path: contains dangerous characters or patterns`,
+        };
+      }
+
       const { stdout } = await execFileAsync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
@@ -1340,6 +1364,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `Git ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
@@ -1416,7 +1441,7 @@ class CLIToolManager {
           ? unquotedPath.slice(1, -1)
           : unquotedPath;
 
-        if (isWindows() && !isPathSecure(cleanPath)) {
+        if (!isPathSecure(cleanPath)) {
           console.warn(
             `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
           );

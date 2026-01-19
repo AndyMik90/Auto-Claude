@@ -45,7 +45,8 @@ function createFallbackRunnerEnv(): Record<string, string> {
   // Also include any CLAUDE_ or ANTHROPIC_ prefixed vars needed for auth
   // Use case-insensitive access on Windows for these prefixed vars
   for (const [key, value] of Object.entries(process.env)) {
-    if ((key.startsWith('CLAUDE_') || key.startsWith('ANTHROPIC_')) && value) {
+    const keyForMatch = isWindows() ? key.toUpperCase() : key;
+    if ((keyForMatch.startsWith('CLAUDE_') || keyForMatch.startsWith('ANTHROPIC_')) && value) {
       fallbackEnv[key] = value;
     }
   }

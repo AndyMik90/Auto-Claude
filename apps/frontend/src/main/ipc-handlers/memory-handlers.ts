@@ -175,18 +175,19 @@ function checkOllamaInstalled(): OllamaInstallStatus {
   // Use execFileSync with explicit command to avoid shell injection
   try {
     const whichCmd = getWhichCommand();
-    const ollamaPath = execFileSync(whichCmd, ['ollama'], {
+    const rawOllamaPath = execFileSync(whichCmd, ['ollama'], {
       encoding: 'utf-8',
       timeout: 5000,
       windowsHide: true,
     }).toString().trim().split('\n')[0]; // Get first result on Windows
 
-    if (ollamaPath && fs.existsSync(ollamaPath)) {
+    // Normalize the path on Windows to handle missing extensions BEFORE existence check
+    // e.g., C:\...\ollama -> C:\...\ollama.exe
+    const normalizedOllamaPath = normalizeExecutablePath(rawOllamaPath);
+
+    if (normalizedOllamaPath && fs.existsSync(normalizedOllamaPath)) {
       let version: string | undefined;
       try {
-        // Normalize the path on Windows to handle missing extensions
-        // e.g., C:\...\ollama -> C:\...\ollama.exe
-        const normalizedOllamaPath = normalizeExecutablePath(ollamaPath);
         // Use the discovered path directly with execFileSync
         const versionOutput = execFileSync(normalizedOllamaPath, ['--version'], {
           encoding: 'utf-8',
@@ -203,7 +204,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
 
       return {
         installed: true,
-        path: ollamaPath,
+        path: normalizedOllamaPath,
         version,
       };
     }

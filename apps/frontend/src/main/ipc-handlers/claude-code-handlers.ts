@@ -115,6 +115,11 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   const homeDir = os.homedir();
   const isWindows = platformIsWindows();
 
+  // Normalize activePath for comparison and existence checks (Windows extension handling)
+  const normalizedActivePath = activePath
+    ? path.resolve(normalizeExecutablePath(activePath))
+    : null;
+
   // Get detection paths from cli-tool-manager (single source of truth)
   const detectionPaths = getClaudeDetectionPaths(homeDir);
 
@@ -144,12 +149,12 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
       path: normalizedPath,
       version,
       source,
-      isActive: activePath ? path.resolve(activePath) === normalizedPath : false,
+      isActive: normalizedActivePath ? normalizedActivePath === normalizedPath : false,
     });
   };
 
   // 1. Check user-configured path first (if set)
-  if (activePath && existsSync(activePath)) {
+  if (activePath) {
     await addInstallation(activePath, 'user-config');
   }
 
