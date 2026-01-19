@@ -14,7 +14,7 @@ import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import os from 'os';
-import { isWindows } from '../platform';
+import { isWindows, expandWindowsEnvVars } from '../platform';
 
 const execFileAsync = promisify(execFile);
 
@@ -56,33 +56,20 @@ export function isSecurePath(pathStr: string): boolean {
   return true;
 }
 
-export function expandWindowsPath(pathPattern: string): string | null {
-  const envVars: Record<string, string | undefined> = {
-    '%PROGRAMFILES%': process.env.ProgramFiles || 'C:\\Program Files',
-    '%PROGRAMFILES(X86)%': process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
-    '%LOCALAPPDATA%': process.env.LOCALAPPDATA,
-    '%APPDATA%': process.env.APPDATA,
-    '%USERPROFILE%': process.env.USERPROFILE || os.homedir(),
-  };
-
-  let expandedPath = pathPattern;
-
-  for (const [placeholder, value] of Object.entries(envVars)) {
-    if (expandedPath.includes(placeholder)) {
-      if (!value) {
-        return null;
-      }
-      expandedPath = expandedPath.replace(placeholder, value);
-    }
-  }
-
-  // Verify no unexpanded placeholders remain (indicates unknown variable)
-  if (/%[^%]+%/.test(expandedPath)) {
+/**
+ * Expand Windows environment variables in a path pattern
+ * Uses centralized expandWindowsEnvVars from platform module for consistency
+ * @param pathPattern - Path pattern with %VARIABLE% placeholders
+ * @returns Expanded path, or null if expansion fails and path contains unexpanded variables
+ */
+function expandWindowsPath(pathPattern: string): string | null {
+  const expanded = expandWindowsEnvVars(pathPattern);
+  // Check if any unexpanded placeholders remain (indicates missing env vars)
+  if (/%[^%]+%/.test(expanded)) {
     return null;
   }
-
   // Normalize the path (resolve double backslashes, etc.)
-  return path.normalize(expandedPath);
+  return path.normalize(expanded);
 }
 
 export function getWindowsExecutablePaths(
