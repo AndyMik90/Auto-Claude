@@ -265,6 +265,8 @@ describe('usage-monitor', () => {
       expect(usage.limitType).toBe('session'); // 0.45 (weekly) < 0.72 (session), so session is higher
       expect(usage.profileId).toBe('test-profile-1');
       expect(usage.profileName).toBe('Anthropic Profile');
+      expect(usage.sessionResetTimestamp).toBe('2025-01-17T15:00:00Z');
+      expect(usage.weeklyResetTimestamp).toBe('2025-01-20T12:00:00Z');
     });
 
     it('should handle missing optional fields in Anthropic response', () => {
@@ -281,6 +283,8 @@ describe('usage-monitor', () => {
       expect(usage.weeklyPercent).toBe(0); // Missing field defaults to 0
       expect(usage.sessionResetTime).toBe('Unknown'); // Missing reset time
       expect(usage.weeklyResetTime).toBe('Unknown'); // Missing reset time
+      expect(usage.sessionResetTimestamp).toBeUndefined();
+      expect(usage.weeklyResetTimestamp).toBeUndefined();
     });
   });
 
