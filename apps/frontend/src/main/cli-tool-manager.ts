@@ -73,6 +73,14 @@ interface ToolValidation {
   valid: boolean;
   version?: string;
   message: string;
+  /**
+   * The normalized executable path with file extension (Windows only).
+   * On Unix systems, this is the same as the input path.
+   * On Windows, this includes the extension (.exe, .cmd, .bat, .ps1) if the input was missing it.
+   *
+   * This should be used for all executions to avoid ENOENT errors.
+   */
+  normalizedPath?: string;
 }
 
 /**
@@ -264,12 +272,42 @@ export function buildClaudeDetectionResult(
   if (!validation.valid) {
     return null;
   }
+  // Use normalized path if available (for Windows compatibility)
+  // Otherwise fall back to the original path
+  const effectivePath = validation.normalizedPath ?? claudePath;
   return {
     found: true,
-    path: claudePath,
+    path: effectivePath,
     version: validation.version,
     source,
-    message: `${messagePrefix}: ${claudePath}`,
+    message: `${messagePrefix}: ${effectivePath}`,
+  };
+}
+
+/**
+ * Generic helper to build a tool detection result with normalized path support
+ *
+ * @param toolPath - The original tool path
+ * @param validation - The validation result (may include normalized path)
+ * @param source - The detection source
+ * @param message - The detection message
+ * @returns Tool detection result with normalized path if available
+ */
+function buildToolDetectionResult(
+  toolPath: string,
+  validation: ToolValidation,
+  source: ToolDetectionResult['source'],
+  message: string
+): ToolDetectionResult {
+  // Use normalized path if available (for Windows compatibility)
+  // Otherwise fall back to the original path
+  const effectivePath = validation.normalizedPath ?? toolPath;
+  return {
+    found: true,
+    path: effectivePath,
+    version: validation.version,
+    source,
+    message,
   };
 }
 
@@ -512,13 +550,12 @@ class CLIToolManager {
       } else {
         const validation = this.validateGit(this.userConfig.gitPath);
         if (validation.valid) {
-          return {
-            found: true,
-            path: this.userConfig.gitPath,
-            version: validation.version,
-            source: 'user-config',
-            message: `Using user-configured Git: ${this.userConfig.gitPath}`,
-          };
+          return buildToolDetectionResult(
+            this.userConfig.gitPath,
+            validation,
+            'user-config',
+            `Using user-configured Git: ${this.userConfig.gitPath}`
+          );
         }
         console.warn(`[Git] User-configured path invalid: ${validation.message}`);
       }
@@ -535,13 +572,12 @@ class CLIToolManager {
         if (existsSync(gitPath)) {
           const validation = this.validateGit(gitPath);
           if (validation.valid) {
-            return {
-              found: true,
-              path: gitPath,
-              version: validation.version,
-              source: 'homebrew',
-              message: `Using Homebrew Git: ${gitPath}`,
-            };
+            return buildToolDetectionResult(
+              gitPath,
+              validation,
+              'homebrew',
+              `Using Homebrew Git: ${gitPath}`
+            );
           }
         }
       }
@@ -552,13 +588,12 @@ class CLIToolManager {
     if (gitPath) {
       const validation = this.validateGit(gitPath);
       if (validation.valid) {
-        return {
-          found: true,
-          path: gitPath,
-          version: validation.version,
-          source: 'system-path',
-          message: `Using system Git: ${gitPath}`,
-        };
+        return buildToolDetectionResult(
+          gitPath,
+          validation,
+          'system-path',
+          `Using system Git: ${gitPath}`
+        );
       }
     }
 
@@ -569,13 +604,12 @@ class CLIToolManager {
       if (whereGitPath) {
         const validation = this.validateGit(whereGitPath);
         if (validation.valid) {
-          return {
-            found: true,
-            path: whereGitPath,
-            version: validation.version,
-            source: 'system-path',
-            message: `Using Windows Git: ${whereGitPath}`,
-          };
+          return buildToolDetectionResult(
+            whereGitPath,
+            validation,
+            'system-path',
+            `Using Windows Git: ${whereGitPath}`
+          );
         }
       }
 
@@ -584,13 +618,12 @@ class CLIToolManager {
       for (const winGitPath of windowsPaths) {
         const validation = this.validateGit(winGitPath);
         if (validation.valid) {
-          return {
-            found: true,
-            path: winGitPath,
-            version: validation.version,
-            source: 'system-path',
-            message: `Using Windows Git: ${winGitPath}`,
-          };
+          return buildToolDetectionResult(
+            winGitPath,
+            validation,
+            'system-path',
+            `Using Windows Git: ${winGitPath}`
+          );
         }
       }
     }
@@ -625,13 +658,12 @@ class CLIToolManager {
       } else {
         const validation = this.validateGitHubCLI(this.userConfig.githubCLIPath);
         if (validation.valid) {
-          return {
-            found: true,
-            path: this.userConfig.githubCLIPath,
-            version: validation.version,
-            source: 'user-config',
-            message: `Using user-configured GitHub CLI: ${this.userConfig.githubCLIPath}`,
-          };
+          return buildToolDetectionResult(
+            this.userConfig.githubCLIPath,
+            validation,
+            'user-config',
+            `Using user-configured GitHub CLI: ${this.userConfig.githubCLIPath}`
+          );
         }
         console.warn(
           `[GitHub CLI] User-configured path invalid: ${validation.message}`
@@ -650,13 +682,12 @@ class CLIToolManager {
         if (existsSync(ghPath)) {
           const validation = this.validateGitHubCLI(ghPath);
           if (validation.valid) {
-            return {
-              found: true,
-              path: ghPath,
-              version: validation.version,
-              source: 'homebrew',
-              message: `Using Homebrew GitHub CLI: ${ghPath}`,
-            };
+            return buildToolDetectionResult(
+              ghPath,
+              validation,
+              'homebrew',
+              `Using Homebrew GitHub CLI: ${ghPath}`
+            );
           }
         }
       }
@@ -667,13 +698,12 @@ class CLIToolManager {
     if (ghPath) {
       const validation = this.validateGitHubCLI(ghPath);
       if (validation.valid) {
-        return {
-          found: true,
-          path: ghPath,
-          version: validation.version,
-          source: 'system-path',
-          message: `Using system GitHub CLI: ${ghPath}`,
-        };
+        return buildToolDetectionResult(
+          ghPath,
+          validation,
+          'system-path',
+          `Using system GitHub CLI: ${ghPath}`
+        );
       }
     }
 
@@ -684,13 +714,12 @@ class CLIToolManager {
       if (whereGhPath) {
         const validation = this.validateGitHubCLI(whereGhPath);
         if (validation.valid) {
-          return {
-            found: true,
-            path: whereGhPath,
-            version: validation.version,
-            source: 'system-path',
-            message: `Using Windows GitHub CLI: ${whereGhPath}`,
-          };
+          return buildToolDetectionResult(
+            whereGhPath,
+            validation,
+            'system-path',
+            `Using Windows GitHub CLI: ${whereGhPath}`
+          );
         }
       }
 
@@ -713,13 +742,12 @@ class CLIToolManager {
         if (existsSync(ghPath)) {
           const validation = this.validateGitHubCLI(ghPath);
           if (validation.valid) {
-            return {
-              found: true,
-              path: ghPath,
-              version: validation.version,
-              source: 'system-path',
-              message: `Using Windows GitHub CLI: ${ghPath}`,
-            };
+            return buildToolDetectionResult(
+              ghPath,
+              validation,
+              'system-path',
+              `Using Windows GitHub CLI: ${ghPath}`
+            );
           }
         }
       }
@@ -947,6 +975,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `Git ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
@@ -989,6 +1018,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `GitHub CLI ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
@@ -1073,6 +1103,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `Claude CLI ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
@@ -1345,6 +1376,7 @@ class CLIToolManager {
         valid: true,
         version: versionStr,
         message: `GitHub CLI ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
       };
     } catch (error) {
       return {
