@@ -182,7 +182,7 @@ def _detect_worktree_base_branch(
     config_path = worktree_path / ".auto-claude" / "worktree-config.json"
     if config_path.exists():
         try:
-            config = json.loads(config_path.read_text())
+            config = json.loads(config_path.read_text(encoding="utf-8"))
             if config.get("base_branch"):
                 debug(
                     MODULE,
