@@ -9,7 +9,7 @@ import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { CustomMcpServer, McpHealthCheckResult, McpHealthStatus, McpTestConnectionResult } from '../../shared/types/project';
 import { spawn } from 'child_process';
 import { appLog } from '../app-logger';
-import { isWindows, normalizeExecutablePath } from '../platform';
+import { isWindows, normalizeExecutablePath, getWhichCommand } from '../platform';
 
 /**
  * Defense-in-depth: Frontend-side command validation
@@ -194,7 +194,7 @@ async function checkCommandHealth(server: CustomMcpServer, startTime: number): P
       });
     }
 
-    const command = isWindows() ? 'where' : 'which';
+    const command = getWhichCommand();
     const proc = spawn(command, [server.command!], {
       timeout: 5000,
     });

@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawnSync } = require('child_process');
+const { isWindows, isMacOS, isLinux } = require('../src/shared/platform.cjs');
 
 const FRONTEND_DIR = path.resolve(__dirname, '..');
 const PYTHON_RUNTIME_DIR = path.join(FRONTEND_DIR, 'python-runtime');
@@ -15,12 +16,12 @@ console.log('=== Python Bundling Verification ===\n');
 
 // Check 1: Python runtime downloaded?
 console.log('1. Checking if Python runtime is downloaded...');
-const platform = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
+const platform = isWindows() ? 'win' : isMacOS() ? 'mac' : 'linux';
 const arch = process.arch;
 const runtimePath = path.join(PYTHON_RUNTIME_DIR, `${platform}-${arch}`, 'python');
 
 if (fs.existsSync(runtimePath)) {
-  const pythonExe = process.platform === 'win32'
+  const pythonExe = isWindows()
     ? path.join(runtimePath, 'python.exe')
     : path.join(runtimePath, 'bin', 'python3');
 
@@ -62,7 +63,7 @@ if (pythonResource) {
 console.log('\n3. Checking venv creation capability...');
 try {
   // Find system Python for testing
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const pythonCmd = isWindows() ? 'python' : 'python3';
 
   const result = spawnSync(pythonCmd, ['-m', 'venv', '--help'], { encoding: 'utf8' });
   if (result.status === 0) {

@@ -1695,12 +1695,13 @@ class CLIToolManager {
         if (await existsAsync(gitPath)) {
           const validation = await this.validateGitAsync(gitPath);
           if (validation.valid) {
+            const effectivePath = validation.normalizedPath ?? gitPath;
             return {
               found: true,
-              path: gitPath,
+              path: effectivePath,
               version: validation.version,
               source: 'homebrew',
-              message: `Using Homebrew Git: ${gitPath}`,
+              message: `Using Homebrew Git: ${effectivePath}`,
             };
           }
         }
@@ -1712,12 +1713,13 @@ class CLIToolManager {
     if (gitPath) {
       const validation = await this.validateGitAsync(gitPath);
       if (validation.valid) {
+        const effectivePath = validation.normalizedPath ?? gitPath;
         return {
           found: true,
-          path: gitPath,
+          path: effectivePath,
           version: validation.version,
           source: 'system-path',
-          message: `Using system Git: ${gitPath}`,
+          message: `Using system Git: ${effectivePath}`,
         };
       }
     }
@@ -1728,12 +1730,13 @@ class CLIToolManager {
       if (whereGitPath) {
         const validation = await this.validateGitAsync(whereGitPath);
         if (validation.valid) {
+          const effectivePath = validation.normalizedPath ?? whereGitPath;
           return {
             found: true,
-            path: whereGitPath,
+            path: effectivePath,
             version: validation.version,
             source: 'system-path',
-            message: `Using Windows Git: ${whereGitPath}`,
+            message: `Using Windows Git: ${effectivePath}`,
           };
         }
       }
@@ -1836,12 +1839,13 @@ class CLIToolManager {
       if (whereGhPath) {
         const validation = await this.validateGitHubCLIAsync(whereGhPath);
         if (validation.valid) {
+          const effectivePath = validation.normalizedPath ?? whereGhPath;
           return {
             found: true,
-            path: whereGhPath,
+            path: effectivePath,
             version: validation.version,
             source: 'system-path',
-            message: `Using Windows GitHub CLI: ${whereGhPath}`,
+            message: `Using Windows GitHub CLI: ${effectivePath}`,
           };
         }
       }
@@ -1852,6 +1856,7 @@ class CLIToolManager {
       // expandWindowsEnvVars handles the fallback values if env vars are not set
       const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
       const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
+      const programData = expandWindowsEnvVars('%PROGRAMDATA%');
       const windowsPaths = [
         joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
         joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),
@@ -1859,6 +1864,8 @@ class CLIToolManager {
         joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
         // Scoop package manager
         joinPaths(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
+        // Chocolatey package manager
+        joinPaths(programData, 'chocolatey', 'lib', 'gh-cli', 'tools', 'gh.exe'),
       ];
 
       for (const winGhPath of windowsPaths) {

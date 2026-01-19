@@ -21,7 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const os = require('os');
 const nodeCrypto = require('crypto');
-const { toNodePlatform } = require('../src/shared/platform.cjs');
+const { toNodePlatform, isWindows } = require('../src/shared/platform.cjs');
 
 // Python version to bundle (must be 3.10+ for claude-agent-sdk, 3.12+ for full Graphiti support)
 const PYTHON_VERSION = '3.12.8';
@@ -354,15 +354,14 @@ function extractTarGz(archivePath, destDir) {
   // Ensure destination exists
   fs.mkdirSync(destDir, { recursive: true });
 
-  const isWindows = os.platform() === 'win32';
-
   // On Windows, use Windows' built-in bsdtar (not Git Bash tar which has path issues)
   // Git Bash's /usr/bin/tar interprets D: as a remote host, causing extraction to fail
   // Windows Server 2019+ and Windows 10+ have bsdtar at %SystemRoot%\System32\tar.exe
-  if (isWindows) {
+  if (isWindows()) {
     // Use explicit path to Windows tar to avoid Git Bash's /usr/bin/tar
     // Use SystemRoot environment variable to handle non-standard Windows installations
-    const systemRoot = process.env.SystemRoot || process.env.windir || 'C:\\Windows';
+    // Use case-insensitive lookup for Windows environment variables
+    const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || process.env.windir || 'C:\\Windows';
     const windowsTar = path.join(systemRoot, 'System32', 'tar.exe');
 
     const result = spawnSync(windowsTar, ['-xzf', archivePath, '-C', destDir], {

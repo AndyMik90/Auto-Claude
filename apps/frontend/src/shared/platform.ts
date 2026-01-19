@@ -63,3 +63,27 @@ export function isLinux(): boolean {
 export function isUnix(): boolean {
   return isMacOS() || isLinux();
 }
+
+/**
+ * Get environment variable with case-insensitive support for Windows.
+ *
+ * On Windows, environment variables are case-insensitive. This function
+ * handles that by checking multiple case variations if needed.
+ *
+ * @param name - The environment variable name
+ * @returns The value or undefined if not set
+ */
+export function getEnvVar(name: string): string | undefined {
+  if (isWindows()) {
+    // On Windows, try exact match first
+    if (process.env[name] !== undefined) {
+      return process.env[name];
+    }
+    // Try lowercase
+    const lowerKey = Object.keys(process.env).find(
+      (key) => key.toLowerCase() === name.toLowerCase()
+    );
+    return lowerKey !== undefined ? process.env[lowerKey] : undefined;
+  }
+  return process.env[name];
+}

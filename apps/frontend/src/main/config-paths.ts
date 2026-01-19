@@ -21,6 +21,16 @@ import { isLinux, getEnvVar } from './platform';
 const APP_NAME = 'auto-claude';
 
 /**
+ * Join path components using forward slashes (XDG standard).
+ * XDG paths always use forward slashes, even on Windows.
+ */
+function joinXdgPath(...segments: string[]): string {
+  // Replace backslashes in each segment, then join with forward slashes
+  const normalizedSegments = segments.map(s => s.replace(/\\/g, '/'));
+  return normalizedSegments.join('/');
+}
+
+/**
  * Get the XDG config home directory
  * Uses $XDG_CONFIG_HOME if set, otherwise defaults to ~/.config
  */
@@ -49,7 +59,7 @@ export function getXdgCacheHome(): string {
  * Returns the XDG-compliant path for storing configuration files
  */
 export function getAppConfigDir(): string {
-  return path.join(getXdgConfigHome(), APP_NAME);
+  return joinXdgPath(getXdgConfigHome(), APP_NAME);
 }
 
 /**
@@ -57,7 +67,7 @@ export function getAppConfigDir(): string {
  * Returns the XDG-compliant path for storing application data
  */
 export function getAppDataDir(): string {
-  return path.join(getXdgDataHome(), APP_NAME);
+  return joinXdgPath(getXdgDataHome(), APP_NAME);
 }
 
 /**
@@ -65,7 +75,7 @@ export function getAppDataDir(): string {
  * Returns the XDG-compliant path for storing cache files
  */
 export function getAppCacheDir(): string {
-  return path.join(getXdgCacheHome(), APP_NAME);
+  return joinXdgPath(getXdgCacheHome(), APP_NAME);
 }
 
 /**
@@ -79,7 +89,7 @@ export function getMemoriesDir(): string {
   // On Linux with XDG variables set (AppImage, Flatpak, Snap), use XDG path
   // Use getEnvVar for consistent environment variable access pattern
   if (isLinux() && (getEnvVar('XDG_DATA_HOME') || getEnvVar('APPIMAGE') || getEnvVar('SNAP') || getEnvVar('FLATPAK_ID'))) {
-    return path.join(getXdgDataHome(), APP_NAME, 'memories');
+    return joinXdgPath(getXdgDataHome(), APP_NAME, 'memories');
   }
 
   // Default to legacy path for backwards compatibility

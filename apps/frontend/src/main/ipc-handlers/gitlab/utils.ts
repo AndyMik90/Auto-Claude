@@ -10,6 +10,7 @@ import { parseEnvFile } from '../utils';
 import type { GitLabConfig } from './types';
 import { getAugmentedEnv, findExecutable } from '../../env-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getToolPath } from '../../cli-tool-manager';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
 
@@ -355,7 +356,7 @@ export async function getProjectIdFromPath(
  */
 export function detectGitLabProjectFromRemote(projectPath: string): { project: string; instanceUrl: string } | null {
   try {
-    const gitPath = findExecutable('git') || 'git';
+    const gitPath = getToolPath('git');
     const remoteUrl = execFileSync(gitPath, ['remote', 'get-url', 'origin'], {
       cwd: projectPath,
       encoding: 'utf-8',

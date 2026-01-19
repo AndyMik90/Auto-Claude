@@ -434,8 +434,16 @@ function spawnTerminal(
   options?: { detached?: boolean; stdio?: 'ignore' | 'inherit' | 'pipe' }
 ): boolean {
   try {
-    const resolvedCmd = findExecutable(command) || command;
-    spawn(resolvedCmd, args, { detached: true, stdio: 'ignore', ...options }).unref();
+    const resolvedCmd = findExecutable(command);
+    if (!resolvedCmd) {
+      console.warn(`[Claude Code] Terminal not found in PATH: ${command}`);
+      return false;
+    }
+    const child = spawn(resolvedCmd, args, { detached: true, stdio: 'ignore', ...options });
+    child.on('error', (err) => {
+      console.warn(`[Claude Code] Failed to spawn terminal ${resolvedCmd}:`, err);
+    });
+    child.unref();
     return true;
   } catch (err) {
     console.warn(`[Claude Code] Failed to spawn terminal ${command}:`, err);

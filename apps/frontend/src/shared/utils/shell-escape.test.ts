@@ -16,20 +16,20 @@ import {
   parseFileReferenceDrop
 } from './shell-escape';
 
-// Mock process.platform
-const originalPlatform = process.platform;
+// Mock the platform module
+vi.mock('../platform', () => ({
+  isWindows: vi.fn(() => false),
+  isMacOS: vi.fn(() => false),
+  isLinux: vi.fn(() => false),
+  getCurrentPlatform: vi.fn(() => 'linux'),
+}));
 
-function mockPlatform(platform: NodeJS.Platform) {
-  Object.defineProperty(process, 'platform', {
-    value: platform,
-    writable: true,
-    configurable: true
-  });
-}
+import { isWindows } from '../platform';
+const mockIsWindows = vi.mocked(isWindows);
 
 describe('shell-escape', () => {
   afterEach(() => {
-    mockPlatform(originalPlatform);
+    vi.resetAllMocks();
   });
 
   describe('escapeShellArg', () => {
@@ -84,7 +84,9 @@ describe('shell-escape', () => {
 
   describe('buildCdCommand', () => {
     describe('on Windows', () => {
-      beforeEach(() => mockPlatform('win32'));
+      beforeEach(() => {
+        mockIsWindows.mockReturnValue(true);
+      });
 
       it('returns cd /d with double quotes for cmd', () => {
         const result = buildCdCommand('C:\\Projects\\MyApp');
@@ -119,12 +121,14 @@ describe('shell-escape', () => {
       });
 
       it('returns empty string for empty path', () => {
-        expect(buildCdCommand('')).toBe('');
+        expect(buildCdCommand(undefined)).toBe('');
       });
     });
 
     describe('on Unix', () => {
-      beforeEach(() => mockPlatform('darwin'));
+      beforeEach(() => {
+        mockIsWindows.mockReturnValue(false);
+      });
 
       it('returns cd with single quotes and &&', () => {
         const result = buildCdCommand('/home/user/project');
@@ -147,7 +151,9 @@ describe('shell-escape', () => {
     });
 
     describe('on Linux', () => {
-      beforeEach(() => mockPlatform('linux'));
+      beforeEach(() => {
+        mockIsWindows.mockReturnValue(false);
+      });
 
       it('uses same format as macOS', () => {
         const result = buildCdCommand('/home/user/project');

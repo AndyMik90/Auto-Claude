@@ -4,6 +4,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import type { TerminalSession, TerminalWorktreeConfig } from '../../shared/types';
 import { terminalBufferManager } from '../lib/terminal-buffer-manager';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { getEnvVar } from '../../shared/platform';
 
 /**
  * Module-level Map to store terminal ID -> xterm write callback mappings.
@@ -173,7 +174,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       title: `Terminal ${state.terminals.length + 1}`,
       status: 'idle',
       // Use HOME on Unix, USERPROFILE on Windows, fallback to ~
-      cwd: cwd || process.env.HOME || process.env.USERPROFILE || '~',
+      cwd: cwd || getEnvVar('HOME') || getEnvVar('USERPROFILE') || '~',
       createdAt: new Date(),
       isClaudeMode: false,
       // outputBuffer removed - managed by terminalBufferManager
