@@ -361,6 +361,55 @@ def execute_write(args: dict, context: ToolContext) -> dict:
                 "error": f"Access denied: {file_path} is outside allowed directories"
             }
 
+        # PROTECTION: Validate implementation_plan.json writes to prevent corruption
+        if path.name == "implementation_plan.json":
+            try:
+                new_plan = json.loads(content)
+
+                # Check if this is a valid plan structure (must have phases)
+                if "phases" not in new_plan:
+                    # Check if existing file has phases - if so, this is a destructive write
+                    if path.exists():
+                        try:
+                            with open(path, "r", encoding="utf-8") as f:
+                                existing_plan = json.load(f)
+                            if "phases" in existing_plan and existing_plan["phases"]:
+                                return {
+                                    "success": False,
+                                    "error": (
+                                        "BLOCKED: Cannot overwrite implementation_plan.json with invalid structure. "
+                                        "The new content is missing 'phases' array. "
+                                        "To update subtask status, use Edit tool with proper JSON path like: "
+                                        '"old_string": \'"status": "pending"\', "new_string": \'"status": "completed"\''
+                                    )
+                                }
+                        except (json.JSONDecodeError, OSError):
+                            pass  # Existing file is invalid, allow overwrite
+
+                # Validate phases structure if present
+                if "phases" in new_plan:
+                    phases = new_plan["phases"]
+                    if not isinstance(phases, list):
+                        return {
+                            "success": False,
+                            "error": "Invalid implementation_plan.json: 'phases' must be an array"
+                        }
+                    # Check each phase has subtasks
+                    for i, phase in enumerate(phases):
+                        if not isinstance(phase, dict):
+                            return {
+                                "success": False,
+                                "error": f"Invalid implementation_plan.json: phase {i} must be an object"
+                            }
+                        if "subtasks" not in phase and "chunks" not in phase:
+                            logger.warning(f"[iFlow Tools] Phase {i} has no subtasks/chunks")
+
+            except json.JSONDecodeError as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid JSON for implementation_plan.json: {str(e)}"
+                }
+
         # Create parent directories if needed
         path.parent.mkdir(parents=True, exist_ok=True)
 

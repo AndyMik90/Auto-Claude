@@ -597,3 +597,97 @@ class TaskLogger:
     def clear(self) -> None:
         """Clear all logs (useful for testing)."""
         self.storage = LogStorage(self.spec_dir)
+
+    def log_execution_context(
+        self,
+        current_subtask: dict | None = None,
+        current_phase: dict | None = None,
+        plan_summary: dict | None = None,
+        next_subtasks: list[dict] | None = None,
+        phase: LogPhase | None = None,
+    ) -> None:
+        """
+        Log execution context showing what's happening now and what's coming next.
+
+        This provides visibility into the task execution flow for users watching the logs.
+
+        Args:
+            current_subtask: Current subtask being executed {id, description, status}
+            current_phase: Current phase info {id, name, completed, total}
+            plan_summary: Overall plan summary {total_phases, total_subtasks, completed_subtasks, ...}
+            next_subtasks: List of upcoming subtasks [{id, description}, ...]
+            phase: Log phase override
+        """
+        phase_key = (phase or self.current_phase or LogPhase.CODING).value
+
+        # Build context message
+        lines = ["📋 **Execution Context**"]
+
+        # Overall progress
+        if plan_summary:
+            total = plan_summary.get("total_subtasks", 0)
+            completed = plan_summary.get("completed_subtasks", 0)
+            pending = plan_summary.get("pending_subtasks", 0)
+            in_progress = plan_summary.get("in_progress_subtasks", 0)
+            pct = int((completed / total * 100) if total > 0 else 0)
+            lines.append(f"   Overall: {completed}/{total} subtasks ({pct}%) | {pending} pending, {in_progress} in progress")
+
+        # Current phase
+        if current_phase:
+            phase_name = current_phase.get("name", "Unknown")
+            phase_completed = current_phase.get("completed", 0)
+            phase_total = current_phase.get("total", 0)
+            lines.append(f"   Phase: {phase_name} ({phase_completed}/{phase_total} subtasks)")
+
+        # Current subtask
+        if current_subtask:
+            subtask_id = current_subtask.get("id", "unknown")
+            subtask_desc = current_subtask.get("description", "")
+            # Truncate long descriptions
+            if len(subtask_desc) > 60:
+                subtask_desc = subtask_desc[:57] + "..."
+            lines.append(f"   ▶ NOW: [{subtask_id}] {subtask_desc}")
+
+        # Upcoming subtasks (show max 3)
+        if next_subtasks and len(next_subtasks) > 0:
+            lines.append("   📌 NEXT:")
+            for i, subtask in enumerate(next_subtasks[:3]):
+                subtask_id = subtask.get("id", "unknown")
+                subtask_desc = subtask.get("description", "")
+                if len(subtask_desc) > 50:
+                    subtask_desc = subtask_desc[:47] + "..."
+                lines.append(f"      {i+1}. [{subtask_id}] {subtask_desc}")
+            remaining = len(next_subtasks) - 3
+            if remaining > 0:
+                lines.append(f"      ... and {remaining} more")
+
+        content = "\n".join(lines)
+
+        # Create log entry
+        entry = LogEntry(
+            timestamp=self._timestamp(),
+            type=LogEntryType.INFO.value,
+            content=content,
+            phase=phase_key,
+            subtask_id=self.current_subtask,
+            session=self.current_session,
+            provider=self.current_provider,
+            model=self.current_model,
+        )
+        self._add_entry(entry)
+
+        # Emit streaming marker
+        self._emit(
+            "EXECUTION_CONTEXT",
+            {
+                "content": content,
+                "phase": phase_key,
+                "current_subtask": current_subtask,
+                "current_phase": current_phase,
+                "plan_summary": plan_summary,
+                "timestamp": self._timestamp(),
+            },
+        )
+
+        # Print to console
+        print(content, flush=True)

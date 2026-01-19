@@ -474,6 +474,46 @@ def get_next_subtask(spec_dir: Path) -> dict | None:
         return None
 
 
+def get_pending_subtasks(spec_dir: Path, limit: int = 10) -> list[dict]:
+    """
+    Get list of pending subtasks for execution context display.
+
+    Args:
+        spec_dir: Directory containing implementation_plan.json
+        limit: Maximum number of subtasks to return
+
+    Returns:
+        List of pending subtask dicts [{id, description, phase_name}, ...]
+    """
+    plan_file = spec_dir / "implementation_plan.json"
+
+    if not plan_file.exists():
+        return []
+
+    try:
+        with open(plan_file, encoding="utf-8") as f:
+            plan = json.load(f)
+
+        pending = []
+        for phase in plan.get("phases", []):
+            phase_name = phase.get("name", "Unknown Phase")
+            for subtask in phase.get("subtasks", phase.get("chunks", [])):
+                status = subtask.get("status", "pending")
+                if status in {"pending", "not_started", "not started"}:
+                    pending.append({
+                        "id": subtask.get("id", "unknown"),
+                        "description": subtask.get("description", ""),
+                        "phase_name": phase_name,
+                    })
+                    if len(pending) >= limit:
+                        return pending
+
+        return pending
+
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
 def format_duration(seconds: float) -> str:
     """Format a duration in human-readable form."""
     if seconds < 60:

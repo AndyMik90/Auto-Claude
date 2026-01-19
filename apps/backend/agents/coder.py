@@ -25,6 +25,8 @@ from progress import (
     count_subtasks_detailed,
     get_current_phase,
     get_next_subtask,
+    get_pending_subtasks,
+    get_plan_summary,
     is_build_complete,
     print_build_complete_banner,
     print_progress_summary,
@@ -190,6 +192,18 @@ async def run_autonomous_agent(
                 thinking_level=planning_thinking_level,
             )
 
+            # Log planning context
+            task_logger.log(
+                "📋 **Planning Phase**\n"
+                "   ▶ NOW: Analyzing spec and creating implementation plan\n"
+                "   📌 NEXT:\n"
+                "      1. Read and understand spec.md\n"
+                "      2. Analyze project structure\n"
+                "      3. Create subtasks for implementation\n"
+                "      4. Define verification steps",
+                phase=LogPhase.PLANNING,
+            )
+
         # Update Linear to "In Progress" when build starts
         if linear_task and linear_task.task_id:
             print_status("Updating Linear task to In Progress...", "progress")
@@ -288,6 +302,24 @@ async def run_autonomous_agent(
             if subtask_id
             else 1,
         )
+
+        # Log execution context for visibility into what's happening
+        if task_logger and not first_run and next_subtask:
+            # Get plan summary and pending subtasks for context
+            plan_summary = get_plan_summary(spec_dir)
+            current_phase_info = get_current_phase(spec_dir)
+            pending_subtasks = get_pending_subtasks(spec_dir, limit=5)
+
+            # Filter out current subtask from pending list
+            if pending_subtasks and subtask_id:
+                pending_subtasks = [s for s in pending_subtasks if s.get("id") != subtask_id]
+
+            task_logger.log_execution_context(
+                current_subtask=next_subtask,
+                current_phase=current_phase_info,
+                plan_summary=plan_summary,
+                next_subtasks=pending_subtasks,
+            )
 
         # Capture state before session for post-processing
         commit_before = get_latest_commit(project_dir)
