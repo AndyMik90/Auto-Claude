@@ -255,7 +255,10 @@ def atomic_write(filepath: str | Path, mode: str = "w", encoding: str = "utf-8")
 
 @asynccontextmanager
 async def locked_write(
-    filepath: str | Path, timeout: float = 5.0, mode: str = "w"
+    filepath: str | Path,
+    timeout: float = 5.0,
+    mode: str = "w",
+    encoding: str = "utf-8",
 ) -> Any:
     """
     Async context manager combining file locking and atomic writes.
@@ -267,6 +270,7 @@ async def locked_write(
         filepath: Target file path
         timeout: Lock timeout in seconds (default: 5.0)
         mode: File open mode (default: "w")
+        encoding: Text encoding (default: "utf-8")
 
     Example:
         async with locked_write("/path/to/file.json", timeout=5.0) as f:
@@ -292,7 +296,8 @@ async def locked_write(
 
         try:
             # Open temp file and yield to caller
-            f = os.fdopen(fd, mode)
+            # Only use encoding for text modes (not binary modes)
+            f = os.fdopen(fd, mode, encoding=encoding if "b" not in mode else None)
             try:
                 yield f
             finally:
