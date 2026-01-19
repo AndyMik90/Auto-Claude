@@ -97,8 +97,20 @@ export class ChangelogService extends EventEmitter {
       this._pythonPath = getValidatedPythonPath(pythonPath, 'ChangelogService');
     }
     if (autoBuildSourcePath) {
+      // Invalidate env cache when source path changes
+      if (this.autoBuildSourcePath !== autoBuildSourcePath) {
+        this.invalidateEnvCache();
+      }
       this.autoBuildSourcePath = autoBuildSourcePath;
     }
+  }
+
+  /**
+   * Public method to refresh environment cache
+   * Call this when the .env file may have changed externally
+   */
+  refreshEnvCache(): void {
+    this.invalidateEnvCache();
   }
 
   /**

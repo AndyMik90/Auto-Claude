@@ -11,7 +11,6 @@ import {
   TooltipTrigger
 } from './ui/tooltip';
 import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, Package, Link, RefreshCw } from 'lucide-react';
-import { useRoadmapStore } from '../stores/roadmap-store';
 import {
   ROADMAP_PRIORITY_COLORS,
   ROADMAP_PRIORITY_LABELS,
@@ -290,7 +289,7 @@ export function SortableFeatureCard({
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1 text-purple-500">
                       <RefreshCw className="h-2.5 w-2.5" />
-                      <span>circular</span>
+                      <span>{t('sortableFeatureCard.circularDependency')}</span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>{t('sortableFeatureCard.circularDependency')}</TooltipContent>
