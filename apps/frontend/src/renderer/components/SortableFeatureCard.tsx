@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from './ui/tooltip';
-import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, Package, Link, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, Package, Link, RefreshCw } from 'lucide-react';
 import { useRoadmapStore } from '../stores/roadmap-store';
 import {
   ROADMAP_PRIORITY_COLORS,
@@ -37,7 +37,6 @@ export function SortableFeatureCard({
   onGoToTask
 }: SortableFeatureCardProps) {
   const { t } = useTranslation(['roadmap', 'common']);
-  const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
   const {
     attributes,
@@ -229,6 +228,7 @@ export function SortableFeatureCard({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      type="button"
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -258,6 +258,7 @@ export function SortableFeatureCard({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      type="button"
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();

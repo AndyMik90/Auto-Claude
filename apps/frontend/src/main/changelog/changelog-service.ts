@@ -138,13 +138,25 @@ export class ChangelogService extends EventEmitter {
 
   /**
    * Load environment variables from auto-claude .env file
+   * Results are cached after first successful load
    */
   private loadAutoBuildEnv(): Record<string, string> {
+    // Return cached result if available
+    if (this._cachedEnv !== null) {
+      return this._cachedEnv;
+    }
+
     const autoBuildSource = this.getAutoBuildSourcePath();
-    if (!autoBuildSource) return {};
+    if (!autoBuildSource) {
+      this._cachedEnv = {};
+      return {};
+    }
 
     const envPath = path.join(autoBuildSource, '.env');
-    if (!existsSync(envPath)) return {};
+    if (!existsSync(envPath)) {
+      this._cachedEnv = {};
+      return {};
+    }
 
     try {
       const envContent = readFileSync(envPath, 'utf-8');
@@ -169,10 +181,21 @@ export class ChangelogService extends EventEmitter {
         }
       }
 
+      // Cache the result
+      this._cachedEnv = envVars;
       return envVars;
     } catch {
+      this._cachedEnv = {};
       return {};
     }
+  }
+
+  /**
+   * Invalidate the cached environment variables
+   * Call this when the .env file may have changed
+   */
+  private invalidateEnvCache(): void {
+    this._cachedEnv = null;
   }
 
   /**

@@ -67,7 +67,7 @@ const mockFeatures: RoadmapFeature[] = [
     status: 'planned',
     phaseId: 'phase-1',
     dependencies: ['feat-2'],
-    reverseDependencies: ['feat-3'],
+    reverseDependencies: [],
     acceptanceCriteria: [],
     userStories: []
   },
@@ -180,9 +180,14 @@ describe('FeatureCard Dependencies', () => {
 
   it('renders reverse dependencies section when feature has reverse dependencies', () => {
     const mockClick = vi.fn();
+    // Use a feature with explicit reverse dependencies for this test
+    const featureWithReverseDeps: RoadmapFeature = {
+      ...mockFeatures[0],
+      reverseDependencies: ['feat-3']
+    };
     renderWithWrapper(
       <FeatureCard
-        feature={mockFeatures[0]}
+        feature={featureWithReverseDeps}
         features={mockFeatures}
         onClick={mockClick}
         onConvertToSpec={vi.fn()}

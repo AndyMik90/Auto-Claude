@@ -370,12 +370,12 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       {state.isStuck ? (
                         <Badge variant="warning" className="text-xs flex items-center gap-1 animate-pulse">
                           <AlertTriangle className="h-3 w-3" />
-                          Stuck
+                          {t('tasks:labels.stuck')}
                         </Badge>
                       ) : state.isIncomplete ? (
                         <Badge variant="warning" className="text-xs flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          Incomplete
+                          {t('tasks:labels.incomplete')}
                         </Badge>
                       ) : (
                         <>
@@ -390,9 +390,9 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                             variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
                             className="text-xs"
                           >
-                            {task.reviewReason === 'completed' ? 'Completed' :
-                             task.reviewReason === 'errors' ? 'Has Errors' :
-                             task.reviewReason === 'plan_review' ? 'Approve Plan' : 'QA Issues'}
+                            {task.reviewReason === 'completed' ? t('tasks:reviewReason.completed') :
+                             task.reviewReason === 'errors' ? t('tasks:reviewReason.hasErrors') :
+                             task.reviewReason === 'plan_review' ? t('tasks:reviewReason.approvePlan') : t('tasks:reviewReason.qaIssues')}
                           </Badge>
                         )}
                         </>

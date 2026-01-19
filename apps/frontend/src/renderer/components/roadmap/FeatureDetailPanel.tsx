@@ -224,6 +224,7 @@ export function FeatureDetailPanel({
                 const depFeature = features.find(f => f.id === depId);
                 return (
                   <button
+                    type="button"
                     key={depId}
                     className="px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
                     onClick={() => handleDependencyClick(depId)}
