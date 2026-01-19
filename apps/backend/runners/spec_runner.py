@@ -378,8 +378,13 @@ Examples:
                     result = subprocess.run(run_cmd)
                     sys.exit(result.returncode)
                 except FileNotFoundError:
-                    debug_error("spec_runner", "Could not start coding phase - executable not found")
-                    print_status("Could not start coding phase - executable not found", "error")
+                    debug_error(
+                        "spec_runner",
+                        "Could not start coding phase - executable not found",
+                    )
+                    print_status(
+                        "Could not start coding phase - executable not found", "error"
+                    )
                     sys.exit(1)
                 except OSError as e:
                     debug_error("spec_runner", f"Error starting coding phase: {e}")
