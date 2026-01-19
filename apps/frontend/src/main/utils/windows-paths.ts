@@ -13,7 +13,6 @@ import { access, constants } from 'fs/promises';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
-import os from 'os';
 import { isWindows, expandWindowsEnvVars } from '../platform';
 
 const execFileAsync = promisify(execFile);

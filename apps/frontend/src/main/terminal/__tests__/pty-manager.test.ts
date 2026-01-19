@@ -7,9 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as os from 'os';
 import type { TerminalProcess } from '../types';
-import type { WindowsShellType } from '../../shared/types/settings';
 
 // Mock @lydell/node-pty
 vi.mock('@lydell/node-pty', async () => ({
@@ -90,7 +88,6 @@ import {
   writeToPty,
   resizePty,
   getActiveProfileEnv,
-  type SpawnPtyResult,
 } from '../pty-manager';
 
 // Get mocked functions
@@ -319,6 +316,10 @@ describe('PTY Manager Module', () => {
         kill: vi.fn(),
         on: vi.fn(),
       } as any,
+      isClaudeMode: false,
+      cwd: '/home/user',
+      outputBuffer: '',
+      title: 'Test Terminal',
     };
 
     beforeEach(() => {
@@ -359,6 +360,10 @@ describe('PTY Manager Module', () => {
         write: vi.fn(),
         on: vi.fn(),
       } as any,
+      isClaudeMode: false,
+      cwd: '/home/user',
+      outputBuffer: '',
+      title: 'Test Terminal',
     };
 
     beforeEach(() => {
@@ -387,7 +392,7 @@ describe('PTY Manager Module', () => {
 
       // Should be called in chunks (1500 / 100 = 15 chunks)
       expect(mockTerminal.pty.write).toHaveBeenCalled();
-      expect(mockTerminal.pty.write.mock.calls.length).toBeGreaterThanOrEqual(10);
+      expect(vi.mocked(mockTerminal.pty.write).mock.calls.length).toBeGreaterThanOrEqual(10);
     });
 
     it('serializes writes per terminal to prevent interleaving', async () => {
@@ -397,6 +402,10 @@ describe('PTY Manager Module', () => {
           write: vi.fn(),
           on: vi.fn(),
         } as any,
+        isClaudeMode: false,
+        cwd: '/home/user',
+        outputBuffer: '',
+        title: 'Test Terminal 2',
       };
 
       // Write to same terminal twice
@@ -417,6 +426,10 @@ describe('PTY Manager Module', () => {
       pty: {
         resize: vi.fn(),
       } as any,
+      isClaudeMode: false,
+      cwd: '/home/user',
+      outputBuffer: '',
+      title: 'Test Terminal',
     };
 
     it('resizes PTY to specified dimensions', () => {

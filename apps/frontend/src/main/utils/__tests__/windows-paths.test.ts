@@ -8,7 +8,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
-import * as os from 'os';
 import * as childProcess from 'child_process';
 
 // Mock child_process for where.exe tests
@@ -25,7 +24,30 @@ vi.mock('fs', async () => {
   const actualFs = await vi.importActual<typeof import('fs')>('fs');
   return {
     ...actualFs,
-    existsSync: vi.fn(() => true), // Return true by default for all tests
+    existsSync: vi.fn((path: string) => {
+      // Default implementation: paths with 'NotExists' in directory name return false
+      // Check if any path component contains 'NotExists'
+      const parts = path.split(/[/\\]/);
+      if (parts.some(part => part.includes('NotExists'))) return false;
+      return true; // All other paths exist by default
+    }),
+  };
+});
+
+// Mock fs/promises for async tests
+vi.mock('fs/promises', async () => {
+  const actualFsPromises = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actualFsPromises,
+    access: vi.fn((path: string) => {
+      // Default implementation: paths with 'NotExists' in directory name throw
+      // Check if any path component contains 'NotExists'
+      const parts = path.split(/[/\\]/);
+      if (parts.some(part => part.includes('NotExists'))) {
+        return Promise.reject(new Error('File not found'));
+      }
+      return Promise.resolve(); // All other paths exist by default
+    }),
   };
 });
 
@@ -47,9 +69,11 @@ vi.mock('../../platform', async () => {
       return envVars[envVar] || match;
     });
   });
+  // isWindows checks the actual process.platform (which can be mocked via mockPlatform)
+  const mockIsWindows = vi.fn(() => process.platform === 'win32');
   return {
     ...actualPlatform,
-    isWindows: vi.fn(() => true), // Default to Windows for tests
+    isWindows: mockIsWindows,
     expandWindowsEnvVars: mockExpandWindowsEnvVars,
   };
 });
@@ -74,7 +98,7 @@ function describeWindows(title: string, fn: () => void): void {
   });
 }
 
-function describeUnix(title: string, fn: () => void): void {
+function _describeUnix(title: string, fn: () => void): void {
   describe(title, () => {
     beforeEach(() => {
       mockPlatform('linux');
@@ -125,9 +149,7 @@ describe('Windows Paths Module', () => {
       const originalEnv = { ...process.env };
 
       beforeEach(() => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
-
+        // describeWindows already sets platform to win32, so isWindows() will return true
         // Set environment variables for both the mock and process.env
         process.env.ProgramFiles = 'C:\\Program Files';
         process.env['ProgramFiles(x86)'] = 'C:\\Program Files (x86)';
@@ -213,9 +235,7 @@ describe('Windows Paths Module', () => {
       const originalEnv = { ...process.env };
 
       beforeEach(() => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
-
+        // describeWindows already sets platform to win32, so isWindows() will return true
         // Clear environment variables
         delete process.env.ProgramFiles;
         delete process.env['ProgramFiles(x86)'];
@@ -250,20 +270,13 @@ describe('Windows Paths Module', () => {
 
         const result = getWindowsExecutablePaths(toolPaths);
         expect(result).toHaveLength(1);
-        expect(result[0]).toBe('C:\\Fixed\\Path\\test.exe');
+        // path.join() uses platform separator (/ on Linux, \ on Windows)
+        const expectedPath = path.join('C:\\Fixed\\Path', 'test.exe');
+        expect(result[0]).toBe(expectedPath);
       });
     });
 
     describeWindows('validates paths with existsSync', () => {
-      beforeEach(() => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
-      });
-
-      afterEach(() => {
-        // No reset needed - mock is already set up correctly
-      });
-
       it('only returns paths that exist on filesystem', () => {
         const toolPaths: WindowsToolPaths = {
           toolName: 'Git',
@@ -282,7 +295,7 @@ describe('Windows Paths Module', () => {
   });
 
   describe('getWindowsExecutablePathsAsync', () => {
-    describeWindows('returns empty array on non-Windows', () => {
+    describe('returns empty array on non-Windows', () => {
       it('returns empty array when not on Windows', async () => {
         mockPlatform('linux');
         const toolPaths: WindowsToolPaths = {
@@ -299,8 +312,7 @@ describe('Windows Paths Module', () => {
       const originalEnv = { ...process.env };
 
       beforeEach(() => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
+        // describeWindows already sets platform to win32, so isWindows() will return true
         process.env.ProgramFiles = 'C:\\Program Files';
         process.env.LOCALAPPDATA = 'C:\\Users\\Test\\AppData\\Local';
         process.env.ProgramData = 'C:\\ProgramData';
@@ -311,10 +323,6 @@ describe('Windows Paths Module', () => {
       });
 
       it('expands %PROGRAMFILES% and returns valid paths', async () => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
-        // existsSync returns true by default, so paths with 'Exists' will match
-
         const toolPaths: WindowsToolPaths = {
           toolName: 'TestTool',
           executable: 'test.exe',
@@ -334,8 +342,7 @@ describe('Windows Paths Module', () => {
   describe('findWindowsExecutableViaWhere', () => {
     describeWindows('uses where.exe to find executables', () => {
       beforeEach(() => {
-        // Mock isWindows to return true
-        getMockedIsWindows().mockReturnValue(true);
+        // describeWindows already sets platform to win32, so isWindows() will return true
         getMockedExecFileSync().mockReset();
         // existsSync is already mocked to return true by default
       });
