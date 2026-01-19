@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, TaskStartOptions, TaskStatus, ImageAttachment } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'fs';
 import { spawnSync, execFileSync } from 'child_process';
 import { getToolPath } from '../../cli-tool-manager';
 import { AgentManager } from '../../agent';
@@ -18,43 +18,7 @@ import {
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-
-/**
- * Atomic file write to prevent TOCTOU race conditions.
- * Writes to a temporary file first, then atomically renames to target.
- * This ensures the target file is never in an inconsistent state.
- */
-function atomicWriteFileSync(filePath: string, content: string): void {
-  const tempPath = `${filePath}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tempPath, content, 'utf-8');
-    renameSync(tempPath, filePath);
-  } catch (error) {
-    // Clean up temp file if rename failed
-    try {
-      unlinkSync(tempPath);
-    } catch {
-      // Ignore cleanup errors
-    }
-    throw error;
-  }
-}
-
-/**
- * Safe file read that handles missing files without TOCTOU issues.
- * Returns null if file doesn't exist or can't be read.
- */
-function safeReadFileSync(filePath: string): string | null {
-  try {
-    return readFileSync(filePath, 'utf-8');
-  } catch (error) {
-    // ENOENT (file not found) is expected, other errors should be logged
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
-    }
-    return null;
-  }
-}
+import { atomicWriteFileSync, safeReadFileSync } from '../../utils/file-utils';
 
 /**
  * Helper function to check subtask completion status

@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from "../../shared/constants";
 import {
   wouldPhaseRegress,
@@ -22,10 +22,11 @@ import { titleGenerator } from "../title-generator";
 import { fileWatcher } from "../file-watcher";
 import { projectStore } from "../project-store";
 import { notificationService } from "../notification-service";
-import { persistPlanStatusSync, getPlanPath, createPlanIfNotExists } from "./task/plan-file-utils";
+import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
+import { atomicWriteFileSync } from "../utils/file-utils";
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -98,26 +99,6 @@ function validateStatusTransition(
   }
 
   return true;
-}
-
-/**
- * Atomic file write to prevent corruption on crash/interrupt.
- * Writes to a temporary file first, then atomically renames to target.
- */
-function atomicWriteFileSync(filePath: string, content: string): void {
-  const tempPath = `${filePath}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tempPath, content, "utf-8");
-    renameSync(tempPath, filePath);
-  } catch (error) {
-    // Clean up temp file if rename failed
-    try {
-      unlinkSync(tempPath);
-    } catch {
-      // Ignore cleanup errors
-    }
-    throw error;
-  }
 }
 
 /**
@@ -209,8 +190,8 @@ export function registerAgenteventsHandlers(
         }
 
         const requireReviewBeforeCoding = metadata.requireReviewBeforeCoding === true;
-        const allSubtasks = ((planContent.phases as Array<{ subtasks?: unknown[] }>) || [])
-          .flatMap((p) => p.subtasks || []);
+        const allSubtasks = (Array.isArray(planContent.phases) ? planContent.phases : [])
+          .flatMap((p: { subtasks?: unknown[] }) => p.subtasks || []);
         const planHasSubtasks = allSubtasks.length > 0;
 
         if (planHasSubtasks && requireReviewBeforeCoding) {
