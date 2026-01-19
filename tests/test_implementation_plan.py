@@ -600,3 +600,111 @@ class TestChunkCritique:
 
         assert chunk.critique_result is not None
         assert chunk.critique_result["score"] == 8
+
+
+class TestPlanReviewStatus:
+    """Tests for plan review status preservation (Issue #1231)."""
+
+    def test_update_status_preserves_stopped_awaiting_review(self):
+        """Plan with stopped + awaiting_review status is preserved when all subtasks pending."""
+        plan = ImplementationPlan(
+            feature="Test Feature",
+            status="stopped",
+            planStatus="awaiting_review",
+            phases=[
+                Phase(phase=1, name="Implementation", subtasks=[
+                    Chunk(id="c1", description="Task 1", status=ChunkStatus.PENDING),
+                    Chunk(id="c2", description="Task 2", status=ChunkStatus.PENDING),
+                ]),
+            ],
+        )
+
+        # This should NOT reset status to backlog
+        plan.update_status_from_subtasks()
+
+        assert plan.status == "stopped"
+        assert plan.planStatus == "awaiting_review"
+
+    def test_update_status_preserves_human_review_review(self):
+        """Plan with human_review + review status is preserved (legacy state)."""
+        plan = ImplementationPlan(
+            feature="Test Feature",
+            status="human_review",
+            planStatus="review",
+            phases=[
+                Phase(phase=1, name="Implementation", subtasks=[
+                    Chunk(id="c1", description="Task 1", status=ChunkStatus.PENDING),
+                ]),
+            ],
+        )
+
+        plan.update_status_from_subtasks()
+
+        assert plan.status == "human_review"
+        assert plan.planStatus == "review"
+
+    def test_update_status_resets_backlog_without_review_flag(self):
+        """Plan without review status resets to backlog when all pending."""
+        plan = ImplementationPlan(
+            feature="Test Feature",
+            status="in_progress",
+            planStatus="in_progress",
+            phases=[
+                Phase(phase=1, name="Implementation", subtasks=[
+                    Chunk(id="c1", description="Task 1", status=ChunkStatus.PENDING),
+                ]),
+            ],
+        )
+
+        plan.update_status_from_subtasks()
+
+        assert plan.status == "backlog"
+        assert plan.planStatus == "pending"
+
+    def test_update_status_in_progress_with_active_subtasks(self):
+        """Plan with active subtasks updates to in_progress."""
+        plan = ImplementationPlan(
+            feature="Test Feature",
+            status="stopped",
+            planStatus="awaiting_review",
+            phases=[
+                Phase(phase=1, name="Implementation", subtasks=[
+                    Chunk(id="c1", description="Task 1", status=ChunkStatus.IN_PROGRESS),
+                    Chunk(id="c2", description="Task 2", status=ChunkStatus.PENDING),
+                ]),
+            ],
+        )
+
+        plan.update_status_from_subtasks()
+
+        # Once coding starts, it should update to in_progress
+        assert plan.status == "in_progress"
+        assert plan.planStatus == "in_progress"
+
+    def test_plan_serializes_stopped_status(self):
+        """Plan with stopped status serializes correctly."""
+        plan = ImplementationPlan(
+            feature="Test Feature",
+            status="stopped",
+            planStatus="awaiting_review",
+            phases=[],
+        )
+
+        data = plan.to_dict()
+
+        assert data["status"] == "stopped"
+        assert data["planStatus"] == "awaiting_review"
+
+    def test_plan_deserializes_stopped_status(self):
+        """Plan with stopped status deserializes correctly."""
+        data = {
+            "feature": "Test Feature",
+            "status": "stopped",
+            "planStatus": "awaiting_review",
+            "phases": [],
+        }
+
+        plan = ImplementationPlan.from_dict(data)
+
+        assert plan.status == "stopped"
+        assert plan.planStatus == "awaiting_review"

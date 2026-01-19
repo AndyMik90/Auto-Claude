@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from "../../shared/constants";
 import {
   wouldPhaseRegress,
@@ -22,7 +22,7 @@ import { titleGenerator } from "../title-generator";
 import { fileWatcher } from "../file-watcher";
 import { projectStore } from "../project-store";
 import { notificationService } from "../notification-service";
-import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
+import { persistPlanStatusSync, getPlanPath, createPlanIfNotExists } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
@@ -135,7 +135,7 @@ export function registerAgenteventsHandlers(
 
   agentManager.on("exit", (taskId: string, code: number | null, processType: ProcessType) => {
     // Get project info early for multi-project filtering (issue #723)
-    const { project: exitProject } = findTaskAndProject(taskId);
+    const { project: exitProject, task: exitTask } = findTaskAndProject(taskId);
     const exitProjectId = exitProject?.id;
 
     // Send final plan state to renderer BEFORE unwatching
@@ -153,9 +153,97 @@ export function registerAgenteventsHandlers(
 
     fileWatcher.unwatch(taskId);
 
-    if (processType === "spec-creation") {
-      console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
-      return;
+    // FIX: Planning-to-coding transition (Issue #1231)
+    // Only run this logic for spec-creation process (planning phase).
+    // This prevents infinite loop: without this check, when coding (task-execution) completes,
+    // this handler would incorrectly call startTaskExecution again, causing an infinite loop.
+    // The processType check ensures we only auto-continue from planning → coding, not coding → coding.
+    if (processType === 'spec-creation' && (code === 0 || code === 1) && exitProject && exitTask) {
+      const specsBaseDir = getSpecsDir(exitProject.autoBuildPath);
+      const specDir = path.join(exitProject.path, specsBaseDir, exitTask.specId);
+      const specFilePath = path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE);
+      const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+      const metadataPath = path.join(specDir, "task_metadata.json");
+
+      // Check if spec and plan exist (planning completed)
+      const hasSpec = existsSync(specFilePath);
+      const hasPlan = existsSync(planPath);
+
+      if (hasSpec && hasPlan) {
+        // Read metadata and plan once to avoid multiple file reads
+        let metadata: Record<string, unknown> = {};
+        let planContent: Record<string, unknown> = {};
+
+        if (existsSync(metadataPath)) {
+          try {
+            metadata = JSON.parse(readFileSync(metadataPath, "utf-8"));
+          } catch (err) {
+            console.error(`[Task ${taskId}] Failed to read metadata:`, err);
+          }
+        }
+
+        try {
+          planContent = JSON.parse(readFileSync(planPath, "utf-8"));
+        } catch (err) {
+          console.error(`[Task ${taskId}] Failed to read plan:`, err);
+        }
+
+        const requireReviewBeforeCoding = metadata.requireReviewBeforeCoding === true;
+        const allSubtasks = ((planContent.phases as Array<{ subtasks?: unknown[] }>) || [])
+          .flatMap((p) => p.subtasks || []);
+        const planHasSubtasks = allSubtasks.length > 0;
+
+        if (planHasSubtasks && requireReviewBeforeCoding) {
+          // User wants to review before coding - STOP the task
+          // Note: spec_runner.py with --no-build already sets these values, but we set them
+          // here as a fallback in case the Python process didn't complete the update
+          try {
+            metadata.stoppedForPlanReview = true;
+            writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+          } catch (err) {
+            console.error(`[Task ${taskId}] Failed to update task_metadata.json:`, err);
+          }
+
+          try {
+            planContent.status = "stopped";
+            planContent.planStatus = "awaiting_review";
+            writeFileSync(planPath, JSON.stringify(planContent, null, 2));
+          } catch (err) {
+            console.error(`[Task ${taskId}] Failed to update implementation_plan.json:`, err);
+          }
+
+          // Invalidate cache so UI reflects the new status
+          projectStore.invalidateTasksCache(exitProject.id);
+
+          // Notify renderer of status change
+          safeSendToRenderer(
+            getMainWindow,
+            IPC_CHANNELS.TASK_STATUS_CHANGE,
+            taskId,
+            "stopped" as TaskStatus,
+            exitProjectId
+          );
+
+          return;
+        }
+
+        if (planHasSubtasks && !requireReviewBeforeCoding) {
+          // Auto-continue to coding phase
+          const baseBranch = (exitTask.metadata?.baseBranch as string | undefined) || exitProject.settings?.mainBranch;
+          agentManager.startTaskExecution(
+            taskId,
+            exitProject.path,
+            exitTask.specId,
+            {
+              parallel: false,
+              workers: 1,
+              baseBranch,
+              useWorktree: exitTask.metadata?.useWorktree as boolean | undefined
+            }
+          );
+          return;
+        }
+      }
     }
 
     let task: Task | undefined;

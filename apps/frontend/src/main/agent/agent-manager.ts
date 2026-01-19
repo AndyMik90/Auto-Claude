@@ -148,7 +148,14 @@ export class AgentManager extends EventEmitter {
     }
 
     // Check if user requires review before coding
-    if (!metadata?.requireReviewBeforeCoding) {
+    if (metadata?.requireReviewBeforeCoding) {
+      // Human review required: Stop after spec creation, don't start build
+      // Frontend will handle the review gate and resume coding after approval
+      // NOTE: Also pass --auto-approve so the spec gets approved during creation
+      // (otherwise spec_runner exits early with "spec not approved" error)
+      args.push('--no-build');
+      args.push('--auto-approve');
+    } else {
       // Auto-approve: When user starts a task from the UI without requiring review
       args.push('--auto-approve');
     }
@@ -175,8 +182,9 @@ export class AgentManager extends EventEmitter {
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch);
 
-    // Note: This is spec-creation but it chains to task-execution via run.py
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
+    // Use 'spec-creation' processType so exit handler can distinguish planning from coding
+    // This prevents infinite loop when auto-continue triggers after coding completes
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'spec-creation');
   }
 
   /**

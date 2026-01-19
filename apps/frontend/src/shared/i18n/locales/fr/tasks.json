@@ -12,6 +12,7 @@
   "actions": {
     "start": "Démarrer",
     "stop": "Arrêter",
+    "restart": "Redémarrer",
     "recover": "Récupérer",
     "resume": "Reprendre",
     "archive": "Archiver",
@@ -59,7 +60,8 @@
     "ai_review": "Révision IA",
     "human_review": "Révision humaine",
     "done": "Terminé",
-    "pr_created": "PR créée"
+    "pr_created": "PR créée",
+    "stopped": "Arrêté"
   },
   "kanban": {
     "emptyBacklog": "Aucune tâche planifiée",
@@ -132,7 +134,8 @@
   },
   "metadata": {
     "severity": "sévérité",
-    "pullRequest": "Pull Request"
+    "pullRequest": "Pull Request",
+    "reviewRequired": "Révision requise"
   },
   "images": {
     "removeImageAriaLabel": "Supprimer l'image {{filename}}",
@@ -258,5 +261,9 @@
     "noTasksToSelect": "Aucune tâche disponible à sélectionner",
     "confirmBulkAction": "Confirmer l'action groupée pour {{count}} tâches",
     "processingTasks": "Traitement des tâches sélectionnées..."
+  },
+  "planReview": {
+    "title": "Révision requise",
+    "instructions": "La planification est terminée. Révisez spec.md et modifiez si nécessaire. Cliquez sur Redémarrer lorsque vous êtes prêt à commencer le codage."
   }
 }

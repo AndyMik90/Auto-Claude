@@ -20,24 +20,28 @@ export type TaskStatusColumn = typeof TASK_STATUS_COLUMNS[number];
 
 // Status label translation keys (use with t() from react-i18next)
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_LABELS: Record<TaskStatusColumn | 'pr_created', string> = {
+// Note: stopped tasks appear in backlog column but have distinct status label
+export const TASK_STATUS_LABELS: Record<TaskStatusColumn | 'pr_created' | 'stopped', string> = {
   backlog: 'columns.backlog',
   in_progress: 'columns.in_progress',
   ai_review: 'columns.ai_review',
   human_review: 'columns.human_review',
   done: 'columns.done',
-  pr_created: 'columns.pr_created'
+  pr_created: 'columns.pr_created',
+  stopped: 'columns.stopped'
 };
 
 // Status colors for UI
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created', string> = {
+// Note: stopped tasks appear in backlog column but have distinct styling
+export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created' | 'stopped', string> = {
   backlog: 'bg-muted text-muted-foreground',
   in_progress: 'bg-info/10 text-info',
   ai_review: 'bg-warning/10 text-warning',
   human_review: 'bg-purple-500/10 text-purple-400',
   done: 'bg-success/10 text-success',
-  pr_created: 'bg-info/10 text-info'
+  pr_created: 'bg-info/10 text-info',
+  stopped: 'bg-amber-500/10 text-amber-500'
 };
 
 // ============================================

@@ -221,6 +221,21 @@ export function registerTaskExecutionHandlers(
           // Use default description
         }
 
+        // Clear stoppedForPlanReview flag if it was set (user is resuming after review)
+        if (task.metadata?.stoppedForPlanReview) {
+          const metadataPath = path.join(specDir, 'task_metadata.json');
+          try {
+            if (existsSync(metadataPath)) {
+              const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+              metadata.stoppedForPlanReview = false;
+              writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+              console.warn('[TASK_START] Cleared stoppedForPlanReview flag');
+            }
+          } catch (err) {
+            console.error('[TASK_START] Failed to clear stoppedForPlanReview flag:', err);
+          }
+        }
+
         console.warn('[TASK_START] Starting task execution (no subtasks) for:', task.specId);
         // Start task execution which will create the implementation plan
         // Note: No parallel mode for planning phase - parallel only makes sense with multiple subtasks

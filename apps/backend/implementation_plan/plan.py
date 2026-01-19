@@ -203,9 +203,12 @@ class ImplementationPlan:
             self.planStatus = "in_progress"
         else:
             # All subtasks pending
-            # Preserve human_review/review status if it's for plan approval stage
+            # Preserve review status if it's for plan approval stage
             # (spec is complete, waiting for user to approve before coding starts)
-            if self.status == "human_review" and self.planStatus == "review":
+            # This covers both:
+            # - human_review + review: legacy plan review state
+            # - stopped + awaiting_review: new plan review state (set by spec_runner.py --no-build)
+            if self.status in ("human_review", "stopped") and self.planStatus in ("review", "awaiting_review"):
                 # Keep the plan approval status - don't reset to backlog
                 pass
             else:

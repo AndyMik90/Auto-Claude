@@ -124,7 +124,8 @@ function createEmptyTaskOrder(): TaskOrderState {
     ai_review: [],
     human_review: [],
     pr_created: [],
-    done: []
+    done: [],
+    stopped: []
   };
 }
 
@@ -187,8 +188,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // Determine execution progress based on status transition
           let executionProgress = t.executionProgress;
 
-          if (status === 'backlog') {
-            // When status goes to backlog, reset execution progress to idle
+          if (status === 'backlog' || status === 'stopped') {
+            // When status goes to backlog or stopped, reset execution progress to idle
             // This ensures the planning/coding animation stops when task is stopped
             executionProgress = { phase: 'idle' as ExecutionPhase, phaseProgress: 0, overallProgress: 0 };
           } else if (status === 'in_progress' && !t.executionProgress?.phase) {
@@ -540,7 +541,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           ai_review: isValidColumnArray(parsed.ai_review) ? parsed.ai_review : emptyOrder.ai_review,
           human_review: isValidColumnArray(parsed.human_review) ? parsed.human_review : emptyOrder.human_review,
           pr_created: isValidColumnArray(parsed.pr_created) ? parsed.pr_created : emptyOrder.pr_created,
-          done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done
+          done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done,
+          stopped: isValidColumnArray(parsed.stopped) ? parsed.stopped : emptyOrder.stopped
         };
 
         set({ taskOrder: validatedOrder });

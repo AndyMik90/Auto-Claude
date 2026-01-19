@@ -273,6 +273,18 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       );
     }
 
+    if (task.status === 'stopped') {
+      return (
+        <Button
+          variant="default"
+          onClick={handleStartStop}
+        >
+          <Play className="mr-2 h-4 w-4" />
+          {t('tasks:actions.restart')}
+        </Button>
+      );
+    }
+
     if (task.status === 'backlog' || task.status === 'in_progress') {
       return (
         <Button
@@ -493,7 +505,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       {/* Metadata */}
                       <TaskMetadata task={task} />
 
-                      {/* Human Review Section */}
+                      {/* Human Review Section (post-coding review only) */}
                       {state.needsReview && (
                         <>
                           <Separator />

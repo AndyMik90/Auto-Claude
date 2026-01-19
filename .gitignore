@@ -7,6 +7,12 @@
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+nul
+
+# ===========================
+# Local Development
+# ===========================
+.bill/
 
 # ===========================
 # Security - Environment & Secrets

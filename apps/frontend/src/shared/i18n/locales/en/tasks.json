@@ -12,6 +12,7 @@
   "actions": {
     "start": "Start",
     "stop": "Stop",
+    "restart": "Restart",
     "recover": "Recover",
     "resume": "Resume",
     "archive": "Archive",
@@ -59,7 +60,8 @@
     "ai_review": "AI Review",
     "human_review": "Human Review",
     "done": "Done",
-    "pr_created": "PR Created"
+    "pr_created": "PR Created",
+    "stopped": "Stopped"
   },
   "kanban": {
     "emptyBacklog": "No tasks planned",
@@ -132,7 +134,8 @@
   },
   "metadata": {
     "severity": "severity",
-    "pullRequest": "Pull Request"
+    "pullRequest": "Pull Request",
+    "reviewRequired": "Review Required"
   },
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
@@ -258,5 +261,9 @@
     "noTasksToSelect": "No tasks available to select",
     "confirmBulkAction": "Confirm bulk action for {{count}} tasks",
     "processingTasks": "Processing selected tasks..."
+  },
+  "planReview": {
+    "title": "Review Required",
+    "instructions": "Planning is complete. Review spec.md and edit if needed. Click Restart when ready to begin coding."
   }
 }

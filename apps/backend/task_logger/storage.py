@@ -129,6 +129,7 @@ class LogStorage:
             self._data["phases"][phase]["status"] = status
             if completed_at:
                 self._data["phases"][phase]["completed_at"] = completed_at
+            self.save()
 
     def set_phase_started(self, phase: str, started_at: str) -> None:
         """

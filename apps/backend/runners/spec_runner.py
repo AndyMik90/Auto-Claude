@@ -46,6 +46,7 @@ if sys.version_info < (3, 10):  # noqa: UP036
 
 import asyncio
 import io
+import json
 import os
 from pathlib import Path
 
@@ -371,6 +372,34 @@ Examples:
 
             # Execute run.py - replace current process
             os.execv(sys.executable, run_cmd)
+
+        else:
+            # --no-build specified: Set planStatus to 'awaiting_review' to signal frontend
+            # that planning is complete and user review is required before coding starts
+            debug("spec_runner", "--no-build flag detected, setting awaiting_review status")
+            print()
+            print_status("--no-build flag: Setting plan to awaiting review", "info")
+
+            plan_path = orchestrator.spec_dir / "implementation_plan.json"
+            debug("spec_runner", f"Looking for plan file at: {plan_path}")
+
+            if plan_path.exists():
+                try:
+                    plan_data = json.loads(plan_path.read_text(encoding="utf-8"))
+                    plan_data["planStatus"] = "awaiting_review"
+                    plan_data["status"] = "stopped"  # Mark as stopped for review
+                    plan_path.write_text(json.dumps(plan_data, indent=2, ensure_ascii=False), encoding="utf-8")
+                    debug("spec_runner", "Set planStatus to 'awaiting_review' for frontend")
+                    print()
+                    print_status("Planning complete. Awaiting review before coding.", "success")
+                    print(f"  {muted('Review the spec at:')} {orchestrator.spec_dir / 'spec.md'}")
+                    print(f"  {muted('When ready, restart the task in the UI to begin coding.')}")
+                except (json.JSONDecodeError, OSError) as e:
+                    debug_error("spec_runner", f"Failed to update plan status: {e}")
+                    print_status(f"Failed to update plan status: {e}", "error")
+            else:
+                debug_error("spec_runner", f"Plan file not found at: {plan_path}")
+                print_status(f"Warning: implementation_plan.json not found at {plan_path}", "warning")
 
         sys.exit(0)
 

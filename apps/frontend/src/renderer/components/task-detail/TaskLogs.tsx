@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Terminal,
   Loader2,
@@ -16,7 +17,8 @@ import {
   Wrench,
   Info,
   Brain,
-  Cpu
+  Cpu,
+  Pause
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible';
@@ -119,6 +121,18 @@ export function TaskLogs({
   onLogsScroll,
   onTogglePhase
 }: TaskLogsProps) {
+  const { t } = useTranslation(['tasks']);
+
+  // Show accordion if review is required and planning is complete but coding hasn't started
+  // Must check that planning phase is actually finished (not still running)
+  const requiresReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+  const planningPhaseStatus = phaseLogs?.phases.planning?.status;
+  const isPlanningComplete = planningPhaseStatus === 'completed';
+  const isPlanningFailed = planningPhaseStatus === 'failed';
+  const hasCodingEntries = phaseLogs?.phases.coding?.entries && phaseLogs.phases.coding.entries.length > 0;
+  // Only show when: review required AND planning finished (completed or failed) AND coding not started
+  const showPlanReviewAccordion = requiresReviewBeforeCoding && (isPlanningComplete || isPlanningFailed) && !hasCodingEntries;
+
   return (
     <div
       ref={logsContainerRef}
@@ -133,16 +147,31 @@ export function TaskLogs({
         ) : phaseLogs ? (
           <>
             {/* Phase-based collapsible logs */}
-            {(['planning', 'coding', 'validation'] as TaskLogPhase[]).map((phase) => (
-              <PhaseLogSection
-                key={phase}
-                phase={phase}
-                phaseLog={phaseLogs.phases[phase]}
-                isExpanded={expandedPhases.has(phase)}
-                onToggle={() => onTogglePhase(phase)}
-                isTaskStuck={isStuck}
-                phaseConfig={getPhaseConfig(task.metadata, phase)}
-              />
+            {(['planning', 'coding', 'validation'] as TaskLogPhase[]).map((phase, index) => (
+              <div key={phase}>
+                <PhaseLogSection
+                  phase={phase}
+                  phaseLog={phaseLogs.phases[phase]}
+                  isExpanded={expandedPhases.has(phase)}
+                  onToggle={() => onTogglePhase(phase)}
+                  isTaskStuck={isStuck}
+                  phaseConfig={getPhaseConfig(task.metadata, phase)}
+                />
+                {/* Show review accordion after planning phase when review is required before coding */}
+                {phase === 'planning' && showPlanReviewAccordion && (
+                  <div className="my-2 rounded-lg border border-warning/50 bg-warning/5">
+                    <div className="flex items-center gap-2 p-3">
+                      <Pause className="h-4 w-4 text-warning" />
+                      <span className="font-medium text-sm">{t('tasks:planReview.title')}</span>
+                    </div>
+                    <div className="px-3 pb-3">
+                      <p className="text-sm text-muted-foreground">
+                        {t('tasks:planReview.instructions')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
             <div ref={logsEndRef} />
           </>
