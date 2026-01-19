@@ -178,19 +178,23 @@ export class ChangelogService extends EventEmitter {
   /**
    * Ensure prerequisites are met for changelog generation
    * Validates auto-build source path and Claude CLI availability
+   * Returns the resolved Claude CLI path to ensure we use the freshly validated path
    */
-  private ensurePrerequisites(): { autoBuildSource: string } {
+  private ensurePrerequisites(): { autoBuildSource: string; claudePath: string } {
     const autoBuildSource = this.getAutoBuildSourcePath();
     if (!autoBuildSource) {
       throw new Error('Auto-build source path not found');
     }
 
     const claudeInfo = getToolInfo('claude');
-    if (!claudeInfo.found) {
-      throw new Error(`Claude CLI not found. Please install Claude Code from https://claude.ai/download. ${claudeInfo.message || ''}`);
+    if (!claudeInfo.found || !claudeInfo.path) {
+      // Use claudeInfo.message directly to avoid redundant text
+      throw new Error(claudeInfo.message || 'Claude CLI not found. Install from https://claude.ai/download');
     }
 
-    return { autoBuildSource };
+    // Update cached path with freshly resolved value
+    this.claudePath = claudeInfo.path;
+    return { autoBuildSource, claudePath: claudeInfo.path };
   }
 
   /**
@@ -198,13 +202,13 @@ export class ChangelogService extends EventEmitter {
    */
   private getGenerator(): ChangelogGenerator {
     if (!this.generator) {
-      const { autoBuildSource } = this.ensurePrerequisites();
+      const { autoBuildSource, claudePath } = this.ensurePrerequisites();
 
       const autoBuildEnv = this.loadAutoBuildEnv();
 
       this.generator = new ChangelogGenerator(
         this.pythonPath,
-        this.claudePath,
+        claudePath,
         autoBuildSource,
         autoBuildEnv,
         this.isDebugEnabled()
@@ -236,11 +240,11 @@ export class ChangelogService extends EventEmitter {
    */
   private getVersionSuggester(): VersionSuggester {
     if (!this.versionSuggester) {
-      const { autoBuildSource } = this.ensurePrerequisites();
+      const { autoBuildSource, claudePath } = this.ensurePrerequisites();
 
       this.versionSuggester = new VersionSuggester(
         this.pythonPath,
-        this.claudePath,
+        claudePath,
         autoBuildSource,
         this.isDebugEnabled()
       );
