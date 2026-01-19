@@ -47,11 +47,16 @@ vi.mock('electron', () => ({
 }));
 
 // Mock os module
-vi.mock('os', () => ({
-  default: {
-    homedir: vi.fn(() => '/mock/home')
-  }
-}));
+// Supports both default import (import os from 'os') and namespace import (import * as os from 'os')
+vi.mock('os', () => {
+  const homedirFn = vi.fn(() => '/mock/home');
+  const tmpdirFn = vi.fn(() => '/mock/tmp');
+  return {
+    default: { homedir: homedirFn, tmpdir: tmpdirFn },
+    homedir: homedirFn,
+    tmpdir: tmpdirFn
+  };
+});
 
 // Mock fs module - need to mock both sync and promises
 vi.mock('fs', () => ({
@@ -69,7 +74,7 @@ vi.mock('child_process', () => {
   // so when tests call vi.mocked(execFileSync).mockReturnValue(), it affects execSync too
   const sharedSyncMock = vi.fn();
 
-const mockExecFile = vi.fn((cmd: unknown, args: unknown, options: unknown, callback: unknown) => {
+const mockExecFile = vi.fn((_cmd: unknown, _args: unknown, _options: unknown, callback: unknown) => {
     // Return a minimal ChildProcess-like object
     const childProcess = {
       stdout: { on: vi.fn() },
@@ -86,7 +91,7 @@ const mockExecFile = vi.fn((cmd: unknown, args: unknown, options: unknown, callb
     return childProcess as unknown as import('child_process').ChildProcess;
   });
 
-  const mockExec = vi.fn((cmd: unknown, options: unknown, callback: unknown) => {
+  const mockExec = vi.fn((_cmd: unknown, _options: unknown, callback: unknown) => {
     // Return a minimal ChildProcess-like object
     const childProcess = {
       stdout: { on: vi.fn() },

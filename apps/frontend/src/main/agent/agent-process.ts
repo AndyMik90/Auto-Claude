@@ -24,7 +24,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
-import { killProcessGracefully, isWindows } from '../platform';
+import { killProcessGracefully, isWindows, normalizeExecutablePath } from '../platform';
 
 /**
  * Type for supported CLI tools
@@ -513,7 +513,9 @@ export class AgentProcessManager {
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonCommand = normalizeExecutablePath(pythonCommand);
+    const childProcess = spawn(normalizedPythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: {
         ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8

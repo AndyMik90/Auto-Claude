@@ -8,7 +8,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import { existsSync, readdirSync } from 'fs';
-import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
+import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension, getEnvVar } from './index';
 
 /**
  * Resolve Claude CLI executable path
@@ -106,8 +106,9 @@ export function getPythonPaths(): string[] {
     }
 
     // System Python installations (expand Python3* patterns)
-    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-    const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    // Use getEnvVar for case-insensitive Windows environment variable access
+    const programFiles = getEnvVar('ProgramFiles') || 'C:\\Program Files';
+    const programFilesX86 = getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)';
 
     paths.push(...expandDirPattern(programFiles, 'Python3*'));
     paths.push(...expandDirPattern(programFilesX86, 'Python3*'));
@@ -174,7 +175,8 @@ export function getWindowsShellPaths(): Record<string, string[]> {
     return {};
   }
 
-  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  // Use getEnvVar for case-insensitive Windows environment variable access
+  const systemRoot = getEnvVar('SystemRoot') || 'C:\\Windows';
 
   // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
   // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
@@ -217,16 +219,17 @@ export function expandWindowsEnvVars(pathPattern: string): string {
   }
 
   const homeDir = os.homedir();
+  // Use getEnvVar for case-insensitive Windows environment variable access
   const envVars: Record<string, string | undefined> = {
-    '%PROGRAMFILES%': process.env.ProgramFiles || 'C:\\Program Files',
-    '%PROGRAMFILES(X86)%': process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
-    '%LOCALAPPDATA%': process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'),
-    '%APPDATA%': process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming'),
-    '%USERPROFILE%': process.env.USERPROFILE || homeDir,
-    '%PROGRAMDATA%': process.env.ProgramData || process.env.PROGRAMDATA || 'C:\\ProgramData',
-    '%SYSTEMROOT%': process.env.SystemRoot || 'C:\\Windows',
-    '%TEMP%': process.env.TEMP || process.env.TMP || path.join(homeDir, 'AppData', 'Local', 'Temp'),
-    '%TMP%': process.env.TMP || process.env.TEMP || path.join(homeDir, 'AppData', 'Local', 'Temp')
+    '%PROGRAMFILES%': getEnvVar('ProgramFiles') || 'C:\\Program Files',
+    '%PROGRAMFILES(X86)%': getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)',
+    '%LOCALAPPDATA%': getEnvVar('LOCALAPPDATA') || path.join(homeDir, 'AppData', 'Local'),
+    '%APPDATA%': getEnvVar('APPDATA') || path.join(homeDir, 'AppData', 'Roaming'),
+    '%USERPROFILE%': getEnvVar('USERPROFILE') || homeDir,
+    '%PROGRAMDATA%': getEnvVar('ProgramData') || getEnvVar('PROGRAMDATA') || 'C:\\ProgramData',
+    '%SYSTEMROOT%': getEnvVar('SystemRoot') || 'C:\\Windows',
+    '%TEMP%': getEnvVar('TEMP') || getEnvVar('TMP') || path.join(homeDir, 'AppData', 'Local', 'Temp'),
+    '%TMP%': getEnvVar('TMP') || getEnvVar('TEMP') || path.join(homeDir, 'AppData', 'Local', 'Temp')
   };
 
   let expanded = pathPattern;
@@ -252,9 +255,10 @@ export function getWindowsToolPath(toolName: string, subPath?: string): string[]
   }
 
   const homeDir = os.homedir();
-  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-  const appData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+  // Use getEnvVar for case-insensitive Windows environment variable access
+  const programFiles = getEnvVar('ProgramFiles') || 'C:\\Program Files';
+  const programFilesX86 = getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)';
+  const appData = getEnvVar('LOCALAPPDATA') || path.join(homeDir, 'AppData', 'Local');
 
   const paths: string[] = [];
 
@@ -275,7 +279,8 @@ export function getWindowsToolPath(toolName: string, subPath?: string): string[]
   paths.push(path.join(appData, toolName));
 
   // Roaming AppData (for npm)
-  const roamingAppData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+  // Use getEnvVar for case-insensitive Windows environment variable access
+  const roamingAppData = getEnvVar('APPDATA') || path.join(homeDir, 'AppData', 'Roaming');
   paths.push(path.join(roamingAppData, 'npm'));
 
   return paths;

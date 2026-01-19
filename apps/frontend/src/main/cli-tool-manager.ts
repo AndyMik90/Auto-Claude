@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure, expandWindowsEnvVars } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -180,8 +180,9 @@ export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
         joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
         joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
         joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
-        'C:\\Program Files\\Claude\\claude.exe',
-        'C:\\Program Files (x86)\\Claude\\claude.exe',
+        // Use expandWindowsEnvVars for cross-platform compatibility
+        joinPaths(expandWindowsEnvVars('%PROGRAMFILES%'), 'Claude', `claude${getExecutableExtension()}`),
+        joinPaths(expandWindowsEnvVars('%PROGRAMFILES(X86)%'), 'Claude', `claude${getExecutableExtension()}`),
       ]
     : [
         joinPaths(homeDir, '.local', 'bin', 'claude'),
@@ -695,8 +696,10 @@ class CLIToolManager {
 
       // 4b. Check known installation locations
       const homeDir = os.homedir();
-      const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-      const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+      // Use expandWindowsEnvVars for cross-platform compatibility
+      // expandWindowsEnvVars handles the fallback values if env vars are not set
+      const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
+      const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
       const windowsPaths = [
         joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
         joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),
@@ -861,6 +864,14 @@ class CLIToolManager {
       const cmd = parts[0];
       const args = [...parts.slice(1), '--version'];
 
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(cmd)) {
+        return {
+          valid: false,
+          message: `Invalid Python path: contains dangerous characters or patterns`,
+        };
+      }
+
       const version = execFileSync(cmd, args, {
         encoding: 'utf-8',
         timeout: 5000,
@@ -911,7 +922,19 @@ class CLIToolManager {
    */
   private validateGit(gitCmd: string): ToolValidation {
     try {
-      const version = execFileSync(gitCmd, ['--version'], {
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\Program Files\Git\git -> C:\Program Files\Git\git.exe
+      const normalizedCmd = normalizeExecutablePath(gitCmd);
+
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(normalizedCmd)) {
+        return {
+          valid: false,
+          message: `Invalid Git path: contains dangerous characters or patterns`,
+        };
+      }
+
+      const version = execFileSync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
@@ -941,7 +964,19 @@ class CLIToolManager {
    */
   private validateGitHubCLI(ghCmd: string): ToolValidation {
     try {
-      const version = execFileSync(ghCmd, ['--version'], {
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\...\npm\gh -> C:\...\npm\gh.cmd
+      const normalizedCmd = normalizeExecutablePath(ghCmd);
+
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(normalizedCmd)) {
+        return {
+          valid: false,
+          message: `Invalid GitHub CLI path: contains dangerous characters or patterns`,
+        };
+      }
+
+      const version = execFileSync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
@@ -996,8 +1031,9 @@ class CLIToolManager {
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
-        const cmdExe = process.env.ComSpec
-          || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
+        // Use expandWindowsEnvVars for cross-platform compatibility
+        const cmdExe = expandWindowsEnvVars('%COMSPEC%')
+          || joinPaths(expandWindowsEnvVars('%SYSTEMROOT%'), 'System32', 'cmd.exe');
         const cmdLine = `""${normalizedCmd}" --version"`;
         const execOptions: ExecFileSyncOptionsWithVerbatim = {
           encoding: 'utf-8',
@@ -1011,6 +1047,13 @@ class CLIToolManager {
         ).trim();
       } else {
         // For .exe files and non-Windows, use execFileSync
+        // Security validation: reject paths with dangerous patterns
+        if (!isPathSecure(normalizedCmd)) {
+          return {
+            valid: false,
+            message: `Claude CLI path failed security validation: ${unquotedCmd}`,
+          };
+        }
         version = normalizeExecOutput(
           execFileSync(normalizedCmd, ['--version'], {
             encoding: 'utf-8',
@@ -1139,8 +1182,9 @@ class CLIToolManager {
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
-        const cmdExe = process.env.ComSpec
-          || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
+        // Use expandWindowsEnvVars for cross-platform compatibility
+        const cmdExe = expandWindowsEnvVars('%COMSPEC%')
+          || joinPaths(expandWindowsEnvVars('%SYSTEMROOT%'), 'System32', 'cmd.exe');
         const cmdLine = `""${normalizedCmd}" --version"`;
         const execOptions: ExecFileAsyncOptionsWithVerbatim = {
           encoding: 'utf-8',
@@ -1246,7 +1290,11 @@ class CLIToolManager {
    */
   private async validateGitAsync(gitCmd: string): Promise<ToolValidation> {
     try {
-      const { stdout } = await execFileAsync(gitCmd, ['--version'], {
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\Program Files\Git\git -> C:\Program Files\Git\git.exe
+      const normalizedCmd = normalizeExecutablePath(gitCmd);
+
+      const { stdout } = await execFileAsync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
@@ -1278,7 +1326,11 @@ class CLIToolManager {
    */
   private async validateGitHubCLIAsync(ghCmd: string): Promise<ToolValidation> {
     try {
-      const { stdout } = await execFileAsync(ghCmd, ['--version'], {
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\...\npm\gh -> C:\...\npm\gh.cmd
+      const normalizedCmd = normalizeExecutablePath(ghCmd);
+
+      const { stdout } = await execFileAsync(normalizedCmd, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
@@ -1724,8 +1776,10 @@ class CLIToolManager {
 
       // 4b. Check known installation locations
       const homeDir = os.homedir();
-      const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-      const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+      // Use expandWindowsEnvVars for cross-platform compatibility
+      // expandWindowsEnvVars handles the fallback values if env vars are not set
+      const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
+      const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
       const windowsPaths = [
         joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
         joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),

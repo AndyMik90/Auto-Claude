@@ -241,9 +241,11 @@ export function registerStartGlabAuth(): void {
             args.push('--hostname', hostname);
           }
 
+          // Use findExecutable for cross-platform path resolution
+          const glabPath = findExecutable('glab') || 'glab';
           debugLog('Spawning: glab', args);
 
-          const glabProcess = spawn('glab', args, {
+          const glabProcess = spawn(glabPath, args, {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: getAugmentedEnv()
           });

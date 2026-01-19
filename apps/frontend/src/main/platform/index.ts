@@ -64,6 +64,27 @@ export function isUnix(): boolean {
 }
 
 /**
+ * Get a platform-specific environment variable value
+ *
+ * Provides case-insensitive environment variable access on Windows,
+ * where environment variable names are case-insensitive (e.g., PATH, Path, path).
+ * On Unix systems, environment variable names are case-sensitive.
+ */
+export function getEnvVar(name: string): string | undefined {
+  // Windows case-insensitive environment variables
+  if (isWindows()) {
+    for (const key of Object.keys(process.env)) {
+      if (key.toLowerCase() === name.toLowerCase()) {
+        return process.env[key];
+      }
+    }
+    return undefined;
+  }
+
+  return process.env[name];
+}
+
+/**
  * Get path configuration for the current platform
  */
 export function getPathConfig(): PathConfig {
@@ -117,6 +138,7 @@ export function getBinaryDirectories(): BinaryDirectories {
   const homeDir = os.homedir();
 
   if (isWindows()) {
+    // Use getEnvVar for case-insensitive Windows environment variable access
     return {
       user: [
         path.join(homeDir, 'AppData', 'Local', 'Programs'),
@@ -124,9 +146,9 @@ export function getBinaryDirectories(): BinaryDirectories {
         path.join(homeDir, '.local', 'bin')
       ],
       system: [
-        process.env.ProgramFiles || 'C:\\Program Files',
-        process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
-        path.join(process.env.SystemRoot || 'C:\\Windows', 'System32')
+        getEnvVar('ProgramFiles') || 'C:\\Program Files',
+        getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)',
+        path.join(getEnvVar('SystemRoot') || 'C:\\Windows', 'System32')
       ]
     };
   }
@@ -199,14 +221,15 @@ function getWindowsShellConfig(preferredShell?: ShellType): ShellConfig {
   // Shell path candidates in order of preference
   // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
   // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
+  // Use getEnvVar for case-insensitive Windows environment variable access
   const shellPaths: Record<ShellType, string[]> = {
     [ShellType.PowerShell]: [
       path.join('C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
       path.join(homeDir, 'AppData', 'Local', 'Microsoft', 'WindowsApps', 'pwsh.exe'),
-      path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+      path.join(getEnvVar('SystemRoot') || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
     ],
     [ShellType.CMD]: [
-      path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe')
+      path.join(getEnvVar('SystemRoot') || 'C:\\Windows', 'System32', 'cmd.exe')
     ],
     [ShellType.Bash]: [
       path.join('C:\\Program Files', 'Git', 'bin', 'bash.exe'),
@@ -233,8 +256,9 @@ function getWindowsShellConfig(preferredShell?: ShellType): ShellConfig {
   }
 
   // Fallback to default CMD
+  // Use getEnvVar for case-insensitive Windows environment variable access
   return {
-    executable: process.env.ComSpec || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe'),
+    executable: getEnvVar('ComSpec') || path.join(getEnvVar('SystemRoot') || 'C:\\Windows', 'System32', 'cmd.exe'),
     args: [],
     env: {}
   };
@@ -244,7 +268,8 @@ function getWindowsShellConfig(preferredShell?: ShellType): ShellConfig {
  * Get Unix shell configuration
  */
 function getUnixShellConfig(preferredShell?: ShellType): ShellConfig {
-  const shellPath = process.env.SHELL || '/bin/zsh';
+  // Use getEnvVar for consistent environment variable access pattern
+  const shellPath = getEnvVar('SHELL') || '/bin/zsh';
 
   return {
     executable: shellPath,
@@ -326,23 +351,6 @@ export function normalizePath(inputPath: string): string {
  */
 export function joinPaths(...parts: string[]): string {
   return path.join(...parts);
-}
-
-/**
- * Get a platform-specific environment variable value
- */
-export function getEnvVar(name: string): string | undefined {
-  // Windows case-insensitive environment variables
-  if (isWindows()) {
-    for (const key of Object.keys(process.env)) {
-      if (key.toLowerCase() === name.toLowerCase()) {
-        return process.env[key];
-      }
-    }
-    return undefined;
-  }
-
-  return process.env[name];
 }
 
 /**
@@ -613,7 +621,8 @@ export function getVenvPythonPath(venvRoot: string): string {
 export function getPtySocketPath(): string {
   // On Unix-like systems, use the real user ID from process.getuid()
   // On Windows, process.getuid() is undefined, so use USERNAME or USER environment variables
-  const uid = process.getuid?.() ?? (isWindows() ? (process.env.USERNAME || process.env.USER || 'default') : 'default');
+  // Use getEnvVar for case-insensitive Windows environment variable access
+  const uid = process.getuid?.() ?? (isWindows() ? (getEnvVar('USERNAME') || getEnvVar('USER') || 'default') : 'default');
   if (isWindows()) {
     return `\\\\.\\pipe\\auto-claude-pty-${uid}`;
   }

@@ -582,7 +582,7 @@ describe('Windows Paths Module', () => {
         expect(isSecurePath('C:\\tool.exe\r\nmalicious')).toBe(false);
       });
 
-      it('rejects paths with tab characters', () => {
+      it('documents tabs as currently allowed', () => {
         // The actual implementation only checks for \r\n, not tabs
         // This test documents current behavior - tabs are NOT detected
         expect(isSecurePath('C:\\tool.exe\tmalicious')).toBe(true);

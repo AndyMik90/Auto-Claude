@@ -19,7 +19,7 @@ import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
-import { isSecurePath, isWindows as platformIsWindows, isMacOS, getCurrentOS, normalizeExecutablePath } from '../platform';
+import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar } from '../platform';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
 import semver from 'semver';
@@ -52,9 +52,11 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
 
     // Augment PATH with the CLI directory for proper resolution
     const cliDir = path.dirname(normalizedCliPath);
+    // Use getEnvVar for case-insensitive Windows environment variable access
+    const pathValue = getEnvVar('PATH') || '';
     const env = {
       ...process.env,
-      PATH: cliDir ? `${cliDir}${path.delimiter}${process.env.PATH || ''}` : process.env.PATH,
+      PATH: cliDir ? `${cliDir}${path.delimiter}${pathValue}` : pathValue,
     };
 
     let stdout: string;
@@ -64,9 +66,9 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     // /c = run command then terminate
     if (isWindows && /\.(cmd|bat)$/i.test(normalizedCliPath)) {
       // Get cmd.exe path from environment or use default
-      // Use expandWindowsEnvVars for proper SystemRoot resolution with fallback
-      const systemRoot = process.env.SystemRoot || 'C:\\Windows';
-      const cmdExe = process.env.ComSpec || path.join(systemRoot, 'System32', 'cmd.exe');
+      // Use expandWindowsEnvVars for proper SystemRoot/ComSpec resolution with fallback
+      const systemRoot = expandWindowsEnvVars('%SYSTEMROOT%');
+      const cmdExe = expandWindowsEnvVars('%COMSPEC%') || joinPaths(systemRoot, 'System32', 'cmd.exe');
       // Use double-quoted command line for paths with spaces
       const cmdLine = `""${normalizedCliPath}" --version"`;
       const execOptions: ExecFileAsyncOptionsWithVerbatim = {
@@ -593,8 +595,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       } else if (terminalId === 'conemu') {
         // ConEmu - open with PowerShell tab running the command
         const conemuPaths = [
-          'C:\\Program Files\\ConEmu\\ConEmu64.exe',
-          'C:\\Program Files (x86)\\ConEmu\\ConEmu.exe',
+          joinPaths(expandWindowsEnvVars('%PROGRAMFILES%'), 'ConEmu', 'ConEmu64.exe'),
+          joinPaths(expandWindowsEnvVars('%PROGRAMFILES(X86)%'), 'ConEmu', 'ConEmu.exe'),
         ];
         const conemuPath = conemuPaths.find(p => existsSync(p));
         if (conemuPath) {
@@ -607,10 +609,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         }
       } else if (terminalId === 'cmder') {
         // Cmder - portable console emulator for Windows
+        const homeDir = os.homedir();
         const cmderPaths = [
-          'C:\\cmder\\Cmder.exe',
-          'C:\\tools\\cmder\\Cmder.exe',
-          path.join(process.env.CMDER_ROOT || '', 'Cmder.exe'),
+          joinPaths(homeDir, 'cmder', 'Cmder.exe'),
+          joinPaths(homeDir, 'tools', 'cmder', 'Cmder.exe'),
+          joinPaths(getEnvVar('CMDER_ROOT') || '', 'Cmder.exe'),
         ].filter(p => p); // Remove empty paths
         const cmderPath = cmderPaths.find(p => existsSync(p));
         if (cmderPath) {
@@ -624,10 +627,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       } else if (terminalId === 'hyper') {
         // Hyper - Electron-based terminal
         const homeDir = os.homedir();
-        const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+        // Use expandWindowsEnvVars for cross-platform compatibility
+        const localAppData = expandWindowsEnvVars('%LOCALAPPDATA%') || joinPaths(homeDir, 'AppData', 'Local');
         const hyperPaths = [
-          path.join(localAppData, 'Programs', 'Hyper', 'Hyper.exe'),
-          path.join(homeDir, 'AppData', 'Local', 'Programs', 'Hyper', 'Hyper.exe'),
+          joinPaths(localAppData, 'Programs', 'Hyper', 'Hyper.exe'),
+          joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'Hyper', 'Hyper.exe'),
         ];
         const hyperPath = hyperPaths.find(p => existsSync(p));
         if (hyperPath) {
@@ -642,10 +646,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       } else if (terminalId === 'tabby') {
         // Tabby (formerly Terminus) - modern terminal for Windows
         const homeDir = os.homedir();
-        const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+        // Use expandWindowsEnvVars for cross-platform compatibility
+        const localAppData = expandWindowsEnvVars('%LOCALAPPDATA%') || joinPaths(homeDir, 'AppData', 'Local');
         const tabbyPaths = [
-          path.join(localAppData, 'Programs', 'Tabby', 'Tabby.exe'),
-          path.join(homeDir, 'AppData', 'Local', 'Programs', 'Tabby', 'Tabby.exe'),
+          joinPaths(localAppData, 'Programs', 'Tabby', 'Tabby.exe'),
+          joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'Tabby', 'Tabby.exe'),
         ];
         const tabbyPath = tabbyPaths.find(p => existsSync(p));
         if (tabbyPath) {
@@ -859,7 +864,7 @@ function checkProfileAuthentication(configDir: string): AuthCheckResult {
     }
 
     // On Linux, also check .credentials.json (Claude CLI may store tokens here)
-    if (process.platform === 'linux' && existsSync(credentialsJsonPath)) {
+    if (isLinux() && existsSync(credentialsJsonPath)) {
       const content = readFileSync(credentialsJsonPath, 'utf-8');
       const data = JSON.parse(content);
 

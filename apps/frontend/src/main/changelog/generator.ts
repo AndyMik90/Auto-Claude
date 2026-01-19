@@ -14,7 +14,7 @@ import { getCommits, getBranchDiffCommits } from './git-integration';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { parsePythonCommand } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
-import { isWindows } from '../platform';
+import { isWindows, getEnvVar } from '../platform';
 
 /**
  * Core changelog generation logic
@@ -267,7 +267,8 @@ export class ChangelogGenerator extends EventEmitter {
       // Ensure critical env vars are set for claude CLI
       // Use USERPROFILE on Windows, HOME on Unix
       ...(isWindowsPlatform ? { USERPROFILE: homeDir } : { HOME: homeDir }),
-      USER: process.env.USER || process.env.USERNAME || 'user',
+      // Use getEnvVar for case-insensitive Windows environment variable access
+      USER: getEnvVar('USER') || getEnvVar('USERNAME') || 'user',
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'

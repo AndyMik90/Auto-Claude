@@ -31,7 +31,8 @@ const execFileAsync = promisify(execFile);
  * falling back to the default home directory location.
  */
 const WINDOWS_NPM_FALLBACK_PATH = (): string => {
-  const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  // Use expandWindowsEnvVars for cross-platform compatibility with fallbacks
+  const appDataPath = expandWindowsEnvVars('%APPDATA%') || path.join(os.homedir(), 'AppData', 'Roaming');
   return path.join(appDataPath, 'npm');
 };
 

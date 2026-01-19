@@ -3,7 +3,7 @@ import { existsSync, accessSync, constants } from 'fs';
 import path from 'path';
 import { app } from 'electron';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
-import { isWindows as platformIsWindows } from './platform';
+import { isWindows as platformIsWindows, normalizeExecutablePath } from './platform';
 
 /**
  * Get the path to the bundled Python executable.
@@ -220,8 +220,10 @@ export function parsePythonCommand(pythonPath: string): [string, string[]] {
   }
 
   // If the path points to an actual file, use it directly (handles paths with spaces)
-  if (existsSync(cleanPath)) {
-    return [cleanPath, []];
+  // On Windows, normalize to handle missing extensions (e.g., python -> python.exe)
+  const normalizedPath = normalizeExecutablePath(cleanPath);
+  if (existsSync(normalizedPath)) {
+    return [normalizedPath, []];
   }
 
   // Check if it's a path (contains path separators but not just at the start)

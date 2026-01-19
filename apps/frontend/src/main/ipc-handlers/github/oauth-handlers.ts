@@ -240,9 +240,10 @@ export function registerStartGhAuth(): void {
         try {
           // Use gh auth login with web flow and repo scope
           const args = ['auth', 'login', '--web', '--scopes', 'repo'];
+          const ghPath = getToolPath('gh');
           debugLog('Spawning: gh', args);
 
-          const ghProcess = spawn('gh', args, {
+          const ghProcess = spawn(ghPath, args, {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: getAugmentedEnv()
           });

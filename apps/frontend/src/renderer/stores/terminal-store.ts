@@ -172,7 +172,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       id: uuid(),
       title: `Terminal ${state.terminals.length + 1}`,
       status: 'idle',
-      cwd: cwd || process.env.HOME || '~',
+      // Use HOME on Unix, USERPROFILE on Windows, fallback to ~
+      cwd: cwd || process.env.HOME || process.env.USERPROFILE || '~',
       createdAt: new Date(),
       isClaudeMode: false,
       // outputBuffer removed - managed by terminalBufferManager
@@ -255,7 +256,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       id,
       title,
       status: 'running',  // External terminals are already running
-      cwd: cwd || process.env.HOME || '~',
+      // Use HOME on Unix, USERPROFILE on Windows, fallback to ~
+      cwd: cwd || process.env.HOME || process.env.USERPROFILE || '~',
       createdAt: new Date(),
       isClaudeMode: false,
       projectPath,

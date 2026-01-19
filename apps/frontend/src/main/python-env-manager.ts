@@ -4,7 +4,7 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
-import { isLinux, isWindows, getPathDelimiter } from './platform';
+import { isLinux, isWindows, getPathDelimiter, normalizeExecutablePath } from './platform';
 import { getIsolatedGitEnv } from './utils/git-isolation';
 
 export interface PythonEnvStatus {
@@ -282,10 +282,12 @@ if sys.version_info >= (3, 12):
 
     this.emit('status', 'Creating Python virtual environment...');
     const venvPath = this.getVenvBasePath()!;
-    console.warn('[PythonEnvManager] Creating venv at:', venvPath, 'with:', systemPython);
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonPath = normalizeExecutablePath(systemPython);
+    console.warn('[PythonEnvManager] Creating venv at:', venvPath, 'with:', normalizedPythonPath);
 
     return new Promise((resolve) => {
-      const proc = spawn(systemPython, ['-m', 'venv', venvPath], {
+      const proc = spawn(normalizedPythonPath, ['-m', 'venv', venvPath], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
       });
@@ -355,8 +357,10 @@ if sys.version_info >= (3, 12):
     }
 
     console.warn('[PythonEnvManager] Bootstrapping pip...');
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonPath = normalizeExecutablePath(venvPython);
     return new Promise((resolve) => {
-      const proc = spawn(venvPython, ['-m', 'ensurepip'], {
+      const proc = spawn(normalizedPythonPath, ['-m', 'ensurepip'], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
       });
@@ -408,9 +412,11 @@ if sys.version_info >= (3, 12):
     this.emit('status', 'Installing Python dependencies (this may take a minute)...');
     console.warn('[PythonEnvManager] Installing dependencies from:', requirementsPath);
 
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonPath = normalizeExecutablePath(venvPython);
     return new Promise((resolve) => {
       // Use python -m pip for better compatibility across Python versions
-      const proc = spawn(venvPython, ['-m', 'pip', 'install', '-r', requirementsPath], {
+      const proc = spawn(normalizedPythonPath, ['-m', 'pip', 'install', '-r', requirementsPath], {
         cwd: this.autoBuildSourcePath!,
         stdio: 'pipe'
       });

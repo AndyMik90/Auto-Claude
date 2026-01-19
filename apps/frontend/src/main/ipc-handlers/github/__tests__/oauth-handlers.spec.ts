@@ -534,8 +534,9 @@ describe('GitHub OAuth Handlers', () => {
 
       ipcMain.invokeHandler('github:startAuth', {});
 
+      // getToolPath is mocked to return /usr/local/bin/gh
       expect(mockSpawn).toHaveBeenCalledWith(
-        'gh',
+        '/usr/local/bin/gh',
         ['auth', 'login', '--web', '--scopes', 'repo'],
         expect.objectContaining({
           stdio: ['pipe', 'pipe', 'pipe']

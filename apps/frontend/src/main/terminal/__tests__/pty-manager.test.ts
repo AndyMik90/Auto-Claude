@@ -30,16 +30,24 @@ vi.mock('fs', async () => {
   };
 });
 
-// Mock platform module
-vi.mock('../../platform', async () => ({
-  ...(await vi.importActual<typeof import('../../platform')>('../../platform')),
-  getWindowsShellPaths: vi.fn(() => ({
-    powershell: [WIN_PATHS.powershell],
-    windowsterminal: [WIN_PATHS.windowsterminal],
-    cmd: [WIN_PATHS.cmd],
-    gitbash: [WIN_PATHS.gitbash],
-  })),
-}));
+// Mock platform module with factory pattern for clarity
+vi.mock('../../platform', async () => {
+  // Helper to build Windows-style paths inline (no dependency on external constants)
+  const winPath = (...parts: string[]) => parts.join('\\');
+  return {
+    ...(await vi.importActual<typeof import('../../platform')>('../../platform')),
+    getWindowsShellPaths: vi.fn(() => ({
+      powershell: [winPath('C:', 'Program Files', 'PowerShell', '7', 'pwsh.exe')],
+      windowsterminal: [winPath(
+        'C:', 'Users', 'Test', 'AppData', 'Local', 'Microsoft', 'WindowsApps',
+        'Microsoft.WindowsTerminal_8wekyb3d8bbwe', 'Microsoft.WindowsTerminal_0.0',
+        'Microsoft.WindowsTerminal.exe'
+      )],
+      cmd: [winPath('C:', 'Windows', 'System32', 'cmd.exe')],
+      gitbash: [winPath('C:', 'Program Files', 'Git', 'bin', 'bash.exe')],
+    })),
+  };
+});
 
 // Mock settings-utils
 vi.mock('../../settings-utils', async () => ({
@@ -85,7 +93,7 @@ function winPath(...parts: string[]): string {
   return parts.join('\\');
 }
 
-// Windows path constants for testing
+// Windows path constants for testing (must match mock factory values)
 const WIN_PATHS = {
   powershell: winPath('C:', 'Program Files', 'PowerShell', '7', 'pwsh.exe'),
   windowsterminal: winPath(
@@ -362,7 +370,6 @@ describe('PTY Manager Module', () => {
     describe('kills PTY and waits for exit when waitForExit=true', () => {
       it('kills PTY process and returns exit promise', async () => {
         const promise = killPty(mockTerminal, true);
-        mockTerminal.pty.kill();
 
         // Advance time past the waitForPtyExit timeout (500ms on Unix, 2000ms on Windows)
         vi.advanceTimersByTime(2000);
@@ -432,9 +439,9 @@ describe('PTY Manager Module', () => {
       // Run all pending setImmediate calls (chunks are written via setImmediate)
       await vi.runAllTimersAsync();
 
-      // Should be called in chunks (1500 / 100 = 15 chunks)
+      // Should be called in exactly 15 chunks (1500 / 100 = 15 chunks with CHUNK_SIZE=100)
       expect(mockTerminal.pty.write).toHaveBeenCalled();
-      expect(vi.mocked(mockTerminal.pty.write).mock.calls.length).toBeGreaterThanOrEqual(10);
+      expect(vi.mocked(mockTerminal.pty.write).mock.calls.length).toBe(15);
     });
 
     it('serializes writes per terminal to prevent interleaving', async () => {

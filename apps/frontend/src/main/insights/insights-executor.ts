@@ -13,6 +13,7 @@ import type {
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
+import { normalizeExecutablePath } from '../platform';
 
 /**
  * Message processor result
@@ -118,7 +119,9 @@ export class InsightsExecutor extends EventEmitter {
     }
 
     // Spawn Python process
-    const proc = spawn(this.config.getPythonPath(), args, {
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonPath = normalizeExecutablePath(this.config.getPythonPath());
+    const proc = spawn(normalizedPythonPath, args, {
       cwd: autoBuildSource,
       env: processEnv
     });

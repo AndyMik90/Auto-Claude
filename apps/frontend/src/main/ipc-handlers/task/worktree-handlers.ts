@@ -20,7 +20,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, joinPaths, isSecurePath } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
@@ -847,19 +847,6 @@ function escapeSingleQuotedPath(dirPath: string): string {
 }
 
 /**
- * Validate a path doesn't contain path traversal attempts after variable expansion
- */
-function isPathSafe(expandedPath: string): boolean {
-  // Normalize and check for path traversal
-  const normalized = path.normalize(expandedPath);
-  // Check for explicit traversal patterns
-  if (normalized.includes('..')) {
-    return false;
-  }
-  return true;
-}
-
-/**
  * Smart app detection using native OS APIs for faster, more comprehensive discovery
  */
 
@@ -924,8 +911,8 @@ async function detectWindowsApps(): Promise<Set<string>> {
     }
   } catch {
     // Fallback: check common paths using environment variable expansion
-    const homeDir = os.homedir();
-    const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+    // Use expandWindowsEnvVars for cross-platform compatibility
+    const localAppData = expandWindowsEnvVars('%LOCALAPPDATA%');
     const commonPaths = [
       expandWindowsEnvVars('%PROGRAMFILES%'),
       expandWindowsEnvVars('%PROGRAMFILES(X86)%'),
@@ -955,7 +942,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${os.homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1023,12 +1010,11 @@ function isAppInstalled(
 
   // Then check specific paths (for apps not in standard locations)
   for (const checkPath of specificPaths) {
-    const expandedPath = checkPath
-      .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+    // Use expandWindowsEnvVars for %USERNAME% expansion with fallbacks
+    const expandedPath = expandWindowsEnvVars(checkPath).replace('~', os.homedir() || '');
 
     // Validate path doesn't contain traversal attempts after expansion
-    if (!isPathSafe(expandedPath)) {
+    if (!isSecurePath(expandedPath)) {
       console.warn('[detectTool] Skipping potentially unsafe path:', checkPath);
       continue;
     }
@@ -1150,7 +1136,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
     if (ide === 'custom' && customPath) {
       // Use custom IDE path with execFileAsync to prevent shell injection
       // Validate the custom path is a valid executable path
-      if (!isPathSafe(customPath)) {
+      if (!isSecurePath(customPath)) {
         return { success: false, error: 'Invalid custom IDE path' };
       }
       await execFileAsync(customPath, [dirPath]);
@@ -1209,7 +1195,7 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
   try {
     if (terminal === 'custom' && customPath) {
       // Use custom terminal path with execFileAsync to prevent shell injection
-      if (!isPathSafe(customPath)) {
+      if (!isSecurePath(customPath)) {
         return { success: false, error: 'Invalid custom terminal path' };
       }
       await execFileAsync(customPath, [dirPath]);

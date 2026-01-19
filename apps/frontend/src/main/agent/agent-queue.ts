@@ -17,7 +17,7 @@ import { pythonEnvManager } from '../python-env-manager';
 import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
-import { getPathDelimiter } from '../platform';
+import { getPathDelimiter, normalizeExecutablePath } from '../platform';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -315,7 +315,9 @@ export class AgentQueueManager {
 
     // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonCommand = normalizeExecutablePath(pythonCommand);
+    const childProcess = spawn(normalizedPythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: finalEnv
     });
@@ -642,7 +644,9 @@ export class AgentQueueManager {
 
     // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+    // Normalize Python path on Windows to handle missing extensions
+    const normalizedPythonCommand = normalizeExecutablePath(pythonCommand);
+    const childProcess = spawn(normalizedPythonCommand, [...pythonBaseArgs, ...args], {
       cwd,
       env: finalEnv
     });

@@ -11,7 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
-import { isWindows, isMacOS, getCurrentOS, getWhichCommand } from '../platform';
+import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -115,12 +115,15 @@ function checkOllamaInstalled(): OllamaInstallStatus {
 
   if (isWindows()) {
     // Windows: Check common installation paths
-    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+    // Use expandWindowsEnvVars for cross-platform compatibility
+    const localAppData = expandWindowsEnvVars('%LOCALAPPDATA%');
+    const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
+    const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
     pathsToCheck.push(
-      path.join(localAppData, 'Programs', 'Ollama', 'ollama.exe'),
-      path.join(localAppData, 'Ollama', 'ollama.exe'),
-      'C:\\Program Files\\Ollama\\ollama.exe',
-      'C:\\Program Files (x86)\\Ollama\\ollama.exe'
+      joinPaths(localAppData, 'Programs', 'Ollama', 'ollama.exe'),
+      joinPaths(localAppData, 'Ollama', 'ollama.exe'),
+      joinPaths(programFiles, 'Ollama', 'ollama.exe'),
+      joinPaths(programFilesX86, 'Ollama', 'ollama.exe')
     );
   } else if (isMacOS()) {
     // macOS: Check common paths
@@ -181,8 +184,11 @@ function checkOllamaInstalled(): OllamaInstallStatus {
     if (ollamaPath && fs.existsSync(ollamaPath)) {
       let version: string | undefined;
       try {
+        // Normalize the path on Windows to handle missing extensions
+        // e.g., C:\...\ollama -> C:\...\ollama.exe
+        const normalizedOllamaPath = normalizeExecutablePath(ollamaPath);
         // Use the discovered path directly with execFileSync
-        const versionOutput = execFileSync(ollamaPath, ['--version'], {
+        const versionOutput = execFileSync(normalizedOllamaPath, ['--version'], {
           encoding: 'utf-8',
           timeout: 5000,
           windowsHide: true,

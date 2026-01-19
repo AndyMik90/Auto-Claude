@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { isWindows, isMacOS, getExecutableExtension, joinPaths } from '../../../platform';
+import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand } from '../../../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -354,7 +354,7 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 
   // 2. Check gh CLI installation (cross-platform)
   try {
-    const whichCommand = isWindows() ? 'where gh' : 'which gh';
+    const whichCommand = `${getWhichCommand()} gh`;
     await execAsync(whichCommand);
     result.ghCliInstalled = true;
   } catch {

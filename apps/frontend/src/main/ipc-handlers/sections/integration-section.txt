@@ -1599,9 +1599,9 @@ ${issue.body || 'No description provided.'}
 
       try {
         // Check if gh CLI is available
-        // Use 'where' on Windows, 'which' on Unix
+        // Use getWhichCommand() for cross-platform compatibility
         try {
-          const checkCmd = process.platform === 'win32' ? 'where gh' : 'which gh';
+          const checkCmd = `${getWhichCommand()} gh`;
           execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
         } catch {
           return {

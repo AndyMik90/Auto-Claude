@@ -43,7 +43,9 @@ import {
   pathsAreEqual,
   getWhichCommand,
   getVenvPythonPath,
-  getPtySocketPath
+  getPtySocketPath,
+  getEnvVar,
+  findExecutable
 } from '../index.js';
 
 // Get the mocked existsSync
@@ -637,6 +639,245 @@ describe('Platform Module', () => {
         const result = getPtySocketPath();
         expect(result).toMatch(/^\/tmp\/auto-claude-pty-/);
         expect(result).toMatch(/\.sock$/);
+      });
+    });
+  });
+
+  describe('getEnvVar', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      // Restore original environment after each test
+      process.env = originalEnv;
+    });
+
+    describeWindows('provides case-insensitive access on Windows', () => {
+      beforeEach(() => {
+        // Simulate Windows environment with different casing
+        process.env.PATH = 'C:\\Windows\\System32';
+        process.env.Path = 'C:\\Windows\\System32\\different';
+        process.env.USERPROFILE = 'C:\\Users\\TestUser';
+        process.env.userprofile = 'C:\\Users\\TestUser\\different';
+      });
+
+      it('finds environment variable regardless of case (PATH)', () => {
+        const result = getEnvVar('PATH');
+        // Should find the first match in iteration order
+        expect(result).toBeTruthy();
+        expect(result).toMatch(/System32/);
+      });
+
+      it('finds environment variable with lowercase request', () => {
+        const result = getEnvVar('path');
+        expect(result).toBeTruthy();
+      });
+
+      it('finds environment variable with mixed case request', () => {
+        const result = getEnvVar('UsErPrOfIlE');
+        expect(result).toBeTruthy();
+        expect(result).toMatch(/TestUser/);
+      });
+
+      it('returns undefined for non-existent variable', () => {
+        const result = getEnvVar('NONEXISTENT_VAR');
+        expect(result).toBeUndefined();
+      });
+
+      it('handles empty string values', () => {
+        process.env.TEST_EMPTY = '';
+        const result = getEnvVar('test_empty');
+        expect(result).toBe('');
+      });
+    });
+
+    describeUnix('provides case-sensitive access on Unix', () => {
+      beforeEach(() => {
+        // Clear any case variants from Windows tests
+        delete (process.env as Record<string, string>)['Path'];
+        delete (process.env as Record<string, string>)['path'];
+        delete (process.env as Record<string, string>)['USERPROFILE'];
+        delete (process.env as Record<string, string>)['userprofile'];
+        delete (process.env as Record<string, string>)['UsErPrOfIlE'];
+
+        // Simulate Unix environment (case-sensitive)
+        process.env.PATH = '/usr/bin:/bin';
+        process.env.USER = 'testuser';
+        // Note: On Unix, PATH and Path are different variables
+      });
+
+      it('finds environment variable with exact case', () => {
+        const result = getEnvVar('PATH');
+        expect(result).toBe('/usr/bin:/bin');
+      });
+
+      it('returns undefined for wrong case on Unix', () => {
+        const result = getEnvVar('Path');
+        expect(result).toBeUndefined();
+      });
+
+      it('finds environment variable with exact case (USER)', () => {
+        const result = getEnvVar('USER');
+        expect(result).toBe('testuser');
+      });
+
+      it('returns undefined for non-existent variable', () => {
+        const result = getEnvVar('NONEXISTENT_VAR');
+        expect(result).toBeUndefined();
+      });
+    });
+  });
+
+  describe('findExecutable', () => {
+    const originalPath = process.env.PATH;
+
+    afterEach(() => {
+      // Restore original PATH after each test
+      process.env.PATH = originalPath;
+    });
+
+    describeWindows('finds executables with Windows extensions', () => {
+      beforeEach(() => {
+        // Set up a mock PATH for testing
+        process.env.PATH = 'C:\\Tools\\Bin;C:\\Windows\\System32';
+      });
+
+      it('finds executable with .exe extension', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.endsWith('tool.exe');
+        });
+
+        const result = findExecutable('tool');
+        expect(result).toBeTruthy();
+        expect(result).toContain('tool.exe');
+      });
+
+      it('finds executable with .cmd extension', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.endsWith('script.cmd');
+        });
+
+        const result = findExecutable('script');
+        expect(result).toBeTruthy();
+        expect(result).toContain('script.cmd');
+      });
+
+      it('finds executable with .bat extension', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.endsWith('batch.bat');
+        });
+
+        const result = findExecutable('batch');
+        expect(result).toBeTruthy();
+        expect(result).toContain('batch.bat');
+      });
+
+      it('finds executable with .ps1 extension', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.endsWith('powershell.ps1');
+        });
+
+        const result = findExecutable('powershell');
+        expect(result).toBeTruthy();
+        expect(result).toContain('powershell.ps1');
+      });
+
+      it('returns null when executable not found', () => {
+        mockedExistsSync.mockReturnValue(false);
+
+        const result = findExecutable('nonexistent');
+        expect(result).toBeNull();
+      });
+
+      it('searches additional paths when provided', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.includes('CustomDir') && path.endsWith('custom.exe');
+        });
+
+        const result = findExecutable('custom', ['C:\\CustomDir']);
+        expect(result).toBeTruthy();
+        expect(result).toContain('CustomDir');
+      });
+
+      it('prioritizes .exe over extensionless files', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          const p = path as string;
+          if (p.endsWith('tool.exe')) return true;
+          if (p.endsWith('tool') && !p.includes('.')) return true;
+          return false;
+        });
+
+        const result = findExecutable('tool');
+        expect(result).toBeTruthy();
+        expect(result).toContain('tool.exe');
+      });
+    });
+
+    describeUnix('finds executables without extensions', () => {
+      beforeEach(() => {
+        // Set up a mock PATH for testing
+        process.env.PATH = '/usr/local/bin:/usr/bin:/bin';
+      });
+
+      it('finds executable in PATH', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.endsWith('/bin/tool');
+        });
+
+        const result = findExecutable('tool');
+        expect(result).toBeTruthy();
+        expect(result).toContain('tool');
+        expect(result!.endsWith('tool')).toBe(true);
+      });
+
+      it('returns null when executable not found', () => {
+        mockedExistsSync.mockReturnValue(false);
+
+        const result = findExecutable('nonexistent');
+        expect(result).toBeNull();
+      });
+
+      it('searches additional paths when provided', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          return typeof path === 'string' && path.includes('custom') && path.endsWith('custom');
+        });
+
+        const result = findExecutable('custom', ['/opt/custom/bin']);
+        expect(result).toBeTruthy();
+        expect(result).toContain('custom');
+      });
+
+      it('searches PATH in order and returns first match', () => {
+        mockedExistsSync.mockImplementation((path) => {
+          const p = path as string;
+          // Match in first directory
+          if (p.includes('/usr/local/bin/node')) return true;
+          // Also match in second directory (should not be returned)
+          if (p.includes('/usr/bin/node')) return true;
+          return false;
+        });
+
+        const result = findExecutable('node');
+        expect(result).toBeTruthy();
+        expect(result).toContain('/usr/local/bin/node');
+        expect(result).not.toContain('/usr/bin/node');
+      });
+    });
+
+    describe('handles empty PATH', () => {
+      it('returns null when PATH is empty', () => {
+        process.env.PATH = '';
+        mockedExistsSync.mockReturnValue(false);
+
+        const result = findExecutable('tool');
+        expect(result).toBeNull();
+      });
+
+      it('returns null when PATH is undefined', () => {
+        delete process.env.PATH;
+        mockedExistsSync.mockReturnValue(false);
+
+        const result = findExecutable('tool');
+        expect(result).toBeNull();
       });
     });
   });

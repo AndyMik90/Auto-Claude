@@ -703,7 +703,8 @@ export class ReleaseService extends EventEmitter {
 
       // Use spawn for better handling of the notes content
       const result = await new Promise<string>((resolve, reject) => {
-        const child = spawn('gh', args, {
+        const ghPath = getToolPath('gh');
+        const child = spawn(ghPath, args, {
           cwd: projectPath,
           stdio: ['pipe', 'pipe', 'pipe']
         });

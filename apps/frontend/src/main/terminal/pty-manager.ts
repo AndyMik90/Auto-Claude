@@ -7,7 +7,7 @@ import * as pty from '@lydell/node-pty';
 import * as os from 'os';
 import { existsSync } from 'fs';
 import type { TerminalProcess, WindowGetter, WindowsShellType } from './types';
-import { isWindows, getWindowsShellPaths } from '../platform';
+import { isWindows, getWindowsShellPaths, getEnvVar } from '../platform';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { readSettingsFile } from '../settings-utils';
@@ -93,7 +93,7 @@ function detectShellType(shellPath: string): WindowsShellType {
 function getWindowsShell(preferredTerminal: SupportedTerminal | undefined): WindowsShellResult {
   // If no preference or 'system', use COMSPEC (usually cmd.exe)
   if (!preferredTerminal || preferredTerminal === 'system') {
-    const shell = process.env.COMSPEC || 'cmd.exe';
+    const shell = getEnvVar('COMSPEC') || 'cmd.exe';
     return { shell, shellType: detectShellType(shell) };
   }
 
@@ -110,7 +110,7 @@ function getWindowsShell(preferredTerminal: SupportedTerminal | undefined): Wind
   }
 
   // Fallback to COMSPEC for unrecognized terminals
-  const shell = process.env.COMSPEC || 'cmd.exe';
+  const shell = getEnvVar('COMSPEC') || 'cmd.exe';
   return { shell, shellType: detectShellType(shell) };
 }
 
@@ -135,7 +135,8 @@ export function spawnPtyProcess(
     shell = windowsShell.shell;
     shellType = windowsShell.shellType;
   } else {
-    shell = process.env.SHELL || '/bin/zsh';
+    // Use getEnvVar for consistent environment variable access pattern
+    shell = getEnvVar('SHELL') || '/bin/zsh';
     shellType = undefined; // Not applicable on Unix
   }
 
