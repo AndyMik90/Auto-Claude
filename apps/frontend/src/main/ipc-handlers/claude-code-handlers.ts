@@ -120,19 +120,21 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
     cliPath: string,
     source: ClaudeInstallationInfo['source']
   ) => {
-    // Normalize path for comparison
-    const normalizedPath = path.resolve(cliPath);
+    // Normalize path for comparison and extension handling on Windows
+    const resolvedPath = path.resolve(cliPath);
+    const normalizedCandidate = normalizeExecutablePath(resolvedPath);
+    const normalizedPath = path.resolve(normalizedCandidate);
     if (seenPaths.has(normalizedPath)) return;
 
-    if (!existsSync(cliPath)) return;
+    if (!existsSync(normalizedCandidate)) return;
 
     // Security validation: reject paths with shell metacharacters or directory traversal
-    if (!isSecurePath(cliPath)) {
-      console.warn('[Claude Code] Rejecting insecure path:', cliPath);
+    if (!isSecurePath(normalizedCandidate)) {
+      console.warn('[Claude Code] Rejecting insecure path:', normalizedCandidate);
       return;
     }
 
-    const [isValid, version] = await validateClaudeCliAsync(cliPath);
+    const [isValid, version] = await validateClaudeCliAsync(normalizedCandidate);
     if (!isValid) return;
 
     seenPaths.add(normalizedPath);
@@ -1123,8 +1125,9 @@ export function registerClaudeCodeHandlers(): void {
           throw new Error('Invalid path: contains potentially unsafe characters');
         }
 
-        // Normalize path to prevent directory traversal
-        const normalizedPath = path.resolve(cliPath);
+        // Normalize path to handle missing Windows extensions
+        const resolvedPath = path.resolve(cliPath);
+        const normalizedPath = normalizeExecutablePath(resolvedPath);
 
         // Validate the path exists and is executable
         if (!existsSync(normalizedPath)) {

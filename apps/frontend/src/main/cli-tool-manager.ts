@@ -695,13 +695,15 @@ class CLIToolManager {
 
       // 4b. Check known installation locations
       const homeDir = os.homedir();
+      const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+      const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
       const windowsPaths = [
-        'C:\\Program Files\\GitHub CLI\\gh.exe',
-        'C:\\Program Files (x86)\\GitHub CLI\\gh.exe',
+        joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
+        joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),
         // npm global installation
-        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
+        joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
         // Scoop package manager
-        path.join(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
+        joinPaths(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
       ];
 
       for (const ghPath of windowsPaths) {
@@ -1722,13 +1724,15 @@ class CLIToolManager {
 
       // 4b. Check known installation locations
       const homeDir = os.homedir();
+      const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+      const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
       const windowsPaths = [
-        'C:\\Program Files\\GitHub CLI\\gh.exe',
-        'C:\\Program Files (x86)\\GitHub CLI\\gh.exe',
+        joinPaths(programFiles, 'GitHub CLI', 'gh.exe'),
+        joinPaths(programFilesX86, 'GitHub CLI', 'gh.exe'),
         // npm global installation
-        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
+        joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
         // Scoop package manager
-        path.join(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
+        joinPaths(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
       ];
 
       for (const winGhPath of windowsPaths) {

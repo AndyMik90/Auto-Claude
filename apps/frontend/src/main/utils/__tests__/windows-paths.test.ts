@@ -11,11 +11,29 @@ import * as path from 'path';
 import * as childProcess from 'child_process';
 
 // Mock child_process for where.exe tests
+// Create configurable spies for execFile (both callback and promisified versions)
+const mockExecFileImpl: any = vi.fn();
+const mockExecFilePromisified: any = vi.fn();
+
 vi.mock('child_process', async () => {
   const actualChildProcess = await vi.importActual<typeof import('child_process')>('child_process');
+
+  // Create the mock execFile that can be configured per test
+  const mockExecFile = vi.fn((file: any, args: any, options: any, callback: any) => {
+    // Call the configurable implementation
+    return mockExecFileImpl(file, args, options, callback);
+  });
+
+  // Add custom promisify implementation that util.promisify will use
+  (mockExecFile as any)[Symbol.for('nodejs.util.promisify.custom')] = vi.fn((file: any, args: any, options: any) => {
+    // Call the configurable promisified implementation
+    return mockExecFilePromisified(file, args, options);
+  });
+
   return {
     ...actualChildProcess,
     execFileSync: vi.fn(),
+    execFile: mockExecFile,
   };
 });
 
@@ -123,7 +141,28 @@ import * as platformModule from '../../platform';
 // Helper to get mocked existsSync
 const getMockedExistsSync = () => vi.mocked(require('fs').existsSync);
 const getMockedExecFileSync = () => vi.mocked(childProcess.execFileSync);
+const getMockedExecFile = () => vi.mocked(childProcess.execFile);
 const getMockedIsWindows = () => vi.mocked(platformModule.isWindows);
+
+// Helper to configure execFile mock behavior for async tests
+function setupExecFileMock(stdout: string, shouldError = false) {
+  if (shouldError) {
+    mockExecFilePromisified.mockRejectedValue(new Error('Command failed'));
+    mockExecFileImpl.mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
+      callback(new Error('Command failed'), '', '');
+    });
+  } else {
+    mockExecFilePromisified.mockResolvedValue({ stdout });
+    mockExecFileImpl.mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
+      callback(null, stdout, '');
+    });
+  }
+}
+
+function resetExecFileMock() {
+  mockExecFilePromisified.mockReset();
+  mockExecFileImpl.mockReset();
+}
 
 describe('Windows Paths Module', () => {
   afterEach(() => {
@@ -406,14 +445,81 @@ describe('Windows Paths Module', () => {
   });
 
   describe('findWindowsExecutableViaWhereAsync', () => {
-    // Note: Async version uses the same logic as sync version
-    // Skipping detailed async tests to avoid complex mocking
-    // The sync version tests already validate the core logic
-    describeWindows('behaves the same as sync version', () => {
-      it('exists and is callable', async () => {
-        // Just verify the async function exists and can be called
-        const asyncImport = await import('../windows-paths');
-        expect(typeof asyncImport.findWindowsExecutableViaWhereAsync).toBe('function');
+    describeWindows('uses where.exe asynchronously to find executables', () => {
+      beforeEach(() => {
+        resetExecFileMock();
+      });
+
+      afterEach(() => {
+        resetExecFileMock();
+      });
+
+      it('returns executable path found by where.exe', async () => {
+        setupExecFileMock('C:\\Program Files\\Git\\cmd\\git.exe\r\nC:\\Program Files\\Git\\bin\\git.exe');
+
+        const result = await findWindowsExecutableViaWhereAsync('git', '[Git]');
+        expect(result).toBe('C:\\Program Files\\Git\\cmd\\git.exe');
+      });
+
+      it('returns null when where.exe returns empty result', async () => {
+        setupExecFileMock('');
+
+        const result = await findWindowsExecutableViaWhereAsync('notfound', '[NotFound]');
+        expect(result).toBeNull();
+      });
+
+      it('returns null when where.exe throws an error', async () => {
+        setupExecFileMock('', true);  // shouldError = true
+
+        const result = await findWindowsExecutableViaWhereAsync('notfound', '[NotFound]');
+        expect(result).toBeNull();
+      });
+
+      it('parses multi-line output from where.exe', async () => {
+        setupExecFileMock('C:\\Program Files\\Git\\cmd\\git.exe\r\nC:\\Program Files\\Git\\bin\\git.exe\r\nC:\\Users\\Test\\scoop\\shims\\git.exe');
+
+        const result = await findWindowsExecutableViaWhereAsync('git', '[Git]');
+        expect(result).toBe('C:\\Program Files\\Git\\cmd\\git.exe');
+      });
+
+      it('prefers .cmd/.bat extensions over .exe', async () => {
+        setupExecFileMock('C:\\Program Files\\GitHub CLI\\gh.cmd\r\nC:\\Program Files\\GitHub CLI\\bin\\gh.exe');
+
+        const result = await findWindowsExecutableViaWhereAsync('gh', '[GitHub CLI]');
+        expect(result).toContain('gh.cmd');
+      });
+
+      it('returns null when executable fails security validation', async () => {
+        setupExecFileMock('C:\\valid\\tool.exe | malicious');
+
+        const result = await findWindowsExecutableViaWhereAsync('tool', '[Tool]');
+        expect(result).toBeNull();
+      });
+
+      it('validates executable name format', async () => {
+        // Invalid executable names should be rejected before calling where.exe
+        const invalidNames = [
+          'tool;malicious',
+          'tool && malicious',
+          'tool|pipe',
+          '../../../etc/passwd',
+          'tool$(command)',
+        ];
+
+        for (const name of invalidNames) {
+          const result = await findWindowsExecutableViaWhereAsync(name, '[Test]');
+          expect(result).toBeNull();
+        }
+        // execFile promisified should NOT have been called for invalid names
+        expect(mockExecFilePromisified).not.toHaveBeenCalled();
+      });
+    });
+
+    describeWindows('returns null on non-Windows', () => {
+      it('returns null on non-Windows platforms', async () => {
+        mockPlatform('darwin');
+        const result = await findWindowsExecutableViaWhereAsync('git', '[Git]');
+        expect(result).toBeNull();
       });
     });
   });

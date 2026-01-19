@@ -223,6 +223,7 @@ export function expandWindowsEnvVars(pathPattern: string): string {
     '%LOCALAPPDATA%': process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'),
     '%APPDATA%': process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming'),
     '%USERPROFILE%': process.env.USERPROFILE || homeDir,
+    '%PROGRAMDATA%': process.env.ProgramData || process.env.PROGRAMDATA || 'C:\\ProgramData',
     '%SYSTEMROOT%': process.env.SystemRoot || 'C:\\Windows',
     '%TEMP%': process.env.TEMP || process.env.TMP || path.join(homeDir, 'AppData', 'Local', 'Temp'),
     '%TMP%': process.env.TMP || process.env.TEMP || path.join(homeDir, 'AppData', 'Local', 'Temp')

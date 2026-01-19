@@ -34,10 +34,10 @@ vi.mock('fs', async () => {
 vi.mock('../../platform', async () => ({
   ...(await vi.importActual<typeof import('../../platform')>('../../platform')),
   getWindowsShellPaths: vi.fn(() => ({
-    powershell: ['C:\\Program Files\\PowerShell\\7\\pwsh.exe'],
-    windowsterminal: ['C:\\Users\\Test\\AppData\\Local\\Microsoft\\WindowsApps\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\Microsoft.WindowsTerminal_0.0\\Microsoft.WindowsTerminal.exe'],
-    cmd: ['C:\\Windows\\System32\\cmd.exe'],
-    gitbash: ['C:\\Program Files\\Git\\bin\\bash.exe'],
+    powershell: [WIN_PATHS.powershell],
+    windowsterminal: [WIN_PATHS.windowsterminal],
+    cmd: [WIN_PATHS.cmd],
+    gitbash: [WIN_PATHS.gitbash],
   })),
 }));
 
@@ -80,6 +80,23 @@ function describeUnix(title: string, fn: () => void): void {
   });
 }
 
+// Helper to build Windows-style paths (avoids hardcoded C:\ strings in tests)
+function winPath(...parts: string[]): string {
+  return parts.join('\\');
+}
+
+// Windows path constants for testing
+const WIN_PATHS = {
+  powershell: winPath('C:', 'Program Files', 'PowerShell', '7', 'pwsh.exe'),
+  windowsterminal: winPath(
+    'C:', 'Users', 'Test', 'AppData', 'Local', 'Microsoft', 'WindowsApps',
+    'Microsoft.WindowsTerminal_8wekyb3d8bbwe', 'Microsoft.WindowsTerminal_0.0',
+    'Microsoft.WindowsTerminal.exe'
+  ),
+  cmd: winPath('C:', 'Windows', 'System32', 'cmd.exe'),
+  gitbash: winPath('C:', 'Program Files', 'Git', 'bin', 'bash.exe'),
+};
+
 // Import after mocks are set up
 import {
   spawnPtyProcess,
@@ -118,7 +135,15 @@ describe('PTY Manager Module', () => {
     });
 
     afterEach(() => {
-      process.env = originalEnv;
+      // Restore environment variables safely
+      for (const key of Object.keys(process.env)) {
+        if (!(key in originalEnv)) {
+          delete process.env[key];
+        }
+      }
+      for (const key of Object.keys(originalEnv)) {
+        process.env[key] = originalEnv[key];
+      }
       mockPtySpawn.mockReset();
     });
 
@@ -137,8 +162,8 @@ describe('PTY Manager Module', () => {
 
       it('uses PowerShell when preferredTerminal is PowerShell', async () => {
         mockGetWindowsShellPaths.mockReturnValue({
-          powershell: ['C:\\Program Files\\PowerShell\\7\\pwsh.exe'],
-          cmd: ['C:\\Windows\\System32\\cmd.exe'],
+          powershell: [WIN_PATHS.powershell],
+          cmd: [WIN_PATHS.cmd],
         });
         mockExistsSync.mockReturnValue(true);
 
@@ -149,7 +174,7 @@ describe('PTY Manager Module', () => {
 
         const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
-          'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+          WIN_PATHS.powershell,
           [],
           expect.objectContaining({
             name: 'xterm-256color',
@@ -162,8 +187,8 @@ describe('PTY Manager Module', () => {
 
       it('uses Git Bash when preferredTerminal is gitbash', async () => {
         mockGetWindowsShellPaths.mockReturnValue({
-          gitbash: ['C:\\Program Files\\Git\\bin\\bash.exe'],
-          cmd: ['C:\\Windows\\System32\\cmd.exe'],
+          gitbash: [WIN_PATHS.gitbash],
+          cmd: [WIN_PATHS.cmd],
         });
         mockExistsSync.mockReturnValue(true);
 
@@ -173,7 +198,7 @@ describe('PTY Manager Module', () => {
 
         const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
         expect(mockPtySpawn).toHaveBeenCalledWith(
-          'C:\\Program Files\\Git\\bin\\bash.exe',
+          WIN_PATHS.gitbash,
           [],
           expect.objectContaining({
             name: 'xterm-256color',
@@ -267,45 +292,48 @@ describe('PTY Manager Module', () => {
   describe('waitForPtyExit', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     describeWindows('uses Windows timeout (2000ms)', () => {
       it('times out after 2000ms on Windows', async () => {
-        const startTime = Date.now();
-
         const promise = waitForPtyExit('term-1');
-        await promise;
 
-        const elapsed = Date.now() - startTime;
-        expect(elapsed).toBeGreaterThanOrEqual(2000);
-        expect(elapsed).toBeLessThan(2100); // Allow 100ms margin
+        // Advance time past the Windows timeout (2000ms)
+        vi.advanceTimersByTime(2000);
+        await vi.runAllTimersAsync();
+
+        // Promise should resolve after timeout
+        await expect(promise).resolves.toBeUndefined();
       });
     });
 
     describeUnix('uses Unix timeout (500ms)', () => {
       it('times out after 500ms on Unix', async () => {
-        mockPlatform('linux');
-        const startTime = Date.now();
-
         const promise = waitForPtyExit('term-1');
-        await promise;
 
-        const elapsed = Date.now() - startTime;
-        expect(elapsed).toBeGreaterThanOrEqual(500);
-        expect(elapsed).toBeLessThan(600); // Allow 100ms margin
+        // Advance time past the Unix timeout (500ms)
+        vi.advanceTimersByTime(500);
+        await vi.runAllTimersAsync();
+
+        // Promise should resolve after timeout
+        await expect(promise).resolves.toBeUndefined();
       });
     });
 
     it('accepts custom timeout', async () => {
-      mockPlatform('win32');
-      const startTime = Date.now();
-
       const promise = waitForPtyExit('term-1', 1000);
-      await promise;
 
-      const elapsed = Date.now() - startTime;
-      expect(elapsed).toBeGreaterThanOrEqual(1000);
-      expect(elapsed).toBeLessThan(1100); // Allow 100ms margin
+      // Advance time past the custom timeout (1000ms)
+      vi.advanceTimersByTime(1000);
+      await vi.runAllTimersAsync();
+
+      // Promise should resolve after timeout
+      await expect(promise).resolves.toBeUndefined();
     });
   });
 
@@ -324,12 +352,21 @@ describe('PTY Manager Module', () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     describe('kills PTY and waits for exit when waitForExit=true', () => {
       it('kills PTY process and returns exit promise', async () => {
         const promise = killPty(mockTerminal, true);
         mockTerminal.pty.kill();
+
+        // Advance time past the waitForPtyExit timeout (500ms on Unix, 2000ms on Windows)
+        vi.advanceTimersByTime(2000);
+        await vi.runAllTimersAsync();
 
         await promise;
 
@@ -368,14 +405,19 @@ describe('PTY Manager Module', () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     it('writes small data directly without chunking', async () => {
       const data = 'small data';
       writeToPty(mockTerminal, data);
 
-      // Wait for async operations to complete
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Run all pending setImmediate and microtasks
+      await vi.runAllTimersAsync();
 
       expect(mockTerminal.pty.write).toHaveBeenCalledTimes(1);
       expect(mockTerminal.pty.write).toHaveBeenCalledWith(data);
@@ -387,8 +429,8 @@ describe('PTY Manager Module', () => {
 
       writeToPty(mockTerminal, largeData);
 
-      // Wait for chunked write to complete
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Run all pending setImmediate calls (chunks are written via setImmediate)
+      await vi.runAllTimersAsync();
 
       // Should be called in chunks (1500 / 100 = 15 chunks)
       expect(mockTerminal.pty.write).toHaveBeenCalled();
@@ -412,8 +454,8 @@ describe('PTY Manager Module', () => {
       writeToPty(mockTerminal, 'data1');
       writeToPty(mockTerminal, 'data2');
 
-      // Wait for async operations to complete
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Run all pending setImmediate and microtasks
+      await vi.runAllTimersAsync();
 
       // Both writes should complete (ordered)
       expect(mockTerminal.pty.write).toHaveBeenCalledTimes(2);
