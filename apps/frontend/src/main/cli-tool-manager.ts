@@ -724,17 +724,25 @@ class CLIToolManager {
         console.warn(
           `[Claude CLI] User-configured path is from different platform, ignoring: ${this.userConfig.claudePath}`
         );
-      } else if (isWindows() && !isSecurePath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path failed security validation, ignoring: ${this.userConfig.claudePath}`
-        );
       } else {
-        const validation = this.validateClaude(this.userConfig.claudePath);
-        const result = buildClaudeDetectionResult(
-          this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
-        );
-        if (result) return result;
-        console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
+        // Strip quotes before security check - quotes are handled by validateClaude
+        const unquotedPath = this.userConfig.claudePath.trim();
+        const cleanPath = unquotedPath.startsWith('"') && unquotedPath.endsWith('"')
+          ? unquotedPath.slice(1, -1)
+          : unquotedPath;
+
+        if (isWindows() && !isSecurePath(cleanPath)) {
+          console.warn(
+            `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
+          );
+        } else {
+          const validation = this.validateClaude(this.userConfig.claudePath);
+          const result = buildClaudeDetectionResult(
+            this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
+          );
+          if (result) return result;
+          console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
+        }
       }
     }
 
@@ -1288,17 +1296,25 @@ class CLIToolManager {
         console.warn(
           `[Claude CLI] User-configured path is from different platform, ignoring: ${this.userConfig.claudePath}`
         );
-      } else if (isWindows() && !isSecurePath(this.userConfig.claudePath)) {
-        console.warn(
-          `[Claude CLI] User-configured path failed security validation, ignoring: ${this.userConfig.claudePath}`
-        );
       } else {
-        const validation = await this.validateClaudeAsync(this.userConfig.claudePath);
-        const result = buildClaudeDetectionResult(
-          this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
-        );
-        if (result) return result;
-        console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
+        // Strip quotes before security check - quotes are handled by validateClaudeAsync
+        const unquotedPath = this.userConfig.claudePath.trim();
+        const cleanPath = unquotedPath.startsWith('"') && unquotedPath.endsWith('"')
+          ? unquotedPath.slice(1, -1)
+          : unquotedPath;
+
+        if (isWindows() && !isSecurePath(cleanPath)) {
+          console.warn(
+            `[Claude CLI] User-configured path failed security validation, ignoring: ${cleanPath}`
+          );
+        } else {
+          const validation = await this.validateClaudeAsync(this.userConfig.claudePath);
+          const result = buildClaudeDetectionResult(
+            this.userConfig.claudePath, validation, 'user-config', 'Using user-configured Claude CLI'
+          );
+          if (result) return result;
+          console.warn(`[Claude CLI] User-configured path invalid: ${validation.message}`);
+        }
       }
     }
 

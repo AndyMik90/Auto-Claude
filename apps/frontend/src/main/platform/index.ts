@@ -433,8 +433,9 @@ export function normalizeExecutablePath(candidatePath: string): string {
 
   // No extension - try common Windows executable extensions
   // Use the canonical list from getPathConfig for consistency
+  // Use spread operator to avoid Vite bundler constant folding issues
   const config = getPathConfig();
-  const extensions = config.executableExtensions.filter(ext => ext !== '');
+  const extensions = [...config.executableExtensions].filter(ext => ext !== '');
   for (const testExt of extensions) {
     const testPath = candidatePath + testExt;
     if (existsSync(testPath)) {

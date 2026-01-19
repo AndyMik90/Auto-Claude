@@ -19,6 +19,7 @@ import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationI
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
+import { normalizeExecutablePath } from '../platform';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -38,13 +39,17 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
   try {
     const isWindows = process.platform === 'win32';
 
+    // Normalize the path on Windows to handle missing extensions
+    // e.g., C:\...\npm\claude -> C:\...\npm\claude.cmd
+    const normalizedCliPath = normalizeExecutablePath(cliPath);
+
     // Security validation: reject paths with shell metacharacters or directory traversal
-    if (isWindows && !isSecurePath(cliPath)) {
-      throw new Error(`Claude CLI path failed security validation: ${cliPath}`);
+    if (isWindows && !isSecurePath(normalizedCliPath)) {
+      throw new Error(`Claude CLI path failed security validation: ${normalizedCliPath}`);
     }
 
     // Augment PATH with the CLI directory for proper resolution
-    const cliDir = path.dirname(cliPath);
+    const cliDir = path.dirname(normalizedCliPath);
     const env = {
       ...process.env,
       PATH: cliDir ? `${cliDir}${path.delimiter}${process.env.PATH || ''}` : process.env.PATH,
@@ -55,12 +60,12 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     // /d = disable AutoRun registry commands
     // /s = strip first and last quotes, preserving inner quotes
     // /c = run command then terminate
-    if (isWindows && /\.(cmd|bat)$/i.test(cliPath)) {
+    if (isWindows && /\.(cmd|bat)$/i.test(normalizedCliPath)) {
       // Get cmd.exe path from environment or use default
       const cmdExe = process.env.ComSpec
         || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
       // Use double-quoted command line for paths with spaces
-      const cmdLine = `""${cliPath}" --version"`;
+      const cmdLine = `""${normalizedCliPath}" --version"`;
       const execOptions: ExecFileAsyncOptionsWithVerbatim = {
         encoding: 'utf-8',
         timeout: 5000,
@@ -71,7 +76,7 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
       const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], execOptions);
       stdout = result.stdout;
     } else {
-      const result = await execFileAsync(cliPath, ['--version'], {
+      const result = await execFileAsync(normalizedCliPath, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
