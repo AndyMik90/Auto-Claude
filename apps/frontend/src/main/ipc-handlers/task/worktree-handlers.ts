@@ -19,7 +19,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, isLinux, getWhichCommand } from '../../platform';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -1052,9 +1052,9 @@ async function detectInstalledTools(): Promise<DetectedTools> {
   console.log('[DevTools] Starting smart app detection...');
   const startTime = Date.now();
 
-  if (platform === 'darwin') {
+  if (isMacOS()) {
     installedAppsCache = await detectMacApps();
-  } else if (platform === 'win32') {
+  } else if (isWindows()) {
     installedAppsCache = await detectWindowsApps();
   } else {
     installedAppsCache = await detectLinuxApps();
@@ -1082,11 +1082,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     let finalInstalled = installed;
     if (!finalInstalled && config.commands[platform]) {
       try {
-        if (platform === 'win32') {
-          await execAsync(`where ${config.commands[platform]}`, { timeout: 2000 });
-        } else {
-          await execAsync(`which ${config.commands[platform]}`, { timeout: 2000 });
-        }
+        await execAsync(`${getWhichCommand()} ${config.commands[platform]}`, { timeout: 2000 });
         finalInstalled = true;
       } catch {
         // Command not found
@@ -1168,7 +1164,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
     }
 
     // Special handling for macOS .app bundles
-    if (platform === 'darwin') {
+    if (isMacOS()) {
       const appPath = config.paths.darwin?.[0];
       if (appPath && existsSync(appPath)) {
         // Use 'open' command with execFileAsync to prevent shell injection
@@ -1179,7 +1175,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
 
     // Special handling for Windows batch files (.cmd, .bat)
     // execFile doesn't search PATH, so we need shell: true for batch files
-    if (platform === 'win32' && (command.endsWith('.cmd') || command.endsWith('.bat'))) {
+    if (isWindows() && (command.endsWith('.cmd') || command.endsWith('.bat'))) {
       return new Promise((resolve) => {
         const child = spawn(command, [dirPath], {
           shell: true,
@@ -1228,7 +1224,7 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
       return { success: true };
     }
 
-    if (platform === 'darwin') {
+    if (isMacOS()) {
       // macOS: Use open command with the directory
       // Escape single quotes in dirPath to prevent script injection
       const escapedPath = escapeSingleQuotedPath(dirPath);
@@ -1253,7 +1249,7 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
         // For other terminals, use execFileAsync with arguments array
         await execFileAsync(commands[0], [...commands.slice(1), dirPath]);
       }
-    } else if (platform === 'win32') {
+    } else if (isWindows()) {
       // Windows: Start terminal at directory using spawn to avoid shell injection
       if (terminal === 'system') {
         // Use spawn with proper argument separation

@@ -11,7 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
-import { isWindows, isMacOS, isLinux } from '../platform';
+import { isWindows, isMacOS, isLinux, getCurrentOS, getWhichCommand } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -171,7 +171,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
   // Also check if ollama is in PATH using where/which command
   // Use execFileSync with explicit command to avoid shell injection
   try {
-    const whichCmd = isWindows() ? 'where.exe' : 'which';
+    const whichCmd = getWhichCommand();
     const ollamaPath = execFileSync(whichCmd, ['ollama'], {
       encoding: 'utf-8',
       timeout: 5000,
@@ -614,7 +614,7 @@ export function registerMemoryHandlers(): void {
     async (): Promise<IPCResult<{ command: string }>> => {
       try {
         const command = getOllamaInstallCommand();
-        console.log('[Ollama] Platform:', isWindows() ? 'win32' : isMacOS() ? 'darwin' : 'linux');
+        console.log('[Ollama] Platform:', getCurrentOS());
         console.log('[Ollama] Install command:', command);
         console.log('[Ollama] Opening terminal...');
 

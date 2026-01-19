@@ -725,8 +725,9 @@ describe('cli-tool-manager - Claude CLI Windows where.exe detection', () => {
     vi.mocked(findExecutable).mockReturnValue(null);
 
     // Simulate where.exe returning path with .cmd extension (preferred over no extension)
+    // Note: Single backslash escaping in source creates single backslash in string
     vi.mocked(findWindowsExecutableViaWhere).mockReturnValue(
-      'D:\\\\Program Files\\\\nvm4w\\\\nodejs\\\\claude.cmd'
+      'D:\\Program Files\\nvm4w\\nodejs\\claude.cmd'
     );
 
     // Mock existsSync to only return true for the where.exe path
@@ -743,7 +744,7 @@ describe('cli-tool-manager - Claude CLI Windows where.exe detection', () => {
     const result = getToolInfo('claude');
 
     expect(result.found).toBe(true);
-    expect(result.path).toBe('D:\\\\Program Files\\\\nvm4w\\\\nodejs\\\\claude.cmd');
+    expect(result.path).toBe('D:\\Program Files\\nvm4w\\nodejs\\claude.cmd');
     expect(result.path).toMatch(/\.(cmd|exe)$/i);
   });
 

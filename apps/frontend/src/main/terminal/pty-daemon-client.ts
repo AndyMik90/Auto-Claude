@@ -10,16 +10,13 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 import { app } from 'electron';
-import { isWindows, GRACEFUL_KILL_TIMEOUT_MS } from '../platform';
+import { isWindows, getPtySocketPath, GRACEFUL_KILL_TIMEOUT_MS } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SOCKET_PATH =
-  process.platform === 'win32'
-    ? `\\\\.\\pipe\\auto-claude-pty-${process.getuid?.() || 'default'}`
-    : `/tmp/auto-claude-pty-${process.getuid?.() || 'default'}.sock`;
+const SOCKET_PATH = getPtySocketPath();
 
 interface DaemonResponseData {
   exitCode?: number;

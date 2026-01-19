@@ -611,7 +611,9 @@ export function getVenvPythonPath(venvRoot: string): string {
  * @returns The socket path for PTY communication
  */
 export function getPtySocketPath(): string {
-  const uid = process.getuid?.() || 'default';
+  // On Unix-like systems, use the real user ID from process.getuid()
+  // On Windows, process.getuid() is undefined, so use USERNAME or USER environment variables
+  const uid = process.getuid?.() ?? (isWindows() ? (process.env.USERNAME || process.env.USER || 'default') : 'default');
   if (isWindows()) {
     return `\\\\.\\pipe\\auto-claude-pty-${uid}`;
   }

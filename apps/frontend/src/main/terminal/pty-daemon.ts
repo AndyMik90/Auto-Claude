@@ -11,11 +11,9 @@
 import * as net from 'net';
 import * as fs from 'fs';
 import * as pty from '@lydell/node-pty';
+import { getPtySocketPath, isWindows } from '../platform/index.js';
 
-const SOCKET_PATH =
-  process.platform === 'win32'
-    ? `\\\\.\\pipe\\auto-claude-pty-${process.getuid?.() || 'default'}`
-    : `/tmp/auto-claude-pty-${process.getuid?.() || 'default'}.sock`;
+const SOCKET_PATH = getPtySocketPath();
 
 // Maximum buffer size per PTY (100KB)
 const MAX_BUFFER_SIZE = 100_000;
@@ -83,7 +81,7 @@ class PtyDaemon {
    * Remove stale socket/pipe
    */
   private cleanup(): void {
-    if (process.platform !== 'win32' && fs.existsSync(SOCKET_PATH)) {
+    if (!isWindows() && fs.existsSync(SOCKET_PATH)) {
       try {
         fs.unlinkSync(SOCKET_PATH);
         console.error('[PTY Daemon] Cleaned up stale socket');
@@ -113,7 +111,7 @@ class PtyDaemon {
     this.server.listen(SOCKET_PATH, () => {
       console.error(`[PTY Daemon] Listening on ${SOCKET_PATH}`);
       // Set permissions on Unix
-      if (process.platform !== 'win32') {
+      if (!isWindows()) {
         try {
           fs.chmodSync(SOCKET_PATH, 0o600);
         } catch (error) {

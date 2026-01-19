@@ -12,14 +12,14 @@ import { projectStore } from '../../project-store';
 import { changelogService } from '../../changelog-service';
 import type { ReleaseOptions } from './types';
 import { getToolPath } from '../../cli-tool-manager';
-import { isWindows } from '../../platform';
+import { getWhichCommand } from '../../platform';
 
 /**
  * Check if gh CLI is installed
  */
 function checkGhCli(): { installed: boolean; error?: string } {
   try {
-    const checkCmd = isWindows() ? 'where gh' : 'which gh';
+    const checkCmd = `${getWhichCommand()} gh`;
     execSync(checkCmd, { encoding: 'utf-8', stdio: 'pipe' });
     return { installed: true };
   } catch {
