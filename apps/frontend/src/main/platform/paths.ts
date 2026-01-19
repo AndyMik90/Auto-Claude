@@ -184,27 +184,33 @@ export function findNodeJsDirectories(): string[] {
   }
 
   const homeDir = os.homedir();
+  // Use environment variables with fallbacks for cross-system compatibility
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const appData = process.env.APPDATA || joinPaths(homeDir, 'AppData', 'Roaming');
+  const programData = process.env.ProgramData || 'C:\\ProgramData';
+
   const candidates: string[] = [
     // Standard Node.js installer location
-    joinPaths('C:\\Program Files', 'nodejs'),
-    joinPaths('C:\\Program Files (x86)', 'nodejs'),
+    joinPaths(programFiles, 'nodejs'),
+    joinPaths(programFilesX86, 'nodejs'),
 
     // User-level npm global directory (may contain node.exe with nvm-windows)
-    joinPaths(homeDir, 'AppData', 'Roaming', 'npm'),
+    joinPaths(appData, 'npm'),
 
     // NVM for Windows default location
-    joinPaths(homeDir, 'AppData', 'Roaming', 'nvm'),
-    joinPaths('C:\\Program Files', 'nvm'),
+    joinPaths(appData, 'nvm'),
+    joinPaths(programFiles, 'nvm'),
 
     // Scoop installation
     joinPaths(homeDir, 'scoop', 'apps', 'nodejs', 'current'),
 
     // Chocolatey installation
-    joinPaths('C:\\ProgramData', 'chocolatey', 'bin'),
+    joinPaths(programData, 'chocolatey', 'bin'),
   ];
 
   // For NVM, we need to find the active Node.js version directory
-  const nvmPath = joinPaths(homeDir, 'AppData', 'Roaming', 'nvm');
+  const nvmPath = joinPaths(appData, 'nvm');
   if (existsSync(nvmPath)) {
     try {
       // Find all version directories (e.g., v20.0.0, v18.17.1)

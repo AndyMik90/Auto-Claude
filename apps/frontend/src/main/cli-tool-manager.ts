@@ -267,6 +267,31 @@ export function buildClaudeDetectionResult(
 }
 
 /**
+ * Get additional paths needed for Claude CLI validation
+ *
+ * Consolidates the logic for augmenting PATH when validating Claude CLI.
+ * On Windows with .cmd files, also adds Node.js directories since claude.cmd
+ * requires node.exe to execute.
+ *
+ * @param unquotedCmd - The unquoted command path being validated
+ * @param cmdDir - The directory containing the command
+ * @returns Array of additional paths to prepend to environment PATH
+ */
+function getAdditionalPathsForValidation(unquotedCmd: string, cmdDir: string): string[] {
+  let additionalPaths = cmdDir && cmdDir !== '.' ? [cmdDir] : [];
+
+  // On Windows, if validating claude.cmd, also add Node.js directories to PATH
+  // This is needed because claude.cmd requires node.exe to execute
+  if (isWindows() && /\.cmd$/i.test(unquotedCmd)) {
+    const nodeDirs = findNodeJsDirectories();
+    additionalPaths = [...additionalPaths, ...nodeDirs];
+    console.warn('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
+  }
+
+  return additionalPaths;
+}
+
+/**
  * Centralized CLI Tool Manager
  *
  * Singleton class that manages detection, validation, and caching of CLI tool
@@ -943,17 +968,8 @@ class CLIToolManager {
       const needsShell = shouldUseShell(trimmedCmd);
       const cmdDir = path.dirname(unquotedCmd);
 
-      // Prepare additional paths for environment augmentation
-      let additionalPaths = cmdDir && cmdDir !== '.' ? [cmdDir] : [];
-
-      // On Windows, if validating claude.cmd, also add Node.js directories to PATH
-      // This is needed because claude.cmd requires node.exe to execute
-      if (isWindows() && /\.cmd$/i.test(unquotedCmd)) {
-        const nodeDirs = findNodeJsDirectories();
-        additionalPaths = [...additionalPaths, ...nodeDirs];
-        console.warn('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
-      }
-
+      // Get additional paths (command dir + Node.js dirs on Windows for .cmd files)
+      const additionalPaths = getAdditionalPathsForValidation(unquotedCmd, cmdDir);
       const env = getAugmentedEnv(additionalPaths);
 
       let version: string;
@@ -1094,17 +1110,8 @@ class CLIToolManager {
       const needsShell = shouldUseShell(trimmedCmd);
       const cmdDir = path.dirname(unquotedCmd);
 
-      // Prepare additional paths for environment augmentation
-      let additionalPaths = cmdDir && cmdDir !== '.' ? [cmdDir] : [];
-
-      // On Windows, if validating claude.cmd, also add Node.js directories to PATH
-      // This is needed because claude.cmd requires node.exe to execute
-      if (isWindows() && /\.cmd$/i.test(unquotedCmd)) {
-        const nodeDirs = findNodeJsDirectories();
-        additionalPaths = [...additionalPaths, ...nodeDirs];
-        console.warn('[Claude CLI] Adding Node.js directories to PATH for .cmd validation:', nodeDirs);
-      }
-
+      // Get additional paths (command dir + Node.js dirs on Windows for .cmd files)
+      const additionalPaths = getAdditionalPathsForValidation(unquotedCmd, cmdDir);
       const env = await getAugmentedEnvAsync(additionalPaths);
 
       let stdout: string;
