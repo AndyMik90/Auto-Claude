@@ -75,7 +75,7 @@ function resolveArchs() {
 function buildEnv(frontendDir) {
   const binDir = path.join(frontendDir, 'node_modules', '.bin');
   const rootBinDir = path.join(frontendDir, '..', '..', 'node_modules', '.bin');
-  const pathParts = [binDir, rootBinDir].filter(Boolean);
+  const pathParts = [binDir, rootBinDir];
   const pathValue = process.env.PATH
     ? `${pathParts.join(path.delimiter)}${path.delimiter}${process.env.PATH}`
     : pathParts.join(path.delimiter);
