@@ -105,6 +105,7 @@ from core.sentry import capture_exception, init_sentry
 
 init_sentry(component="spec-runner")
 
+from core.platform import is_windows
 from debug import debug, debug_error, debug_section, debug_success
 from phase_config import resolve_model_id
 from review import ReviewState
@@ -372,7 +373,7 @@ Examples:
 
             # Execute run.py - use subprocess on Windows to maintain connection with Electron
             # Fix for issue #609: os.execv() breaks connection on Windows
-            if sys.platform == "win32":
+            if is_windows():
                 try:
                     result = subprocess.run(run_cmd)
                     sys.exit(result.returncode)
