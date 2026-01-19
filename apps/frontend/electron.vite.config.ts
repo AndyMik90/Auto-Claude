@@ -25,6 +25,12 @@ export default defineConfig({
       exclude: [
         'uuid',
         'chokidar',
+        'dotenv',
+        'electron-log',
+        'proper-lockfile',
+        'semver',
+        'zod',
+        '@anthropic-ai/sdk',
         'kuzu',
         'electron-updater',
         '@electron-toolkit/utils',
