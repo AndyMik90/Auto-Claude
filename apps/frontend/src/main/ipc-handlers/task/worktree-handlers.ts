@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
-import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -999,7 +999,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
 function isAppInstalled(
   appNames: string[],
   specificPaths: string[],
-  platform: string
+  _platform: string
 ): { installed: boolean; foundPath: string } {
   // First, check the cached app list (fast)
   for (const name of appNames) {
@@ -1129,7 +1129,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
 /**
  * Open a directory in the specified IDE
  */
-async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string): Promise<{ success: boolean; error?: string }> {
+async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string): Promise<{ success: boolean; error?: string; errorKey?: string }> {
   const platform = getCurrentOS();
 
   try {
@@ -1137,7 +1137,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
       // Use custom IDE path with execFileAsync to prevent shell injection
       // Validate the custom path is a valid executable path
       if (!isSecurePath(customPath)) {
-        return { success: false, error: 'Invalid custom IDE path' };
+        return { success: false, error: 'Invalid custom IDE path', errorKey: 'errors:worktree.invalidCustomIDEPath' };
       }
       await execFileAsync(customPath, [dirPath]);
       return { success: true };
@@ -1190,14 +1190,14 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
 /**
  * Open a directory in the specified terminal
  */
-async function openInTerminal(dirPath: string, terminal: SupportedTerminal, customPath?: string): Promise<{ success: boolean; error?: string }> {
+async function openInTerminal(dirPath: string, terminal: SupportedTerminal, customPath?: string): Promise<{ success: boolean; error?: string; errorKey?: string }> {
   const platform = getCurrentOS();
 
   try {
     if (terminal === 'custom' && customPath) {
       // Use custom terminal path with execFileAsync to prevent shell injection
       if (!isSecurePath(customPath)) {
-        return { success: false, error: 'Invalid custom terminal path' };
+        return { success: false, error: 'Invalid custom terminal path', errorKey: 'errors:worktree.invalidCustomTerminalPath' };
       }
       await execFileAsync(customPath, [dirPath]);
       return { success: true };
@@ -2408,7 +2408,7 @@ export function registerWorktreeHandlers(
               encoding: 'utf-8'
             });
 
-            if (gitStatus && gitStatus.trim()) {
+            if (gitStatus?.trim()) {
               // Parse the status output to get file names
               // Format: XY filename (where X and Y are status chars, then space, then filename)
               uncommittedFiles = gitStatus

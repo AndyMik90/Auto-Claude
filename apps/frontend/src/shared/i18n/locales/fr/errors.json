@@ -5,5 +5,14 @@
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "github": {
+    "cliNotInstalled": "GitHub CLI (gh) n'est pas installé. Installez-le avec :\n  {{instructions}}",
+    "notAuthenticated": "GitHub CLI n'est pas authentifié. Exécutez :\n  gh auth login",
+    "pythonEnvNotFound": "Environnement virtuel Python introuvable. Exécutez l'installation :\n  cd {{backendPath}}\n  uv venv && uv pip install -r requirements.txt"
+  },
+  "worktree": {
+    "invalidCustomIDEPath": "Chemin d'IDE personnalisé invalide",
+    "invalidCustomTerminalPath": "Chemin de terminal personnalisé invalide"
   }
 }

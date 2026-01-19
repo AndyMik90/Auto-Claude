@@ -246,7 +246,7 @@ export function getRunnerPath(backendPath: string): string {
  */
 export function getBackendPath(project: Project): string | null {
   // Import app module for production path detection
-  let app: any;
+  let app: { getAppPath(): string } | null = null;
   try {
     app = require('electron').app;
   } catch {
@@ -290,6 +290,8 @@ export interface GitHubModuleValidation {
   ghAuthenticated: boolean;
   pythonEnvValid: boolean;
   error?: string;
+  errorKey?: string; // i18n translation key for renderer
+  errorParams?: Record<string, string>; // Parameters for i18n interpolation
   backendPath?: string;
 }
 
@@ -367,6 +369,8 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
         ? 'brew install gh'
         : 'See https://cli.github.com/';
     result.error = `GitHub CLI (gh) is not installed. Install it with:\n  ${installInstructions}`;
+    result.errorKey = 'errors:github.cliNotInstalled';
+    result.errorParams = { instructions: installInstructions };
     return result;
   }
 
@@ -374,13 +378,15 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
   try {
     await execAsync('gh auth status 2>&1');
     result.ghAuthenticated = true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // gh auth status returns non-zero when not authenticated
     // Check the output to determine if it's an auth issue
-    const output = error.stdout || error.stderr || '';
+    const err = error as { stdout?: string; stderr?: string };
+    const output = err.stdout || err.stderr || '';
     if (output.includes('not logged in') || output.includes('not authenticated')) {
       result.ghAuthenticated = false;
       result.error = 'GitHub CLI is not authenticated. Run:\n  gh auth login';
+      result.errorKey = 'errors:github.notAuthenticated';
       return result;
     }
     // If it's some other error, still consider it authenticated (might be network issue)
@@ -393,6 +399,8 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 
   if (!result.pythonEnvValid) {
     result.error = `Python virtual environment not found. Run setup:\n  cd ${backendPath}\n  uv venv && uv pip install -r requirements.txt`;
+    result.errorKey = 'errors:github.pythonEnvNotFound';
+    result.errorParams = { backendPath };
     return result;
   }
 
