@@ -93,6 +93,7 @@ describe('Task Order State Management', () => {
     it('should preserve all column orders', () => {
       const order = createTestTaskOrder({
         backlog: ['task-1'],
+        stopped: ['task-7'],
         in_progress: ['task-2'],
         ai_review: ['task-3'],
         human_review: ['task-4'],
@@ -103,6 +104,7 @@ describe('Task Order State Management', () => {
       useTaskStore.getState().setTaskOrder(order);
 
       expect(useTaskStore.getState().taskOrder?.backlog).toEqual(['task-1']);
+      expect(useTaskStore.getState().taskOrder?.stopped).toEqual(['task-7']);
       expect(useTaskStore.getState().taskOrder?.in_progress).toEqual(['task-2']);
       expect(useTaskStore.getState().taskOrder?.ai_review).toEqual(['task-3']);
       expect(useTaskStore.getState().taskOrder?.human_review).toEqual(['task-4']);
@@ -246,6 +248,7 @@ describe('Task Order State Management', () => {
 
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        stopped: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
@@ -278,6 +281,7 @@ describe('Task Order State Management', () => {
       // Should fall back to empty order state
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        stopped: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
@@ -304,6 +308,7 @@ describe('Task Order State Management', () => {
       // Should fall back to empty order state
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        stopped: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
@@ -590,6 +595,7 @@ describe('Task Order State Management', () => {
       // Empty string causes JSON.parse to throw - should fall back to empty order
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        stopped: [],
         in_progress: [],
         ai_review: [],
         human_review: [],

@@ -21,7 +21,16 @@
     "viewPR": "View PR",
     "moveTo": "Move to",
     "taskActions": "Task actions",
-    "selectTask": "Select task: {{title}}"
+    "selectTask": "Select task: {{title}}",
+    "startTask": "Start Task",
+    "stopTask": "Stop Task",
+    "restartTask": "Restart Task",
+    "recoverTask": "Recover Task",
+    "resumeTask": "Resume Task",
+    "deleteTask": "Delete Task",
+    "deletePermanently": "Delete Permanently",
+    "deleting": "Deleting...",
+    "taskCompletedSuccessfully": "Task completed successfully"
   },
   "labels": {
     "running": "Running",

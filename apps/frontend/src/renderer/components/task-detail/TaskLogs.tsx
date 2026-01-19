@@ -123,15 +123,15 @@ export function TaskLogs({
 }: TaskLogsProps) {
   const { t } = useTranslation(['tasks']);
 
-  // Show accordion if review is required and planning is complete but coding hasn't started
+  // Show accordion if review is required and planning completed successfully (not failed)
   // Must check that planning phase is actually finished (not still running)
   const requiresReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
   const planningPhaseStatus = phaseLogs?.phases.planning?.status;
   const isPlanningComplete = planningPhaseStatus === 'completed';
-  const isPlanningFailed = planningPhaseStatus === 'failed';
   const hasCodingEntries = phaseLogs?.phases.coding?.entries && phaseLogs.phases.coding.entries.length > 0;
-  // Only show when: review required AND planning finished (completed or failed) AND coding not started
-  const showPlanReviewAccordion = requiresReviewBeforeCoding && (isPlanningComplete || isPlanningFailed) && !hasCodingEntries;
+  // Only show when: review required AND planning completed successfully AND coding not started
+  // Don't show if planning failed - review is not applicable in that case
+  const showPlanReviewAccordion = requiresReviewBeforeCoding && isPlanningComplete && !hasCodingEntries;
 
   return (
     <div

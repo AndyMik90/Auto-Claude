@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "fs";
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from "../../shared/constants";
 import {
   wouldPhaseRegress,
@@ -101,6 +101,26 @@ function validateStatusTransition(
 }
 
 /**
+ * Atomic file write to prevent corruption on crash/interrupt.
+ * Writes to a temporary file first, then atomically renames to target.
+ */
+function atomicWriteFileSync(filePath: string, content: string): void {
+  const tempPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tempPath, content, "utf-8");
+    renameSync(tempPath, filePath);
+  } catch (error) {
+    // Clean up temp file if rename failed
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw error;
+  }
+}
+
+/**
  * Register all agent-events-related IPC handlers
  */
 export function registerAgenteventsHandlers(
@@ -197,19 +217,51 @@ export function registerAgenteventsHandlers(
           // User wants to review before coding - STOP the task
           // Note: spec_runner.py with --no-build already sets these values, but we set them
           // here as a fallback in case the Python process didn't complete the update
+          // Also persist to worktree if it exists, since getTasks() prefers worktree version
+          const worktreePath = findTaskWorktree(exitProject.path, exitTask.specId);
+          const worktreeSpecDir = worktreePath ? path.join(worktreePath, specsBaseDir, exitTask.specId) : null;
+
+          // Prepare updated content
+          metadata.stoppedForPlanReview = true;
+          planContent.status = "stopped";
+          planContent.planStatus = "awaiting_review";
+
+          const metadataJson = JSON.stringify(metadata, null, 2);
+          const planJson = JSON.stringify(planContent, null, 2);
+
+          // Write to main project (atomic write to prevent corruption)
           try {
-            metadata.stoppedForPlanReview = true;
-            writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+            atomicWriteFileSync(metadataPath, metadataJson);
           } catch (err) {
             console.error(`[Task ${taskId}] Failed to update task_metadata.json:`, err);
           }
 
           try {
-            planContent.status = "stopped";
-            planContent.planStatus = "awaiting_review";
-            writeFileSync(planPath, JSON.stringify(planContent, null, 2));
+            atomicWriteFileSync(planPath, planJson);
           } catch (err) {
             console.error(`[Task ${taskId}] Failed to update implementation_plan.json:`, err);
+          }
+
+          // Also write to worktree if it exists (for consistency with getTasks())
+          if (worktreeSpecDir) {
+            const worktreeMetadataPath = path.join(worktreeSpecDir, "task_metadata.json");
+            const worktreePlanPath = path.join(worktreeSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+
+            try {
+              if (existsSync(worktreeMetadataPath)) {
+                atomicWriteFileSync(worktreeMetadataPath, metadataJson);
+              }
+            } catch (err) {
+              console.error(`[Task ${taskId}] Failed to update worktree task_metadata.json:`, err);
+            }
+
+            try {
+              if (existsSync(worktreePlanPath)) {
+                atomicWriteFileSync(worktreePlanPath, planJson);
+              }
+            } catch (err) {
+              console.error(`[Task ${taskId}] Failed to update worktree implementation_plan.json:`, err);
+            }
           }
 
           // Invalidate cache so UI reflects the new status
@@ -229,6 +281,36 @@ export function registerAgenteventsHandlers(
 
         if (planHasSubtasks && !requireReviewBeforeCoding) {
           // Auto-continue to coding phase
+          // First, update the plan file status to in_progress so UI stays consistent
+          planContent.status = "in_progress";
+          planContent.planStatus = "in_progress";
+
+          const planJson = JSON.stringify(planContent, null, 2);
+
+          // Write to main project (atomic write to prevent corruption)
+          try {
+            atomicWriteFileSync(planPath, planJson);
+          } catch (err) {
+            console.error(`[Task ${taskId}] Failed to update implementation_plan.json for coding transition:`, err);
+          }
+
+          // Also write to worktree if it exists (for consistency with getTasks())
+          const worktreePath = findTaskWorktree(exitProject.path, exitTask.specId);
+          if (worktreePath) {
+            const worktreePlanPath = path.join(worktreePath, specsBaseDir, exitTask.specId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+            try {
+              if (existsSync(worktreePlanPath)) {
+                atomicWriteFileSync(worktreePlanPath, planJson);
+              }
+            } catch (err) {
+              console.error(`[Task ${taskId}] Failed to update worktree implementation_plan.json for coding transition:`, err);
+            }
+          }
+
+          // Invalidate cache so UI reflects the new status
+          projectStore.invalidateTasksCache(exitProject.id);
+
+          // Start coding phase
           const baseBranch = (exitTask.metadata?.baseBranch as string | undefined) || exitProject.settings?.mainBranch;
           agentManager.startTaskExecution(
             taskId,
@@ -241,6 +323,17 @@ export function registerAgenteventsHandlers(
               useWorktree: exitTask.metadata?.useWorktree as boolean | undefined
             }
           );
+
+          // Notify renderer that task is continuing to coding phase
+          // This ensures UI shows in_progress status immediately
+          safeSendToRenderer(
+            getMainWindow,
+            IPC_CHANNELS.TASK_STATUS_CHANGE,
+            taskId,
+            "in_progress" as TaskStatus,
+            exitProjectId
+          );
+
           return;
         }
       }

@@ -529,13 +529,13 @@ export const TaskCard = memo(function TaskCard({
                 {task.metadata.securitySeverity} {t('metadata.severity')}
               </Badge>
             )}
-            {/* Require review before coding - show when flag is set and task isn't in coding yet */}
-            {task.metadata?.requireReviewBeforeCoding && task.status !== 'in_progress' && task.status !== 'done' && (
+            {/* Require review before coding - show only when stopped for plan review */}
+            {task.status === 'stopped' && task.metadata?.stoppedForPlanReview && (
               <Badge
                 variant="outline"
                 className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600 dark:text-amber-400"
               >
-                {t('metadata.reviewRequired')}
+                {t('tasks:metadata.reviewRequired')}
               </Badge>
             )}
           </div>

@@ -21,7 +21,16 @@
     "viewPR": "Voir la PR",
     "moveTo": "Déplacer vers",
     "taskActions": "Actions de la tâche",
-    "selectTask": "Sélectionner la tâche : {{title}}"
+    "selectTask": "Sélectionner la tâche : {{title}}",
+    "startTask": "Démarrer la tâche",
+    "stopTask": "Arrêter la tâche",
+    "restartTask": "Redémarrer la tâche",
+    "recoverTask": "Récupérer la tâche",
+    "resumeTask": "Reprendre la tâche",
+    "deleteTask": "Supprimer la tâche",
+    "deletePermanently": "Supprimer définitivement",
+    "deleting": "Suppression...",
+    "taskCompletedSuccessfully": "Tâche terminée avec succès"
   },
   "labels": {
     "running": "En cours",

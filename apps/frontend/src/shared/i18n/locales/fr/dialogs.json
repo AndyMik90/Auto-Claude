@@ -163,5 +163,10 @@
     "downloadError": "Échec du téléchargement de la mise à jour",
     "claudeCodeChangelog": "Voir le journal des modifications Claude Code",
     "claudeCodeChangelogAriaLabel": "Voir le journal des modifications Claude Code (s'ouvre dans une nouvelle fenêtre)"
+  },
+  "deleteTask": {
+    "title": "Supprimer la tâche",
+    "confirmMessage": "Êtes-vous sûr de vouloir supprimer <strong>\"{{title}}\"</strong> ?",
+    "warningMessage": "Cette action est irréversible. Tous les fichiers de la tâche, y compris la spécification, le plan d'implémentation et tout code généré seront définitivement supprimés du projet."
   }
 }

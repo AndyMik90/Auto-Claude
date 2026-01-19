@@ -186,12 +186,16 @@ export function isValidPhaseTransition(
   }
 
   // Check if at least one prerequisite phase has been completed
-  const hasCompletedPrerequisite = prerequisites.some(p => completedPhases.includes(p));
+  // OR if the current phase is the prerequisite (allows natural transitions like planning -> coding)
+  const hasCompletedPrerequisite = prerequisites.some(p =>
+    completedPhases.includes(p) || p === currentPhase
+  );
 
   if (!hasCompletedPrerequisite) {
     console.warn(`[isValidPhaseTransition] Blocked transition ${currentPhase} -> ${newPhase}: prerequisite phases not completed`, {
       required: prerequisites,
-      completed: completedPhases
+      completed: completedPhases,
+      currentPhase
     });
     return false;
   }

@@ -208,7 +208,10 @@ class ImplementationPlan:
             # This covers both:
             # - human_review + review: legacy plan review state
             # - stopped + awaiting_review: new plan review state (set by spec_runner.py --no-build)
-            if self.status in ("human_review", "stopped") and self.planStatus in ("review", "awaiting_review"):
+            if self.status in ("human_review", "stopped") and self.planStatus in (
+                "review",
+                "awaiting_review",
+            ):
                 # Keep the plan approval status - don't reset to backlog
                 pass
             else:

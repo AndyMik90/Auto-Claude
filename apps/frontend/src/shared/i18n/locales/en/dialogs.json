@@ -163,5 +163,10 @@
     "downloadError": "Failed to download update",
     "claudeCodeChangelog": "View Claude Code Changelog",
     "claudeCodeChangelogAriaLabel": "View Claude Code Changelog (opens in new window)"
+  },
+  "deleteTask": {
+    "title": "Delete Task",
+    "confirmMessage": "Are you sure you want to delete <strong>\"{{title}}\"</strong>?",
+    "warningMessage": "This action cannot be undone. All task files, including the spec, implementation plan, and any generated code will be permanently deleted from the project."
   }
 }

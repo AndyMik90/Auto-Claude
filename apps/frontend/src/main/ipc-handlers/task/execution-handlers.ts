@@ -225,10 +225,12 @@ export function registerTaskExecutionHandlers(
         if (task.metadata?.stoppedForPlanReview) {
           const metadataPath = path.join(specDir, 'task_metadata.json');
           try {
-            if (existsSync(metadataPath)) {
-              const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+            const metadataContent = safeReadFileSync(metadataPath);
+            if (metadataContent) {
+              const metadata = JSON.parse(metadataContent);
               metadata.stoppedForPlanReview = false;
-              writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+              // Use atomic write to prevent corruption on crash/interrupt
+              atomicWriteFileSync(metadataPath, JSON.stringify(metadata, null, 2));
               console.warn('[TASK_START] Cleared stoppedForPlanReview flag');
             }
           } catch (err) {
