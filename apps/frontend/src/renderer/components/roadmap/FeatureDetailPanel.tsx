@@ -61,12 +61,13 @@ export function FeatureDetailPanel({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-card border-l border-border shadow-lg flex flex-col z-50">
+    <div className="fixed inset-y-0 right-0 w-[448px] bg-card border-l border-border shadow-lg flex flex-col z-50 overflow-hidden">
       {/* Header */}
       <div className="shrink-0 p-4 border-b border-border electron-no-drag">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 pr-4">
+            <h2 className="font-semibold break-words leading-snug">{feature.title}</h2>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               <Badge variant="outline" className={ROADMAP_PRIORITY_COLORS[feature.priority]}>
                 {ROADMAP_PRIORITY_LABELS[feature.priority]}
               </Badge>
@@ -77,7 +78,6 @@ export function FeatureDetailPanel({
                 {feature.complexity}
               </Badge>
             </div>
-            <h2 className="font-semibold truncate">{feature.title}</h2>
           </div>
           <div className="flex items-center gap-1 shrink-0 relative z-10 pointer-events-auto">
             <Button
@@ -182,7 +182,7 @@ export function FeatureDetailPanel({
               <Package className="h-4 w-4" />
               {t('featureDetailPanel.dependenciesSection.dependencies', { count: feature.dependencies.length })}
             </h3>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 break-words">
               {feature.dependencies.map((depId) => {
                 const depFeature = features.find(f => f.id === depId);
                 const isMissing = !depFeature;
@@ -219,7 +219,7 @@ export function FeatureDetailPanel({
               <Link className="h-4 w-4" />
               {t('featureDetailPanel.dependenciesSection.requiredBy', { count: reverseDependencies.length })}
             </h3>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 break-words">
               {reverseDependencies.map((depId) => {
                 const depFeature = features.find(f => f.id === depId);
                 return (
