@@ -13,6 +13,55 @@ const path = require('path');
 const { isWindows, getCurrentPlatform, toNodePlatform } = require('../src/shared/platform.cjs');
 const { downloadPython } = require('./download-python.cjs');
 
+/**
+ * Shell metacharacters that could enable command injection when shell: true is used on Windows.
+ * These characters have special meaning in cmd.exe and could be used to inject arbitrary commands.
+ *
+ * Includes:
+ * - Standard operators: & | > < ^ %
+ * - Command separators: ;
+ * - Variable expansion: $ %
+ * - Command grouping: ( ) [ ] { }
+ * - Delayed expansion: !
+ * - Command substitution: `
+ * - Quotes: "
+ * - Line breaks: \n \r
+ *
+ * Note: Single quote (') is not included as cmd.exe does not treat it as a shell metacharacter.
+ */
+const SHELL_METACHARACTERS = Object.freeze(['&', '|', '>', '<', '^', '%', ';', '$', '(', ')', '[', ']', '{', '}', '!', '`', '"', '\n', '\r']);
+
+/**
+ * Validate that arguments don't contain shell metacharacters on Windows.
+ * When shell: true is used, cmd.exe interprets metacharacters which could lead to command injection.
+ *
+ * @param {string[]} commandArgs - Arguments to validate
+ * @throws {Error} If any argument contains dangerous shell metacharacters on Windows
+ * @throws {TypeError} If any argument is not a string
+ */
+function validateArgs(commandArgs) {
+  if (!isWindows()) return; // Only validate on Windows where shell: true is used
+
+  for (const arg of commandArgs) {
+    // Defensive check: skip non-string arguments to prevent TypeError
+    if (typeof arg !== 'string') {
+      throw new TypeError(
+        `Security: Argument must be a string, got ${typeof arg}. ` +
+        `This may indicate incorrect argument passing.`
+      );
+    }
+
+    for (const char of SHELL_METACHARACTERS) {
+      if (arg.includes(char)) {
+        throw new Error(
+          `Security: Argument contains shell metacharacter '${char}' which could enable command injection. ` +
+          `Argument: "${arg}"`
+        );
+      }
+    }
+  }
+}
+
 const args = process.argv.slice(2);
 
 const PLATFORM_FLAGS = new Map([
@@ -92,11 +141,17 @@ function buildEnv(frontendDir) {
 }
 
 function runCommand(command, commandArgs, cwd, env) {
+  // Validate arguments to prevent command injection via shell metacharacters.
+  // Note: validateArgs only validates on Windows because shell: true is only used on Windows.
+  // On non-Windows platforms, .cmd files are not used and shell: false, so no injection risk.
+  validateArgs(commandArgs);
+
   const bin = isWindows() ? `${command}.cmd` : command;
   const result = spawnSync(bin, commandArgs, {
     cwd,
     env,
     stdio: 'inherit',
+    shell: isWindows(),
   });
 
   if (result.error) {
@@ -219,7 +274,13 @@ async function main() {
   runCommand('electron-builder', builderArgs, frontendDir, env);
 }
 
-main().catch((err) => {
-  console.error(`[package] Error: ${err.message}`);
-  process.exitCode = 1;
-});
+// Run main() only when this file is executed directly (not when imported for testing)
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`[package] Error: ${err.message}`);
+    process.exitCode = 1;
+  });
+}
+
+// Export for testing
+module.exports = { validateArgs, SHELL_METACHARACTERS };
