@@ -732,11 +732,9 @@ def trigger_login() -> bool:
     Returns:
         True if login was successful, False otherwise
     """
-    system = platform.system()
-
-    if system == "Darwin":
+    if is_macos():
         return _trigger_login_macos()
-    elif system == "Windows":
+    elif is_windows():
         return _trigger_login_windows()
     else:
         # Linux: fall back to manual instructions
