@@ -412,12 +412,14 @@ Examples:
                 except (json.JSONDecodeError, OSError) as e:
                     debug_error("spec_runner", f"Failed to update plan status: {e}")
                     print_status(f"Failed to update plan status: {e}", "error")
+                    sys.exit(1)
             else:
                 debug_error("spec_runner", f"Plan file not found at: {plan_path}")
                 print_status(
                     f"Warning: implementation_plan.json not found at {plan_path}",
                     "warning",
                 )
+                sys.exit(1)
 
         sys.exit(0)
 
