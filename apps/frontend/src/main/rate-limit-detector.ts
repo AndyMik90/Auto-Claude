@@ -293,8 +293,7 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
 
   // Fallback: Use configDir for profiles without OAuth token (legacy)
   if (profile.configDir) {
-    console.warn('[getProfileEnv] Using configDir fallback for profile:', profile.name);
-    console.warn('[getProfileEnv] WARNING: Profile has no OAuth token. Run "claude setup-token" and save the token to enable instant switching.');
+    console.warn('[getProfileEnv] Using configDir for profile:', profile.name);
     return {
       CLAUDE_CONFIG_DIR: profile.configDir
     };

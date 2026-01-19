@@ -125,6 +125,12 @@ export interface ClaudeProfile {
   usage?: ClaudeUsageData;
   /** Recent rate limit events for this profile */
   rateLimitEvents?: ClaudeRateLimitEvent[];
+  /**
+   * Whether this profile has valid authentication.
+   * Computed server-side by checking configDir for credential files.
+   * This is NOT persisted, it's computed dynamically on each getSettings() call.
+   */
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -167,4 +173,20 @@ export interface ClaudeAuthResult {
   success: boolean;
   authenticated: boolean;
   error?: string;
+}
+
+/**
+ * Payload for TERMINAL_PROFILE_CHANGED event.
+ * Sent when profile switches and terminals need to be refreshed.
+ */
+export interface TerminalProfileChangedEvent {
+  previousProfileId: string;
+  newProfileId: string;
+  terminals: Array<{
+    id: string;
+    /** Session ID if terminal had an active Claude session */
+    sessionId?: string;
+    /** Whether the session was successfully migrated to new profile */
+    sessionMigrated?: boolean;
+  }>;
 }
