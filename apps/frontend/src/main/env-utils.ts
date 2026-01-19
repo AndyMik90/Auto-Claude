@@ -85,10 +85,9 @@ function getNpmGlobalPrefix(): string | null {
     // This happens when the packaged app launches from GUI without full shell environment
     if (isWindows()) {
       // Use APPDATA env var if available (more robust for localized/custom installations)
-      const appData = process.env.APPDATA;
-      const defaultNpmPath = appData
-        ? path.join(appData, 'npm')
-        : path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+      // Matches pattern from platform/paths.ts
+      const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+      const defaultNpmPath = path.join(appDataPath, 'npm');
       if (fs.existsSync(defaultNpmPath)) {
         console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
         return defaultNpmPath;
@@ -362,10 +361,9 @@ async function getNpmGlobalPrefixAsync(): Promise<string | null> {
       // This happens when the packaged app launches from GUI without full shell environment
       if (isWindows()) {
         // Use APPDATA env var if available (more robust for localized/custom installations)
-        const appData = process.env.APPDATA;
-        const defaultNpmPath = appData
-          ? path.join(appData, 'npm')
-          : path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+        // Matches pattern from platform/paths.ts
+        const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+        const defaultNpmPath = path.join(appDataPath, 'npm');
         if (await existsAsync(defaultNpmPath)) {
           console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
           npmGlobalPrefixCache = defaultNpmPath;
