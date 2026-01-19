@@ -61,8 +61,9 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     // /c = run command then terminate
     if (isWindows && /\.(cmd|bat)$/i.test(normalizedCliPath)) {
       // Get cmd.exe path from environment or use default
-      const cmdExe = process.env.ComSpec
-        || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
+      // Use expandWindowsEnvVars for proper SystemRoot resolution with fallback
+      const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+      const cmdExe = process.env.ComSpec || path.join(systemRoot, 'System32', 'cmd.exe');
       // Use double-quoted command line for paths with spaces
       const cmdLine = `""${normalizedCliPath}" --version"`;
       const execOptions: ExecFileAsyncOptionsWithVerbatim = {
@@ -587,9 +588,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         }
       } else if (terminalId === 'hyper') {
         // Hyper - Electron-based terminal
+        const homeDir = os.homedir();
+        const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
         const hyperPaths = [
-          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Hyper', 'Hyper.exe'),
-          path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Programs', 'Hyper', 'Hyper.exe'),
+          path.join(localAppData, 'Programs', 'Hyper', 'Hyper.exe'),
+          path.join(homeDir, 'AppData', 'Local', 'Programs', 'Hyper', 'Hyper.exe'),
         ];
         const hyperPath = hyperPaths.find(p => existsSync(p));
         if (hyperPath) {
@@ -603,9 +606,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         }
       } else if (terminalId === 'tabby') {
         // Tabby (formerly Terminus) - modern terminal for Windows
+        const homeDir = os.homedir();
+        const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
         const tabbyPaths = [
-          path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Tabby', 'Tabby.exe'),
-          path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Programs', 'Tabby', 'Tabby.exe'),
+          path.join(localAppData, 'Programs', 'Tabby', 'Tabby.exe'),
+          path.join(homeDir, 'AppData', 'Local', 'Programs', 'Tabby', 'Tabby.exe'),
         ];
         const tabbyPath = tabbyPaths.find(p => existsSync(p));
         if (tabbyPath) {
