@@ -218,7 +218,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns colon on Unix', () => {
+    describeUnix('returns colon on Unix', () => {
       it('returns colon', () => {
         expect(getPathDelimiter()).toBe(':');
       });
@@ -232,7 +232,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns empty string on Unix', () => {
+    describeUnix('returns empty string on Unix', () => {
       it('returns empty string', () => {
         expect(getExecutableExtension()).toBe('');
       });
@@ -253,7 +253,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns original name on Unix', () => {
+    describeUnix('returns original name on Unix', () => {
       it('returns original', () => {
         expect(withExecutableExtension('claude')).toBe('claude');
       });
@@ -321,7 +321,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns shell config on Unix', () => {
+    describeUnix('returns shell config on Unix', () => {
       it('returns shell config', () => {
         const config = getShellConfig();
         expect(config.args).toEqual(['-l']);
@@ -343,7 +343,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns false on Unix', () => {
+    describeUnix('returns false on Unix', () => {
       it('returns false', () => {
         expect(requiresShell('npm')).toBe(false);
       });
@@ -358,7 +358,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('returns npm on Unix', () => {
+    describeUnix('returns npm on Unix', () => {
       it('returns plain names', () => {
         expect(getNpmCommand()).toBe('npm');
         expect(getNpxCommand()).toBe('npx');
@@ -374,13 +374,13 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('rejects paths with .. on Unix', () => {
+    describeUnix('rejects paths with .. on Unix', () => {
       it('rejects parent directory references', () => {
         expect(isSecurePath('../etc/passwd')).toBe(false);
       });
     });
 
-    describeMacOS('rejects shell metacharacters (command injection prevention)', () => {
+    describeUnix('rejects shell metacharacters (command injection prevention)', () => {
       it('rejects dangerous characters', () => {
         expect(isSecurePath('cmd;rm -rf /')).toBe(false);
         expect(isSecurePath('cmd|cat /etc/passwd')).toBe(false);
@@ -399,7 +399,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('rejects newline injection', () => {
+    describeUnix('rejects newline injection', () => {
       it('rejects newline characters', () => {
         expect(isSecurePath('cmd\n/bin/sh')).toBe(false);
         expect(isSecurePath('cmd\r\n/bin/sh')).toBe(false);
@@ -419,7 +419,7 @@ describe('Platform Module', () => {
       });
     });
 
-    describeMacOS('accepts valid paths on Unix', () => {
+    describeUnix('accepts valid paths on Unix', () => {
       it('accepts valid Unix paths', () => {
         expect(isSecurePath('/usr/bin/node')).toBe(true);
         expect(isSecurePath('/opt/homebrew/bin/python3')).toBe(true);
@@ -450,17 +450,10 @@ describe('Platform Module', () => {
   });
 
   describe('normalizeExecutablePath', () => {
-    describeMacOS('returns original path unchanged on macOS', () => {
+    describeUnix('returns original path unchanged on Unix', () => {
       it('does not modify paths', () => {
         const result = normalizeExecutablePath('/usr/local/bin/claude');
         expect(result).toBe('/usr/local/bin/claude');
-      });
-    });
-
-    describeLinux('returns original path unchanged on Linux', () => {
-      it('does not modify paths', () => {
-        const result = normalizeExecutablePath('/usr/bin/claude');
-        expect(result).toBe('/usr/bin/claude');
       });
     });
 
