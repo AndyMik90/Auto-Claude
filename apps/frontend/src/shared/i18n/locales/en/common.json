@@ -429,15 +429,17 @@
     "failedToCreate": "Failed to create terminal",
     "unknownError": "Unknown error",
     "instructionTitle": "Claude Authentication",
-    "step1": "Type claude /login and press Enter",
+    "step1": "Press Enter to start authentication",
     "step2": "Complete authentication in your browser",
     "step3": "Return here - auth will be detected automatically",
     "authFailed": "Authentication failed",
     "connecting": "Connecting...",
     "authenticate": "Authenticate: {{profileName}}",
+    "completeSetup": "Complete setup: {{profileName}}",
     "authenticatedAs": "Authenticated as {{email}}",
     "authenticated": "Authenticated!",
     "authError": "Authentication Error",
+    "onboardingMessage": "Token received! Complete the setup in the terminal, then close when finished.",
     "successMessage": "Authentication successful! You can close this terminal."
   },
   "profileCreated": {

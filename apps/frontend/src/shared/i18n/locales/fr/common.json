@@ -429,15 +429,17 @@
     "failedToCreate": "Échec de la création du terminal",
     "unknownError": "Erreur inconnue",
     "instructionTitle": "Authentification Claude",
-    "step1": "Tapez claude /login et appuyez sur Entrée",
+    "step1": "Appuyez sur Entrée pour démarrer l'authentification",
     "step2": "Complétez l'authentification dans votre navigateur",
     "step3": "Revenez ici - l'authentification sera détectée automatiquement",
     "authFailed": "Échec de l'authentification",
     "connecting": "Connexion...",
     "authenticate": "Authentifier : {{profileName}}",
+    "completeSetup": "Terminer la configuration : {{profileName}}",
     "authenticatedAs": "Authentifié en tant que {{email}}",
     "authenticated": "Authentifié !",
     "authError": "Erreur d'authentification",
+    "onboardingMessage": "Jeton reçu ! Terminez la configuration dans le terminal, puis fermez une fois terminé.",
     "successMessage": "Authentification réussie ! Vous pouvez fermer ce terminal."
   },
   "profileCreated": {

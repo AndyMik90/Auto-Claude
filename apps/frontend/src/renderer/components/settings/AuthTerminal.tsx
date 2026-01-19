@@ -8,6 +8,12 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 
+// Debug logging - only active when DEBUG=true (npm run dev:debug)
+const DEBUG = typeof process !== 'undefined' && process.env?.DEBUG === 'true';
+const debugLog = (...args: unknown[]) => {
+  if (DEBUG) console.warn('[AuthTerminal:DEBUG]', ...args);
+};
+
 interface AuthTerminalProps {
   /** Terminal ID for this auth session */
   terminalId: string;
@@ -42,10 +48,20 @@ export function AuthTerminal({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const isCreatedRef = useRef(false);
   const cleanupFnsRef = useRef<(() => void)[]>([]);
+  const loginSentRef = useRef(false); // Track if /login was already sent
+  const loginTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track setTimeout for cleanup
 
-  const [status, setStatus] = useState<'connecting' | 'ready' | 'success' | 'error'>('connecting');
+  const [status, setStatus] = useState<'connecting' | 'ready' | 'onboarding' | 'success' | 'error'>('connecting');
   const [authEmail, setAuthEmail] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+
+  // Refs to track current status/email for exit handler closure
+  const statusRef = useRef(status);
+  const authEmailRef = useRef(authEmail);
+  statusRef.current = status;
+  authEmailRef.current = authEmail;
+
+  debugLog('Component render', { terminalId, status, isCreated: isCreatedRef.current, loginSent: loginSentRef.current });
 
   // Initialize xterm
   useEffect(() => {
@@ -149,6 +165,26 @@ export function AuthTerminal({
         xterm.writeln('\x1b[1;36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
         xterm.writeln('');
 
+        // Pre-fill the terminal with 'claude /login' command
+        // Wait a moment for the shell prompt to be ready, then send the command
+        // (without carriage return so user must press Enter)
+        // Guard: only send once per component lifecycle
+        if (!loginSentRef.current) {
+          debugLog('Scheduling /login pre-fill', { terminalId, delay: 500 });
+          loginTimeoutRef.current = setTimeout(() => {
+            // Double-check guard in case of race conditions
+            if (!loginSentRef.current) {
+              loginSentRef.current = true;
+              debugLog('Sending /login pre-fill NOW', { terminalId });
+              window.electronAPI.sendTerminalInput(terminalId, 'claude /login');
+            } else {
+              debugLog('SKIPPED /login pre-fill (already sent)', { terminalId });
+            }
+          }, 500);
+        } else {
+          debugLog('SKIPPED scheduling /login pre-fill (already sent)', { terminalId });
+        }
+
         console.warn('[AuthTerminal] Terminal created successfully');
       } catch (error) {
         console.error('[AuthTerminal] Error creating terminal:', error);
@@ -165,6 +201,7 @@ export function AuthTerminal({
 
   // Setup terminal event listeners
   useEffect(() => {
+    debugLog('Setting up event listeners effect', { terminalId, hasXterm: !!xtermRef.current });
     if (!xtermRef.current) return;
 
     const xterm = xtermRef.current;
@@ -177,20 +214,45 @@ export function AuthTerminal({
     });
     cleanupFnsRef.current.push(unsubOutput);
 
-    // Handle terminal input
+    // Handle terminal input - log user keystrokes for debugging
     const inputDisposable = xterm.onData((data) => {
+      // Log Enter key presses and significant input
+      if (data === '\r' || data === '\n') {
+        debugLog('User pressed ENTER', { terminalId, status: statusRef.current });
+      } else if (data.length > 1) {
+        debugLog('User input (paste or special)', { terminalId, dataLength: data.length });
+      }
       window.electronAPI.sendTerminalInput(terminalId, data);
     });
 
     // Handle OAuth token capture
     const unsubOAuth = window.electronAPI.onTerminalOAuthToken((info) => {
       console.warn('[AuthTerminal] OAuth token event:', info);
+      debugLog('OAuth token event received', {
+        terminalId: info.terminalId,
+        thisTerminalId: terminalId,
+        isMatch: info.terminalId === terminalId,
+        success: info.success,
+        needsOnboarding: info.needsOnboarding,
+        email: info.email,
+        currentStatus: statusRef.current,
+        loginSent: loginSentRef.current
+      });
       if (info.terminalId === terminalId) {
         if (info.success) {
-          setStatus('success');
           setAuthEmail(info.email);
-          onAuthSuccess?.(info.email);
+          // If needsOnboarding is true, user should complete setup in terminal
+          // Otherwise, authentication is fully complete
+          if (info.needsOnboarding) {
+            debugLog('Setting status to onboarding', { terminalId });
+            setStatus('onboarding');
+          } else {
+            debugLog('Setting status to success (no onboarding needed)', { terminalId });
+            setStatus('success');
+            onAuthSuccess?.(info.email);
+          }
         } else {
+          debugLog('OAuth failed', { terminalId, message: info.message });
           setStatus('error');
           const errorMsg = info.message || t('authTerminal.authFailed');
           setErrorMessage(errorMsg);
@@ -203,13 +265,28 @@ export function AuthTerminal({
     // Handle terminal exit
     const unsubExit = window.electronAPI.onTerminalExit((id, exitCode) => {
       if (id === terminalId) {
-        console.warn('[AuthTerminal] Terminal exited:', exitCode);
+        console.warn('[AuthTerminal] Terminal exited:', exitCode, 'status:', statusRef.current);
+        debugLog('Terminal exit event', {
+          terminalId,
+          exitCode,
+          currentStatus: statusRef.current,
+          loginSent: loginSentRef.current,
+          willTransitionToSuccess: statusRef.current === 'onboarding' && exitCode === 0
+        });
+        // If we were in onboarding status and terminal exits with code 0,
+        // that means the user completed the onboarding successfully
+        if (statusRef.current === 'onboarding' && exitCode === 0) {
+          debugLog('Transitioning from onboarding to success', { terminalId });
+          setStatus('success');
+          onAuthSuccess?.(authEmailRef.current);
+        }
         // Don't close automatically - let user see any error messages
       }
     });
     cleanupFnsRef.current.push(unsubExit);
 
     return () => {
+      debugLog('Cleaning up event listeners', { terminalId });
       inputDisposable.dispose();
       cleanupFnsRef.current.forEach(fn => fn());
       cleanupFnsRef.current = [];
@@ -245,7 +322,20 @@ export function AuthTerminal({
   // Cleanup terminal on unmount
   useEffect(() => {
     return () => {
+      debugLog('Component unmounting', {
+        terminalId,
+        isCreated: isCreatedRef.current,
+        loginSent: loginSentRef.current,
+        hasLoginTimeout: !!loginTimeoutRef.current
+      });
+      // Clear pending login timeout if component unmounts before it fires
+      if (loginTimeoutRef.current) {
+        debugLog('Clearing pending login timeout', { terminalId });
+        clearTimeout(loginTimeoutRef.current);
+        loginTimeoutRef.current = null;
+      }
       if (isCreatedRef.current) {
+        debugLog('Destroying terminal', { terminalId });
         window.electronAPI.destroyTerminal(terminalId).catch(console.error);
       }
     };
@@ -270,6 +360,9 @@ export function AuthTerminal({
           {status === 'ready' && (
             <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
           )}
+          {status === 'onboarding' && (
+            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+          )}
           {status === 'success' && (
             <CheckCircle2 className="h-4 w-4 text-success" />
           )}
@@ -279,6 +372,7 @@ export function AuthTerminal({
           <span className="text-sm font-medium">
             {status === 'connecting' && t('authTerminal.connecting')}
             {status === 'ready' && t('authTerminal.authenticate', { profileName })}
+            {status === 'onboarding' && t('authTerminal.completeSetup', { profileName })}
             {status === 'success' && (authEmail ? t('authTerminal.authenticatedAs', { email: authEmail }) : t('authTerminal.authenticated'))}
             {status === 'error' && t('authTerminal.authError')}
           </span>
@@ -304,6 +398,13 @@ export function AuthTerminal({
       />
 
       {/* Status bar */}
+      {status === 'onboarding' && (
+        <div className="px-3 py-2 border-t border-border bg-blue-500/10">
+          <p className="text-sm text-blue-600 dark:text-blue-400">
+            {t('authTerminal.onboardingMessage')}
+          </p>
+        </div>
+      )}
       {status === 'success' && (
         <div className="px-3 py-2 border-t border-border bg-success/10">
           <p className="text-sm text-success">

@@ -291,7 +291,10 @@ describe('claude-integration-handler', () => {
       nowSpy.mockRestore();
     });
 
-    it('prefers the temp token flow when profile has both oauth token and config dir', async () => {
+    it('prefers the config dir flow when profile has both oauth token and config dir', async () => {
+      // The configDir method is preferred over temp-file because CLAUDE_CONFIG_DIR lets
+      // Claude Code read full Keychain credentials including subscriptionType ("max") and
+      // rateLimitTier. Using CLAUDE_CODE_OAUTH_TOKEN alone lacks tier info.
       const command = '/opt/claude/bin/claude';
       const profileManager = {
         getActiveProfile: vi.fn(),
@@ -311,30 +314,27 @@ describe('claude-integration-handler', () => {
         env: { PATH: '/opt/claude/bin:/usr/bin' },
       });
       mockGetClaudeProfileManager.mockReturnValue(profileManager);
-      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(5678);
 
       const terminal = createMockTerminal({ id: 'term-both' });
 
       const { invokeClaude } = await import('../claude-integration-handler');
       invokeClaude(terminal, '/tmp/project', 'prof-both', () => null, vi.fn());
 
-      const tokenPath = vi.mocked(writeFileSync).mock.calls[0]?.[0] as string;
-      const tokenContents = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string;
-      const tokenPrefix = path.join(tmpdir(), '.claude-token-5678-');
-      const tokenExt = getTempFileExtension(platform);
-      expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
-      expect(tokenContents).toBe(getTokenFileContent(platform, 'token-value'));
+      // Should NOT write a temp file - configDir is used instead
+      expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 
       const written = mockWriteToPty.mock.calls[0][1] as string;
-      expect(written).toContain(getTempFileInvocation(platform, tokenPath));
-      expect(written).toContain(getTempFileCleanup(platform, tokenPath));
+      const clearCmd = getClearCommand(platform);
+      const histPrefix = getHistoryPrefix(platform);
+      const configDir = getConfigDirCommand(platform, '/tmp/claude-config');
+
+      expect(written).toContain(histPrefix);
+      expect(written).toContain(configDir);
+      expect(written).toContain(clearCmd);
       expect(written).toContain(getQuotedCommand(platform, command));
-      expect(written).not.toContain('CLAUDE_CONFIG_DIR=');
       expect(profileManager.getProfile).toHaveBeenCalledWith('prof-both');
       expect(mockPersistSession).toHaveBeenCalledWith(terminal);
       expect(profileManager.markProfileUsed).toHaveBeenCalledWith('prof-both');
-
-      nowSpy.mockRestore();
     });
 
     it('handles missing profiles by falling back to the default command', async () => {
