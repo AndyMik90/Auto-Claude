@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
+import os from 'os';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
@@ -20,6 +21,7 @@ import {
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, isLinux, getWhichCommand } from '../../platform';
+import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -921,12 +923,14 @@ async function detectWindowsApps(): Promise<Set<string>> {
       }
     }
   } catch {
-    // Fallback: check common paths
+    // Fallback: check common paths using environment variable expansion
+    const homeDir = os.homedir();
+    const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
     const commonPaths = [
-      'C:\\Program Files',
-      'C:\\Program Files (x86)',
-      process.env.LOCALAPPDATA || ''
-    ];
+      expandWindowsEnvVars('%PROGRAMFILES%'),
+      expandWindowsEnvVars('%PROGRAMFILES(X86)%'),
+      localAppData
+    ].filter(Boolean) as string[];
     for (const basePath of commonPaths) {
       if (basePath && existsSync(basePath)) {
         try {
