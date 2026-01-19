@@ -18,6 +18,8 @@ Usage:
 """
 
 from .factory import get_provider, register_provider
+from .gitea_client import GiteaClient
+from .gitea_provider import GiteaProvider
 from .github_provider import GitHubProvider
 from .protocol import (
     GitProvider,
@@ -41,6 +43,8 @@ __all__ = [
     "PRFilters",
     "ProviderType",
     # Implementations
+    "GiteaClient",
+    "GiteaProvider",
     "GitHubProvider",
     # Factory
     "get_provider",
