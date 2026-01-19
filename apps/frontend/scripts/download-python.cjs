@@ -21,6 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const os = require('os');
 const nodeCrypto = require('crypto');
+const { toNodePlatform } = require('../src/shared/platform.cjs');
 
 // Python version to bundle (must be 3.10+ for claude-agent-sdk, 3.12+ for full Graphiti support)
 const PYTHON_VERSION = '3.12.8';
@@ -163,18 +164,6 @@ function toElectronBuilderPlatform(nodePlatform) {
     'linux': 'linux',
   };
   return map[nodePlatform] || nodePlatform;
-}
-
-// Map electron-builder platform names to Node.js platform names (for internal use)
-function toNodePlatform(platform) {
-  const map = {
-    'mac': 'darwin',
-    'win': 'win32',
-    'darwin': 'darwin',
-    'win32': 'win32',
-    'linux': 'linux',
-  };
-  return map[platform] || platform;
 }
 
 /**
@@ -462,6 +451,71 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function hasPackage(sitePackagesDir, pkg) {
+  const pkgPath = path.join(sitePackagesDir, pkg);
+  const initPath = path.join(pkgPath, '__init__.py');
+  const moduleFile = path.join(sitePackagesDir, pkg + '.py');
+  return (fs.existsSync(pkgPath) && fs.existsSync(initPath)) || fs.existsSync(moduleFile);
+}
+
+function hasPydanticCoreBinary(sitePackagesDir) {
+  const pkgDir = path.join(sitePackagesDir, 'pydantic_core');
+  if (!fs.existsSync(pkgDir)) return false;
+
+  let entries;
+  try {
+    entries = fs.readdirSync(pkgDir);
+  } catch {
+    return false;
+  }
+  return entries.some((name) => {
+    if (!name.startsWith('_pydantic_core')) return false;
+    const lower = name.toLowerCase();
+    return lower.endsWith('.so') || lower.endsWith('.pyd') || lower.endsWith('.dylib');
+  });
+}
+
+function getPinnedPydanticCoreVersion(sitePackagesDir) {
+  let entries;
+  try {
+    entries = fs.readdirSync(sitePackagesDir);
+  } catch {
+    return null;
+  }
+
+  const distInfo = entries.find((entry) => {
+    return entry.startsWith('pydantic-')
+      && !entry.startsWith('pydantic_core-')
+      && entry.endsWith('.dist-info');
+  });
+  if (!distInfo) return null;
+
+  const metadataPath = path.join(sitePackagesDir, distInfo, 'METADATA');
+  if (!fs.existsSync(metadataPath)) return null;
+
+  let metadata;
+  try {
+    metadata = fs.readFileSync(metadataPath, 'utf-8');
+  } catch {
+    return null;
+  }
+
+  for (const line of metadata.split(/\r?\n/)) {
+    if (!line.startsWith('Requires-Dist: pydantic-core')) continue;
+    const match = line.match(/pydantic-core==([0-9A-Za-z.+-]+)/);
+    if (match) return match[1];
+  }
+
+  return null;
+}
+
+function isCriticalPackageMissing(sitePackagesDir, pkg) {
+  if (pkg === 'pydantic_core') {
+    return !hasPackage(sitePackagesDir, pkg) || !hasPydanticCoreBinary(sitePackagesDir);
+  }
+  return !hasPackage(sitePackagesDir, pkg);
 }
 
 /**
@@ -797,6 +851,44 @@ function installPackages(pythonBin, requirementsPath, targetSitePackages) {
   // Strip unnecessary files
   stripSitePackages(targetSitePackages);
 
+  if (!hasPydanticCoreBinary(targetSitePackages)) {
+    console.warn('[download-python] pydantic_core binary missing after strip; reinstalling pydantic-core...');
+    const pinnedVersion = getPinnedPydanticCoreVersion(targetSitePackages);
+    const coreSpec = pinnedVersion ? `pydantic-core==${pinnedVersion}` : 'pydantic-core';
+    if (pinnedVersion) {
+      console.log(`[download-python] Reinstalling pydantic-core ${pinnedVersion} to match pydantic metadata`);
+    } else {
+      console.warn('[download-python] Unable to determine pydantic-core pin; reinstalling latest');
+    }
+    const pipArgs = [
+      '-m', 'pip', 'install',
+      '--no-compile',
+      '--only-binary', 'pydantic-core',
+      '--no-deps',
+      '--target', targetSitePackages,
+      coreSpec,
+    ];
+    const result = spawnSync(pythonBin, pipArgs, {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PYTHONDONTWRITEBYTECODE: '1',
+        PYTHONIOENCODING: 'utf-8',
+      },
+    });
+
+    if (result.error) {
+      throw new Error(`Failed to reinstall pydantic-core: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      throw new Error(`pydantic-core reinstall failed with exit code ${result.status}`);
+    }
+
+    if (!hasPydanticCoreBinary(targetSitePackages)) {
+      throw new Error('pydantic_core binary missing after reinstall');
+    }
+  }
+
   // Remove bin/Scripts directory (we don't need console scripts)
   const binDir = path.join(targetSitePackages, 'bin');
   const scriptsDir = path.join(targetSitePackages, 'Scripts');
@@ -862,14 +954,7 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
         .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
-      const missingPackages = criticalPackages.filter(pkg => {
-        const pkgPath = path.join(sitePackagesDir, pkg);
-        const initPath = path.join(pkgPath, '__init__.py');
-        // For single-file modules (like pywintypes.py), check for the file directly
-        const moduleFile = path.join(sitePackagesDir, pkg + '.py');
-        // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
-      });
+      const missingPackages = criticalPackages.filter(pkg => isCriticalPackageMissing(sitePackagesDir, pkg));
 
       if (missingPackages.length > 0) {
         console.log(`[download-python] Critical packages missing or incomplete: ${missingPackages.join(', ')}`);
@@ -969,14 +1054,7 @@ async function downloadPython(targetPlatform, targetArch, options = {}) {
       // while this script validates it during build to ensure it's bundled
       const criticalPackages = ['claude_agent_sdk', 'dotenv', 'pydantic_core']
         .concat(PLATFORM_CRITICAL_PACKAGES[info.nodePlatform] || []);
-      const postInstallMissing = criticalPackages.filter(pkg => {
-        const pkgPath = path.join(sitePackagesDir, pkg);
-        const initPath = path.join(pkgPath, '__init__.py');
-        // For single-file modules (like pywintypes.py), check for the file directly
-        const moduleFile = path.join(sitePackagesDir, pkg + '.py');
-        // Package is valid if directory+__init__.py exists OR single-file module exists
-        return !(fs.existsSync(pkgPath) && fs.existsSync(initPath)) && !fs.existsSync(moduleFile);
-      });
+      const postInstallMissing = criticalPackages.filter(pkg => isCriticalPackageMissing(sitePackagesDir, pkg));
 
       if (postInstallMissing.length > 0) {
         throw new Error(`Package installation failed - missing critical packages: ${postInstallMissing.join(', ')}`);
