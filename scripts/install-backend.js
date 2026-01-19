@@ -8,10 +8,10 @@
 const { execSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const platform = require('./platform');
 
-const isWindows = os.platform() === 'win32';
-const isMac = os.platform() === 'darwin';
+const isWindows = platform.isWindows();
+const isMac = platform.isMac();
 const backendDir = path.join(__dirname, '..', 'apps', 'backend');
 const venvDir = path.join(backendDir, '.venv');
 
