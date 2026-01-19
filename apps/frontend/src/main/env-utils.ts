@@ -16,7 +16,7 @@ import { promises as fsPromises } from 'fs';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import { getSentryEnvForSubprocess } from './sentry';
-import { isWindows, isUnix, getPathDelimiter, getNpmCommand, getCurrentOS } from './platform';
+import { isWindows, isUnix, getPathDelimiter, getNpmCommand, getCurrentOS, expandWindowsEnvVars } from './platform';
 
 const execFileAsync = promisify(execFile);
 
@@ -133,15 +133,16 @@ export const COMMON_BIN_PATHS: Record<string, string[]> = {
   ],
   win32: [
     // Windows usually handles PATH better, but we can add common locations
-    'C:\\Program Files\\Git\\cmd',
-    'C:\\Program Files\\GitHub CLI',
+    // Using environment variable expansion for cross-platform compatibility
+    '%PROGRAMFILES%\\Git\\cmd',
+    '%PROGRAMFILES%\\GitHub CLI',
     // Node.js and npm paths - critical for packaged Electron apps that don't inherit full PATH
-    'C:\\Program Files\\nodejs',                  // Standard Node.js installer (64-bit)
-    'C:\\Program Files (x86)\\nodejs',            // 32-bit Node.js on 64-bit Windows
-    '~\\AppData\\Local\\Programs\\nodejs',        // NVM for Windows / user install
-    '~\\AppData\\Roaming\\npm',                   // npm global scripts (claude.cmd lives here)
-    '~\\scoop\\apps\\nodejs\\current',            // Scoop package manager
-    'C:\\ProgramData\\chocolatey\\bin',           // Chocolatey package manager
+    '%PROGRAMFILES%\\nodejs',                      // Standard Node.js installer (64-bit)
+    '%PROGRAMFILES(X86)%\\nodejs',                 // 32-bit Node.js on 64-bit Windows
+    '%LOCALAPPDATA%\\Programs\\nodejs',            // NVM for Windows / user install
+    '%APPDATA%\\npm',                              // npm global scripts (claude.cmd lives here)
+    '~\\scoop\\apps\\nodejs\\current',             // Scoop package manager
+    '%PROGRAMDATA%\\chocolatey\\bin',              // Chocolatey package manager
   ],
 };
 
@@ -168,14 +169,32 @@ function getExpandedPlatformPaths(additionalPaths?: string[]): string[] {
 
   // Get platform-specific paths and expand home directory
   const platformPaths = COMMON_BIN_PATHS[platform] || [];
-  const expandedPaths = platformPaths.map(p =>
-    p.startsWith('~') ? p.replace('~', homeDir) : p
-  );
+  const expandedPaths = platformPaths.map(p => {
+    let expanded = p;
+
+    // Expand ~ to home directory
+    if (p.startsWith('~')) {
+      expanded = p.replace('~', homeDir);
+    }
+
+    // Expand Windows environment variables (e.g., %PROGRAMFILES%, %APPDATA%)
+    if (isWindows()) {
+      expanded = expandWindowsEnvVars(expanded);
+    }
+
+    return expanded;
+  });
 
   // Add user-requested additional paths (expanded)
   if (additionalPaths) {
     for (const p of additionalPaths) {
-      const expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
+      let expanded = p.startsWith('~') ? p.replace('~', homeDir) : p;
+
+      // Also expand environment variables for user-provided paths
+      if (isWindows()) {
+        expanded = expandWindowsEnvVars(expanded);
+      }
+
       expandedPaths.push(expanded);
     }
   }
