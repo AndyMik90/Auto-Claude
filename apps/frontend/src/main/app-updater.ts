@@ -139,6 +139,20 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   // Update available - new version found
   autoUpdater.on('update-available', (info) => {
+    const currentVersion = autoUpdater.currentVersion.version;
+    const latestVersion = info.version;
+
+    // Use proper semver comparison to detect if update is actually newer
+    // This prevents offering downgrades (e.g., v2.7.4 when on v2.7.5)
+    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+
+    console.warn(`[app-updater] Update check: ${latestVersion} vs ${currentVersion} -> ${isNewer ? 'NEWER' : 'NOT NEWER (ignoring)'}`);
+
+    if (!isNewer) {
+      console.warn('[app-updater] Ignoring update notification - current version is same or newer');
+      return;
+    }
+
     console.warn('[app-updater] Update available:', info.version);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_AVAILABLE, {
@@ -151,6 +165,18 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   // Update downloaded - ready to install
   autoUpdater.on('update-downloaded', (info) => {
+    const currentVersion = autoUpdater.currentVersion.version;
+    const latestVersion = info.version;
+
+    // Use proper semver comparison to detect if update is actually newer
+    // This prevents offering downgrades (e.g., v2.7.4 when on v2.7.5)
+    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+
+    if (!isNewer) {
+      console.warn(`[app-updater] Ignoring downloaded update ${latestVersion} - current version ${currentVersion} is same or newer`);
+      return;
+    }
+
     console.warn('[app-updater] Update downloaded:', info.version);
     // Store downloaded update info so it persists across Settings page navigations
     downloadedUpdateInfo = {
