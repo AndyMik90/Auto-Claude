@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../lib/utils';
@@ -18,6 +19,7 @@ import {
   ROADMAP_IMPACT_COLORS
 } from '../../shared/constants';
 import type { RoadmapFeature, Roadmap } from '../../shared/types';
+import { getReverseDependencies } from './roadmap/utils';
 
 interface SortableFeatureCardProps {
   feature: RoadmapFeature;
@@ -34,6 +36,7 @@ export function SortableFeatureCard({
   onConvertToSpec,
   onGoToTask
 }: SortableFeatureCardProps) {
+  const { t } = useTranslation(['roadmap', 'common']);
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
 
   const {
@@ -64,6 +67,11 @@ export function SortableFeatureCard({
 
   // Helper function to get a feature by ID
   const getFeatureById = (featureId: string) => roadmap?.features.find(f => f.id === featureId);
+
+  // Calculate reverse dependencies using shared utility
+  const reverseDependencies = roadmap?.features
+    ? getReverseDependencies(feature, roadmap.features)
+    : [];
 
   return (
     <div
@@ -103,7 +111,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Phase: {phaseName}
+                    {t('sortableFeatureCard.phaseLabel', { name: phaseName })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -118,7 +126,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    This feature addresses competitor pain points
+                    {t('sortableFeatureCard.addressesCompetitorPainPoints')}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -137,7 +145,7 @@ export function SortableFeatureCard({
                 }}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                Task
+                {t('featureCard.task')}
               </Button>
             ) : (
               feature.status !== 'done' &&
@@ -152,7 +160,7 @@ export function SortableFeatureCard({
                   }}
                 >
                   <Play className="h-3 w-3 mr-1" />
-                  Build
+                  {t('featureCard.build')}
                 </Button>
               )
             )}
@@ -191,7 +199,7 @@ export function SortableFeatureCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {feature.votes} votes from user feedback
+                {t('sortableFeatureCard.votesFromUserFeedback', { count: feature.votes })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -207,14 +215,14 @@ export function SortableFeatureCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                Imported from {feature.source?.provider}
+                {t('sortableFeatureCard.importedFrom', { provider: feature.source?.provider })}
               </TooltipContent>
             </Tooltip>
           )}
         </div>
 
         {/* Dependencies - compact indicator */}
-        {(feature.dependencies?.length > 0 || feature.reverseDependencies && feature.reverseDependencies.length > 0) && (
+        {(feature.dependencies?.length > 0 || reverseDependencies.length > 0) && (
           <div className="mt-2 pt-2 border-t border-border/50">
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
               {feature.dependencies?.length > 0 && (
@@ -227,7 +235,7 @@ export function SortableFeatureCard({
                       }}
                     >
                       <Package className="h-2.5 w-2.5" />
-                      <span>{feature.dependencies.length} deps</span>
+                      <span>{t('sortableFeatureCard.depsCount', { count: feature.dependencies.length })}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -246,7 +254,7 @@ export function SortableFeatureCard({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {feature.reverseDependencies && feature.reverseDependencies.length > 0 && (
+              {reverseDependencies.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -256,20 +264,20 @@ export function SortableFeatureCard({
                       }}
                     >
                       <Link className="h-2.5 w-2.5" />
-                      <span>{feature.reverseDependencies.length} required by</span>
+                      <span>{t('sortableFeatureCard.requiredByCount', { count: reverseDependencies.length })}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-1">
                       <p className="text-xs font-medium">Required by:</p>
-                      {feature.reverseDependencies.slice(0, 3).map(depId => {
+                      {reverseDependencies.slice(0, 3).map(depId => {
                         const dep = getFeatureById(depId);
                         return (
                           <p key={depId} className="text-xs">{dep?.title || depId}</p>
                         );
                       })}
-                      {feature.reverseDependencies.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{feature.reverseDependencies.length - 3} more</p>
+                      {reverseDependencies.length > 3 && (
+                        <p className="text-xs text-muted-foreground">+{reverseDependencies.length - 3} more</p>
                       )}
                     </div>
                   </TooltipContent>
@@ -284,7 +292,7 @@ export function SortableFeatureCard({
                       <span>circular</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>Circular dependency detected</TooltipContent>
+                  <TooltipContent>{t('sortableFeatureCard.circularDependency')}</TooltipContent>
                 </Tooltip>
               )}
             </div>

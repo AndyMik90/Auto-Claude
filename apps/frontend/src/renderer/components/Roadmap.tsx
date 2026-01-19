@@ -134,6 +134,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {selectedFeature && (
         <FeatureDetailPanel
           feature={selectedFeature}
+          features={roadmap.features}
           onClose={() => setSelectedFeature(null)}
           onConvertToSpec={handleConvertToSpec}
           onGoToTask={handleGoToTask}

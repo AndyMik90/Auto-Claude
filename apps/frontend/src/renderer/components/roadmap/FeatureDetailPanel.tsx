@@ -11,6 +11,8 @@ import {
   TrendingUp,
   Trash2,
   Link,
+  AlertTriangle,
+  Package,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -24,9 +26,11 @@ import {
 } from '../../../shared/constants';
 import type { FeatureDetailPanelProps } from './types';
 import { useRoadmapStore } from '../../stores/roadmap-store';
+import { getReverseDependencies } from './utils';
 
 export function FeatureDetailPanel({
   feature,
+  features,
   onClose,
   onConvertToSpec,
   onGoToTask,
@@ -34,9 +38,12 @@ export function FeatureDetailPanel({
   competitorInsights = [],
   onDependencyClick,
 }: FeatureDetailPanelProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['roadmap', 'common']);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const openDependencyDetail = useRoadmapStore(s => s.openDependencyDetail);
+
+  // Calculate reverse dependencies using shared utility
+  const reverseDependencies = getReverseDependencies(feature, features);
 
   const handleDependencyClick = (depId: string) => {
     if (onDependencyClick) {
@@ -98,7 +105,7 @@ export function FeatureDetailPanel({
         <div className="p-4 space-y-6">
           {/* Description */}
           <div>
-            <h3 className="text-sm font-medium mb-2">Description</h3>
+            <h3 className="text-sm font-medium mb-2">{t('featureDetailPanel.descriptionLabel')}</h3>
             <p className="text-sm text-muted-foreground">{feature.description}</p>
           </div>
 
@@ -106,7 +113,7 @@ export function FeatureDetailPanel({
         <div>
           <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
             <Lightbulb className="h-4 w-4" />
-            Rationale
+            {t('featureDetailPanel.rationale')}
           </h3>
           <p className="text-sm text-muted-foreground">{feature.rationale}</p>
         </div>
@@ -119,17 +126,17 @@ export function FeatureDetailPanel({
             >
               {feature.complexity}
             </div>
-            <div className="text-xs text-muted-foreground">Complexity</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetailPanel.metrics.complexity')}</div>
           </Card>
           <Card className="p-3 text-center">
             <div className={`text-lg font-semibold ${ROADMAP_IMPACT_COLORS[feature.impact]}`}>
               {feature.impact}
             </div>
-            <div className="text-xs text-muted-foreground">Impact</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetailPanel.metrics.impact')}</div>
           </Card>
           <Card className="p-3 text-center">
             <div className="text-lg font-semibold">{feature.dependencies.length}</div>
-            <div className="text-xs text-muted-foreground">Dependencies</div>
+            <div className="text-xs text-muted-foreground">{t('featureDetailPanel.metrics.dependencies')}</div>
           </Card>
         </div>
 
@@ -138,7 +145,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              User Stories
+              {t('featureDetailPanel.userStories')}
             </h3>
             <div className="space-y-2">
               {feature.userStories.map((story, i) => (
@@ -155,7 +162,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Acceptance Criteria
+              {t('featureDetailPanel.acceptanceCriteria')}
             </h3>
             <ul className="space-y-1">
               {feature.acceptanceCriteria.map((criterion, i) => (
@@ -172,21 +179,61 @@ export function FeatureDetailPanel({
         {feature.dependencies.length > 0 && (
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-              <Link className="h-4 w-4" />
-              Dependencies
+              <Package className="h-4 w-4" />
+              {t('featureDetailPanel.dependenciesSection.dependencies', { count: feature.dependencies.length })}
             </h3>
             <div className="flex flex-wrap gap-1">
-              {feature.dependencies.map((dep) => (
-                <button
-                  key={dep}
-                  className="px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
-                  onClick={() => handleDependencyClick(dep)}
-                  title={`View dependency: ${dep}`}
-                >
-                  <span>{dep}</span>
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              ))}
+              {feature.dependencies.map((depId) => {
+                const depFeature = features.find(f => f.id === depId);
+                const isMissing = !depFeature;
+
+                return (
+                  <button
+                    key={depId}
+                    className={`
+                      px-2 py-1 rounded-md text-xs font-medium
+                      transition-all flex items-center gap-1
+                      ${isMissing
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 cursor-not-allowed'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer'
+                      }
+                    `}
+                    onClick={() => !isMissing && handleDependencyClick(depId)}
+                    disabled={isMissing}
+                    title={isMissing ? t('featureDetailPanel.dependenciesSection.notFound', { id: depId }) : depFeature?.title || depId}
+                  >
+                    {isMissing && <AlertTriangle className="h-3 w-3" />}
+                    <span>{depFeature?.title || depId}</span>
+                    {!isMissing && <ChevronRight className="h-3 w-3" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Reverse Dependencies */}
+        {reverseDependencies && reverseDependencies.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              {t('featureDetailPanel.dependenciesSection.requiredBy', { count: reverseDependencies.length })}
+            </h3>
+            <div className="flex flex-wrap gap-1">
+              {reverseDependencies.map((depId) => {
+                const depFeature = features.find(f => f.id === depId);
+                return (
+                  <button
+                    key={depId}
+                    className="px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:underline cursor-pointer transition-all flex items-center gap-1"
+                    onClick={() => handleDependencyClick(depId)}
+                    title={depFeature?.title || depId}
+                  >
+                    <span>{depFeature?.title || depId}</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -196,7 +243,7 @@ export function FeatureDetailPanel({
           <div>
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Addresses Competitor Pain Points
+              {t('featureDetailPanel.competitorInsights.title')}
             </h3>
             <div className="space-y-2">
               {competitorInsights.map((insight) => (
@@ -207,7 +254,7 @@ export function FeatureDetailPanel({
                   <p className="text-sm text-foreground">{insight.description}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="text-xs">
-                      {insight.source}
+                      {t('featureDetailPanel.competitorInsights.source', { source: insight.source })}
                     </Badge>
                     <Badge
                       variant="outline"
@@ -219,7 +266,7 @@ export function FeatureDetailPanel({
                           : 'text-green-500 border-green-500/50'
                       }`}
                     >
-                      {insight.severity} severity
+                      {t('featureDetailPanel.competitorInsights.severity', { severity: insight.severity })}
                     </Badge>
                   </div>
                 </div>
@@ -235,7 +282,7 @@ export function FeatureDetailPanel({
         <div className="shrink-0 p-4 border-t border-border">
           <Button className="w-full" onClick={() => onGoToTask(feature.linkedSpecId!)}>
             <ExternalLink className="h-4 w-4 mr-2" />
-            Go to Task
+            {t('featureDetailPanel.actions.goToTask')}
           </Button>
         </div>
       ) : (
@@ -243,7 +290,7 @@ export function FeatureDetailPanel({
           <div className="shrink-0 p-4 border-t border-border">
             <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
               <Zap className="h-4 w-4 mr-2" />
-              Convert to Auto-Build Task
+              {t('featureDetailPanel.actions.convertToAutoBuild')}
             </Button>
           </div>
         )
@@ -257,17 +304,17 @@ export function FeatureDetailPanel({
               <Trash2 className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <h3 className="font-semibold">Delete Feature?</h3>
+              <h3 className="font-semibold">{t('featureDetailPanel.deleteConfirmation.title')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                This will permanently remove "{feature.title}" from your roadmap.
+                {t('featureDetailPanel.deleteConfirmation.message', { title: feature.title })}
               </p>
             </div>
             <div className="flex gap-2 justify-center">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
+                {t('featureDetailPanel.deleteConfirmation.cancel')}
               </Button>
               <Button variant="destructive" onClick={handleDelete}>
-                Delete
+                {t('featureDetailPanel.deleteConfirmation.confirm')}
               </Button>
             </div>
           </div>
