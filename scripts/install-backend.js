@@ -146,7 +146,7 @@ async function main() {
   console.log('\nCreating virtual environment...');
   if (hasUv) {
     // Use uv to create venv (faster and handles Python version automatically)
-    if (!run(`uv venv --python ${python.replace('py -', '').replace('python', '')}`)) {
+    if (!run(`uv venv --python ${pythonDetails.version}`)) {
       console.error('Failed to create virtual environment with uv');
       process.exit(1);
     }
