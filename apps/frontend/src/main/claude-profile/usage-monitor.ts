@@ -950,10 +950,10 @@ export class UsageMonitor extends EventEmitter {
         sessionResetTimestamp = new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString();
       }
 
-      // Calculate monthly reset time (1st of next month)
+      // Calculate monthly reset time (1st of next month at midnight UTC)
       const nextMonth = new Date(now);
-      nextMonth.setMonth(now.getMonth() + 1, 1);
-      nextMonth.setHours(0, 0, 0, 0);
+      nextMonth.setUTCMonth(now.getUTCMonth() + 1, 1);
+      nextMonth.setUTCHours(0, 0, 0, 0);
       const weeklyResetTimestamp = nextMonth.toISOString();
       // Use Intl API for locale-aware month name (defaulting to English)
       const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
