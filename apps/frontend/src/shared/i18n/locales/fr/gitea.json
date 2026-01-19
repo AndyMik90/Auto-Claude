@@ -1,0 +1,118 @@
+{
+  "title": "Tickets Gitea",
+  "states": {
+    "open": "Ouvert",
+    "closed": "Ferm\u00e9"
+  },
+  "complexity": {
+    "simple": "Simple",
+    "standard": "Standard",
+    "complex": "Complexe"
+  },
+  "header": {
+    "open": "ouvert",
+    "searchPlaceholder": "Rechercher des tickets..."
+  },
+  "filters": {
+    "open": "Ouvert",
+    "closed": "Ferm\u00e9",
+    "all": "Tous"
+  },
+  "empty": {
+    "noMatch": "Aucun ticket ne correspond \u00e0 votre recherche",
+    "selectIssue": "S\u00e9lectionnez un ticket pour voir les d\u00e9tails"
+  },
+  "notConnected": {
+    "title": "Gitea non connect\u00e9",
+    "description": "Configurez l'URL de votre instance Gitea, le jeton et le projet dans les param\u00e8tres du projet pour synchroniser les tickets.",
+    "openSettings": "Ouvrir les param\u00e8tres"
+  },
+  "detail": {
+    "comments": "commentaires",
+    "viewTask": "Voir la t\u00e2che",
+    "createTask": "Cr\u00e9er une t\u00e2che",
+    "taskLinked": "T\u00e2che li\u00e9e",
+    "taskId": "ID de t\u00e2che",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "assignees": "Assign\u00e9s",
+    "milestone": "Jalon"
+  },
+  "settings": {
+    "enableIssues": "Activer les tickets Gitea",
+    "enableIssuesDescription": "Synchroniser les tickets depuis Gitea et cr\u00e9er des t\u00e2ches automatiquement",
+    "instance": "Instance Gitea",
+    "instanceDescription": "Entrez l'URL de votre instance Gitea auto-h\u00e9berg\u00e9e",
+    "connectedVia": "Connect\u00e9 \u00e0 Gitea",
+    "authenticatedAs": "Authentifi\u00e9 en tant que",
+    "useDifferentToken": "Utiliser un autre jeton",
+    "authentication": "Authentification Gitea",
+    "personalAccessToken": "Jeton d'acc\u00e8s personnel",
+    "tokenScope": "Cr\u00e9ez un jeton avec",
+    "scopeRepo": "repo",
+    "scopeFrom": "port\u00e9e depuis",
+    "giteaSettings": "Param\u00e8tres Gitea",
+    "project": "D\u00e9p\u00f4t",
+    "enterManually": "Saisir manuellement",
+    "loadingProjects": "Chargement des d\u00e9p\u00f4ts...",
+    "selectProject": "S\u00e9lectionnez un d\u00e9p\u00f4t...",
+    "searchProjects": "Rechercher des d\u00e9p\u00f4ts...",
+    "noMatchingProjects": "Aucun d\u00e9p\u00f4t correspondant",
+    "noProjectsFound": "Aucun d\u00e9p\u00f4t trouv\u00e9",
+    "selected": "S\u00e9lectionn\u00e9",
+    "projectFormat": "Format :",
+    "projectFormatExample": "(ex. : myorg/myproject)",
+    "connectionStatus": "\u00c9tat de la connexion",
+    "checking": "V\u00e9rification...",
+    "connectedTo": "Connect\u00e9 \u00e0",
+    "notConnected": "Non connect\u00e9",
+    "issuesAvailable": "Tickets disponibles",
+    "issuesAvailableDescription": "Acc\u00e9dez aux tickets Gitea depuis la barre lat\u00e9rale pour voir, investiguer et cr\u00e9er des t\u00e2ches \u00e0 partir des tickets.",
+    "defaultBranch": "Branche par d\u00e9faut",
+    "defaultBranchDescription": "Branche de base pour cr\u00e9er des worktrees de t\u00e2ches",
+    "loadingBranches": "Chargement des branches...",
+    "autoDetect": "D\u00e9tection automatique (main/master)",
+    "searchBranches": "Rechercher des branches...",
+    "noMatchingBranches": "Aucune branche correspondante",
+    "noBranchesFound": "Aucune branche trouv\u00e9e",
+    "branchFromNote": "Toutes les nouvelles t\u00e2ches seront branch\u00e9es depuis",
+    "autoSyncOnLoad": "Synchronisation automatique au chargement",
+    "autoSyncDescription": "R\u00e9cup\u00e9rer automatiquement les tickets lors du chargement du projet"
+  },
+  "pullRequests": {
+    "title": "Pull Requests Gitea",
+    "newPR": "Nouvelle Pull Request",
+    "selectPR": "S\u00e9lectionnez une pull request pour voir les d\u00e9tails",
+    "states": {
+      "open": "Ouvert",
+      "closed": "Ferm\u00e9",
+      "merged": "Fusionn\u00e9"
+    },
+    "filters": {
+      "open": "Ouvert",
+      "closed": "Ferm\u00e9",
+      "merged": "Fusionn\u00e9",
+      "all": "Tous"
+    }
+  },
+  "prReview": {
+    "runReview": "Lancer la revue IA",
+    "reviewing": "Revue en cours...",
+    "followupReview": "Revue de suivi",
+    "newCommits": "nouveau commit",
+    "newCommitsPlural": "nouveaux commits",
+    "cancel": "Annuler",
+    "postFindings": "Publier les r\u00e9sultats",
+    "posting": "Publication...",
+    "postedTo": "Publi\u00e9 sur Gitea",
+    "approve": "Approuver",
+    "approving": "Approbation...",
+    "merge": "Fusionner la PR",
+    "merging": "Fusion...",
+    "aiReviewResult": "R\u00e9sultat de la revue IA",
+    "followupReviewResult": "Revue de suivi",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "labels": "\u00c9tiquettes"
+  }
+}
