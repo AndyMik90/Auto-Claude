@@ -8,7 +8,6 @@ import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { shell } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
 import { getCredentialsFromKeychain, clearKeychainCache } from '../claude-profile/keychain-utils';

@@ -1160,10 +1160,41 @@ export function registerClaudeCodeHandlers(): void {
           : configDir;
 
         // Create directory if it doesn't exist
-        const { mkdir } = require('fs/promises');
+        const { mkdir, rename, unlink } = require('fs/promises');
         await mkdir(expandedConfigDir, { recursive: true });
 
         console.warn('[Claude Code] Config directory:', expandedConfigDir);
+
+        // Backwards compatibility: If re-authenticating an existing profile that was
+        // set up with the old setup-token system, we need to clear the existing
+        // credentials so that /login opens the browser for fresh OAuth.
+        // We back up the existing .claude.json to .claude.json.bak
+        const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
+        const claudeJsonBakPath = path.join(expandedConfigDir, '.claude.json.bak');
+
+        if (existsSync(claudeJsonPath)) {
+          try {
+            const content = readFileSync(claudeJsonPath, 'utf-8');
+            const data = JSON.parse(content);
+
+            // Check if this has OAuth credentials (old setup-token or previous /login)
+            if (data.oauthAccount) {
+              console.warn('[Claude Code] Found existing OAuth credentials, backing up for re-authentication');
+
+              // Remove old backup if exists
+              if (existsSync(claudeJsonBakPath)) {
+                await unlink(claudeJsonBakPath);
+              }
+
+              // Backup current credentials
+              await rename(claudeJsonPath, claudeJsonBakPath);
+              console.warn('[Claude Code] Backed up .claude.json to .claude.json.bak');
+            }
+          } catch (backupError) {
+            // Non-fatal: if backup fails, /login might still work or show "already logged in"
+            console.warn('[Claude Code] Could not backup existing credentials:', backupError);
+          }
+        }
 
         // Generate terminal ID with pattern: claude-login-{profileId}-{timestamp}
         // This pattern is used by claude-integration-handler.ts to identify
