@@ -116,6 +116,9 @@
       "complete": "Complete",
       "failed": "Failed"
     },
+    "messages": {
+      "startingImplementation": "Starting implementation..."
+    },
     "labels": {
       "interrupted": "Interrupted",
       "progress": "Progress",
