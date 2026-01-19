@@ -1049,7 +1049,7 @@ def create_client(
 
     # WSL support: use WSL wrapper instead of native Claude CLI when project is on WSL filesystem
     # The wrapper (wsl_claude_node.cmd) runs Claude CLI inside WSL with proper pipe handling
-    if wsl_mode and wsl_project_path and platform.system() == "Windows":
+    if wsl_mode and wsl_project_path and is_windows():
         wsl_wrapper_path = Path(__file__).parent / "wsl_claude_node.cmd"
         if wsl_wrapper_path.exists():
             cli_path = str(wsl_wrapper_path.resolve())

@@ -213,7 +213,7 @@ export async function listWSLDistros(): Promise<WSLDistroInfo[]> {
           name: parts[0],
           isDefault,
           state: parseState(parts[1]),
-          version: parseInt(parts[2]) || 2,
+          version: parseInt(parts[2], 10) || 2,
         });
       }
     }
