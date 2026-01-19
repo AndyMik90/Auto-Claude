@@ -46,7 +46,8 @@ class EncodingChecker:
 
         # Check 1: open() without encoding
         # Pattern: open(...) without encoding= parameter
-        for match in re.finditer(r'open\s*\([^)]+\)', content):
+        # Use negative lookbehind to exclude os.open(), urlopen(), etc.
+        for match in re.finditer(r'(?<![a-zA-Z_\.])open\s*\([^)]+\)', content):
             call = match.group()
 
             # Skip if it's binary mode (must contain 'b' in mode string)
@@ -65,12 +66,42 @@ class EncodingChecker:
             )
 
         # Check 2: Path.read_text() without encoding
-        for match in re.finditer(r'\.read_text\s*\([^)]*\)', content):
-            call = match.group()
+        # Match .read_text() calls - both variable.read_text() and Path(...).read_text()
+        for match in re.finditer(r'(?:(\w+)|(\))\s*)\.read_text\s*\(', content):
+            var_name = match.group(1)  # Will be None if matched closing paren
+            is_path_call = match.group(2) is not None  # True if Path(...).read_text()
+            start_pos = match.end()
 
-            # Skip if it already has encoding (use word boundary for robustness)
-            if re.search(r'\bencoding\s*=', call):
+            # Find the matching closing parenthesis (handle nesting)
+            paren_depth = 1
+            end_pos = start_pos
+            while end_pos < len(content) and paren_depth > 0:
+                if content[end_pos] == '(':
+                    paren_depth += 1
+                elif content[end_pos] == ')':
+                    paren_depth -= 1
+                end_pos += 1
+            args = content[start_pos:end_pos - 1] if end_pos > start_pos else ""
+
+            # Skip if it already has encoding
+            if re.search(r'\bencoding\s*=', args):
                 continue
+
+            # Skip method calls on self/cls (custom methods, not Path)
+            if var_name in ('self', 'cls'):
+                continue
+
+            # Skip if var_name is 'Path' (class name reference, not instance call)
+            if var_name == 'Path':
+                continue
+
+            # Skip if it's a custom method call (e.g., self.parser.read_text)
+            # Check the characters immediately before the matched variable name
+            if var_name:
+                prefix_start = max(0, match.start() - 10)
+                prefix = content[prefix_start:match.start()]
+                if re.search(r'\bself\.$', prefix) or re.search(r'\bcls\.$', prefix):
+                    continue
 
             line_num = content[:match.start()].count('\n') + 1
             file_issues.append(
@@ -78,12 +109,42 @@ class EncodingChecker:
             )
 
         # Check 3: Path.write_text() without encoding
-        for match in re.finditer(r'\.write_text\s*\([^)]+\)', content):
-            call = match.group()
+        # Match .write_text() calls - both variable.write_text() and Path(...).write_text()
+        for match in re.finditer(r'(?:(\w+)|(\))\s*)\.write_text\s*\(', content):
+            var_name = match.group(1)  # Will be None if matched closing paren
+            is_path_call = match.group(2) is not None  # True if Path(...).write_text()
+            start_pos = match.end()
 
-            # Skip if it already has encoding (use word boundary for robustness)
-            if re.search(r'\bencoding\s*=', call):
+            # Find the matching closing parenthesis (handle nesting)
+            paren_depth = 1
+            end_pos = start_pos
+            while end_pos < len(content) and paren_depth > 0:
+                if content[end_pos] == '(':
+                    paren_depth += 1
+                elif content[end_pos] == ')':
+                    paren_depth -= 1
+                end_pos += 1
+            args = content[start_pos:end_pos - 1] if end_pos > start_pos else ""
+
+            # Skip if it already has encoding
+            if re.search(r'\bencoding\s*=', args):
                 continue
+
+            # Skip method calls on self/cls (custom methods, not Path)
+            if var_name in ('self', 'cls'):
+                continue
+
+            # Skip if var_name is 'Path' (class name reference, not instance call)
+            if var_name == 'Path':
+                continue
+
+            # Skip if it's a custom method call (e.g., self.parser.write_text)
+            # Check the characters immediately before the matched variable name
+            if var_name:
+                prefix_start = max(0, match.start() - 10)
+                prefix = content[prefix_start:match.start()]
+                if re.search(r'\bself\.$', prefix) or re.search(r'\bcls\.$', prefix):
+                    continue
 
             line_num = content[:match.start()].count('\n') + 1
             file_issues.append(

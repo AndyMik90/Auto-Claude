@@ -412,10 +412,10 @@ def setup_workspace(
         if PROFILE_FILENAME in security_files_copied:
             profile_path = worktree_info.path / PROFILE_FILENAME
             try:
-                with open(profile_path) as f:
+                with open(profile_path, encoding="utf-8") as f:
                     profile_data = json.load(f)
                 profile_data["inherited_from"] = str(project_dir.resolve())
-                with open(profile_path, "w") as f:
+                with open(profile_path, "w", encoding="utf-8") as f:
                     json.dump(profile_data, f, indent=2)
                 debug(
                     MODULE, f"Marked security profile as inherited from {project_dir}"
