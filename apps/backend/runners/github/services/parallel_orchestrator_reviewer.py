@@ -815,13 +815,29 @@ The SDK will run invoked agents in parallel automatically.
             # Deduplicate findings
             unique_findings = self._deduplicate_findings(findings)
 
+            # Cross-validate findings: boost confidence when multiple agents agree
+            cross_validated_findings, agent_agreement = self._cross_validate_findings(
+                unique_findings
+            )
+
+            # Log cross-validation results
+            logger.info(
+                f"[PRReview] Cross-validation: {len(agent_agreement.agreed_findings)} multi-agent, "
+                f"{len(cross_validated_findings) - len(agent_agreement.agreed_findings)} single-agent"
+            )
+
+            # Log full agreement details at debug level for monitoring
+            logger.debug(
+                f"[PRReview] AgentAgreement: {agent_agreement.model_dump_json()}"
+            )
+
             # Apply programmatic evidence and scope filters
             # These catch edge cases that slip through the finding-validator
             changed_file_paths = [f.path for f in context.changed_files]
             validated_findings = []
             filtered_findings = []
 
-            for finding in unique_findings:
+            for finding in cross_validated_findings:
                 # Check evidence quality
                 evidence_valid, evidence_reason = _validate_finding_evidence(finding)
                 if not evidence_valid:
