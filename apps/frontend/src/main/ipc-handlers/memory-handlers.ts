@@ -11,6 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
+import { isWindows, isMacOS, isLinux } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -109,12 +110,10 @@ interface OllamaInstallStatus {
  * @returns {OllamaInstallStatus} Installation status with path if found
  */
 function checkOllamaInstalled(): OllamaInstallStatus {
-  const platform = process.platform;
-
   // Common paths to check based on platform
   const pathsToCheck: string[] = [];
 
-  if (platform === 'win32') {
+  if (isWindows()) {
     // Windows: Check common installation paths
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     pathsToCheck.push(
@@ -123,7 +122,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
       'C:\\Program Files\\Ollama\\ollama.exe',
       'C:\\Program Files (x86)\\Ollama\\ollama.exe'
     );
-  } else if (platform === 'darwin') {
+  } else if (isMacOS()) {
     // macOS: Check common paths
     pathsToCheck.push(
       '/usr/local/bin/ollama',
@@ -172,7 +171,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
   // Also check if ollama is in PATH using where/which command
   // Use execFileSync with explicit command to avoid shell injection
   try {
-    const whichCmd = platform === 'win32' ? 'where.exe' : 'which';
+    const whichCmd = isWindows() ? 'where.exe' : 'which';
     const ollamaPath = execFileSync(whichCmd, ['ollama'], {
       encoding: 'utf-8',
       timeout: 5000,
@@ -226,12 +225,12 @@ function checkOllamaInstalled(): OllamaInstallStatus {
  * @returns {string} The install command to run in terminal
  */
 function getOllamaInstallCommand(): string {
-  if (process.platform === 'win32') {
+  if (isWindows()) {
     // Windows: Use winget (Windows Package Manager)
     // This is an official installation method for Ollama on Windows
     // Reference: https://winstall.app/apps/Ollama.Ollama
     return 'winget install --id Ollama.Ollama --accept-source-agreements';
-  } else if (process.platform === 'darwin') {
+  } else if (isMacOS()) {
     // macOS: Use Homebrew (most widely used package manager on macOS)
     // Official Ollama installation method for macOS
     // Reference: https://ollama.com/download/mac
@@ -615,7 +614,7 @@ export function registerMemoryHandlers(): void {
     async (): Promise<IPCResult<{ command: string }>> => {
       try {
         const command = getOllamaInstallCommand();
-        console.log('[Ollama] Platform:', process.platform);
+        console.log('[Ollama] Platform:', isWindows() ? 'win32' : isMacOS() ? 'darwin' : 'linux');
         console.log('[Ollama] Install command:', command);
         console.log('[Ollama] Opening terminal...');
 

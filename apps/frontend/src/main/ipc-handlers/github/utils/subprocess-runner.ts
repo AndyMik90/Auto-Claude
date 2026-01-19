@@ -11,6 +11,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { isWindows, isMacOS, isLinux, getExecutableExtension, joinPaths } from '../../../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -221,9 +222,9 @@ export function runPythonSubprocess<T = unknown>(
  * Cross-platform: uses Scripts/python.exe on Windows, bin/python on Unix
  */
 export function getPythonPath(backendPath: string): string {
-  return process.platform === 'win32'
-    ? path.join(backendPath, '.venv', 'Scripts', 'python.exe')
-    : path.join(backendPath, '.venv', 'bin', 'python');
+  const binDir = isWindows() ? 'Scripts' : 'bin';
+  const pythonExe = `python${getExecutableExtension()}`;
+  return joinPaths(backendPath, '.venv', binDir, pythonExe);
 }
 
 /**
@@ -353,14 +354,14 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 
   // 2. Check gh CLI installation (cross-platform)
   try {
-    const whichCommand = process.platform === 'win32' ? 'where gh' : 'which gh';
+    const whichCommand = isWindows() ? 'where gh' : 'which gh';
     await execAsync(whichCommand);
     result.ghCliInstalled = true;
   } catch {
     result.ghCliInstalled = false;
-    const installInstructions = process.platform === 'win32'
+    const installInstructions = isWindows()
       ? 'winget install --id GitHub.cli'
-      : process.platform === 'darwin'
+      : isMacOS()
         ? 'brew install gh'
         : 'See https://cli.github.com/';
     result.error = `GitHub CLI (gh) is not installed. Install it with:\n  ${installInstructions}`;

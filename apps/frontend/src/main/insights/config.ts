@@ -7,6 +7,7 @@ import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager
 import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
+import { pathsAreEqual } from '../platform';
 
 /**
  * Configuration manager for insights service
@@ -121,12 +122,8 @@ export class InsightsConfig {
 
     if (autoBuildSource) {
       const normalizedAutoBuildSource = path.resolve(autoBuildSource);
-      const autoBuildComparator = process.platform === 'win32'
-        ? normalizedAutoBuildSource.toLowerCase()
-        : normalizedAutoBuildSource;
       const hasAutoBuildSource = pythonPathParts.some((entry) => {
-        const candidate = process.platform === 'win32' ? entry.toLowerCase() : entry;
-        return candidate === autoBuildComparator;
+        return pathsAreEqual(entry, normalizedAutoBuildSource);
       });
 
       if (!hasAutoBuildSource) {

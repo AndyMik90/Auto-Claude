@@ -12,6 +12,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import { app } from 'electron';
+import { isWindows, getExecutableExtension, joinPaths } from './platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -141,9 +142,9 @@ function getBackendPythonPath(): string {
 
   for (const backendPath of possibleBackendPaths) {
     // Check for backend venv Python (has real_ladybug installed)
-    const venvPython = process.platform === 'win32'
-      ? path.join(backendPath, '.venv', 'Scripts', 'python.exe')
-      : path.join(backendPath, '.venv', 'bin', 'python');
+    const binDir = isWindows() ? 'Scripts' : 'bin';
+    const pythonExe = `python${getExecutableExtension()}`;
+    const venvPython = joinPaths(backendPath, '.venv', binDir, pythonExe);
 
     if (fs.existsSync(venvPython)) {
       console.log(`[MemoryService] Using backend venv Python: ${venvPython}`);

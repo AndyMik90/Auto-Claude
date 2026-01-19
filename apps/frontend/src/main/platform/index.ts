@@ -563,3 +563,43 @@ export function killProcessGracefully(
     forceKillTimer.unref();
   }
 }
+
+/**
+ * Compare two paths for equality, accounting for case-insensitive filesystems on Windows.
+ *
+ * @param path1 - First path to compare
+ * @param path2 - Second path to compare
+ * @returns true if paths are equivalent on the current platform
+ */
+export function pathsAreEqual(path1: string, path2: string): boolean {
+  const normalized1 = path.normalize(path1);
+  const normalized2 = path.normalize(path2);
+
+  if (isWindows()) {
+    return normalized1.toLowerCase() === normalized2.toLowerCase();
+  }
+  return normalized1 === normalized2;
+}
+
+/**
+ * Get a "which" command appropriate for the current platform.
+ * Returns 'where' for Windows, 'which' for Unix-like systems.
+ *
+ * @returns The which/where command name
+ */
+export function getWhichCommand(): string {
+  return isWindows() ? 'where' : 'which';
+}
+
+/**
+ * Get the path to the Python executable in a virtual environment.
+ * Cross-platform: uses Scripts/python.exe on Windows, bin/python on Unix.
+ *
+ * @param venvRoot - Root directory of the virtual environment
+ * @returns Path to the Python executable
+ */
+export function getVenvPythonPath(venvRoot: string): string {
+  const binDir = isWindows() ? 'Scripts' : 'bin';
+  const pythonExe = `python${getExecutableExtension()}`;
+  return joinPaths(venvRoot, binDir, pythonExe);
+}

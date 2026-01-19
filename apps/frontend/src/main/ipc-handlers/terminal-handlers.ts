@@ -10,6 +10,7 @@ import { terminalNameGenerator } from '../terminal-name-generator';
 import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { readSettingsFileAsync } from '../settings-utils';
+import { isWindows } from '../platform';
 
 
 /**
@@ -303,12 +304,12 @@ export function registerTerminalHandlers(
         const { command: claudeCmd } = await getClaudeCliInvocationAsync();
 
         // Use the full path directly - escaping only needed for paths with spaces
-        const shellClaudeCmd = process.platform === 'win32'
+        const shellClaudeCmd = isWindows()
           ? `"${escapeShellArgWindows(claudeCmd)}"`
           : escapeShellArg(claudeCmd);
 
         if (!profile.isDefault && profile.configDir) {
-          if (process.platform === 'win32') {
+          if (isWindows()) {
             // SECURITY: Use Windows-specific escaping for cmd.exe
             const escapedConfigDir = escapeShellArgWindows(profile.configDir);
             // Windows cmd.exe syntax: set "VAR=value" with %VAR% for expansion

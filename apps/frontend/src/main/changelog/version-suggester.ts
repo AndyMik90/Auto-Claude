@@ -4,6 +4,7 @@ import type { GitCommit } from '../../shared/types';
 import { getProfileEnv } from '../rate-limit-detector';
 import { parsePythonCommand } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
+import { isWindows } from '../platform';
 
 interface VersionSuggestion {
   version: string;
@@ -213,7 +214,7 @@ except Exception as e:
    */
   private buildSpawnEnvironment(): Record<string, string> {
     const homeDir = os.homedir();
-    const isWindows = process.platform === 'win32';
+    const isWindowsPlatform = isWindows();
 
     // Use getAugmentedEnv() to ensure common tool paths are available
     // even when app is launched from Finder/Dock
@@ -226,7 +227,7 @@ except Exception as e:
       ...augmentedEnv,
       ...profileEnv,
       // Ensure critical env vars are set for claude CLI
-      ...(isWindows ? { USERPROFILE: homeDir } : { HOME: homeDir }),
+      ...(isWindowsPlatform ? { USERPROFILE: homeDir } : { HOME: homeDir }),
       USER: process.env.USER || process.env.USERNAME || 'user',
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
