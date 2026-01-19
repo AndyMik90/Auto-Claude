@@ -19,7 +19,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully } from '../../platform';
+import { killProcessGracefully, getCurrentOS } from '../../platform';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -1044,7 +1044,7 @@ function isAppInstalled(
  * Uses smart platform-native detection for faster results
  */
 async function detectInstalledTools(): Promise<DetectedTools> {
-  const platform = process.platform as 'darwin' | 'win32' | 'linux';
+  const platform = getCurrentOS();
   const ides: DetectedTool[] = [];
   const terminals: DetectedTool[] = [];
 
@@ -1144,7 +1144,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
  * Open a directory in the specified IDE
  */
 async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string): Promise<{ success: boolean; error?: string }> {
-  const platform = process.platform as 'darwin' | 'win32' | 'linux';
+  const platform = getCurrentOS();
 
   try {
     if (ide === 'custom' && customPath) {
@@ -1204,7 +1204,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
  * Open a directory in the specified terminal
  */
 async function openInTerminal(dirPath: string, terminal: SupportedTerminal, customPath?: string): Promise<{ success: boolean; error?: string }> {
-  const platform = process.platform as 'darwin' | 'win32' | 'linux';
+  const platform = getCurrentOS();
 
   try {
     if (terminal === 'custom' && customPath) {

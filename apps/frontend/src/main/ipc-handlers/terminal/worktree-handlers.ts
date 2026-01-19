@@ -23,6 +23,7 @@ import {
 } from '../../worktree-paths';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { getToolPath } from '../../cli-tool-manager';
+import { isWindows } from '../../platform';
 
 // Promisify execFile for async operations
 const execFileAsync = promisify(execFile);
@@ -276,7 +277,7 @@ function symlinkNodeModulesToWorktree(projectPath: string, worktreePath: string)
       // Platform-specific symlink creation:
       // - Windows: Use 'junction' type which requires absolute paths (no admin rights required)
       // - Unix (macOS/Linux): Use relative paths for portability (worktree can be moved)
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         symlinkSync(sourcePath, targetPath, 'junction');
         debugLog('[TerminalWorktree] Created junction (Windows):', targetRel, '->', sourcePath);
       } else {

@@ -603,3 +603,17 @@ export function getVenvPythonPath(venvRoot: string): string {
   const pythonExe = `python${getExecutableExtension()}`;
   return joinPaths(venvRoot, binDir, pythonExe);
 }
+
+/**
+ * Get the PTY (pseudo-terminal) socket path for the current platform.
+ * Uses named pipes on Windows, Unix domain sockets on macOS/Linux.
+ *
+ * @returns The socket path for PTY communication
+ */
+export function getPtySocketPath(): string {
+  const uid = process.getuid?.() || 'default';
+  if (isWindows()) {
+    return `\\\\.\\pipe\\auto-claude-pty-${uid}`;
+  }
+  return `/tmp/auto-claude-pty-${uid}.sock`;
+}
