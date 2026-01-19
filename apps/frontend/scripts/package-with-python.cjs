@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { isWindows } = require('../src/shared/platform.cjs');
+const { isWindows, getCurrentPlatform } = require('../src/shared/platform.cjs');
 const { downloadPython } = require('./download-python.cjs');
 
 const args = process.argv.slice(2);
@@ -35,7 +35,7 @@ function resolvePlatforms() {
   }
 
   if (platforms.size === 0) {
-    platforms.add(mapHostPlatform(os.platform()));
+    platforms.add(mapHostPlatform(getCurrentPlatform()));
   }
 
   return [...platforms];
