@@ -39,7 +39,11 @@ import {
   normalizePath,
   normalizeExecutablePath,
   joinPaths,
-  getPlatformDescription
+  getPlatformDescription,
+  pathsAreEqual,
+  getWhichCommand,
+  getVenvPythonPath,
+  getPtySocketPath
 } from '../index.js';
 
 // Get the mocked existsSync
@@ -548,6 +552,88 @@ describe('Platform Module', () => {
 
         const result = normalizeExecutablePath('C:\\npm\\nonexistent');
         expect(result).toBe('C:\\npm\\nonexistent');
+      });
+    });
+  });
+
+  describe('pathsAreEqual', () => {
+    describeUnix('compares paths case-sensitively on Unix', () => {
+      it('returns true for identical paths', () => {
+        expect(pathsAreEqual('/usr/bin/node', '/usr/bin/node')).toBe(true);
+      });
+
+      it('returns false for different case on Unix', () => {
+        expect(pathsAreEqual('/usr/bin/node', '/usr/bin/Node')).toBe(false);
+      });
+    });
+
+    describeWindows('compares paths case-insensitively on Windows', () => {
+      it('returns true for identical paths', () => {
+        expect(pathsAreEqual('C:\\Program Files\\node', 'C:\\Program Files\\node')).toBe(true);
+      });
+
+      it('returns true for different case on Windows', () => {
+        expect(pathsAreEqual('C:\\Program Files\\node', 'c:\\program files\\node')).toBe(true);
+      });
+    });
+  });
+
+  describe('getWhichCommand', () => {
+    describeWindows('returns "where" on Windows', () => {
+      it('returns where', () => {
+        expect(getWhichCommand()).toBe('where');
+      });
+    });
+
+    describeUnix('returns "which" on Unix', () => {
+      it('returns which', () => {
+        expect(getWhichCommand()).toBe('which');
+      });
+    });
+  });
+
+  describe('getVenvPythonPath', () => {
+    describeWindows('returns Scripts/python.exe on Windows', () => {
+      it('returns correct path', () => {
+        const result = getVenvPythonPath('/path/to/venv');
+        // joinPaths produces platform-specific separators
+        expect(result).toContain('venv');
+        expect(result).toContain('Scripts');
+        expect(result).toContain('python.exe');
+      });
+    });
+
+    describeUnix('returns bin/python on Unix', () => {
+      it('returns correct path', () => {
+        const result = getVenvPythonPath('/path/to/venv');
+        expect(result).toBe('/path/to/venv/bin/python');
+      });
+    });
+  });
+
+  describe('getPtySocketPath', () => {
+    it('includes UID in socket path', () => {
+      const result = getPtySocketPath();
+      // Should contain either 'default' or a numeric UID
+      if (isWindows()) {
+        expect(result).toContain('auto-claude-pty-');
+      } else {
+        expect(result).toMatch(/(default|\d+)\.sock$/);
+      }
+    });
+
+    describeWindows('returns named pipe path on Windows', () => {
+      it('returns named pipe format', () => {
+        const result = getPtySocketPath();
+        expect(result).toMatch(/^\\\\\.\\pipe\\auto-claude-pty-/);
+      });
+    });
+
+    describeUnix('returns Unix socket path on Unix', () => {
+      it('returns Unix socket format', () => {
+        const result = getPtySocketPath();
+        expect(result).toMatch(/^\/tmp\/auto-claude-pty-/);
+        expect(result).toMatch(/\.sock$/);
       });
     });
   });
