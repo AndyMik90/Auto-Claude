@@ -12,7 +12,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import { app } from 'electron';
-import { isWindows, getExecutableExtension, joinPaths, getVenvPythonPath, getPathDelimiter } from './platform';
+import { joinPaths, getVenvPythonPath, getPathDelimiter } from './platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);

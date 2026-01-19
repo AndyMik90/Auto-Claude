@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand, getVenvPythonPath, getEnvVar } from '../../../platform';
+import { isWindows, isMacOS, joinPaths, getWhichCommand, getVenvPythonPath, getEnvVar } from '../../../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);

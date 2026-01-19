@@ -131,9 +131,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     try {
       const result = await window.electronAPI.updateAPIProfile(profile);
       if (result.success && result.data) {
+        const updatedProfile = result.data;
         set((state) => ({
           profiles: state.profiles.map((p) =>
-            p.id === result.data!.id ? result.data! : p
+            p.id === updatedProfile.id ? updatedProfile : p
           ),
           profilesLoading: false
         }));
