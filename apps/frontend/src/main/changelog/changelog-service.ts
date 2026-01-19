@@ -208,6 +208,7 @@ export class ChangelogService extends EventEmitter {
    */
   private invalidateEnvCache(): void {
     this._cachedEnv = null;
+    this.debugEnabled = null;
   }
 
   /**
