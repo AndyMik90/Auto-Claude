@@ -315,6 +315,24 @@ export function registerAgenteventsHandlers(
             exitProjectId
           );
 
+          // FIX: Send execution progress event with 'coding' phase immediately
+          // This ensures the task card badge shows "Coding" instead of staying on "Planning"
+          // The Python process will also emit __EXEC_PHASE__:coding, but this provides
+          // immediate UI feedback during the process startup delay
+          safeSendToRenderer(
+            getMainWindow,
+            IPC_CHANNELS.TASK_EXECUTION_PROGRESS,
+            taskId,
+            {
+              phase: "coding" as ExecutionPhase,
+              phaseProgress: 0,
+              overallProgress: 25, // Planning complete (25%), starting coding
+              message: "Starting implementation...",
+              completedPhases: ["planning"] as ExecutionPhase[]
+            },
+            exitProjectId
+          );
+
           return;
         }
       }

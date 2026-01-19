@@ -62,6 +62,7 @@ lerna-debug.log*
 # Auto Claude Generated
 # ===========================
 .auto-claude/
+.bill/
 .auto-build-security.json
 .auto-claude-security.json
 .auto-claude-status
