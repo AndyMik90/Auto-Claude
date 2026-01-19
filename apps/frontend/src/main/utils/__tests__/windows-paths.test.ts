@@ -231,11 +231,11 @@ describe('Windows Paths Module', () => {
       });
     });
 
-    describeWindows('handles missing environment variables', () => {
+    describe('handles missing environment variables', () => {
       const originalEnv = { ...process.env };
 
       beforeEach(() => {
-        // describeWindows already sets platform to win32, so isWindows() will return true
+        mockPlatform('win32');
         // Clear environment variables
         delete process.env.ProgramFiles;
         delete process.env['ProgramFiles(x86)'];
