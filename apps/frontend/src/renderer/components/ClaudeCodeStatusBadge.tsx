@@ -642,12 +642,18 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
                 "navigation:claudeCode.updateWarningDescription",
                 "Updating will close all running Claude Code sessions. Any unsaved work in those sessions may be lost. Make sure to save your work before proceeding."
               )}
+              <span className="block mt-2 font-semibold text-foreground">
+                {t(
+                  "navigation:claudeCode.updateWarningTerminalNote",
+                  "A terminal window will open to run the installation command. Please wait for the installation to complete before continuing."
+                )}
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common:cancel", "Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={performInstall}>
-              {t("navigation:claudeCode.updateAnyway", "Update Anyway")}
+              {t("navigation:claudeCode.updateAnyway", "Open Terminal & Update")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -667,6 +673,12 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
                 "navigation:claudeCode.rollbackWarningDescription",
                 "Switching versions will close all running Claude Code sessions. Any unsaved work in those sessions may be lost. Make sure to save your work before proceeding."
               )}
+              <span className="block mt-2 font-semibold text-foreground">
+                {t(
+                  "navigation:claudeCode.rollbackWarningTerminalNote",
+                  "A terminal window will open to run the installation command. Please wait for the installation to complete before continuing."
+                )}
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -674,7 +686,7 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
               {t("common:cancel", "Cancel")}
             </AlertDialogCancel>
             <AlertDialogAction onClick={performVersionSwitch}>
-              {t("navigation:claudeCode.switchAnyway", "Switch Anyway")}
+              {t("navigation:claudeCode.switchAnyway", "Open Terminal & Switch")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
