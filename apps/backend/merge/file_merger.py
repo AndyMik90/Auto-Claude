@@ -87,7 +87,9 @@ def apply_single_task_changes(
                 has_trailing_newline = content.endswith(("\n", "\r\n", "\r"))
                 lines = content.splitlines()
                 import_end = find_import_end(lines, file_path)
-                lines.insert(import_end, change.content_after)
+                # Strip trailing newline from content_after to prevent double newlines
+                # (content_after may include newline from diff generation)
+                lines.insert(import_end, change.content_after.rstrip("\n\r"))
                 content = line_ending.join(lines)
                 if has_trailing_newline:
                     content += line_ending
@@ -158,8 +160,10 @@ def combine_non_conflicting_changes(
         lines = content.splitlines()
         import_end = find_import_end(lines, file_path)
         for imp in imports:
-            if imp.content_after and imp.content_after not in content:
-                lines.insert(import_end, imp.content_after)
+            # Strip trailing newline from content_after to prevent double newlines
+            import_content = imp.content_after.rstrip("\n\r") if imp.content_after else ""
+            if import_content and import_content not in content:
+                lines.insert(import_end, import_content)
                 import_end += 1
         content = line_ending.join(lines)
         if has_trailing_newline:

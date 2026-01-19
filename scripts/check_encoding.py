@@ -69,7 +69,6 @@ class EncodingChecker:
         # Match .read_text() calls - both variable.read_text() and Path(...).read_text()
         for match in re.finditer(r'(?:(\w+)|(\))\s*)\.read_text\s*\(', content):
             var_name = match.group(1)  # Will be None if matched closing paren
-            is_path_call = match.group(2) is not None  # True if Path(...).read_text()
             start_pos = match.end()
 
             # Find the matching closing parenthesis (handle nesting)
@@ -112,7 +111,6 @@ class EncodingChecker:
         # Match .write_text() calls - both variable.write_text() and Path(...).write_text()
         for match in re.finditer(r'(?:(\w+)|(\))\s*)\.write_text\s*\(', content):
             var_name = match.group(1)  # Will be None if matched closing paren
-            is_path_call = match.group(2) is not None  # True if Path(...).write_text()
             start_pos = match.end()
 
             # Find the matching closing parenthesis (handle nesting)
@@ -222,7 +220,7 @@ def main():
 
     # Run checks
     checker = EncodingChecker()
-    failed_count = checker.check_files(files)
+    checker.check_files(files)
 
     # Report results
     if checker.issues:
