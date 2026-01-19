@@ -249,7 +249,14 @@ function buildPathsToAdd(
  * @returns Environment object with augmented PATH
  */
 export function getAugmentedEnv(additionalPaths?: string[]): Record<string, string> {
-  const env = { ...process.env } as Record<string, string>;
+  // On Windows, normalize environment variable keys to uppercase during spread
+  // to ensure consistent access (env.PATH vs env.Path vs env.path)
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      env[isWindows() ? key.toUpperCase() : key] = value;
+    }
+  }
   const pathSeparator = getPathDelimiter();
 
   // Get all candidate paths (platform + additional)
@@ -423,7 +430,14 @@ async function getNpmGlobalPrefixAsync(): Promise<string | null> {
  * @returns Promise resolving to environment object with augmented PATH
  */
 export async function getAugmentedEnvAsync(additionalPaths?: string[]): Promise<Record<string, string>> {
-  const env = { ...process.env } as Record<string, string>;
+  // On Windows, normalize environment variable keys to uppercase during spread
+  // to ensure consistent access (env.PATH vs env.Path vs env.path)
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      env[isWindows() ? key.toUpperCase() : key] = value;
+    }
+  }
   const pathSeparator = getPathDelimiter();
 
   // Get all candidate paths (platform + additional)

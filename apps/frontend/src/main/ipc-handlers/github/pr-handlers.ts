@@ -20,7 +20,7 @@ import {
 } from "../../../shared/constants";
 import { getGitHubConfig, githubFetch } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
-import { getAugmentedEnv } from "../../env-utils";
+import { getAugmentedEnv, findExecutable } from "../../env-utils";
 import { getMemoryService, getDefaultDbPath } from "../../memory-service";
 import type { Project, AppSettings } from "../../../shared/types";
 import { createContextLogger } from "./utils/logger";
@@ -1372,7 +1372,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             throw new Error("Invalid PR number");
           }
           // Use execFileSync with arguments array to prevent command injection
-          const diff = execFileSync("gh", ["pr", "diff", String(prNumber)], {
+          const ghPath = findExecutable('gh') || 'gh';
+          const diff = execFileSync(ghPath, ["pr", "diff", String(prNumber)], {
             cwd: project.path,
             encoding: "utf-8",
             env: getAugmentedEnv(),
@@ -1841,7 +1842,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           try {
             writeFileSync(tmpFile, body, "utf-8");
             // Use execFileSync with arguments array to prevent command injection
-            execFileSync("gh", ["pr", "comment", String(prNumber), "--body-file", tmpFile], {
+            const ghPath = findExecutable('gh') || 'gh';
+            execFileSync(ghPath, ["pr", "comment", String(prNumber), "--body-file", tmpFile], {
               cwd: project.path,
               env: getAugmentedEnv(),
             });
@@ -1955,7 +1957,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Use execFileSync with arguments array to prevent command injection
-          execFileSync("gh", ["pr", "merge", String(prNumber), `--${mergeMethod}`], {
+          const ghPath = findExecutable('gh') || 'gh';
+          execFileSync(ghPath, ["pr", "merge", String(prNumber), `--${mergeMethod}`], {
             cwd: project.path,
             env: getAugmentedEnv(),
           });

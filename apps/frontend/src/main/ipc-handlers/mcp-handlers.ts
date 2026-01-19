@@ -9,7 +9,7 @@ import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import type { CustomMcpServer, McpHealthCheckResult, McpHealthStatus, McpTestConnectionResult } from '../../shared/types/project';
 import { spawn } from 'child_process';
 import { appLog } from '../app-logger';
-import { isWindows } from '../platform';
+import { isWindows, normalizeExecutablePath } from '../platform';
 
 /**
  * Defense-in-depth: Frontend-side command validation
@@ -418,8 +418,10 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
 
     const args = server.args || [];
 
+    // Normalize the command path on Windows to handle missing .exe/.cmd/.bat extensions
+    const normalizedCommand = normalizeExecutablePath(server.command!);
     // On Windows, use shell: true to properly handle .cmd/.bat scripts like npx
-    const proc = spawn(server.command!, args, {
+    const proc = spawn(normalizedCommand, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 15000, // OS-level timeout for reliable process termination
       shell: isWindows(), // Required for Windows to run npx.cmd

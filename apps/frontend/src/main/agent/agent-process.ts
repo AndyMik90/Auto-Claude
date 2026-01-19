@@ -24,7 +24,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo } from '../cli-tool-manager';
-import { killProcessGracefully, isWindows, normalizeExecutablePath } from '../platform';
+import { killProcessGracefully, isWindows, normalizeExecutablePath, getEnvVar } from '../platform';
 
 /**
  * Type for supported CLI tools
@@ -164,8 +164,9 @@ export class AgentProcessManager {
 
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
+    // Use getEnvVar for case-insensitive access on Windows
     const gitBashEnv: Record<string, string> = {};
-    if (isWindows() && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
+    if (isWindows() && !getEnvVar('CLAUDE_CODE_GIT_BASH_PATH')) {
       try {
         const gitInfo = getToolInfo('git');
         if (gitInfo.found && gitInfo.path) {

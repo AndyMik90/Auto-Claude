@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand } from '../../../platform';
+import { isWindows, isMacOS, getExecutableExtension, joinPaths, getWhichCommand, getVenvPythonPath } from '../../../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -220,11 +220,10 @@ export function runPythonSubprocess<T = unknown>(
 /**
  * Get the Python path for a project's backend
  * Cross-platform: uses Scripts/python.exe on Windows, bin/python on Unix
+ * Uses centralized getVenvPythonPath helper from platform module
  */
 export function getPythonPath(backendPath: string): string {
-  const binDir = isWindows() ? 'Scripts' : 'bin';
-  const pythonExe = `python${getExecutableExtension()}`;
-  return joinPaths(backendPath, '.venv', binDir, pythonExe);
+  return getVenvPythonPath(joinPaths(backendPath, '.venv'));
 }
 
 /**

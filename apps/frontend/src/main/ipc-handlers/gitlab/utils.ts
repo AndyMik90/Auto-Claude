@@ -8,7 +8,7 @@ import path from 'path';
 import type { Project } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
 import type { GitLabConfig } from './types';
-import { getAugmentedEnv } from '../../env-utils';
+import { getAugmentedEnv, findExecutable } from '../../env-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
@@ -93,7 +93,8 @@ function getTokenFromGlabCli(instanceUrl?: string): string | null {
       }
     }
 
-    const token = execFileSync('glab', args, {
+    const glabPath = findExecutable('glab') || 'glab';
+    const token = execFileSync(glabPath, args, {
       encoding: 'utf-8',
       stdio: 'pipe',
       env: getAugmentedEnv()
@@ -354,7 +355,8 @@ export async function getProjectIdFromPath(
  */
 export function detectGitLabProjectFromRemote(projectPath: string): { project: string; instanceUrl: string } | null {
   try {
-    const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], {
+    const gitPath = findExecutable('git') || 'git';
+    const remoteUrl = execFileSync(gitPath, ['remote', 'get-url', 'origin'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: 'pipe',

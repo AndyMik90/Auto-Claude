@@ -480,8 +480,10 @@ export function registerListUserRepos(): void {
         // Use gh repo list to get user's repositories
         // Format: owner/repo, description, visibility
         debugLog('Running: gh repo list --limit 100 --json nameWithOwner,description,isPrivate');
-        const output = execSync(
-          'gh repo list --limit 100 --json nameWithOwner,description,isPrivate',
+        const ghPath = getToolPath('gh');
+        const output = execFileSync(
+          ghPath,
+          ['repo', 'list', '--limit', '100', '--json', 'nameWithOwner,description,isPrivate'],
           {
             encoding: 'utf-8',
             stdio: 'pipe',
@@ -584,10 +586,11 @@ export function registerGetGitHubBranches(): void {
       try {
         // Use gh CLI to list branches (uses authenticated session)
         // Use execFileSync with separate arguments to avoid shell injection
+        const ghPath = getToolPath('gh');
         const apiEndpoint = `repos/${repo}/branches`;
         debugLog(`Running: gh api ${apiEndpoint} --paginate --jq '.[].name'`);
         const output = execFileSync(
-          'gh',
+          ghPath,
           ['api', apiEndpoint, '--paginate', '--jq', '.[].name'],
           {
             encoding: 'utf-8',
@@ -667,7 +670,8 @@ export function registerCreateGitHubRepo(): void {
         args.push('--push');
 
         debugLog('Running: gh', args);
-        const output = execFileSync('gh', args, {
+        const ghPath = getToolPath('gh');
+        const output = execFileSync(ghPath, args, {
           encoding: 'utf-8',
           cwd: options.projectPath,
           stdio: 'pipe',
@@ -741,7 +745,8 @@ export function registerAddGitRemote(): void {
 
         // Add the remote
         debugLog('Adding remote origin:', remoteUrl);
-        execFileSync('git', ['remote', 'add', 'origin', remoteUrl], {
+        const gitPath = getToolPath('git');
+        execFileSync(gitPath, ['remote', 'add', 'origin', remoteUrl], {
           cwd: projectPath,
           encoding: 'utf-8',
           stdio: 'pipe'

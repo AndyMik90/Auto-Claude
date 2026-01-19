@@ -98,7 +98,7 @@ export function registerCheckGlabCli(): void {
         }
         debugLog('glab CLI found at:', glabPath);
 
-        const versionOutput = execFileSync('glab', ['--version'], {
+        const versionOutput = execFileSync(glabPath, ['--version'], {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -177,6 +177,9 @@ export function registerCheckGlabAuth(): void {
       const hostname = instanceUrl ? getHostnameFromUrl(instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
+
         // Check auth status for the specific host
         const args = ['auth', 'status'];
         if (hostname !== 'gitlab.com') {
@@ -184,7 +187,7 @@ export function registerCheckGlabAuth(): void {
         }
 
         debugLog('Running: glab', args);
-        execFileSync('glab', args, { encoding: 'utf-8', stdio: 'pipe', env });
+        execFileSync(glabPath, args, { encoding: 'utf-8', stdio: 'pipe', env });
 
         // Get username if authenticated
         try {
@@ -192,7 +195,7 @@ export function registerCheckGlabAuth(): void {
           if (hostname !== 'gitlab.com') {
             userArgs.push('--hostname', hostname);
           }
-          const username = execFileSync('glab', userArgs, {
+          const username = execFileSync(glabPath, userArgs, {
             encoding: 'utf-8',
             stdio: 'pipe',
             env
@@ -340,12 +343,14 @@ export function registerGetGlabToken(): void {
       const hostname = instanceUrl ? getHostnameFromUrl(instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['auth', 'token'];
         if (hostname !== 'gitlab.com') {
           args.push('--hostname', hostname);
         }
 
-        const token = execFileSync('glab', args, {
+        const token = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -384,12 +389,14 @@ export function registerGetGlabUser(): void {
       const hostname = instanceUrl ? getHostnameFromUrl(instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['api', 'user'];
         if (hostname !== 'gitlab.com') {
           args.push('--hostname', hostname);
         }
 
-        const userJson = execFileSync('glab', args, {
+        const userJson = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -427,12 +434,14 @@ export function registerListUserProjects(): void {
       const hostname = instanceUrl ? getHostnameFromUrl(instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['repo', 'list', '--mine', '-F', 'json'];
         if (hostname !== 'gitlab.com') {
           args.push('--hostname', hostname);
         }
 
-        const output = execFileSync('glab', args, {
+        const output = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -471,7 +480,9 @@ export function registerDetectGitLabProject(): void {
     async (_event, projectPath: string): Promise<IPCResult<{ project: string; instanceUrl: string }>> => {
       debugLog('detectGitLabProject handler called', { projectPath });
       try {
-        const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const gitPath = findExecutable('git') || 'git';
+        const remoteUrl = execFileSync(gitPath, ['remote', 'get-url', 'origin'], {
           encoding: 'utf-8',
           cwd: projectPath,
           stdio: 'pipe',
@@ -541,12 +552,14 @@ export function registerGetGitLabBranches(): void {
       const encodedProject = encodeURIComponent(project);
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['api', `projects/${encodedProject}/repository/branches`, '--paginate', '--jq', '.[].name'];
         if (hostname !== 'gitlab.com') {
           args.push('--hostname', hostname);
         }
 
-        const output = execFileSync('glab', args, {
+        const output = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()
@@ -593,6 +606,8 @@ export function registerCreateGitLabProject(): void {
       const hostname = options.instanceUrl ? getHostnameFromUrl(options.instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['repo', 'create', projectName, '--source', options.projectPath];
 
         if (options.visibility) {
@@ -614,7 +629,7 @@ export function registerCreateGitLabProject(): void {
         }
 
         debugLog('Running: glab', args);
-        const output = execFileSync('glab', args, {
+        const output = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           cwd: options.projectPath,
           stdio: 'pipe',
@@ -668,16 +683,18 @@ export function registerAddGitLabRemote(): void {
       const remoteUrl = `${baseUrl}/${projectFullPath}.git`;
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const gitPath = findExecutable('git') || 'git';
         // Check if origin exists
         try {
-          execFileSync('git', ['remote', 'get-url', 'origin'], {
+          execFileSync(gitPath, ['remote', 'get-url', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe',
             env: getIsolatedGitEnv()
           });
           // Remove existing origin
-          execFileSync('git', ['remote', 'remove', 'origin'], {
+          execFileSync(gitPath, ['remote', 'remove', 'origin'], {
             cwd: projectPath,
             encoding: 'utf-8',
             stdio: 'pipe',
@@ -687,7 +704,7 @@ export function registerAddGitLabRemote(): void {
           // No origin exists
         }
 
-        execFileSync('git', ['remote', 'add', 'origin', remoteUrl], {
+        execFileSync(gitPath, ['remote', 'add', 'origin', remoteUrl], {
           cwd: projectPath,
           encoding: 'utf-8',
           stdio: 'pipe',
@@ -720,12 +737,14 @@ export function registerListGitLabGroups(): void {
       const hostname = instanceUrl ? getHostnameFromUrl(instanceUrl) : 'gitlab.com';
 
       try {
+        // Use findExecutable for cross-platform path resolution (with fallback)
+        const glabPath = findExecutable('glab') || 'glab';
         const args = ['api', 'groups', '--jq', '.[] | {id: .id, name: .name, path: .path, fullPath: .full_path}'];
         if (hostname !== 'gitlab.com') {
           args.push('--hostname', hostname);
         }
 
-        const output = execFileSync('glab', args, {
+        const output = execFileSync(glabPath, args, {
           encoding: 'utf-8',
           stdio: 'pipe',
           env: getAugmentedEnv()

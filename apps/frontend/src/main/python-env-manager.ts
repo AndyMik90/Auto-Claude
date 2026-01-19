@@ -4,7 +4,7 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
-import { isLinux, isWindows, getPathDelimiter, normalizeExecutablePath } from './platform';
+import { isLinux, isWindows, getPathDelimiter, normalizeExecutablePath, getVenvPythonPath } from './platform';
 import { getIsolatedGitEnv } from './utils/git-isolation';
 
 export interface PythonEnvStatus {
@@ -63,17 +63,13 @@ export class PythonEnvManager extends EventEmitter {
 
   /**
    * Get the path to the venv Python executable
+   * Uses centralized getVenvPythonPath helper from platform module
    */
   private getVenvPythonPath(): string | null {
     const venvPath = this.getVenvBasePath();
     if (!venvPath) return null;
 
-    const venvPython =
-      isWindows()
-        ? path.join(venvPath, 'Scripts', 'python.exe')
-        : path.join(venvPath, 'bin', 'python');
-
-    return venvPython;
+    return getVenvPythonPath(venvPath);
   }
 
   /**
