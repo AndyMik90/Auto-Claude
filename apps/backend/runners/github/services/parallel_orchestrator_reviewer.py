@@ -848,8 +848,17 @@ The SDK will run invoked agents in parallel automatically.
                 f"{len(filtered_findings)} filtered"
             )
 
-            # Use validated findings for verdict and summary
-            unique_findings = validated_findings
+            # Apply confidence routing to filter low-confidence findings
+            # and mark medium-confidence findings with "[Potential]" prefix
+            routed_findings = self._apply_confidence_routing(validated_findings)
+
+            logger.info(
+                f"[PRReview] Confidence routing: {len(routed_findings)} included, "
+                f"{len(validated_findings) - len(routed_findings)} dropped (low confidence)"
+            )
+
+            # Use routed findings for verdict and summary
+            unique_findings = routed_findings
 
             logger.info(
                 f"[ParallelOrchestrator] Review complete: {len(unique_findings)} findings"
