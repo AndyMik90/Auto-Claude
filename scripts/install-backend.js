@@ -124,8 +124,7 @@ async function main() {
   // Check for uv and install if needed
   let hasUv = checkUv();
   if (!hasUv) {
-    console.log('\nuv not found. Would you like to install it for faster dependency installation?');
-    console.log('uv is 10-100x faster than pip for installing Python packages.');
+    console.log('\nuv not found. Installing it for faster dependency installation (10-100x faster than pip)...');
 
     // Auto-install uv (it's the recommended approach)
     if (!installUv()) {
