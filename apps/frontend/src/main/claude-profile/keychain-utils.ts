@@ -12,6 +12,7 @@
 
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
+import { existsSync } from 'fs';
 import { isMacOS } from '../platform';
 
 /**
@@ -128,11 +129,39 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
     return cached.credentials;
   }
 
+  // Locate the security executable using platform abstraction
+  let securityPath: string | null = null;
+  try {
+    // The 'security' command is macOS-specific and typically in /usr/bin
+    // Try common macOS locations instead of hardcoding
+    const candidatePaths = ['/usr/bin/security', '/bin/security'];
+
+    for (const candidate of candidatePaths) {
+      if (existsSync(candidate)) {
+        securityPath = candidate;
+        break;
+      }
+    }
+
+    if (!securityPath) {
+      // Security command not found - this is expected on non-macOS or if security is missing
+      const notFoundResult = { token: null, email: null, error: 'macOS security command not found' };
+      keychainCache.set(serviceName, { credentials: notFoundResult, timestamp: now });
+      return notFoundResult;
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[KeychainUtils] Failed to locate security executable:', errorMessage);
+    const errorResult = { token: null, email: null, error: `Failed to locate security executable: ${errorMessage}` };
+    keychainCache.set(serviceName, { credentials: errorResult, timestamp: now - (CACHE_TTL_MS - ERROR_CACHE_TTL_MS) });
+    return errorResult;
+  }
+
   try {
     // Query macOS Keychain for Claude Code credentials
     // Use execFileSync with argument array to prevent command injection
     const result = execFileSync(
-      '/usr/bin/security',
+      securityPath,
       ['find-generic-password', '-s', serviceName, '-w'],
       {
         encoding: 'utf-8',
@@ -173,8 +202,10 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
     // Extract email (might be in different locations depending on Claude Code version)
     const email = data?.claudeAiOauth?.email || data?.email || null;
 
-    // Validate token format if present (Claude OAuth tokens start with sk-ant-oat01-)
-    if (token && !token.startsWith('sk-ant-oat01-')) {
+    // Validate token format if present
+    // Use 'sk-ant-' prefix instead of 'sk-ant-oat01-' to support future token format versions
+    // (e.g., oat02, oat03, etc.) without breaking validation
+    if (token && !token.startsWith('sk-ant-')) {
       console.warn('[KeychainUtils] Invalid token format for service:', serviceName);
       const result = { token: null, email };
       keychainCache.set(serviceName, { credentials: result, timestamp: now });
@@ -183,7 +214,7 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
 
     const credentials = { token: token || null, email };
     keychainCache.set(serviceName, { credentials, timestamp: now });
-    console.log('[KeychainUtils] Retrieved credentials from Keychain for service:', serviceName, { hasToken: !!token, hasEmail: !!email });
+    console.debug('[KeychainUtils] Retrieved credentials from Keychain for service:', serviceName, { hasToken: !!token, hasEmail: !!email });
     return credentials;
   } catch (error) {
     // Check for exit code 44 (errSecItemNotFound) which indicates item not found

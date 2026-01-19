@@ -58,6 +58,49 @@ function extractProfileIdFromAuthTerminalId(terminalId: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Mask email address for logging to prevent PII exposure.
+ *
+ * @param email - Email address to mask
+ * @returns Masked email (e.g., 'user@example.com' -> 'u***@e***.com')
+ *
+ * @example
+ * maskEmail('john.doe@example.com') // 'j***@e***.com'
+ * maskEmail('a@b.co') // 'a***@b***.co'
+ * maskEmail('') // ''
+ */
+function maskEmail(email: string | null | undefined): string {
+  if (!email || typeof email !== 'string') {
+    return '';
+  }
+
+  const atIndex = email.indexOf('@');
+  if (atIndex === -1) {
+    // Not a valid email format, mask most of it
+    return email.charAt(0) + '***';
+  }
+
+  const localPart = email.substring(0, atIndex);
+  const domainPart = email.substring(atIndex + 1);
+
+  // Mask local part (keep first char)
+  const maskedLocal = localPart.charAt(0) + '***';
+
+  // Mask domain part (keep first char and TLD)
+  const domainDotIndex = domainPart.indexOf('.');
+  if (domainDotIndex === -1) {
+    // No TLD, just mask after first char
+    const maskedDomain = domainPart.charAt(0) + '***';
+    return `${maskedLocal}@${maskedDomain}`;
+  }
+
+  const domainName = domainPart.substring(0, domainDotIndex);
+  const tld = domainPart.substring(domainDotIndex); // includes the dot
+  const maskedDomain = domainName.charAt(0) + '***' + tld;
+
+  return `${maskedLocal}@${maskedDomain}`;
+}
+
 function normalizePathForBash(envPath: string): string {
   return isWindows() ? envPath.replace(/;/g, ':') : envPath;
 }
@@ -653,13 +696,20 @@ export function handleOnboardingComplete(
     return { name, matched: !!match, email: match?.[1] || null };
   });
 
+  // Redact PII from pattern results for logging
+  const redactedPatternResults = patternResults.map(({ name, matched, email: foundEmail }) => ({
+    name,
+    matched,
+    email: maskEmail(foundEmail)
+  }));
+
   console.warn('[ClaudeIntegration] Email extraction attempt:', {
     profileId,
-    foundEmail: email,
+    foundEmail: maskEmail(email),
     dataLength: data.length,
     bufferLength: terminal.outputBuffer.length,
     cleanBufferLength: cleanBuffer.length,
-    patternResults
+    patternResults: redactedPatternResults
   });
 
   // Update profile with email if found and profile exists
@@ -670,7 +720,7 @@ export function handleOnboardingComplete(
       // Update the profile with the email
       profile.email = email;
       profileManager.saveProfile(profile);
-      console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, email);
+      console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email));
     }
   }
 

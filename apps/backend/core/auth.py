@@ -780,7 +780,7 @@ interact
     # This prevents information leakage about authentication activity
     # Directory created with mode 0o700 (owner read/write/execute only)
     try:
-        with tempfile.TemporaryDirectory(prefix="claude_auth_") as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_dir:
             # Ensure directory has owner-only permissions
             os.chmod(temp_dir, 0o700)
 

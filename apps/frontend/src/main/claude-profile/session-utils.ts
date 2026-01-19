@@ -14,13 +14,24 @@ import { isNodeError } from '../utils/type-guards';
 /**
  * Convert a working directory path to the Claude projects path format.
  * Claude uses a sanitized path format: /Users/foo/bar -> -Users-foo-bar
+ *
+ * LIMITATION: This function has a known collision risk where paths containing dashes
+ * can collide with paths using directory separators. For example:
+ * - '/foo/bar-baz' -> 'foo-bar-baz'
+ * - '/foo/bar/baz' -> 'foo-bar-baz'
+ *
+ * This behavior matches Claude CLI's existing convention for compatibility and is
+ * accepted as a low-probability edge case in typical project directory structures.
+ *
+ * @param cwd - The working directory path to convert
+ * @returns The sanitized path format used by Claude for project identification
  */
 export function cwdToProjectPath(cwd: string): string {
   // Normalize to forward slashes first (cross-platform: Windows C:\foo\bar -> C:/foo/bar)
   const normalized = cwd.replace(/\\/g, '/');
   // Remove Windows drive letter (C:, D:, etc.) to avoid colons in directory names
-  // Then replace path separators with dashes and remove leading slash
-  return normalized.replace(/^[a-zA-Z]:/, '').replace(/^\//, '').replace(/\//g, '-');
+  // Then replace all path separators with dashes (keeping leading dash for Unix paths)
+  return normalized.replace(/^[a-zA-Z]:/, '').replace(/\//g, '-');
 }
 
 /**

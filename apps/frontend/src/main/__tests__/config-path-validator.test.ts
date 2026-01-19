@@ -24,6 +24,29 @@
  * 3. The normalized path must start with one of the allowed prefixes + path separator
  * 4. Boundary checks prevent attacks like /home/alice-malicious bypassing /home/alice validation
  *
+ * Cross-Platform Testing Strategy:
+ * ---------------------------------
+ * IMPORTANT: Node.js path.resolve() is platform-aware and behaves differently on each OS:
+ *
+ * - Unix systems: Paths like "C:\Windows" are treated as RELATIVE paths because backslash
+ *   is a valid filename character. They resolve to something like "/home/user/project/C:\Windows"
+ *
+ * - Windows systems: Paths like "C:\Windows" are recognized as ABSOLUTE paths with drive letters
+ *
+ * This means we CANNOT simply mock process.platform to test all path types on all platforms.
+ * The underlying path.resolve() behavior is baked into Node.js's platform-specific implementation.
+ *
+ * Our approach:
+ * 1. Platform-agnostic tests (Unix absolute paths starting with /) run on ALL platforms
+ * 2. Platform-specific tests (Windows paths with drive letters) run ONLY on their native OS
+ * 3. CI tests on Windows, macOS, AND Linux ensure comprehensive coverage across actual platforms
+ * 4. Each platform's CI run validates the security model works correctly for that OS
+ *
+ * This ensures:
+ * - Unix builds verify Unix paths are rejected correctly
+ * - Windows builds verify Windows paths are rejected correctly
+ * - All builds verify cross-platform logic (tilde expansion, boundary checks, etc.)
+ *
  * Testing Considerations:
  * -----------------------
  * - Relative paths (., .., ./config) resolve based on process.cwd()
@@ -159,22 +182,25 @@ describe('isValidConfigDir - Security Validation', () => {
 
   describe('Absolute paths outside home - Should REJECT', () => {
     test('rejects common system directories on Unix-like systems', () => {
-      if (process.platform !== 'win32') {
-        expect(isValidConfigDir('/etc')).toBe(false);
-        expect(isValidConfigDir('/etc/passwd')).toBe(false);
-        expect(isValidConfigDir('/var')).toBe(false);
-        expect(isValidConfigDir('/var/log')).toBe(false);
-        expect(isValidConfigDir('/usr')).toBe(false);
-        expect(isValidConfigDir('/usr/local')).toBe(false);
-        expect(isValidConfigDir('/tmp')).toBe(false);
-        expect(isValidConfigDir('/root')).toBe(false);
-        expect(isValidConfigDir('/opt')).toBe(false);
-        expect(isValidConfigDir('/bin')).toBe(false);
-        expect(isValidConfigDir('/sbin')).toBe(false);
-      }
+      // These absolute Unix paths work correctly on all platforms
+      // because they start with / and are universally recognized as absolute
+      expect(isValidConfigDir('/etc')).toBe(false);
+      expect(isValidConfigDir('/etc/passwd')).toBe(false);
+      expect(isValidConfigDir('/var')).toBe(false);
+      expect(isValidConfigDir('/var/log')).toBe(false);
+      expect(isValidConfigDir('/usr')).toBe(false);
+      expect(isValidConfigDir('/usr/local')).toBe(false);
+      expect(isValidConfigDir('/tmp')).toBe(false);
+      expect(isValidConfigDir('/root')).toBe(false);
+      expect(isValidConfigDir('/opt')).toBe(false);
+      expect(isValidConfigDir('/bin')).toBe(false);
+      expect(isValidConfigDir('/sbin')).toBe(false);
     });
 
     test('rejects common system directories on Windows', () => {
+      // NOTE: Windows-style paths only work correctly when running on Windows
+      // On Unix, backslashes are valid filename characters, so these become
+      // relative paths like ./C:\Windows (which may be within home if cwd is in home)
       if (process.platform === 'win32') {
         expect(isValidConfigDir('C:\\Windows')).toBe(false);
         expect(isValidConfigDir('C:\\Windows\\System32')).toBe(false);
@@ -186,14 +212,14 @@ describe('isValidConfigDir - Security Validation', () => {
     });
 
     test('rejects paths in other users home directories on Unix', () => {
-      if (process.platform !== 'win32') {
-        expect(isValidConfigDir('/home/otheruser')).toBe(false);
-        expect(isValidConfigDir('/home/otheruser/.claude')).toBe(false);
-        expect(isValidConfigDir('/root/.claude')).toBe(false);
-      }
+      // These absolute Unix paths work correctly on all platforms
+      expect(isValidConfigDir('/home/otheruser')).toBe(false);
+      expect(isValidConfigDir('/home/otheruser/.claude')).toBe(false);
+      expect(isValidConfigDir('/root/.claude')).toBe(false);
     });
 
     test('rejects paths in other users home directories on Windows', () => {
+      // NOTE: Windows-style paths only work correctly when running on Windows
       if (process.platform === 'win32') {
         expect(isValidConfigDir('C:\\Users\\OtherUser')).toBe(false);
         expect(isValidConfigDir('C:\\Users\\OtherUser\\.claude')).toBe(false);
@@ -305,6 +331,8 @@ describe('isValidConfigDir - Security Validation', () => {
     });
 
     test('rejects UNC paths on Windows', () => {
+      // NOTE: UNC paths (\\server\share) only work correctly on Windows
+      // On Unix, backslashes are filename characters, making these relative paths
       if (process.platform === 'win32') {
         expect(isValidConfigDir('\\\\server\\share')).toBe(false);
         expect(isValidConfigDir('\\\\server\\share\\config')).toBe(false);
@@ -312,6 +340,7 @@ describe('isValidConfigDir - Security Validation', () => {
     });
 
     test('rejects paths with mixed separators on Windows', () => {
+      // NOTE: Mixed separator detection only works correctly on Windows
       if (process.platform === 'win32') {
         expect(isValidConfigDir('C:/Windows\\System32')).toBe(false);
         expect(isValidConfigDir('~\\..\\/etc')).toBe(false);
@@ -379,6 +408,7 @@ describe('isValidConfigDir - Security Validation', () => {
     });
 
     test('prevents Windows drive letter hopping', () => {
+      // NOTE: Windows drive letters only work correctly on Windows
       if (process.platform === 'win32') {
         expect(isValidConfigDir('D:\\sensitive-data')).toBe(false);
         expect(isValidConfigDir('E:\\other-drive')).toBe(false);
@@ -386,11 +416,13 @@ describe('isValidConfigDir - Security Validation', () => {
     });
 
     test('prevents access to sensitive config directories', () => {
-      if (process.platform !== 'win32') {
-        expect(isValidConfigDir('/etc/ssh')).toBe(false);
-        expect(isValidConfigDir('/etc/ssl')).toBe(false);
-        expect(isValidConfigDir('/etc/security')).toBe(false);
-      } else {
+      // Unix absolute paths work correctly on all platforms
+      expect(isValidConfigDir('/etc/ssh')).toBe(false);
+      expect(isValidConfigDir('/etc/ssl')).toBe(false);
+      expect(isValidConfigDir('/etc/security')).toBe(false);
+
+      // Windows paths only work correctly on Windows
+      if (process.platform === 'win32') {
         expect(isValidConfigDir('C:\\Windows\\System32\\config')).toBe(false);
       }
     });

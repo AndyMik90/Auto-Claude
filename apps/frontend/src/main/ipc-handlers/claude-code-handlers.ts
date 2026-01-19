@@ -699,10 +699,11 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     console.warn('[Claude Code] Using terminal:', terminalId || 'auto-detect');
 
     // Command to run (keep terminal open after execution)
-    // Escape for defense-in-depth (currently all commands come from trusted sources,
-    // but this prevents potential command injection if future code adds new call sites)
-    const escapedCommand = escapeBashCommand(command);
-    const bashCommand = `${escapedCommand}; exec bash`;
+    // Note: Currently all commands come from trusted sources (getInstallCommand, getInstallVersionCommand),
+    // which return multi-statement commands with semicolons as separators.
+    // We do NOT escape these commands to preserve the semicolon command separators.
+    // If future code needs to pass user input here, that input must be pre-sanitized.
+    const bashCommand = `${command}; exec bash`;
 
     // Try to use preferred terminal if specified
     if (terminalId === 'gnometerminal') {
@@ -1201,6 +1202,19 @@ export function registerClaudeCodeHandlers(): void {
         // We back up the existing .claude.json to .claude.json.bak
         const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
         const claudeJsonBakPath = path.join(expandedConfigDir, '.claude.json.bak');
+
+        // NEW-005 FIX: Clean up stale backup files from interrupted authentication
+        // If both .claude.json.bak AND .claude.json exist, the previous auth completed
+        // successfully, so the backup is stale and should be removed
+        if (existsSync(claudeJsonBakPath) && existsSync(claudeJsonPath)) {
+          try {
+            await unlink(claudeJsonBakPath);
+            console.warn('[Claude Code] Cleaned up stale .claude.json.bak from previous authentication');
+          } catch (cleanupError) {
+            console.warn('[Claude Code] Failed to clean up stale backup:', cleanupError);
+            // Non-fatal: continue with authentication
+          }
+        }
 
         if (existsSync(claudeJsonPath)) {
           try {
