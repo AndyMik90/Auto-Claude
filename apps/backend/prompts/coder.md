@@ -942,13 +942,13 @@ if insights["discoveries"]["patterns_found"]:
     # Load existing patterns
     existing_patterns = set()
     if patterns_file.exists():
-        content = patterns_file.read_text()
+        content = patterns_file.read_text(encoding="utf-8")
         for line in content.split("\n"):
             if line.strip().startswith("- "):
                 existing_patterns.add(line.strip()[2:])
 
     # Add new patterns
-    with open(patterns_file, "a") as f:
+    with open(patterns_file, "a", encoding="utf-8") as f:
         if patterns_file.stat().st_size == 0:
             f.write("# Code Patterns\n\n")
             f.write("Established patterns to follow in this codebase:\n\n")
@@ -965,13 +965,13 @@ if insights["discoveries"]["gotchas_encountered"]:
     # Load existing gotchas
     existing_gotchas = set()
     if gotchas_file.exists():
-        content = gotchas_file.read_text()
+        content = gotchas_file.read_text(encoding="utf-8")
         for line in content.split("\n"):
             if line.strip().startswith("- "):
                 existing_gotchas.add(line.strip()[2:])
 
     # Add new gotchas
-    with open(gotchas_file, "a") as f:
+    with open(gotchas_file, "a", encoding="utf-8") as f:
         if gotchas_file.stat().st_size == 0:
             f.write("# Gotchas and Pitfalls\n\n")
             f.write("Things to watch out for in this codebase:\n\n")
