@@ -150,8 +150,35 @@ export function AuthStatusIndicator() {
     return getProviderLabel(provider);
   };
 
+  // Map backend-provided usage window labels to translation keys
+  // Backend provides English strings like "5-hour window", "7-day window", etc.
+  // These need to be localized for the user interface
+  const localizeUsageWindowLabel = (backendLabel?: string): string => {
+    if (!backendLabel) return t('common:usage.sessionQuota');
+
+    // Map known backend labels to translation keys
+    const labelMap: Record<string, string> = {
+      '5-hour window': 'window5Hour',
+      '7-day window': 'window7Day',
+      '5 Hours Quota': 'window5HoursQuota',
+      'Monthly Tools Quota': 'windowMonthlyToolsQuota'
+    };
+
+    const translationKey = labelMap[backendLabel];
+    if (translationKey) {
+      const translated = t(`common:usage.${translationKey}`);
+      // If translation returns the key itself (not found), use backend label as fallback
+      return translated === `common:usage.${translationKey}` ? backendLabel : translated;
+    }
+
+    // Unknown label - use as-is (should be rare)
+    return backendLabel;
+  };
+
   const isOAuth = authStatus.type === 'oauth';
   const Icon = isOAuth ? Lock : Key;
+  // Compute once and reuse for aria-label and displayed text
+  const localizedProviderLabel = getLocalizedProviderLabel(authStatus.provider);
 
   return (
     <div className="flex items-center gap-2">
@@ -187,11 +214,11 @@ export function AuthStatusIndicator() {
             <button
               type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
-              aria-label={t('common:usage.authenticationAriaLabel', { provider: getLocalizedProviderLabel(authStatus.provider) })}
+              aria-label={t('common:usage.authenticationAriaLabel', { provider: localizedProviderLabel })}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">
-                {getLocalizedProviderLabel(authStatus.provider)}
+                {localizedProviderLabel}
               </span>
             </button>
           </TooltipTrigger>
@@ -203,7 +230,7 @@ export function AuthStatusIndicator() {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground font-medium">{t('common:usage.provider')}</span>
-                <span className="font-semibold">{getLocalizedProviderLabel(authStatus.provider)}</span>
+                <span className="font-semibold">{localizedProviderLabel}</span>
               </div>
               {!isOAuth && (
                 <>
@@ -243,7 +270,7 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">{usage.usageWindows?.sessionWindowLabel || t('common:usage.sessionQuota')}</span>
+                  <span className="text-muted-foreground font-medium">{localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel)}</span>
                   <span className="font-semibold text-red-500">{Math.round(usage.sessionPercent)}%</span>
                 </div>
                 {sessionResetTime && (

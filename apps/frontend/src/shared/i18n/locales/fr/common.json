@@ -432,6 +432,10 @@
     "sessionDefault": "Session",
     "weeklyDefault": "Hebdomadaire",
     "resetsInHours": "Réinitialisation dans {{hours}}h {{minutes}}m",
-    "resetsInDays": "Réinitialisation dans {{days}}j {{hours}}h"
+    "resetsInDays": "Réinitialisation dans {{days}}j {{hours}}h",
+    "window5Hour": "Fenêtre de 5 heures",
+    "window7Day": "Fenêtre de 7 jours",
+    "window5HoursQuota": "Quota de 5 heures",
+    "windowMonthlyToolsQuota": "Quota mensuel d'outils"
   }
 }
