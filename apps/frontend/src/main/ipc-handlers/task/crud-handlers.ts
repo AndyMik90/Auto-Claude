@@ -236,13 +236,15 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         }
 
         // Also delete any associated worktree using shared utility
+        let worktreeWarning: string | undefined;
         const worktreePath = findTaskWorktree(project.path, task.specId);
         if (worktreePath && existsSync(worktreePath)) {
           console.warn(`[TASK_DELETE] Found worktree to delete: ${worktreePath}`);
           const deleteResult = forceDeleteWorktree(worktreePath, project.path);
           if (!deleteResult.success) {
             console.error(`[TASK_DELETE] Failed to delete worktree: ${deleteResult.error}`);
-            // Continue with task deletion even if worktree deletion fails
+            // FIX: Include warning in response so user knows cleanup was incomplete
+            worktreeWarning = `Task deleted but worktree cleanup failed: ${deleteResult.error}. You may need to manually delete: ${worktreePath}`;
           } else {
             console.warn(`[TASK_DELETE] Deleted worktree via ${deleteResult.method}: ${worktreePath}`);
           }
@@ -251,7 +253,11 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         // Invalidate cache since a task was deleted
         projectStore.invalidateTasksCache(project.id);
 
-        return { success: true };
+        // FIX: Return warning if worktree cleanup failed
+        return {
+          success: true,
+          ...(worktreeWarning && { warning: worktreeWarning })
+        };
       } catch (error) {
         console.error('[TASK_DELETE] Error deleting spec directory:', error);
         return {

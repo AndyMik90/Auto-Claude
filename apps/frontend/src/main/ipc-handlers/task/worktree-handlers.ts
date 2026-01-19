@@ -2693,6 +2693,18 @@ export function registerWorktreeHandlers(
           };
         }
 
+        // FIX: Get the branch name before removing (may fail for orphaned worktrees)
+        // This mirrors the behavior in the regular discardWorktree handler
+        let branch: string | null = null;
+        try {
+          branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+            cwd: worktreePath,
+            encoding: 'utf-8'
+          }).trim();
+        } catch {
+          // Branch detection failed (corrupted git state) - continue anyway
+        }
+
         // Delete worktree using shared utility (handles git remove + fallback to force-delete)
         const deleteResult = forceDeleteWorktree(worktreePath, project.path);
         if (!deleteResult.success) {
@@ -2700,6 +2712,19 @@ export function registerWorktreeHandlers(
             success: false,
             error: deleteResult.error
           };
+        }
+
+        // FIX: Delete the branch (if we got the branch name)
+        // This prevents orphaned branches from accumulating in the repository
+        if (branch) {
+          try {
+            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
+              cwd: project.path,
+              encoding: 'utf-8'
+            });
+          } catch {
+            // Branch might already be deleted or not exist
+          }
         }
 
         return {
@@ -2818,8 +2843,11 @@ export function registerWorktreeHandlers(
               isOrphaned: !hasTask
             });
           } catch (gitError) {
-            console.warn(`[Worktree] Git commands failed for ${entry}, marking as orphaned:`, gitError);
-            // Include orphaned worktrees so they can be deleted
+            // FIX: Don't mark as orphaned if task exists - git may have failed transiently
+            // (file locks, concurrent operations, etc.)
+            const hasTask = tasks.some(t => t.specId === entry);
+            console.warn(`[Worktree] Git commands failed for ${entry}, hasTask=${hasTask}:`, gitError);
+            // Include worktree so it can be managed (deleted if orphaned, or retried if has task)
             // Note: branch is empty - renderer should use i18n key based on isOrphaned flag
             worktrees.push({
               specName: entry,
@@ -2830,7 +2858,7 @@ export function registerWorktreeHandlers(
               filesChanged: 0,
               additions: 0,
               deletions: 0,
-              isOrphaned: true
+              isOrphaned: !hasTask
             });
           }
         };
