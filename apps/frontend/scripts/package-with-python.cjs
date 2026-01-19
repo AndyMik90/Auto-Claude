@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { isWindows } = require('../src/shared/platform.cjs');
 const { downloadPython } = require('./download-python.cjs');
 
 const args = process.argv.slice(2);
@@ -83,8 +84,7 @@ function buildEnv(frontendDir) {
 }
 
 function runCommand(command, commandArgs, cwd, env) {
-  const isWindows = process.platform === 'win32';
-  const bin = isWindows ? `${command}.cmd` : command;
+  const bin = isWindows() ? `${command}.cmd` : command;
   const result = spawnSync(bin, commandArgs, {
     cwd,
     env,
@@ -120,7 +120,7 @@ function copyPackage(fromDir, toDir) {
   }
 
   fs.mkdirSync(path.dirname(toDir), { recursive: true });
-  fs.cpSync(fromDir, toDir, { recursive: true });
+  fs.cpSync(fromDir, toDir, { recursive: true, dereference: true });
 }
 
 function readPackageJson(pkgDir) {
@@ -218,5 +218,5 @@ async function main() {
 
 main().catch((err) => {
   console.error(`[package] Error: ${err.message}`);
-  process.exit(1);
+  process.exitCode = 1;
 });
