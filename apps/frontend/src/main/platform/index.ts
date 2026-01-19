@@ -391,9 +391,11 @@ export function findExecutable(
  *
  * On Windows, users may provide paths without extensions (e.g., `C:\...\npm\claude`
  * instead of `C:\...\npm\claude.cmd`). This helper attempts to find the correct
- * executable by trying common Windows extensions (.exe, .cmd, .bat) when:
+ * executable by trying common Windows extensions (.exe, .cmd, .bat, .ps1) when:
  * 1. The provided path doesn't have an extension
  * 2. The direct path doesn't exist
+ *
+ * Uses the canonical extension list from getPathConfig() for consistency.
  *
  * On Unix, returns the original path unchanged.
  *
@@ -430,7 +432,9 @@ export function normalizeExecutablePath(candidatePath: string): string {
   }
 
   // No extension - try common Windows executable extensions
-  const extensions = ['.exe', '.cmd', '.bat'];
+  // Use the canonical list from getPathConfig for consistency
+  const config = getPathConfig();
+  const extensions = config.executableExtensions.filter(ext => ext !== '');
   for (const testExt of extensions) {
     const testPath = candidatePath + testExt;
     if (existsSync(testPath)) {

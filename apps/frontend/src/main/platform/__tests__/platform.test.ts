@@ -7,6 +7,18 @@
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import * as path from 'path';
+import * as fs from 'fs';
+import type { PathLike } from 'fs';
+
+// Mock fs.existsSync for normalizeExecutablePath tests
+vi.mock('fs', async () => {
+  const actualFs = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actualFs,
+    existsSync: vi.fn(),
+  };
+});
+
 import {
   getCurrentOS,
   isWindows,
@@ -29,6 +41,9 @@ import {
   joinPaths,
   getPlatformDescription
 } from '../index.js';
+
+// Get the mocked existsSync
+const mockedExistsSync = vi.mocked(fs.existsSync);
 
 // Mock process.platform
 const originalPlatform = process.platform;
@@ -457,14 +472,88 @@ describe('Platform Module', () => {
       });
     });
 
-    describeWindows('handles Windows npm paths without extension', () => {
-      it('handles npm paths', () => {
-        // Note: This test requires actual file system or proper fs mocking
-        // For now, we just verify the function is callable and handles Windows paths
-        const result = normalizeExecutablePath('C:\\Users\\user\\AppData\\Roaming\\npm\\claude');
-        // Function should return either the original (if .cmd not found) or .cmd version
-        // Either behavior is acceptable - the key is not throwing an error
-        expect(result).toContain('claude');
+    describeWindows('normalizeExecutablePath on Windows', () => {
+      beforeEach(() => {
+        // Reset mock before each test - use real fs by default
+        mockedExistsSync.mockImplementation(fs.existsSync);
+      });
+
+      it('resolves .cmd extension when file exists and original does not', () => {
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          // Simulate: base path doesn't exist, but .cmd version does
+          if (p === 'C:\\npm\\claude') return false;
+          if (p === 'C:\\npm\\claude.exe') return false;
+          if (p === 'C:\\npm\\claude.cmd') return true;
+          if (p === 'C:\\npm\\claude.bat') return false;
+          if (p === 'C:\\npm\\claude.ps1') return false;
+          return false;
+        });
+
+        const result = normalizeExecutablePath('C:\\npm\\claude');
+        expect(result).toBe('C:\\npm\\claude.cmd');
+      });
+
+      it('resolves .exe extension when file exists and original does not', () => {
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          // Simulate: base path doesn't exist, but .exe version does
+          if (p === 'C:\\npm\\claude') return false;
+          if (p === 'C:\\npm\\claude.exe') return true;
+          if (p === 'C:\\npm\\claude.cmd') return false;
+          if (p === 'C:\\npm\\claude.bat') return false;
+          if (p === 'C:\\npm\\claude.ps1') return false;
+          return false;
+        });
+
+        const result = normalizeExecutablePath('C:\\npm\\claude');
+        expect(result).toBe('C:\\npm\\claude.exe');
+      });
+
+      it('resolves .bat extension when file exists and others do not', () => {
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          // Simulate: base path doesn't exist, but .bat version does
+          if (p === 'C:\\npm\\claude') return false;
+          if (p === 'C:\\npm\\claude.exe') return false;
+          if (p === 'C:\\npm\\claude.cmd') return false;
+          if (p === 'C:\\npm\\claude.bat') return true;
+          if (p === 'C:\\npm\\claude.ps1') return false;
+          return false;
+        });
+
+        const result = normalizeExecutablePath('C:\\npm\\claude');
+        expect(result).toBe('C:\\npm\\claude.bat');
+      });
+
+      it('resolves .ps1 extension when file exists and others do not', () => {
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          // Simulate: base path doesn't exist, but .ps1 version does
+          if (p === 'C:\\npm\\script') return false;
+          if (p === 'C:\\npm\\script.exe') return false;
+          if (p === 'C:\\npm\\script.cmd') return false;
+          if (p === 'C:\\npm\\script.bat') return false;
+          if (p === 'C:\\npm\\script.ps1') return true;
+          return false;
+        });
+
+        const result = normalizeExecutablePath('C:\\npm\\script');
+        expect(result).toBe('C:\\npm\\script.ps1');
+      });
+
+      it('returns original path if it exists, even without extension', () => {
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          // Simulate: base path exists (e.g., it's a directory or symlink)
+          if (p === 'C:\\npm\\claude') return true;
+          return false;
+        });
+
+        const result = normalizeExecutablePath('C:\\npm\\claude');
+        expect(result).toBe('C:\\npm\\claude');
+      });
+
+      it('returns original path when no extension match found', () => {
+        mockedExistsSync.mockReturnValue(false);
+
+        const result = normalizeExecutablePath('C:\\npm\\nonexistent');
+        expect(result).toBe('C:\\npm\\nonexistent');
       });
     });
   });
