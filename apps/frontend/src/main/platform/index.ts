@@ -387,6 +387,62 @@ export function findExecutable(
 }
 
 /**
+ * Normalize a user-provided executable path on Windows
+ *
+ * On Windows, users may provide paths without extensions (e.g., `C:\...\npm\claude`
+ * instead of `C:\...\npm\claude.cmd`). This helper attempts to find the correct
+ * executable by trying common Windows extensions (.exe, .cmd, .bat) when:
+ * 1. The provided path doesn't have an extension
+ * 2. The direct path doesn't exist
+ *
+ * On Unix, returns the original path unchanged.
+ *
+ * @param candidatePath - The user-provided path to normalize
+ * @returns The normalized path (with extension if found), or original if not found
+ *
+ * @example
+ * ```typescript
+ * // On Windows with C:\Users\user\AppData\Roaming\npm\claude.cmd existing:
+ * normalizeExecutablePath('C:\\Users\\user\\AppData\\Roaming\\npm\\claude')
+ * // Returns: 'C:\Users\user\AppData\Roaming\npm\claude.cmd'
+ *
+ * // On Unix:
+ * normalizeExecutablePath('/usr/local/bin/claude')
+ * // Returns: '/usr/local/bin/claude'
+ * ```
+ */
+export function normalizeExecutablePath(candidatePath: string): string {
+  // On Unix, no extension normalization needed
+  if (!isWindows()) {
+    return candidatePath;
+  }
+
+  // If path exists as-is, return it
+  if (existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  // Check if path already has an extension
+  const ext = path.extname(candidatePath);
+  if (ext) {
+    // Has extension but doesn't exist - return as-is (will fail validation)
+    return candidatePath;
+  }
+
+  // No extension - try common Windows executable extensions
+  const extensions = ['.exe', '.cmd', '.bat'];
+  for (const testExt of extensions) {
+    const testPath = candidatePath + testExt;
+    if (existsSync(testPath)) {
+      return testPath;
+    }
+  }
+
+  // No match found - return original path (will fail validation with better error)
+  return candidatePath;
+}
+
+/**
  * Create a platform-aware description for error messages
  */
 export function getPlatformDescription(): string {

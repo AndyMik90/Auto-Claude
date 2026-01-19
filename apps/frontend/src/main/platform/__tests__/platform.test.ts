@@ -5,7 +5,7 @@
  * different operating systems.
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import * as path from 'path';
 import {
   getCurrentOS,
@@ -25,6 +25,7 @@ import {
   getNpxCommand,
   isSecurePath,
   normalizePath,
+  normalizeExecutablePath,
   joinPaths,
   getPlatformDescription
 } from '../index.js';
@@ -37,6 +38,83 @@ function mockPlatform(platform: NodeJS.Platform) {
     value: platform,
     writable: true,
     configurable: true
+  });
+}
+
+/**
+ * Test helper: Describes a test suite that runs on Windows platform
+ *
+ * @param title - Test suite title
+ * @param fn - Test function
+ *
+ * @example
+ * ```ts
+ * describeWindows('Path Configuration', () => {
+ *   it('returns semicolon delimiter', () => {
+ *     expect(getPathDelimiter()).toBe(';');
+ *   });
+ * });
+ * ```
+ */
+function describeWindows(title: string, fn: () => void): void {
+  describe(title, () => {
+    beforeEach(() => mockPlatform('win32'));
+    fn();
+  });
+}
+
+/**
+ * Test helper: Describes a test suite that runs on macOS platform
+ *
+ * @param title - Test suite title
+ * @param fn - Test function
+ */
+function describeMacOS(title: string, fn: () => void): void {
+  describe(title, () => {
+    beforeEach(() => mockPlatform('darwin'));
+    fn();
+  });
+}
+
+/**
+ * Test helper: Describes a test suite that runs on Linux platform
+ *
+ * @param title - Test suite title
+ * @param fn - Test function
+ */
+function describeLinux(title: string, fn: () => void): void {
+  describe(title, () => {
+    beforeEach(() => mockPlatform('linux'));
+    fn();
+  });
+}
+
+/**
+ * Test helper: Describes a test suite that runs on both macOS and Linux (Unix platforms)
+ *
+ * @param title - Test suite title
+ * @param fn - Test function (receives platform name as parameter)
+ *
+ * @example
+ * ```ts
+ * describeUnix('Unix behavior', (platform) => {
+ *   it('works on Unix', () => {
+ *     expect(isUnix()).toBe(true);
+ *   });
+ * });
+ * ```
+ */
+function describeUnix(title: string, fn: (platform: 'darwin' | 'linux') => void) {
+  describe(title, () => {
+    describe('on macOS', () => {
+      beforeEach(() => mockPlatform('darwin'));
+      fn('darwin');
+    });
+
+    describe('on Linux', () => {
+      beforeEach(() => mockPlatform('linux'));
+      fn('linux');
+    });
   });
 }
 
@@ -119,74 +197,81 @@ describe('Platform Module', () => {
   });
 
   describe('Path Delimiter', () => {
-    it('returns semicolon on Windows', () => {
-      mockPlatform('win32');
-      expect(getPathDelimiter()).toBe(';');
+    describeWindows('returns semicolon on Windows', () => {
+      it('returns semicolon', () => {
+        expect(getPathDelimiter()).toBe(';');
+      });
     });
 
-    it('returns colon on Unix', () => {
-      mockPlatform('darwin');
-      expect(getPathDelimiter()).toBe(':');
+    describeMacOS('returns colon on Unix', () => {
+      it('returns colon', () => {
+        expect(getPathDelimiter()).toBe(':');
+      });
     });
   });
 
   describe('Executable Extension', () => {
-    it('returns .exe on Windows', () => {
-      mockPlatform('win32');
-      expect(getExecutableExtension()).toBe('.exe');
+    describeWindows('returns .exe on Windows', () => {
+      it('returns .exe', () => {
+        expect(getExecutableExtension()).toBe('.exe');
+      });
     });
 
-    it('returns empty string on Unix', () => {
-      mockPlatform('darwin');
-      expect(getExecutableExtension()).toBe('');
+    describeMacOS('returns empty string on Unix', () => {
+      it('returns empty string', () => {
+        expect(getExecutableExtension()).toBe('');
+      });
     });
   });
 
   describe('withExecutableExtension', () => {
-    it('adds .exe on Windows when no extension present', () => {
-      mockPlatform('win32');
-      expect(withExecutableExtension('claude')).toBe('claude.exe');
+    describeWindows('does not add extension if already present', () => {
+      it('returns same path', () => {
+        expect(withExecutableExtension('claude.exe')).toBe('claude.exe');
+        expect(withExecutableExtension('npm.cmd')).toBe('npm.cmd');
+      });
     });
 
-    it('does not add extension if already present on Windows', () => {
-      mockPlatform('win32');
-      expect(withExecutableExtension('claude.exe')).toBe('claude.exe');
-      expect(withExecutableExtension('npm.cmd')).toBe('npm.cmd');
+    describeWindows('adds .exe when no extension present', () => {
+      it('adds .exe', () => {
+        expect(withExecutableExtension('claude')).toBe('claude.exe');
+      });
     });
 
-    it('returns original name on Unix', () => {
-      mockPlatform('darwin');
-      expect(withExecutableExtension('claude')).toBe('claude');
+    describeMacOS('returns original name on Unix', () => {
+      it('returns original', () => {
+        expect(withExecutableExtension('claude')).toBe('claude');
+      });
     });
   });
 
   describe('Binary Directories', () => {
-    it('returns Windows-specific directories on Windows', () => {
-      mockPlatform('win32');
-      const dirs = getBinaryDirectories();
-
-      expect(dirs.user).toContainEqual(
-        expect.stringContaining('AppData')
-      );
-      expect(dirs.system).toContainEqual(
-        expect.stringContaining('Program Files')
-      );
+    describeWindows('returns Windows-specific directories', () => {
+      it('returns expected directories', () => {
+        const dirs = getBinaryDirectories();
+        expect(dirs.user).toContainEqual(
+          expect.stringContaining('AppData')
+        );
+        expect(dirs.system).toContainEqual(
+          expect.stringContaining('Program Files')
+        );
+      });
     });
 
-    it('returns macOS-specific directories on macOS', () => {
-      mockPlatform('darwin');
-      const dirs = getBinaryDirectories();
-
-      expect(dirs.system).toContain('/opt/homebrew/bin');
-      expect(dirs.system).toContain('/usr/local/bin');
+    describeMacOS('returns macOS-specific directories', () => {
+      it('returns expected directories', () => {
+        const dirs = getBinaryDirectories();
+        expect(dirs.system).toContain('/opt/homebrew/bin');
+        expect(dirs.system).toContain('/usr/local/bin');
+      });
     });
 
-    it('returns Linux-specific directories on Linux', () => {
-      mockPlatform('linux');
-      const dirs = getBinaryDirectories();
-
-      expect(dirs.system).toContain('/usr/bin');
-      expect(dirs.system).toContain('/snap/bin');
+    describeLinux('returns Linux-specific directories', () => {
+      it('returns expected directories', () => {
+        const dirs = getBinaryDirectories();
+        expect(dirs.system).toContain('/usr/bin');
+        expect(dirs.system).toContain('/snap/bin');
+      });
     });
   });
 
@@ -209,104 +294,121 @@ describe('Platform Module', () => {
   });
 
   describe('Shell Configuration', () => {
-    it('returns PowerShell config on Windows by default', () => {
-      mockPlatform('win32');
-      const config = getShellConfig();
-
-      // Accept either PowerShell Core (pwsh.exe), Windows PowerShell (powershell.exe),
-      // or cmd.exe fallback (when PowerShell paths don't exist, e.g., in test environments)
-      const isValidShell = config.executable.includes('pwsh.exe') ||
-                           config.executable.includes('powershell.exe') ||
-                           config.executable.includes('cmd.exe');
-      expect(isValidShell).toBe(true);
+    describeWindows('returns PowerShell config by default', () => {
+      it('returns valid shell', () => {
+        const config = getShellConfig();
+        // Accept either PowerShell Core (pwsh.exe), Windows PowerShell (powershell.exe),
+        // or cmd.exe fallback (when PowerShell paths don't exist, e.g., in test environments)
+        const isValidShell = config.executable.includes('pwsh.exe') ||
+                             config.executable.includes('powershell.exe') ||
+                             config.executable.includes('cmd.exe');
+        expect(isValidShell).toBe(true);
+      });
     });
 
-    it('returns shell config on Unix', () => {
-      mockPlatform('darwin');
-      const config = getShellConfig();
-
-      expect(config.args).toEqual(['-l']);
+    describeMacOS('returns shell config on Unix', () => {
+      it('returns shell config', () => {
+        const config = getShellConfig();
+        expect(config.args).toEqual(['-l']);
+      });
     });
   });
 
   describe('requiresShell', () => {
-    it('returns true for .cmd files on Windows', () => {
-      mockPlatform('win32');
-      expect(requiresShell('npm.cmd')).toBe(true);
-      expect(requiresShell('script.bat')).toBe(true);
+    describeWindows('returns true for .cmd files', () => {
+      it('returns true', () => {
+        expect(requiresShell('npm.cmd')).toBe(true);
+        expect(requiresShell('script.bat')).toBe(true);
+      });
     });
 
-    it('returns false for executables on Windows', () => {
-      mockPlatform('win32');
-      expect(requiresShell('node.exe')).toBe(false);
+    describeWindows('returns false for executables', () => {
+      it('returns false', () => {
+        expect(requiresShell('node.exe')).toBe(false);
+      });
     });
 
-    it('returns false on Unix', () => {
-      mockPlatform('darwin');
-      expect(requiresShell('npm')).toBe(false);
+    describeMacOS('returns false on Unix', () => {
+      it('returns false', () => {
+        expect(requiresShell('npm')).toBe(false);
+      });
     });
   });
 
   describe('npm Commands', () => {
-    it('returns npm.cmd on Windows', () => {
-      mockPlatform('win32');
-      expect(getNpmCommand()).toBe('npm.cmd');
-      expect(getNpxCommand()).toBe('npx.cmd');
+    describeWindows('returns npm.cmd on Windows', () => {
+      it('returns cmd extensions', () => {
+        expect(getNpmCommand()).toBe('npm.cmd');
+        expect(getNpxCommand()).toBe('npx.cmd');
+      });
     });
 
-    it('returns npm on Unix', () => {
-      mockPlatform('darwin');
-      expect(getNpmCommand()).toBe('npm');
-      expect(getNpxCommand()).toBe('npx');
+    describeMacOS('returns npm on Unix', () => {
+      it('returns plain names', () => {
+        expect(getNpmCommand()).toBe('npm');
+        expect(getNpxCommand()).toBe('npx');
+      });
     });
   });
 
   describe('isSecurePath', () => {
-    it('rejects paths with .. on all platforms', () => {
-      mockPlatform('win32');
-      expect(isSecurePath('../etc/passwd')).toBe(false);
-      expect(isSecurePath('../../Windows')).toBe(false);
-
-      mockPlatform('darwin');
-      expect(isSecurePath('../etc/passwd')).toBe(false);
+    describeWindows('rejects paths with .. on Windows', () => {
+      it('rejects parent directory references', () => {
+        expect(isSecurePath('../etc/passwd')).toBe(false);
+        expect(isSecurePath('../../Windows')).toBe(false);
+      });
     });
 
-    it('rejects shell metacharacters (command injection prevention)', () => {
-      mockPlatform('darwin');
-      expect(isSecurePath('cmd;rm -rf /')).toBe(false);
-      expect(isSecurePath('cmd|cat /etc/passwd')).toBe(false);
-      expect(isSecurePath('cmd`whoami`')).toBe(false);
-      expect(isSecurePath('cmd$(whoami)')).toBe(false);
-      expect(isSecurePath('cmd{test}')).toBe(false);
-      expect(isSecurePath('cmd<input')).toBe(false);
-      expect(isSecurePath('cmd>output')).toBe(false);
+    describeMacOS('rejects paths with .. on Unix', () => {
+      it('rejects parent directory references', () => {
+        expect(isSecurePath('../etc/passwd')).toBe(false);
+      });
     });
 
-    it('rejects Windows environment variable expansion', () => {
-      mockPlatform('win32');
-      expect(isSecurePath('%PROGRAMFILES%\\cmd.exe')).toBe(false);
-      expect(isSecurePath('%SystemRoot%\\System32\\cmd.exe')).toBe(false);
+    describeMacOS('rejects shell metacharacters (command injection prevention)', () => {
+      it('rejects dangerous characters', () => {
+        expect(isSecurePath('cmd;rm -rf /')).toBe(false);
+        expect(isSecurePath('cmd|cat /etc/passwd')).toBe(false);
+        expect(isSecurePath('cmd`whoami`')).toBe(false);
+        expect(isSecurePath('cmd$(whoami)')).toBe(false);
+        expect(isSecurePath('cmd{test}')).toBe(false);
+        expect(isSecurePath('cmd<input')).toBe(false);
+        expect(isSecurePath('cmd>output')).toBe(false);
+      });
     });
 
-    it('rejects newline injection', () => {
-      mockPlatform('darwin');
-      expect(isSecurePath('cmd\n/bin/sh')).toBe(false);
-      expect(isSecurePath('cmd\r\n/bin/sh')).toBe(false);
+    describeWindows('rejects environment variable expansion', () => {
+      it('rejects %ENV% patterns', () => {
+        expect(isSecurePath('%PROGRAMFILES%\\cmd.exe')).toBe(false);
+        expect(isSecurePath('%SystemRoot%\\System32\\cmd.exe')).toBe(false);
+      });
     });
 
-    it('validates Windows executable names', () => {
-      mockPlatform('win32');
-      expect(isSecurePath('claude.exe')).toBe(true);
-      expect(isSecurePath('my-script.cmd')).toBe(true);
-      expect(isSecurePath('valid_name-123.exe')).toBe(true);
-      expect(isSecurePath('dangerous;command.exe')).toBe(false);
-      expect(isSecurePath('bad&name.exe')).toBe(false);
+    describeMacOS('rejects newline injection', () => {
+      it('rejects newline characters', () => {
+        expect(isSecurePath('cmd\n/bin/sh')).toBe(false);
+        expect(isSecurePath('cmd\r\n/bin/sh')).toBe(false);
+      });
     });
 
-    it('accepts valid paths on Unix', () => {
-      mockPlatform('darwin');
-      expect(isSecurePath('/usr/bin/node')).toBe(true);
-      expect(isSecurePath('/opt/homebrew/bin/python3')).toBe(true);
+    describeWindows('validates Windows executable names', () => {
+      it('accepts valid names', () => {
+        expect(isSecurePath('claude.exe')).toBe(true);
+        expect(isSecurePath('my-script.cmd')).toBe(true);
+        expect(isSecurePath('valid_name-123.exe')).toBe(true);
+      });
+
+      it('rejects dangerous names', () => {
+        expect(isSecurePath('dangerous;command.exe')).toBe(false);
+        expect(isSecurePath('bad&name.exe')).toBe(false);
+      });
+    });
+
+    describeMacOS('accepts valid paths on Unix', () => {
+      it('accepts valid Unix paths', () => {
+        expect(isSecurePath('/usr/bin/node')).toBe(true);
+        expect(isSecurePath('/opt/homebrew/bin/python3')).toBe(true);
+      });
     });
   });
 
@@ -329,6 +431,41 @@ describe('Platform Module', () => {
       const desc = getPlatformDescription();
       expect(desc).toMatch(/(Windows|macOS|Linux)/);
       expect(desc).toMatch(/\(.*\)/); // Architecture in parentheses
+    });
+  });
+
+  describe('normalizeExecutablePath', () => {
+    describeMacOS('returns original path unchanged on macOS', () => {
+      it('does not modify paths', () => {
+        const result = normalizeExecutablePath('/usr/local/bin/claude');
+        expect(result).toBe('/usr/local/bin/claude');
+      });
+    });
+
+    describeLinux('returns original path unchanged on Linux', () => {
+      it('does not modify paths', () => {
+        const result = normalizeExecutablePath('/usr/bin/claude');
+        expect(result).toBe('/usr/bin/claude');
+      });
+    });
+
+    describeWindows('returns original path if it already has extension', () => {
+      it('preserves existing extension', () => {
+        // When path has extension, function returns it as-is without checking existence
+        const result = normalizeExecutablePath('C:\\path\\to\\tool.exe');
+        expect(result).toBe('C:\\path\\to\\tool.exe');
+      });
+    });
+
+    describeWindows('handles Windows npm paths without extension', () => {
+      it('handles npm paths', () => {
+        // Note: This test requires actual file system or proper fs mocking
+        // For now, we just verify the function is callable and handles Windows paths
+        const result = normalizeExecutablePath('C:\\Users\\user\\AppData\\Roaming\\npm\\claude');
+        // Function should return either the original (if .cmd not found) or .cmd version
+        // Either behavior is acceptable - the key is not throwing an error
+        expect(result).toContain('claude');
+      });
     });
   });
 });

@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -940,7 +940,11 @@ class CLIToolManager {
           ? trimmedCmd.slice(1, -1)
           : trimmedCmd;
 
-      const needsShell = shouldUseShell(trimmedCmd);
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\...\npm\claude -> C:\...\npm\claude.cmd
+      const normalizedCmd = normalizeExecutablePath(unquotedCmd);
+
+      const needsShell = shouldUseShell(normalizedCmd);
       const cmdDir = path.dirname(unquotedCmd);
       const env = getAugmentedEnv(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
 
@@ -949,7 +953,7 @@ class CLIToolManager {
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (!isSecurePath(unquotedCmd)) {
+        if (!isSecurePath(normalizedCmd)) {
           return {
             valid: false,
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
@@ -957,7 +961,7 @@ class CLIToolManager {
         }
         const cmdExe = process.env.ComSpec
           || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-        const cmdLine = `""${unquotedCmd}" --version"`;
+        const cmdLine = `""${normalizedCmd}" --version"`;
         const execOptions: ExecFileSyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -971,7 +975,7 @@ class CLIToolManager {
       } else {
         // For .exe files and non-Windows, use execFileSync
         version = normalizeExecOutput(
-          execFileSync(unquotedCmd, ['--version'], {
+          execFileSync(normalizedCmd, ['--version'], {
             encoding: 'utf-8',
             timeout: 5000,
             windowsHide: true,
@@ -1079,7 +1083,11 @@ class CLIToolManager {
           ? trimmedCmd.slice(1, -1)
           : trimmedCmd;
 
-      const needsShell = shouldUseShell(trimmedCmd);
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\...\npm\claude -> C:\...\npm\claude.cmd
+      const normalizedCmd = normalizeExecutablePath(unquotedCmd);
+
+      const needsShell = shouldUseShell(normalizedCmd);
       const cmdDir = path.dirname(unquotedCmd);
       const env = await getAugmentedEnvAsync(cmdDir && cmdDir !== '.' ? [cmdDir] : []);
 
@@ -1088,7 +1096,7 @@ class CLIToolManager {
       if (needsShell) {
         // For .cmd/.bat files on Windows, use cmd.exe with a quoted command line
         // /s preserves quotes so paths with spaces are handled correctly.
-        if (!isSecurePath(unquotedCmd)) {
+        if (!isSecurePath(normalizedCmd)) {
           return {
             valid: false,
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
@@ -1096,7 +1104,7 @@ class CLIToolManager {
         }
         const cmdExe = process.env.ComSpec
           || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-        const cmdLine = `""${unquotedCmd}" --version"`;
+        const cmdLine = `""${normalizedCmd}" --version"`;
         const execOptions: ExecFileAsyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -1108,7 +1116,7 @@ class CLIToolManager {
         stdout = result.stdout;
       } else {
         // For .exe files and non-Windows, use execFileAsync
-        const result = await execFileAsync(unquotedCmd, ['--version'], {
+        const result = await execFileAsync(normalizedCmd, ['--version'], {
           encoding: 'utf-8',
           timeout: 5000,
           windowsHide: true,
