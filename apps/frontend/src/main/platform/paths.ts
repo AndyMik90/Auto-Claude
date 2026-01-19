@@ -11,6 +11,46 @@ import { existsSync, readdirSync } from 'fs';
 import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
 
 /**
+ * Sort NVM version directories by semantic version (newest first)
+ *
+ * Filters directory entries to only valid semver directories (e.g., v20.0.0)
+ * and sorts them in descending order so newer versions are tried first.
+ *
+ * @param entries - Directory entries from readdirSync with withFileTypes
+ * @returns Array of directory names sorted by version (newest first)
+ *
+ * @example
+ * const entries = [
+ *   { name: 'v18.0.0', isDirectory: () => true },
+ *   { name: 'v20.0.0', isDirectory: () => true },
+ *   { name: '.DS_Store', isDirectory: () => false },
+ * ];
+ * sortNvmVersionDirs(entries); // ['v20.0.0', 'v18.0.0']
+ */
+export function sortNvmVersionDirs(
+  entries: Array<{ name: string; isDirectory(): boolean }>
+): string[] {
+  // Regex to match valid semver directories: v20.0.0, v18.17.1, etc.
+  // This prevents NaN from malformed versions (e.g., v20.abc.1) breaking sort
+  const semverRegex = /^v\d+\.\d+\.\d+$/;
+
+  return entries
+    .filter((entry) => entry.isDirectory() && semverRegex.test(entry.name))
+    .sort((a, b) => {
+      // Parse version numbers: v20.0.0 -> [20, 0, 0]
+      const vA = a.name.slice(1).split('.').map(Number);
+      const vB = b.name.slice(1).split('.').map(Number);
+      // Compare major, minor, patch in order (descending)
+      for (let i = 0; i < 3; i++) {
+        const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+        if (diff !== 0) return diff;
+      }
+      return 0;
+    })
+    .map((entry) => entry.name);
+}
+
+/**
  * Resolve Claude CLI executable path
  *
  * Searches in platform-specific installation directories:
@@ -161,6 +201,87 @@ export function getNpmExecutablePath(): string {
     return 'npm.cmd';
   }
   return 'npm';
+}
+
+/**
+ * Find Node.js installation directories on Windows
+ *
+ * Returns array of potential Node.js bin directories where node.exe might be installed.
+ * This is needed because claude.cmd (npm global binary) requires node.exe to be in PATH.
+ *
+ * Search priority:
+ * 1. Program Files\nodejs (standard installer location)
+ * 2. %APPDATA%\npm (user-level npm globals - may contain node.exe with nvm-windows)
+ * 3. NVM for Windows installation directories
+ * 4. Scoop, Chocolatey installations
+ *
+ * @returns Array of existing Node.js bin directories
+ */
+export function findNodeJsDirectories(): string[] {
+  if (!isWindows()) {
+    return [];
+  }
+
+  const homeDir = os.homedir();
+  // Use environment variables only - no hardcoded fallbacks
+  const programFiles = process.env.ProgramFiles;
+  const programFilesX86 = process.env['ProgramFiles(x86)'];
+  const appData = process.env.APPDATA;
+  const programData = process.env.ProgramData;
+  // NVM for Windows custom installation paths
+  const nvmHome = process.env.NVM_HOME;
+  const nvmSymlink = process.env.NVM_SYMLINK;
+
+  const candidates: string[] = [];
+
+  // Standard Node.js installer location (only if env vars are set)
+  if (programFiles) {
+    candidates.push(joinPaths(programFiles, 'nodejs'));
+    candidates.push(joinPaths(programFiles, 'nvm'));
+  }
+  if (programFilesX86) {
+    candidates.push(joinPaths(programFilesX86, 'nodejs'));
+  }
+
+  // User-level npm global directory (may contain node.exe with nvm-windows)
+  if (appData) {
+    candidates.push(joinPaths(appData, 'npm'));
+    candidates.push(joinPaths(appData, 'nvm'));
+  }
+
+  // Scoop installation (uses home directory, always available)
+  candidates.push(joinPaths(homeDir, 'scoop', 'apps', 'nodejs', 'current'));
+
+  // Chocolatey installation
+  if (programData) {
+    candidates.push(joinPaths(programData, 'chocolatey', 'bin'));
+  }
+
+  // NVM for Windows: prefer NVM_SYMLINK (active version) and NVM_HOME (custom install path)
+  // Fall back to default APPDATA/nvm location if env vars not set
+  if (nvmSymlink) {
+    // NVM_SYMLINK points directly to the active Node.js version
+    candidates.push(nvmSymlink);
+  }
+
+  // Determine NVM root directory: prefer NVM_HOME, fall back to APPDATA/nvm
+  const nvmPath = nvmHome || (appData ? joinPaths(appData, 'nvm') : null);
+  if (nvmPath && existsSync(nvmPath)) {
+    try {
+      // Find all version directories (e.g., v20.0.0, v18.17.1)
+      const entries = readdirSync(nvmPath, { withFileTypes: true });
+      const versionNames = sortNvmVersionDirs(entries);
+      const versionDirs = versionNames.map((name) => joinPaths(nvmPath, name));
+
+      candidates.push(...versionDirs);
+    } catch (error) {
+      // Log error for debugging but don't fail - Node.js detection is non-critical
+      console.warn('[findNodeJsDirectories] Failed to read NVM directory:', error);
+    }
+  }
+
+  // Return only existing directories
+  return candidates.filter((dir) => existsSync(dir));
 }
 
 /**

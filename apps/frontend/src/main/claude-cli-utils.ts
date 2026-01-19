@@ -1,6 +1,7 @@
 import path from 'path';
 import { getAugmentedEnv, getAugmentedEnvAsync } from './env-utils';
 import { getToolPath, getToolPathAsync } from './cli-tool-manager';
+import { findNodeJsDirectories, isWindows, getPathDelimiter } from './platform';
 
 export type ClaudeCliInvocation = {
   command: string;
@@ -12,26 +13,53 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
     return env;
   }
 
-  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const pathSeparator = getPathDelimiter();
   const commandDir = path.dirname(command);
   const currentPath = env.PATH || '';
   const pathEntries = currentPath.split(pathSeparator);
-  const normalizedCommandDir = path.normalize(commandDir);
-  const hasCommandDir = process.platform === 'win32'
-    ? pathEntries
-      .map((entry) => path.normalize(entry).toLowerCase())
-      .includes(normalizedCommandDir.toLowerCase())
-    : pathEntries
-      .map((entry) => path.normalize(entry))
-      .includes(normalizedCommandDir);
 
-  if (hasCommandDir) {
+  // Create a Set for O(1) lookup instead of O(n) array includes
+  const normalizedPathSet = new Set(
+    isWindows()
+      ? pathEntries.map((entry) => path.normalize(entry).toLowerCase())
+      : pathEntries.map((entry) => path.normalize(entry))
+  );
+
+  const normalizedCommandDir = isWindows()
+    ? path.normalize(commandDir).toLowerCase()
+    : path.normalize(commandDir);
+
+  const hasCommandDir = normalizedPathSet.has(normalizedCommandDir);
+
+  // Collect directories to add
+  let dirsToAdd = hasCommandDir ? [] : [commandDir];
+
+  // On Windows, if running claude.cmd, also add Node.js directories to PATH
+  // This is needed because claude.cmd requires node.exe to execute
+  if (isWindows() && /\.cmd$/i.test(command)) {
+    const nodeDirs = findNodeJsDirectories();
+    dirsToAdd = [...dirsToAdd, ...nodeDirs];
+  }
+
+  if (dirsToAdd.length === 0) {
+    return env;
+  }
+
+  // Filter out directories already in PATH using the Set for O(1) lookups
+  const pathEntriesToAdd = dirsToAdd.filter((dir) => {
+    const normalizedDir = isWindows()
+      ? path.normalize(dir).toLowerCase()
+      : path.normalize(dir);
+    return !normalizedPathSet.has(normalizedDir);
+  });
+
+  if (pathEntriesToAdd.length === 0) {
     return env;
   }
 
   return {
     ...env,
-    PATH: [commandDir, currentPath].filter(Boolean).join(pathSeparator),
+    PATH: [...pathEntriesToAdd, currentPath].filter(Boolean).join(pathSeparator),
   };
 }
 
