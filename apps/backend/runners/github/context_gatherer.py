@@ -1285,7 +1285,7 @@ class FollowupContextGatherer:
             diff_since_review=diff_since_review,
             contributor_comments_since_review=contributor_comments
             + contributor_reviews,
-            ai_bot_comments_since_review=ai_comments,
+            ai_bot_comments_since_review=ai_comments + ai_reviews,
             pr_reviews_since_review=pr_reviews,
             has_merge_conflicts=has_merge_conflicts,
             merge_state_status=merge_state_status,
