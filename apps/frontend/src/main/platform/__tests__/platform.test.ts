@@ -474,8 +474,9 @@ describe('Platform Module', () => {
 
     describeWindows('normalizeExecutablePath on Windows', () => {
       beforeEach(() => {
-        // Reset mock before each test - use real fs by default
-        mockedExistsSync.mockImplementation(fs.existsSync);
+        // Reset mock before each test; default to "not found"
+        mockedExistsSync.mockReset();
+        mockedExistsSync.mockReturnValue(false);
       });
 
       it('resolves .cmd extension when file exists and original does not', () => {
