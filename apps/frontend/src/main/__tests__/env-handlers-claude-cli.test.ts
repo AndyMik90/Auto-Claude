@@ -42,7 +42,7 @@ vi.mock('../project-store', () => ({
 }));
 
 vi.mock('child_process', () => {
-  const mockExecFile = vi.fn((cmd: any, args: any, options: any, callback: any) => {
+  const mockExecFile = vi.fn((_cmd: any, _args: any, _options: any, callback: any) => {
     // Return a minimal ChildProcess-like object
     const childProcess = {
       stdout: { on: vi.fn() },
