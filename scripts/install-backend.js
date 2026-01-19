@@ -104,7 +104,7 @@ function findPython() {
 async function main() {
   // Check for Python 3.12 or 3.13
   const python = findPython();
-  if (!python) {
+  if (!pythonDetails) {
     console.error('\nError: Python 3.12 or 3.13 is required but not found.');
     console.error('Note: Python 3.14 is not supported yet (real-ladybug lacks pre-built wheels).');
     console.error('\nPlease install Python 3.12 or 3.13:');
