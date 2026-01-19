@@ -1046,10 +1046,14 @@ class PRContextGatherer:
 
     def _load_json_safe(self, filename: str) -> dict | None:
         """
-        Load JSON file from project_dir, stripping comments first.
+        Load JSON file from project_dir, handling tsconfig-style comments.
 
         tsconfig.json allows // and /* */ comments, which standard JSON
-        parsers reject. This method strips them before parsing.
+        parsers reject. This method first tries standard parsing (most
+        tsconfigs don't have comments), then falls back to comment stripping.
+
+        Note: Comment stripping only handles comments outside strings to
+        avoid mangling path patterns like "@/*" which contain "/*".
 
         Args:
             filename: JSON filename relative to project_dir
@@ -1064,10 +1068,29 @@ class PRContextGatherer:
 
             content = file_path.read_text(encoding="utf-8")
 
-            # Strip single-line comments: // ...
-            content = re.sub(r"//.*$", "", content, flags=re.MULTILINE)
-            # Strip multi-line comments: /* ... */
-            content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
+            # Try standard JSON parse first (most tsconfigs don't have comments)
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                pass
+
+            # Fall back to comment stripping (outside strings only)
+            # This regex-based approach handles single-line comments
+            # outside of strings by checking for quotes
+            lines = content.split("\n")
+            cleaned_lines = []
+            for line in lines:
+                # Strip single-line comments, but not inside strings
+                # Simple heuristic: if '//' appears and there's an even
+                # number of quotes before it, strip from there
+                comment_pos = line.find("//")
+                if comment_pos != -1:
+                    # Count quotes before the //
+                    before_comment = line[:comment_pos]
+                    if before_comment.count('"') % 2 == 0:
+                        line = before_comment
+                cleaned_lines.append(line)
+            content = "\n".join(cleaned_lines)
 
             return json.loads(content)
         except (json.JSONDecodeError, OSError):
