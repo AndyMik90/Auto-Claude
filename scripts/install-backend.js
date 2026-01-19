@@ -55,8 +55,8 @@ function installUv() {
       return false;
     }
   } else {
-    // Use curl installer on Unix
-    if (!run('curl -LsSf https://astral.sh/uv/install.sh | sh', { cwd: process.cwd(), shell: '/bin/bash' })) {
+    // Use curl installer on Unix (let execSync use default shell)
+    if (!run('curl -LsSf https://astral.sh/uv/install.sh | sh', { cwd: process.cwd() })) {
       console.error('Failed to install uv');
       return false;
     }
@@ -90,7 +90,6 @@ function findPython() {
             console.log(`Found Python ${major}.${minor}: ${cmd} -> ${result.stdout.trim()}`);
             return { command: cmd, version: `${major}.${minor}` };
           }
-          }
         }
       }
     } catch (e) {
@@ -100,10 +99,23 @@ function findPython() {
   return null;
 }
 
+// Get pip path based on platform
+function getPipPath() {
+  return isWindows
+    ? path.join(venvDir, 'Scripts', 'pip.exe')
+    : path.join(venvDir, 'bin', 'pip');
+}
+
+// Install requirements using pip (helper to reduce duplication)
+function installWithPip(requirementsFile) {
+  const pip = getPipPath();
+  return run(`"${pip}" install -r ${requirementsFile}`);
+}
+
 // Main installation
 async function main() {
   // Check for Python 3.12 or 3.13
-  const python = findPython();
+  const pythonDetails = findPython();
   if (!pythonDetails) {
     console.error('\nError: Python 3.12 or 3.13 is required but not found.');
     console.error('Note: Python 3.14 is not supported yet (real-ladybug lacks pre-built wheels).');
@@ -126,12 +138,18 @@ async function main() {
   if (!hasUv) {
     console.log('\nuv not found. Installing it for faster dependency installation (10-100x faster than pip)...');
 
-    // Auto-install uv (it's the recommended approach)
-    if (!installUv()) {
+    if (installUv()) {
+      // Verify uv is actually available after installation
+      // The installer may update PATH only for new shells
+      if (checkUv()) {
+        hasUv = true;
+      } else {
+        console.warn('\nuv was installed but is not available in the current shell.');
+        console.warn('Falling back to pip. Restart your terminal to use uv in future runs.');
+      }
+    } else {
       console.error('\nFailed to install uv. Falling back to pip...');
       console.error('You can manually install uv later: https://docs.astral.sh/uv/getting-started/installation/');
-    } else {
-      hasUv = true;
     }
   }
 
@@ -151,7 +169,7 @@ async function main() {
     }
   } else {
     // Fallback to standard venv
-    if (!run(`${python} -m venv .venv`)) {
+    if (!run(`${pythonDetails.command} -m venv .venv`)) {
       console.error('Failed to create virtual environment');
       process.exit(1);
     }
@@ -167,10 +185,7 @@ async function main() {
     }
   } else {
     // Fallback to pip
-    const pip = isWindows
-      ? path.join(venvDir, 'Scripts', 'pip.exe')
-      : path.join(venvDir, 'bin', 'pip');
-    if (!run(`"${pip}" install -r requirements.txt`)) {
+    if (!installWithPip('requirements.txt')) {
       console.error('Failed to install dependencies');
       process.exit(1);
     }
@@ -184,10 +199,7 @@ async function main() {
       process.exit(1);
     }
   } else {
-    const pip = isWindows
-      ? path.join(venvDir, 'Scripts', 'pip.exe')
-      : path.join(venvDir, 'bin', 'pip');
-    if (!run(`"${pip}" install -r ../../tests/requirements-test.txt`)) {
+    if (!installWithPip('../../tests/requirements-test.txt')) {
       console.error('Failed to install test dependencies');
       process.exit(1);
     }
