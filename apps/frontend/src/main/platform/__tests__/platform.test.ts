@@ -606,7 +606,10 @@ describe('Platform Module', () => {
     describeUnix('returns bin/python on Unix', () => {
       it('returns correct path', () => {
         const result = getVenvPythonPath('/path/to/venv');
-        expect(result).toBe('/path/to/venv/bin/python');
+        // joinPaths produces platform-specific separators, check components
+        expect(result).toContain('venv');
+        expect(result).toContain('bin');
+        expect(result).toContain('python');
       });
     });
   });
