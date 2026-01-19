@@ -471,8 +471,6 @@ export function registerSettingsHandlers(
           };
         }
 
-        const platform = getCurrentOS();
-
         if (isMacOS()) {
           // macOS: Use execFileSync with argument array to prevent injection
           execFileSync('open', ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });

@@ -10,6 +10,7 @@ import type { IPCResult } from '../../../shared/types';
 import { getAugmentedEnv, findExecutable } from '../../env-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { openTerminalWithCommand } from '../claude-code-handlers';
+import { isMacOS, isWindows } from '../../platform';
 import type { GitLabAuthStartResult } from './types';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
@@ -130,13 +131,12 @@ export function registerInstallGlabCli(): void {
     async (): Promise<IPCResult<{ command: string }>> => {
       debugLog('installGitLabCli handler called');
       try {
-        const platform = process.platform;
         let command: string;
 
-        if (platform === 'darwin') {
+        if (isMacOS()) {
           // macOS: Use Homebrew
           command = 'brew install glab';
-        } else if (platform === 'win32') {
+        } else if (isWindows()) {
           // Windows: Use winget
           command = 'winget install --id GitLab.glab';
         } else {
