@@ -24,6 +24,10 @@ function run(cmd, options = {}) {
     execSync(cmd, { stdio: 'inherit', cwd: backendDir, ...options });
     return true;
   } catch (error) {
+    // Log error details for debugging
+    if (error.message) {
+      console.error(`Command failed: ${error.message}`);
+    }
     return false;
   }
 }
@@ -82,12 +86,14 @@ function findPython() {
       });
       // Accept Python 3.12 or 3.13 only (3.14+ lacks pre-built wheels for real-ladybug)
       if (result.status === 0) {
-        const versionMatch = result.stdout.match(/Python (\d+)\.(\d+)/);
+        // Check both stdout and stderr - some Windows Python installations output to stderr
+        const output = (result.stdout || '') + (result.stderr || '');
+        const versionMatch = output.match(/Python (\d+)\.(\d+)/);
         if (versionMatch) {
           const major = parseInt(versionMatch[1], 10);
           const minor = parseInt(versionMatch[2], 10);
           if (major === 3 && (minor === 12 || minor === 13)) {
-            console.log(`Found Python ${major}.${minor}: ${cmd} -> ${result.stdout.trim()}`);
+            console.log(`Found Python ${major}.${minor}: ${cmd} -> ${output.trim()}`);
             return { command: cmd, version: `${major}.${minor}` };
           }
         }
@@ -164,8 +170,13 @@ async function main() {
   if (hasUv) {
     // Use uv to create venv (faster and handles Python version automatically)
     if (!run(`uv venv --python ${pythonDetails.version}`)) {
-      console.error('Failed to create virtual environment with uv');
-      process.exit(1);
+      console.warn('Failed to create virtual environment with uv, falling back to standard venv...');
+      hasUv = false;
+      // Fallback to standard venv
+      if (!run(`${pythonDetails.command} -m venv .venv`)) {
+        console.error('Failed to create virtual environment');
+        process.exit(1);
+      }
     }
   } else {
     // Fallback to standard venv
