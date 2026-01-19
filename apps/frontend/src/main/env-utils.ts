@@ -80,7 +80,16 @@ function getNpmGlobalPrefix(): string | null {
     const normalizedPath = path.normalize(binPath);
 
     return fs.existsSync(normalizedPath) ? normalizedPath : null;
-  } catch {
+  } catch (error) {
+    // Fallback for Windows: try default npm global location when npm.cmd is not in PATH
+    // This happens when the packaged app launches from GUI without full shell environment
+    if (isWindows()) {
+      const defaultNpmPath = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+      if (fs.existsSync(defaultNpmPath)) {
+        console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
+        return defaultNpmPath;
+      }
+    }
     return null;
   }
 }
@@ -345,6 +354,16 @@ async function getNpmGlobalPrefixAsync(): Promise<string | null> {
       npmGlobalPrefixCache = await existsAsync(normalizedPath) ? normalizedPath : null;
       return npmGlobalPrefixCache;
     } catch (error) {
+      // Fallback for Windows: try default npm global location when npm.cmd is not in PATH
+      // This happens when the packaged app launches from GUI without full shell environment
+      if (isWindows()) {
+        const defaultNpmPath = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+        if (await existsAsync(defaultNpmPath)) {
+          console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
+          npmGlobalPrefixCache = defaultNpmPath;
+          return defaultNpmPath;
+        }
+      }
       console.warn(`[env-utils] Failed to get npm global prefix: ${error}`);
       npmGlobalPrefixCache = null;
       return null;
