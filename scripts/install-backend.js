@@ -88,7 +88,8 @@ function findPython() {
           const minor = parseInt(versionMatch[2], 10);
           if (major === 3 && (minor === 12 || minor === 13)) {
             console.log(`Found Python ${major}.${minor}: ${cmd} -> ${result.stdout.trim()}`);
-            return cmd;
+            return { command: cmd, version: `${major}.${minor}` };
+          }
           }
         }
       }
