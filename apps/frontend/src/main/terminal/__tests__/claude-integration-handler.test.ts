@@ -77,6 +77,12 @@ vi.mock('../session-handler', () => ({
   releaseSessionId: mockReleaseSessionId,
 }));
 
+// Mock PtyManager.writeToPty - the implementation now uses this instead of terminal.pty.write
+const mockWriteToPty = vi.fn();
+vi.mock('../pty-manager', () => ({
+  writeToPty: mockWriteToPty,
+}));
+
 vi.mock('os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('os')>();
   return {
@@ -199,6 +205,7 @@ describe('claude-integration-handler', () => {
     mockGetClaudeProfileManager.mockClear();
     mockPersistSession.mockClear();
     mockReleaseSessionId.mockClear();
+    mockWriteToPty.mockClear();
     vi.mocked(writeFileSync).mockClear();
   });
 
@@ -225,7 +232,7 @@ describe('claude-integration-handler', () => {
       const { invokeClaude } = await import('../claude-integration-handler');
       invokeClaude(terminal, '/tmp/project', undefined, () => null, vi.fn());
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       expect(written).toContain(buildCdCommand('/tmp/project'));
       expect(written).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
       expect(written).toContain(getQuotedCommand(platform, "/opt/claude bin/claude's"));
@@ -268,7 +275,7 @@ describe('claude-integration-handler', () => {
       expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
       expect(tokenContents).toBe(getTokenFileContent(platform, 'token-value'));
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       const clearCmd = getClearCommand(platform);
       const histPrefix = getHistoryPrefix(platform);
       const cmdQuote = platform === 'win32' ? '"' : "'";
@@ -318,7 +325,7 @@ describe('claude-integration-handler', () => {
       expect(tokenPath).toMatch(new RegExp(`^${escapeForRegex(tokenPrefix)}[0-9a-f]{16}${escapeForRegex(tokenExt)}$`));
       expect(tokenContents).toBe(getTokenFileContent(platform, 'token-value'));
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       expect(written).toContain(getTempFileInvocation(platform, tokenPath));
       expect(written).toContain(getTempFileCleanup(platform, tokenPath));
       expect(written).toContain(getQuotedCommand(platform, command));
@@ -350,7 +357,7 @@ describe('claude-integration-handler', () => {
       const { invokeClaude } = await import('../claude-integration-handler');
       invokeClaude(terminal, '/tmp/project', 'missing', () => null, vi.fn());
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       expect(written).toContain(getQuotedCommand(platform, command));
       expect(profileManager.getProfile).toHaveBeenCalledWith('missing');
       expect(profileManager.markProfileUsed).not.toHaveBeenCalled();
@@ -381,7 +388,7 @@ describe('claude-integration-handler', () => {
       const { invokeClaude } = await import('../claude-integration-handler');
       invokeClaude(terminal, '/tmp/project', 'prof-2', () => null, vi.fn());
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       const clearCmd = getClearCommand(platform);
       const histPrefix = getHistoryPrefix(platform);
       const configDir = getConfigDirCommand(platform, '/tmp/claude-config');
@@ -420,7 +427,7 @@ describe('claude-integration-handler', () => {
       const { invokeClaude } = await import('../claude-integration-handler');
       invokeClaude(terminal, '/tmp/project', 'prof-3', () => null, vi.fn());
 
-      const written = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const written = mockWriteToPty.mock.calls[0][1] as string;
       expect(written).toContain(getQuotedCommand(platform, command));
       expect(written).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
       expect(profileManager.getProfile).toHaveBeenCalledWith('prof-3');
@@ -445,7 +452,7 @@ describe('claude-integration-handler', () => {
       // Even when sessionId is passed, it should be ignored and --continue used
       resumeClaude(terminal, 'abc123', () => null);
 
-      const resumeCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const resumeCall = mockWriteToPty.mock.calls[0][1] as string;
       expect(resumeCall).toContain(getPathPrefixExpectation(platform, '/opt/claude/bin:/usr/bin'));
       expect(resumeCall).toContain(getQuotedCommand(platform, '/opt/claude/bin/claude') + ' --continue');
       expect(resumeCall).not.toContain('--resume');
@@ -454,12 +461,12 @@ describe('claude-integration-handler', () => {
       expect(terminal.isClaudeMode).toBe(true);
       expect(mockPersistSession).toHaveBeenCalledWith(terminal);
 
-      vi.mocked(terminal.pty.write).mockClear();
+      mockWriteToPty.mockClear();
       mockPersistSession.mockClear();
       terminal.projectPath = undefined;
       terminal.isClaudeMode = false;
       resumeClaude(terminal, undefined, () => null);
-      const continueCall = vi.mocked(terminal.pty.write).mock.calls[0][0] as string;
+      const continueCall = mockWriteToPty.mock.calls[0][1] as string;
       expect(continueCall).toContain(getQuotedCommand(platform, '/opt/claude/bin/claude') + ' --continue');
       expect(terminal.isClaudeMode).toBe(true);
       expect(terminal.claudeSessionId).toBeUndefined();
@@ -484,7 +491,7 @@ describe('claude-integration-handler', () => {
     const { invokeClaude } = await import('../claude-integration-handler');
     expect(() => invokeClaude(terminal, '/tmp/project', undefined, () => null, vi.fn())).toThrow('boom');
     expect(mockReleaseSessionId).toHaveBeenCalledWith('term-err');
-    expect(terminal.pty.write).not.toHaveBeenCalled();
+    expect(mockWriteToPty).not.toHaveBeenCalled();
   });
 
   it('throws when resumeClaude cannot resolve the CLI invocation', async () => {
@@ -500,7 +507,7 @@ describe('claude-integration-handler', () => {
 
     const { resumeClaude } = await import('../claude-integration-handler');
     expect(() => resumeClaude(terminal, 'abc123', () => null)).toThrow('boom');
-    expect(terminal.pty.write).not.toHaveBeenCalled();
+    expect(mockWriteToPty).not.toHaveBeenCalled();
   });
 
   it('throws when writing the OAuth token temp file fails', async () => {
@@ -528,7 +535,7 @@ describe('claude-integration-handler', () => {
 
     const { invokeClaude } = await import('../claude-integration-handler');
     expect(() => invokeClaude(terminal, '/tmp/project', 'prof-err', () => null, vi.fn())).toThrow('disk full');
-    expect(terminal.pty.write).not.toHaveBeenCalled();
+    expect(mockWriteToPty).not.toHaveBeenCalled();
   });
 });
 
