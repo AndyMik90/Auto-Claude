@@ -25,7 +25,9 @@ from core.platform import (
     get_binary_directories,
     get_homebrew_path,
     get_claude_detection_paths,
+    get_claude_detection_paths_structured,
     get_python_commands,
+    find_executable,
     validate_cli_path,
     requires_shell,
     build_windows_command,
@@ -190,6 +192,30 @@ class TestClaudeDetectionPaths:
         assert any('.local' in p for p in paths)
         assert not any(p.endswith('.exe') for p in paths)
 
+    @patch('core.platform.is_macos', return_value=True)
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('core.platform.get_homebrew_path', return_value='/opt/homebrew/bin')
+    @patch('pathlib.Path.home', return_value=Path('/Users/testuser'))
+    def test_macos_claude_detection_paths_include_homebrew(self, mock_home, mock_brew, mock_is_windows, mock_is_macos):
+        """macOS Claude detection should include Homebrew paths."""
+        paths = get_claude_detection_paths()
+
+        assert any('/opt/homebrew/bin/claude' in p for p in paths)
+        assert any('.local' in p for p in paths)
+        assert not any(p.endswith('.exe') for p in paths)
+
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('pathlib.Path.home', return_value=Path('/home/linuxuser'))
+    def test_linux_claude_detection_paths(self, mock_home, mock_is_windows, mock_is_macos):
+        """Linux Claude detection should use standard Unix paths."""
+        paths = get_claude_detection_paths()
+
+        assert any('.local/bin/claude' in p for p in paths)
+        assert any('/home/linuxuser/bin/claude' in p for p in paths)
+        # Homebrew path should NOT be in Linux paths (only macOS)
+        assert not any('/opt/homebrew' in p for p in paths)
+
 
 class TestPythonCommands:
     """Tests for Python command variations."""
@@ -206,6 +232,271 @@ class TestPythonCommands:
         commands = get_python_commands()
         # Commands are now returned as argument sequences
         assert commands[0] == ["python3"]
+
+
+# ============================================================================
+# CLI Detection Tests - Cross-Platform
+# ============================================================================
+
+class TestClaudeDetectionPathsStructured:
+    """Tests for structured Claude CLI path detection."""
+
+    @patch('core.platform.is_windows', return_value=True)
+    @patch('pathlib.Path.home', return_value=Path('/home/user'))
+    def test_windows_structured_claude_detection(self, mock_home, mock_is_windows):
+        """Windows should return .exe paths in platform key."""
+        result = get_claude_detection_paths_structured()
+
+        assert 'homebrew' in result
+        assert 'platform' in result
+        assert 'nvm_versions_dir' in result
+
+        # Platform paths should include Windows-specific locations
+        platform_paths = result['platform']
+        assert any('AppData' in p for p in platform_paths)
+        assert any('.exe' in p for p in platform_paths)
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('pathlib.Path.home', return_value=Path('/home/user'))
+    def test_unix_structured_claude_detection(self, mock_home, mock_is_windows):
+        """Unix should return non-.exe paths and Homebrew paths."""
+        result = get_claude_detection_paths_structured()
+
+        assert 'homebrew' in result
+        assert 'platform' in result
+        assert 'nvm_versions_dir' in result
+
+        # Homebrew paths should be present for macOS compatibility
+        homebrew_paths = result['homebrew']
+        assert '/opt/homebrew/bin/claude' in homebrew_paths
+        assert '/usr/local/bin/claude' in homebrew_paths
+
+        # Platform paths should not include .exe
+        platform_paths = result['platform']
+        assert not any('.exe' in p for p in platform_paths)
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('pathlib.Path.home', return_value=Path('/home/testuser'))
+    def test_nvm_versions_directory_path(self, mock_home, mock_is_windows):
+        """NVM versions directory should be in user home."""
+        result = get_claude_detection_paths_structured()
+
+        nvm_dir = result['nvm_versions_dir']
+        assert '.nvm/versions/node' in nvm_dir
+        assert 'testuser' in nvm_dir
+
+
+class TestFindExecutableCli:
+    """Tests for find_executable function across platforms."""
+
+    @patch('core.platform.is_windows', return_value=True)
+    @patch('shutil.which', return_value=None)
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.path.isfile')
+    @patch('pathlib.Path.home', return_value=Path('C:/Users/testuser'))
+    def test_windows_cli_detection_checks_exe_extensions(
+        self, mock_home, mock_isfile, mock_isdir, mock_which, mock_is_windows
+    ):
+        """Windows should check for .exe, .cmd, .bat extensions."""
+        # Simulate finding node.exe in system directory
+        def isfile_side_effect(path):
+            return 'node.exe' in path and 'Program Files' in path
+
+        mock_isfile.side_effect = isfile_side_effect
+
+        result = find_executable('node')
+
+        # Should have tried to find with extension
+        assert mock_isfile.called
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value='/usr/bin/node')
+    def test_unix_cli_detection_uses_which(self, mock_which, mock_is_windows):
+        """Unix should use shutil.which first."""
+        result = find_executable('node')
+
+        assert result == '/usr/bin/node'
+        mock_which.assert_called_with('node')
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value=None)
+    @patch('core.platform.is_macos', return_value=True)
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.path.isfile')
+    @patch('pathlib.Path.home', return_value=Path('/Users/testuser'))
+    def test_macos_cli_detection_searches_homebrew(
+        self, mock_home, mock_isfile, mock_isdir, mock_is_macos, mock_which, mock_is_windows
+    ):
+        """macOS should search Homebrew directories."""
+        def isfile_side_effect(path):
+            return path == '/opt/homebrew/bin/python3'
+
+        mock_isfile.side_effect = isfile_side_effect
+
+        result = find_executable('python3')
+
+        # Should find in Homebrew path
+        assert result == '/opt/homebrew/bin/python3'
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value=None)
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.path.isfile')
+    @patch('pathlib.Path.home', return_value=Path('/home/testuser'))
+    def test_linux_cli_detection_searches_standard_paths(
+        self, mock_home, mock_isfile, mock_isdir, mock_is_macos, mock_which, mock_is_windows
+    ):
+        """Linux should search standard Unix paths."""
+        def isfile_side_effect(path):
+            return path == '/usr/bin/python3'
+
+        mock_isfile.side_effect = isfile_side_effect
+
+        result = find_executable('python3')
+
+        assert result == '/usr/bin/python3'
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value=None)
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('os.path.isdir', return_value=False)
+    @patch('os.path.isfile', return_value=False)
+    @patch('pathlib.Path.home', return_value=Path('/home/testuser'))
+    def test_cli_detection_returns_none_when_not_found(
+        self, mock_home, mock_isfile, mock_isdir, mock_is_macos, mock_which, mock_is_windows
+    ):
+        """Should return None when executable not found anywhere."""
+        result = find_executable('nonexistent-cli')
+
+        assert result is None
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value=None)
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.path.isfile')
+    @patch('pathlib.Path.home', return_value=Path('/home/testuser'))
+    def test_cli_detection_uses_additional_paths(
+        self, mock_home, mock_isfile, mock_isdir, mock_is_macos, mock_which, mock_is_windows
+    ):
+        """Should search in additional_paths when provided."""
+        def isfile_side_effect(path):
+            return path == '/custom/path/mycli'
+
+        mock_isfile.side_effect = isfile_side_effect
+
+        result = find_executable('mycli', additional_paths=['/custom/path'])
+
+        assert result == '/custom/path/mycli'
+
+
+class TestNodeCliDetection:
+    """Tests for Node.js CLI detection patterns across platforms."""
+
+    @patch('core.platform.is_windows', return_value=True)
+    @patch('shutil.which', return_value='C:\\Program Files\\nodejs\\node.exe')
+    def test_windows_node_detection_via_which(self, mock_which, mock_is_windows):
+        """Windows Node detection should work via PATH."""
+        result = find_executable('node')
+
+        assert result == 'C:\\Program Files\\nodejs\\node.exe'
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value='/usr/local/bin/node')
+    def test_macos_node_detection_via_which(self, mock_which, mock_is_windows):
+        """macOS Node detection should work via PATH."""
+        result = find_executable('node')
+
+        assert result == '/usr/local/bin/node'
+
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('shutil.which', return_value='/usr/bin/node')
+    def test_linux_node_detection_via_which(self, mock_which, mock_is_windows):
+        """Linux Node detection should work via PATH."""
+        result = find_executable('node')
+
+        assert result == '/usr/bin/node'
+
+
+class TestPythonCliDetection:
+    """Tests for Python CLI detection patterns across platforms."""
+
+    @patch('core.platform.is_windows', return_value=True)
+    def test_windows_python_detection_prefers_py_launcher(self, mock_is_windows):
+        """Windows should prefer py launcher."""
+        commands = get_python_commands()
+
+        # First command should be py launcher
+        assert commands[0] == ["py", "-3"]
+
+    @patch('core.platform.is_windows', return_value=False)
+    def test_unix_python_detection_prefers_python3(self, mock_is_windows):
+        """Unix should prefer python3."""
+        commands = get_python_commands()
+
+        assert commands[0] == ["python3"]
+        assert ["python"] in commands
+
+    @patch('core.platform.is_windows', return_value=True)
+    def test_windows_python_detection_includes_fallbacks(self, mock_is_windows):
+        """Windows should have fallback commands."""
+        commands = get_python_commands()
+
+        # Should have multiple options
+        assert len(commands) >= 3
+        assert ["python3"] in commands
+        assert ["py"] in commands
+
+
+class TestClaudeCliDetectionCrossPlatform:
+    """Tests for Claude CLI detection specifically across all platforms."""
+
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('core.platform.is_windows', return_value=True)
+    @patch('pathlib.Path.home', return_value=Path('C:/Users/testuser'))
+    def test_windows_claude_cli_detection_paths(self, mock_home, mock_is_windows, mock_is_macos):
+        """Windows Claude paths should include standard installation locations."""
+        paths = get_claude_detection_paths()
+
+        # Should include AppData location (npm global)
+        assert any('AppData\\Roaming\\npm\\claude.cmd' in p.replace('/', '\\') for p in paths)
+        # Should include Program Files
+        assert any('Program Files' in p for p in paths)
+        # All Windows paths should use .exe or .cmd
+        windows_executables = [p for p in paths if 'Program Files' in p or 'AppData' in p]
+        assert all(p.endswith('.exe') or p.endswith('.cmd') for p in windows_executables if p)
+
+    @patch('core.platform.is_macos', return_value=True)
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('core.platform.get_homebrew_path', return_value='/opt/homebrew/bin')
+    @patch('pathlib.Path.home', return_value=Path('/Users/testuser'))
+    def test_macos_claude_cli_detection_paths(self, mock_home, mock_brew, mock_is_windows, mock_is_macos):
+        """macOS Claude paths should include Homebrew."""
+        paths = get_claude_detection_paths()
+
+        # Should include Homebrew path
+        assert '/opt/homebrew/bin/claude' in paths
+        # Should include user local bin
+        assert any('.local/bin/claude' in p for p in paths)
+        # No .exe extensions
+        assert not any(p.endswith('.exe') for p in paths)
+
+    @patch('core.platform.is_macos', return_value=False)
+    @patch('core.platform.is_windows', return_value=False)
+    @patch('pathlib.Path.home', return_value=Path('/home/testuser'))
+    def test_linux_claude_cli_detection_paths(self, mock_home, mock_is_windows, mock_is_macos):
+        """Linux Claude paths should use standard Unix locations."""
+        paths = get_claude_detection_paths()
+
+        # Should include local bin
+        assert any('.local/bin/claude' in p for p in paths)
+        # Should include user bin
+        assert any('/home/testuser/bin/claude' in p for p in paths)
+        # No Homebrew paths (only macOS)
+        assert not any('/opt/homebrew' in p for p in paths)
+        # No .exe extensions
+        assert not any(p.endswith('.exe') for p in paths)
 
 
 # ============================================================================
