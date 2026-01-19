@@ -228,6 +228,9 @@ export function findNodeJsDirectories(): string[] {
   const programFilesX86 = process.env['ProgramFiles(x86)'];
   const appData = process.env.APPDATA;
   const programData = process.env.ProgramData;
+  // NVM for Windows custom installation paths
+  const nvmHome = process.env.NVM_HOME;
+  const nvmSymlink = process.env.NVM_SYMLINK;
 
   const candidates: string[] = [];
 
@@ -254,8 +257,15 @@ export function findNodeJsDirectories(): string[] {
     candidates.push(joinPaths(programData, 'chocolatey', 'bin'));
   }
 
-  // For NVM, we need to find the active Node.js version directory
-  const nvmPath = appData ? joinPaths(appData, 'nvm') : null;
+  // NVM for Windows: prefer NVM_SYMLINK (active version) and NVM_HOME (custom install path)
+  // Fall back to default APPDATA/nvm location if env vars not set
+  if (nvmSymlink) {
+    // NVM_SYMLINK points directly to the active Node.js version
+    candidates.push(nvmSymlink);
+  }
+
+  // Determine NVM root directory: prefer NVM_HOME, fall back to APPDATA/nvm
+  const nvmPath = nvmHome || (appData ? joinPaths(appData, 'nvm') : null);
   if (nvmPath && existsSync(nvmPath)) {
     try {
       // Find all version directories (e.g., v20.0.0, v18.17.1)
