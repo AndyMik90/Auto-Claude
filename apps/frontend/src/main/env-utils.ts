@@ -16,9 +16,24 @@ import { promises as fsPromises } from 'fs';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import { getSentryEnvForSubprocess } from './sentry';
-import { isWindows, isUnix, getPathDelimiter } from './platform';
+import { isWindows, isUnix, getPathDelimiter, getNpmCommand } from './platform';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Windows npm global fallback path
+ *
+ * On Windows, npm global packages are installed in %APPDATA%\npm by default.
+ * This constant provides the fallback path construction for when the npm
+ * command itself is not in PATH (e.g., packaged Electron apps launched from GUI).
+ *
+ * Uses process.env.APPDATA for enterprise environments with redirected profiles,
+ * falling back to the default home directory location.
+ */
+const WINDOWS_NPM_FALLBACK_PATH = (): string => {
+  const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  return path.join(appDataPath, 'npm');
+};
 
 /**
  * Check if a path exists asynchronously (non-blocking)
@@ -54,8 +69,8 @@ let npmGlobalPrefixCachePromise: Promise<string | null> | null = null;
  */
 function getNpmGlobalPrefix(): string | null {
   try {
-    // On Windows, use npm.cmd for proper command resolution
-    const npmCommand = isWindows() ? 'npm.cmd' : 'npm';
+    // Use platform module helper for npm command name
+    const npmCommand = getNpmCommand();
 
     // Use --location=global to bypass workspace context and avoid ENOWORKSPACES error
     const rawPrefix = execFileSync(npmCommand, ['config', 'get', 'prefix', '--location=global'], {
@@ -84,10 +99,7 @@ function getNpmGlobalPrefix(): string | null {
     // Fallback for Windows: try default npm global location when npm.cmd is not in PATH
     // This happens when the packaged app launches from GUI without full shell environment
     if (isWindows()) {
-      // Use APPDATA env var if available (more robust for localized/custom installations)
-      // Matches pattern from platform/paths.ts
-      const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-      const defaultNpmPath = path.join(appDataPath, 'npm');
+      const defaultNpmPath = WINDOWS_NPM_FALLBACK_PATH();
       if (fs.existsSync(defaultNpmPath)) {
         console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
         return defaultNpmPath;
@@ -333,7 +345,8 @@ async function getNpmGlobalPrefixAsync(): Promise<string | null> {
   // Start the async fetch
   npmGlobalPrefixCachePromise = (async () => {
     try {
-      const npmCommand = isWindows() ? 'npm.cmd' : 'npm';
+      // Use platform module helper for npm command name
+      const npmCommand = getNpmCommand();
 
       const { stdout } = await execFileAsync(npmCommand, ['config', 'get', 'prefix', '--location=global'], {
         encoding: 'utf-8',
@@ -360,10 +373,7 @@ async function getNpmGlobalPrefixAsync(): Promise<string | null> {
       // Fallback for Windows: try default npm global location when npm.cmd is not in PATH
       // This happens when the packaged app launches from GUI without full shell environment
       if (isWindows()) {
-        // Use APPDATA env var if available (more robust for localized/custom installations)
-        // Matches pattern from platform/paths.ts
-        const appDataPath = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-        const defaultNpmPath = path.join(appDataPath, 'npm');
+        const defaultNpmPath = WINDOWS_NPM_FALLBACK_PATH();
         if (await existsAsync(defaultNpmPath)) {
           console.warn('[env-utils] npm command not found, using default npm path:', defaultNpmPath);
           npmGlobalPrefixCache = defaultNpmPath;
