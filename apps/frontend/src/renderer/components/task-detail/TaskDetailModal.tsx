@@ -378,22 +378,23 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                           Incomplete
                         </Badge>
                       ) : (
+                        <>
                         <Badge
                           variant={getStatusBadgeVariant(task.status, state.isStuck)}
                           className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
                         >
                           {t(TASK_STATUS_LABELS[task.status])}
                         </Badge>
-                          {task.status === 'human_review' && task.reviewReason && (
-                            <Badge
-                              variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
-                              className="text-xs"
-                            >
-                              {task.reviewReason === 'completed' ? 'Completed' :
-                               task.reviewReason === 'errors' ? 'Has Errors' :
-                               task.reviewReason === 'plan_review' ? 'Approve Plan' : 'QA Issues'}
-                            </Badge>
-                          )}
+                        {task.status === 'human_review' && task.reviewReason && (
+                          <Badge
+                            variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
+                            className="text-xs"
+                          >
+                            {task.reviewReason === 'completed' ? 'Completed' :
+                             task.reviewReason === 'errors' ? 'Has Errors' :
+                             task.reviewReason === 'plan_review' ? 'Approve Plan' : 'QA Issues'}
+                          </Badge>
+                        )}
                         </>
                       )}
                       {/* Compact progress indicator */}
