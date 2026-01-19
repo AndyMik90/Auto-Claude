@@ -48,6 +48,7 @@ import {
   createProfileDirectory as createProfileDirectoryImpl,
   isProfileAuthenticated as isProfileAuthenticatedImpl,
   hasValidToken,
+  isValidTokenFormat,
   expandHomePath
 } from './claude-profile/profile-utils';
 
@@ -320,10 +321,17 @@ export class ClaudeProfileManager {
   /**
    * Set the OAuth token for a profile (encrypted storage).
    * Used when capturing token from `claude setup-token` output.
+   * Returns false if token format is invalid or profile not found.
    */
   setProfileToken(profileId: string, token: string, email?: string): boolean {
     const profile = this.getProfile(profileId);
     if (!profile) {
+      return false;
+    }
+
+    // Validate token format before storing
+    if (!isValidTokenFormat(token)) {
+      console.error('[ProfileManager] Invalid token format. Token must start with sk-ant-oat01-');
       return false;
     }
 
@@ -365,10 +373,17 @@ export class ClaudeProfileManager {
       // Decrypt the token before putting in environment
       const decryptedToken = decryptToken(profile.oauthToken);
       if (decryptedToken) {
-        env.CLAUDE_CODE_OAUTH_TOKEN = decryptedToken;
+        // Validate token format after decryption
+        if (isValidTokenFormat(decryptedToken)) {
+          env.CLAUDE_CODE_OAUTH_TOKEN = decryptedToken;
+        } else {
+          console.warn('[ProfileManager] Decrypted token has invalid format, falling back to configDir');
+        }
       }
-    } else if (profile?.configDir && !profile.isDefault) {
-      // Fallback to configDir for backward compatibility
+    }
+
+    // Fallback to configDir for backward compatibility (if no valid token and not default profile)
+    if (!env.CLAUDE_CODE_OAUTH_TOKEN && profile?.configDir && !profile.isDefault) {
       env.CLAUDE_CONFIG_DIR = profile.configDir;
     }
 

@@ -162,6 +162,17 @@ export class AgentProcessManager {
     // are available even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
 
+    // Debug: Log OAuth token sources (when DEBUG=true or in development mode)
+    const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+    if (DEBUG) {
+      const maskToken = (t: string | undefined) => t ? `${t.substring(0, 15)}...` : 'none';
+      console.log('[AgentProcess] Token sources:', {
+        processEnv: maskToken(process.env.CLAUDE_CODE_OAUTH_TOKEN),
+        extraEnv: maskToken(extraEnv.CLAUDE_CODE_OAUTH_TOKEN),
+        profileEnv: maskToken(profileEnv.CLAUDE_CODE_OAUTH_TOKEN),
+      });
+    }
+
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
@@ -184,7 +195,7 @@ export class AgentProcessManager {
     const claudeCliEnv = this.detectAndSetCliPath('claude');
     const ghCliEnv = this.detectAndSetCliPath('gh');
 
-    return {
+    const finalEnv = {
       ...augmentedEnv,
       ...gitBashEnv,
       ...claudeCliEnv,
@@ -195,6 +206,14 @@ export class AgentProcessManager {
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'
     } as NodeJS.ProcessEnv;
+
+    // Debug: Log final token being passed (only when DEBUG=true)
+    if (DEBUG) {
+      const maskToken = (t: string | undefined) => t ? `${t.substring(0, 15)}...` : 'none';
+      console.log('[AgentProcess] Final CLAUDE_CODE_OAUTH_TOKEN:', maskToken(finalEnv.CLAUDE_CODE_OAUTH_TOKEN));
+    }
+
+    return finalEnv;
   }
 
   private handleProcessFailure(

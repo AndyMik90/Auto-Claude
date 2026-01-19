@@ -9,6 +9,20 @@ import { existsSync, readFileSync, readdirSync, mkdirSync } from 'fs';
 import type { ClaudeProfile } from '../../shared/types';
 
 /**
+ * OAuth token format pattern (sk-ant-oat01-...)
+ * This is the expected format for Claude Code OAuth tokens.
+ */
+const OAUTH_TOKEN_PATTERN = /^sk-ant-oat01-[A-Za-z0-9_-]+$/;
+
+/**
+ * Validate OAuth token format.
+ * Returns true if token matches expected format (sk-ant-oat01-...).
+ */
+export function isValidTokenFormat(token: string | undefined): boolean {
+  return !!token && OAUTH_TOKEN_PATTERN.test(token);
+}
+
+/**
  * Default Claude config directory
  */
 export const DEFAULT_CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
@@ -129,10 +143,18 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
 
 /**
  * Check if a profile has a valid OAuth token.
- * Token is valid for 1 year from creation.
+ * Token is valid for 1 year from creation and must match expected format.
  */
 export function hasValidToken(profile: ClaudeProfile): boolean {
   if (!profile?.oauthToken) {
+    return false;
+  }
+
+  // Validate token format (must start with sk-ant-oat01-)
+  // Note: For encrypted tokens (enc:...), we can't validate format before decryption,
+  // but the token-encryption module will return undefined if decryption fails
+  if (!profile.oauthToken.startsWith('enc:') && !isValidTokenFormat(profile.oauthToken)) {
+    console.warn('[profile-utils] Token has invalid format (expected sk-ant-oat01-...)');
     return false;
   }
 

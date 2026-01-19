@@ -24,8 +24,9 @@ export function encryptToken(token: string): string {
 
 /**
  * Decrypt a token. Handles both encrypted (enc:...) and legacy plain tokens.
+ * Returns undefined if decryption fails, allowing callers to handle the failure appropriately.
  */
-export function decryptToken(storedToken: string): string {
+export function decryptToken(storedToken: string): string | undefined {
   try {
     if (storedToken.startsWith('enc:') && safeStorage.isEncryptionAvailable()) {
       const encryptedData = Buffer.from(storedToken.slice(4), 'base64');
@@ -33,7 +34,7 @@ export function decryptToken(storedToken: string): string {
     }
   } catch (error) {
     console.error('[TokenEncryption] Failed to decrypt token:', error);
-    return ''; // Return empty string on decryption failure
+    return undefined; // Return undefined on decryption failure
   }
   // Return as-is for legacy unencrypted tokens
   return storedToken;
