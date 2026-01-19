@@ -60,3 +60,4 @@ bun.lockb
 # Test files in root
 test-*.js
 test-*.cjs
+# Trigger CI rerun
