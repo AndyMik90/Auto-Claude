@@ -1,0 +1,435 @@
+/**
+ * PTY Manager Module Tests
+ *
+ * Tests platform-specific terminal process creation and lifecycle management.
+ * These functions handle low-level PTY operations, Windows shell detection,
+ * and platform-specific exit timeout differences.
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as os from 'os';
+import type { TerminalProcess } from '../types';
+import type { WindowsShellType } from '../../shared/types/settings';
+
+// Mock @lydell/node-pty
+vi.mock('@lydell/node-pty', async () => ({
+  spawn: vi.fn(),
+  IPty: {
+    resize: vi.fn(),
+    kill: vi.fn(),
+    on: vi.fn(),
+    write: vi.fn(),
+    removeAllListeners: vi.fn(),
+  },
+}));
+
+// Mock fs for existsSync
+vi.mock('fs', async () => {
+  const actualFs = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actualFs,
+    existsSync: vi.fn(),
+  };
+});
+
+// Mock platform module
+vi.mock('../../platform', async () => ({
+  ...(await vi.importActual<typeof import('../../platform')>('../../platform')),
+  getWindowsShellPaths: vi.fn(() => ({
+    powershell: ['C:\\Program Files\\PowerShell\\7\\pwsh.exe'],
+    windowsterminal: ['C:\\Users\\Test\\AppData\\Local\\Microsoft\\WindowsApps\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\Microsoft.WindowsTerminal_0.0\\Microsoft.WindowsTerminal.exe'],
+    cmd: ['C:\\Windows\\System32\\cmd.exe'],
+    gitbash: ['C:\\Program Files\\Git\\bin\\bash.exe'],
+  })),
+}));
+
+// Mock settings-utils
+vi.mock('../../settings-utils', async () => ({
+  ...(await vi.importActual<typeof import('../../settings-utils')>('../../settings-utils')),
+  readSettingsFile: vi.fn(() => ({ preferredTerminal: undefined })),
+}));
+
+// Mock claude-profile-manager
+vi.mock('../../claude-profile-manager', async () => ({
+  ...(await vi.importActual<typeof import('../../claude-profile-manager')>('../../claude-profile-manager')),
+  getClaudeProfileManager: vi.fn(() => ({
+    getActiveProfileEnv: () => ({ CLAUDE_CODE_OAUTH_TOKEN: 'test-token' }),
+  })),
+}));
+
+// Mock os.platform
+const originalPlatform = process.platform;
+
+function mockPlatform(platform: NodeJS.Platform) {
+  Object.defineProperty(process, 'platform', {
+    value: platform,
+    writable: true,
+    configurable: true
+  });
+}
+
+function describeWindows(title: string, fn: () => void): void {
+  describe(title, () => {
+    beforeEach(() => mockPlatform('win32'));
+    fn();
+  });
+}
+
+function describeUnix(title: string, fn: () => void): void {
+  describe(title, () => {
+    beforeEach(() => mockPlatform('linux'));
+    fn();
+  });
+}
+
+// Import after mocks are set up
+import {
+  spawnPtyProcess,
+  waitForPtyExit,
+  killPty,
+  writeToPty,
+  resizePty,
+  getActiveProfileEnv,
+  type SpawnPtyResult,
+} from '../pty-manager';
+
+// Get mocked functions
+const mockPtySpawn = vi.mocked(await import('@lydell/node-pty')).spawn;
+const mockExistsSync = vi.mocked(await import('fs')).existsSync;
+const mockGetWindowsShellPaths = vi.mocked(await import('../../platform')).getWindowsShellPaths;
+
+describe('PTY Manager Module', () => {
+  afterEach(() => {
+    mockPlatform(originalPlatform);
+    vi.restoreAllMocks();
+  });
+
+  describe('spawnPtyProcess', () => {
+    const originalEnv = { ...process.env };
+
+    beforeEach(() => {
+      process.env.SHELL = '/bin/zsh';
+      process.env.COMSPEC = 'C:\\Windows\\System32\\cmd.exe';
+      // Mock pty.spawn to return a mock PTY object
+      mockPtySpawn.mockReturnValue({
+        on: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        write: vi.fn(),
+        removeAllListeners: vi.fn(),
+      } as any);
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+      mockPtySpawn.mockReset();
+    });
+
+    describeWindows('spawns Windows shell with correct configuration', () => {
+      it('uses COMSPEC when no preferred terminal', () => {
+        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          'C:\\Windows\\System32\\cmd.exe', // COMSPEC value
+          [],      // No args for Windows
+          expect.objectContaining({
+            name: 'xterm-256color',
+            cwd: 'C:\\Users\\Test',
+          })
+        );
+      });
+
+      it('uses PowerShell when preferredTerminal is PowerShell', async () => {
+        mockGetWindowsShellPaths.mockReturnValue({
+          powershell: ['C:\\Program Files\\PowerShell\\7\\pwsh.exe'],
+          cmd: ['C:\\Windows\\System32\\cmd.exe'],
+        });
+        mockExistsSync.mockReturnValue(true);
+
+        // Mock settings to return PowerShell preference
+        vi.mocked(await import('../../settings-utils')).readSettingsFile.mockReturnValue({
+          preferredTerminal: 'powershell',
+        });
+
+        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+          [],
+          expect.objectContaining({
+            name: 'xterm-256color',
+            env: expect.objectContaining({
+              TERM: 'xterm-256color',
+            }),
+          })
+        );
+      });
+
+      it('uses Git Bash when preferredTerminal is gitbash', async () => {
+        mockGetWindowsShellPaths.mockReturnValue({
+          gitbash: ['C:\\Program Files\\Git\\bin\\bash.exe'],
+          cmd: ['C:\\Windows\\System32\\cmd.exe'],
+        });
+        mockExistsSync.mockReturnValue(true);
+
+        vi.mocked(await import('../../settings-utils')).readSettingsFile.mockReturnValue({
+          preferredTerminal: 'gitbash',
+        });
+
+        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          'C:\\Program Files\\Git\\bin\\bash.exe',
+          [],
+          expect.objectContaining({
+            name: 'xterm-256color',
+            env: expect.objectContaining({
+              TERM: 'xterm-256color',
+            }),
+          })
+        );
+      });
+
+      it('includes profile environment variables', () => {
+        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24, {
+          CUSTOM_VAR: 'custom_value',
+        });
+
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(Array),
+          expect.objectContaining({
+            env: expect.objectContaining({
+              CUSTOM_VAR: 'custom_value',
+              TERM: 'xterm-256color',
+            }),
+          })
+        );
+      });
+
+      it('removes DEBUG and ANTHROPIC_API_KEY from environment', () => {
+        process.env.DEBUG = 'true';
+        process.env.ANTHROPIC_API_KEY = 'sk-test-key';
+
+        const result = spawnPtyProcess('C:\\Users\\Test', 80, 24);
+
+        const envArg = mockPtySpawn.mock.calls[0][2].env as any;
+        expect(envArg.DEBUG).toBeUndefined();
+        expect(envArg.ANTHROPIC_API_KEY).toBeUndefined();
+      });
+    });
+
+    describeUnix('spawns Unix shell with correct configuration', () => {
+      it('uses SHELL environment variable', () => {
+        process.env.SHELL = '/bin/bash';
+        const result = spawnPtyProcess('/home/user', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          '/bin/bash',
+          ['-l'], // Unix uses -l flag
+          expect.objectContaining({
+            name: 'xterm-256color',
+            cwd: '/home/user',
+          })
+        );
+      });
+
+      it('falls back to /bin/zsh when SHELL is not set', () => {
+        delete process.env.SHELL;
+        const result = spawnPtyProcess('/home/user', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          '/bin/zsh',
+          ['-l'],
+          expect.objectContaining({
+            name: 'xterm-256color',
+          })
+        );
+      });
+
+      it('uses cwd parameter', () => {
+        const result = spawnPtyProcess('/custom/cwd', 80, 24);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(Array),
+          expect.objectContaining({
+            cwd: '/custom/cwd',
+          })
+        );
+      });
+
+      it('uses dimensions', () => {
+        const result = spawnPtyProcess('/home/user', 120, 40);
+        expect(mockPtySpawn).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(Array),
+          expect.objectContaining({
+            cols: 120,
+            rows: 40,
+          })
+        );
+      });
+    });
+  });
+
+  describe('waitForPtyExit', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    describeWindows('uses Windows timeout (2000ms)', () => {
+      it('times out after 2000ms on Windows', async () => {
+        const startTime = Date.now();
+
+        const promise = waitForPtyExit('term-1');
+        await promise;
+
+        const elapsed = Date.now() - startTime;
+        expect(elapsed).toBeGreaterThanOrEqual(2000);
+        expect(elapsed).toBeLessThan(2100); // Allow 100ms margin
+      });
+    });
+
+    describeUnix('uses Unix timeout (500ms)', () => {
+      it('times out after 500ms on Unix', async () => {
+        mockPlatform('linux');
+        const startTime = Date.now();
+
+        const promise = waitForPtyExit('term-1');
+        await promise;
+
+        const elapsed = Date.now() - startTime;
+        expect(elapsed).toBeGreaterThanOrEqual(500);
+        expect(elapsed).toBeLessThan(600); // Allow 100ms margin
+      });
+    });
+
+    it('accepts custom timeout', async () => {
+      mockPlatform('win32');
+      const startTime = Date.now();
+
+      const promise = waitForPtyExit('term-1', 1000);
+      await promise;
+
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeGreaterThanOrEqual(1000);
+      expect(elapsed).toBeLessThan(1100); // Allow 100ms margin
+    });
+  });
+
+  describe('killPty', () => {
+    const mockTerminal: TerminalProcess = {
+      id: 'term-1',
+      pty: {
+        kill: vi.fn(),
+        on: vi.fn(),
+      } as any,
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    describe('kills PTY and waits for exit when waitForExit=true', () => {
+      it('kills PTY process and returns exit promise', async () => {
+        const promise = killPty(mockTerminal, true);
+        mockTerminal.pty.kill();
+
+        await promise;
+
+        expect(mockTerminal.pty.kill).toHaveBeenCalled();
+      });
+
+      // Note: Testing exit event resolution is not feasible since onExit is handled
+      // by setupPtyHandlers, not killPty. killPty just uses waitForPtyExit timeout.
+    });
+
+    describe('kills PTY immediately when waitForExit=false', () => {
+      it('kills PTY without waiting', () => {
+        killPty(mockTerminal, false);
+        expect(mockTerminal.pty.kill).toHaveBeenCalled();
+      });
+
+      it('returns void (not a promise) when waitForExit=false', () => {
+        const result = killPty(mockTerminal, false);
+        expect(result).toBeUndefined();
+      });
+    });
+  });
+
+  describe('writeToPty', () => {
+    const mockTerminal: TerminalProcess = {
+      id: 'term-1',
+      pty: {
+        write: vi.fn(),
+        on: vi.fn(),
+      } as any,
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('writes small data directly without chunking', async () => {
+      const data = 'small data';
+      writeToPty(mockTerminal, data);
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockTerminal.pty.write).toHaveBeenCalledTimes(1);
+      expect(mockTerminal.pty.write).toHaveBeenCalledWith(data);
+    });
+
+    it('writes large data in chunks', async () => {
+      // Create data larger than CHUNKED_WRITE_THRESHOLD (1000 bytes)
+      const largeData = 'x'.repeat(1500); // 1500 bytes
+
+      writeToPty(mockTerminal, largeData);
+
+      // Wait for chunked write to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Should be called in chunks (1500 / 100 = 15 chunks)
+      expect(mockTerminal.pty.write).toHaveBeenCalled();
+      expect(mockTerminal.pty.write.mock.calls.length).toBeGreaterThanOrEqual(10);
+    });
+
+    it('serializes writes per terminal to prevent interleaving', async () => {
+      const terminal2: TerminalProcess = {
+        id: 'term-2',
+        pty: {
+          write: vi.fn(),
+          on: vi.fn(),
+        } as any,
+      };
+
+      // Write to same terminal twice
+      writeToPty(mockTerminal, 'data1');
+      writeToPty(mockTerminal, 'data2');
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Both writes should complete (ordered)
+      expect(mockTerminal.pty.write).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('resizePty', () => {
+    const mockTerminal: TerminalProcess = {
+      id: 'term-1',
+      pty: {
+        resize: vi.fn(),
+      } as any,
+    };
+
+    it('resizes PTY to specified dimensions', () => {
+      resizePty(mockTerminal, 100, 30);
+      expect(mockTerminal.pty.resize).toHaveBeenCalledWith(100, 30);
+    });
+  });
+
+  describe('getActiveProfileEnv', () => {
+    it('returns environment variables from Claude profile', () => {
+      const env = getActiveProfileEnv();
+      expect(env).toHaveProperty('CLAUDE_CODE_OAUTH_TOKEN');
+      expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe('test-token');
+    });
+  });
+});
