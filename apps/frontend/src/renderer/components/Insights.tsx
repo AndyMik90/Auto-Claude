@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -105,9 +105,40 @@ export function Insights({ projectId }: InsightsProps) {
   const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Get the scroll viewport element
+  const getViewport = useCallback(() => {
+    return scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+  }, []);
+
+  // Check if user is near the bottom of scroll area (within 100px threshold)
+  const checkIfAtBottom = useCallback((viewport: HTMLElement) => {
+    const threshold = 100;
+    const { scrollTop, scrollHeight, clientHeight } = viewport;
+    return scrollHeight - scrollTop - clientHeight <= threshold;
+  }, []);
+
+  // Handle scroll events to track user position
+  const handleScroll = useCallback(() => {
+    const viewport = getViewport();
+    if (viewport) {
+      setIsUserAtBottom(checkIfAtBottom(viewport));
+    }
+  }, [getViewport, checkIfAtBottom]);
+
+  // Set up scroll listener
+  useEffect(() => {
+    const viewport = getViewport();
+    if (viewport) {
+      viewport.addEventListener('scroll', handleScroll);
+      return () => viewport.removeEventListener('scroll', handleScroll);
+    }
+  }, [getViewport, handleScroll]);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -116,10 +147,15 @@ export function Insights({ projectId }: InsightsProps) {
     return cleanup;
   }, [projectId]);
 
-  // Auto-scroll to bottom when messages change
+  // Smart auto-scroll: only scroll if user is already at bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [session?.messages, streamingContent]);
+    if (isUserAtBottom) {
+      const viewport = getViewport();
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }
+  }, [session?.messages, streamingContent, isUserAtBottom, getViewport]);
 
   // Focus textarea on mount
   useEffect(() => {
@@ -137,6 +173,7 @@ export function Insights({ projectId }: InsightsProps) {
 
     setInputValue('');
     sendMessage(projectId, message);
+    setIsUserAtBottom(true); // Resume auto-scroll when user sends a message
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -259,7 +296,7 @@ export function Insights({ projectId }: InsightsProps) {
         </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 px-6 py-4">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 py-4">
         {messages.length === 0 && !streamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
