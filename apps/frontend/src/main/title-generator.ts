@@ -361,12 +361,40 @@ asyncio.run(generate_title())
 // Lazy-initialized singleton instance (WSL2 compatible)
 let _titleGenerator: TitleGenerator | null = null;
 
+function getTitleGeneratorInstance(): TitleGenerator {
+  if (!_titleGenerator) {
+    _titleGenerator = new TitleGenerator();
+  }
+  return _titleGenerator;
+}
+
+// Export a Proxy that lazily initializes the TitleGenerator singleton
+// This is necessary for WSL2 compatibility where app.whenReady() timing differs
+// The Proxy implements all necessary traps for full EventEmitter compatibility
 export const titleGenerator = new Proxy({} as TitleGenerator, {
-  get(target, prop) {
-    if (!_titleGenerator) {
-      _titleGenerator = new TitleGenerator();
-    }
-    const value = _titleGenerator[prop as keyof TitleGenerator];
-    return typeof value === 'function' ? value.bind(_titleGenerator) : value;
+  get(_target, prop, receiver) {
+    const instance = getTitleGeneratorInstance();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  set(_target, prop, value, receiver) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.set(instance, prop, value, receiver);
+  },
+  has(_target, prop) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.has(instance, prop);
+  },
+  ownKeys() {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.ownKeys(instance);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.getOwnPropertyDescriptor(instance, prop);
+  },
+  getPrototypeOf() {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.getPrototypeOf(instance);
   }
 });

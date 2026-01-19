@@ -25,9 +25,11 @@ This guide documents the setup process and fixes required to run Auto Claude Ele
 # Update WSL to latest version
 wsl --update
 
-# Install Node.js (v18 or later)
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Install Node.js (v24 or later) - use nvm for easier version management
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.bashrc
+nvm install 24
+nvm use 24
 
 # Install Python 3.12+
 sudo apt-get install -y python3.12 python3.12-venv python3-pip

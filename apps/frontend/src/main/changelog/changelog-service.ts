@@ -533,12 +533,40 @@ export class ChangelogService extends EventEmitter {
 // Lazy-initialized singleton instance (WSL2 compatible)
 let _changelogService: ChangelogService | null = null;
 
+function getChangelogServiceInstance(): ChangelogService {
+  if (!_changelogService) {
+    _changelogService = new ChangelogService();
+  }
+  return _changelogService;
+}
+
+// Export a Proxy that lazily initializes the ChangelogService singleton
+// This is necessary for WSL2 compatibility where app.whenReady() timing differs
+// The Proxy implements all necessary traps for full EventEmitter compatibility
 export const changelogService = new Proxy({} as ChangelogService, {
-  get(target, prop) {
-    if (!_changelogService) {
-      _changelogService = new ChangelogService();
-    }
-    const value = _changelogService[prop as keyof ChangelogService];
-    return typeof value === 'function' ? value.bind(_changelogService) : value;
+  get(_target, prop, receiver) {
+    const instance = getChangelogServiceInstance();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  set(_target, prop, value, receiver) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.set(instance, prop, value, receiver);
+  },
+  has(_target, prop) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.has(instance, prop);
+  },
+  ownKeys() {
+    const instance = getChangelogServiceInstance();
+    return Reflect.ownKeys(instance);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.getOwnPropertyDescriptor(instance, prop);
+  },
+  getPrototypeOf() {
+    const instance = getChangelogServiceInstance();
+    return Reflect.getPrototypeOf(instance);
   }
 });
