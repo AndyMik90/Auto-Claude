@@ -816,14 +816,14 @@ describe('Platform Module', () => {
 
     describeUnix('finds executables without extensions', () => {
       // biome-ignore lint/suspicious/noDuplicateTestHooks: Platform-specific test setup for Unix (different from Windows)
-      // Helper to normalize paths for cross-platform test assertions
-      const normalizePath = (p: string | null): string | null =>
-        p ? p.replace(/\\/g, '/') : null;
-
       beforeEach(() => {
         // Set up a mock PATH for testing
         process.env.PATH = '/usr/local/bin:/usr/bin:/bin';
       });
+
+      // Helper to normalize paths for cross-platform test assertions
+      const normalizePath = (p: string | null): string | null =>
+        p ? p.replace(/\\/g, '/') : null;
 
       it('finds executable in PATH', () => {
         mockedExistsSync.mockImplementation((path) => {
