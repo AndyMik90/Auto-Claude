@@ -14,7 +14,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { spawn, execSync, ChildProcess } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import { OS, ShellType, PathConfig, ShellConfig, BinaryDirectories } from './types';
 
 // Re-export from paths.ts for backward compatibility
@@ -83,38 +83,24 @@ export function isDev(): boolean {
  * Check if running in WSL2 environment
  *
  * Detects Windows Subsystem for Linux 2 by checking:
- * 1. WSL_DISTRO_NAME environment variable
- * 2. /proc/version for WSL2 signature (Linux only)
- * 3. wsl.exe in PATH (WSL interop)
+ * 1. WSL_DISTRO_NAME environment variable (most reliable, set by WSL2 automatically)
+ * 2. /proc/version for 'microsoft' signature (WSL2 kernel identifier)
  */
 export function isWSL2(): boolean {
-  // Method 1: Check WSL_DISTRO_NAME environment variable
+  // Check WSL_DISTRO_NAME environment variable (most reliable)
   if (process.env.WSL_DISTRO_NAME) {
     return true;
   }
 
-  // Method 2: Check /proc/version for WSL2 signature (Linux only)
+  // Check /proc/version for WSL2 kernel signature (Linux only)
   if (isLinux()) {
     try {
       const versionInfo = existsSync('/proc/version')
         ? readFileSync('/proc/version', 'utf8').toLowerCase()
         : '';
-      // WSL2 typically contains 'microsoft' in kernel version
-      if (versionInfo.includes('microsoft')) {
-        return true;
-      }
+      return versionInfo.includes('microsoft');
     } catch {
-      // /proc/version doesn't exist or can't be read
-    }
-  }
-
-  // Method 3: Check for WSL interop (wsl.exe in PATH)
-  if (isLinux()) {
-    try {
-      execSync('which wsl.exe', { stdio: 'ignore' });
-      return true;
-    } catch {
-      // wsl.exe not found
+      return false;
     }
   }
 

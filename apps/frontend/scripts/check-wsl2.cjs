@@ -15,40 +15,26 @@ const fs = require('fs');
 
 /**
  * Check if running in WSL2 environment
+ *
+ * Detection methods (in order of reliability):
+ * 1. WSL_DISTRO_NAME environment variable - set by WSL2 automatically
+ * 2. /proc/version contains 'microsoft' - WSL2 kernel signature
+ *
  * @returns {boolean} true if in WSL2, false otherwise
  */
 function isWSL2() {
-  // Method 1: Check WSL_DISTRO_NAME environment variable
+  // Check WSL_DISTRO_NAME environment variable (most reliable)
   if (process.env.WSL_DISTRO_NAME) {
     return true;
   }
 
-  // Method 2: Check /proc/version for WSL2 signature (Linux only)
+  // Check /proc/version for WSL2 kernel signature (Linux only)
   if (process.platform === 'linux') {
     try {
       const versionInfo = fs.readFileSync('/proc/version', 'utf8').toLowerCase();
-      // WSL2 typically contains 'microsoft' and 'wsl2' in kernel version
-      if (versionInfo.includes('microsoft') && versionInfo.includes('wsl2')) {
-        return true;
-      }
-      // Older WSL2 versions might only have 'microsoft'
-      if (versionInfo.includes('microsoft')) {
-        return true;
-      }
+      return versionInfo.includes('microsoft');
     } catch {
-      // /proc/version doesn't exist or can't be read
       return false;
-    }
-  }
-
-  // Method 3: Check for WSL interop (wsl.exe in PATH)
-  if (process.platform === 'linux') {
-    try {
-      const { execSync } = require('child_process');
-      execSync('which wsl.exe', { stdio: 'ignore' });
-      return true;
-    } catch {
-      // wsl.exe not found
     }
   }
 
