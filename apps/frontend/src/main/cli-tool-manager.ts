@@ -678,9 +678,30 @@ class CLIToolManager {
 
     // 4. Windows Program Files
     if (isWindows()) {
+      // 4a. Try 'where' command first - finds gh regardless of installation location
+      const whereGhPath = findWindowsExecutableViaWhere('gh', '[GitHub CLI]');
+      if (whereGhPath) {
+        const validation = this.validateGitHubCLI(whereGhPath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: whereGhPath,
+            version: validation.version,
+            source: 'system-path',
+            message: `Using Windows GitHub CLI: ${whereGhPath}`,
+          };
+        }
+      }
+
+      // 4b. Check known installation locations
+      const homeDir = os.homedir();
       const windowsPaths = [
         'C:\\Program Files\\GitHub CLI\\gh.exe',
         'C:\\Program Files (x86)\\GitHub CLI\\gh.exe',
+        // npm global installation
+        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
+        // Scoop package manager
+        path.join(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
       ];
 
       for (const ghPath of windowsPaths) {
@@ -1684,9 +1705,30 @@ class CLIToolManager {
 
     // 4. Windows Program Files
     if (isWindows()) {
+      // 4a. Try 'where' command first - finds gh regardless of installation location
+      const whereGhPath = await findWindowsExecutableViaWhereAsync('gh', '[GitHub CLI]');
+      if (whereGhPath) {
+        const validation = await this.validateGitHubCLIAsync(whereGhPath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: whereGhPath,
+            version: validation.version,
+            source: 'system-path',
+            message: `Using Windows GitHub CLI: ${whereGhPath}`,
+          };
+        }
+      }
+
+      // 4b. Check known installation locations
+      const homeDir = os.homedir();
       const windowsPaths = [
         'C:\\Program Files\\GitHub CLI\\gh.exe',
         'C:\\Program Files (x86)\\GitHub CLI\\gh.exe',
+        // npm global installation
+        path.join(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd'),
+        // Scoop package manager
+        path.join(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe'),
       ];
 
       for (const winGhPath of windowsPaths) {
