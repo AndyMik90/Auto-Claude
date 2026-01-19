@@ -44,14 +44,16 @@ autonomous-coding/
 **Requirements:**
 - Python 3.12 or 3.13 (required for backend - 3.14 not yet supported due to missing wheels)
 - Node.js (for frontend)
-- uv (auto-installed if missing - 10-100x faster than pip)
+- uv (auto-installed by installer script, or install manually: https://docs.astral.sh/uv/)
 
 ```bash
-# Install all dependencies from root (uses uv for fast Python installs)
+# Install all dependencies from root (auto-installs uv, uses it for fast Python installs)
 npm run install:all
 
 # Or install separately:
-# Backend (from apps/backend/) - uv auto-installed if missing
+# Backend (from apps/backend/)
+# Note: uv must be installed first - either run `npm run install:backend` which auto-installs it,
+# or install uv manually from https://docs.astral.sh/uv/getting-started/installation/
 cd apps/backend && uv venv && uv pip install -r requirements.txt
 
 # Frontend (from apps/frontend/)
@@ -63,7 +65,7 @@ claude
 # Press Enter to open browser and complete OAuth
 ```
 
-**Note:** The install script automatically installs `uv` if not present. uv is 10-100x faster than pip for dependency installation. If uv installation fails, the script falls back to pip.
+**Note:** The `npm run install:backend` script automatically installs `uv` if not present. uv is 10-100x faster than pip for dependency installation. If uv installation fails, the script falls back to pip. The manual `uv` commands above require uv to already be installed.
 
 ### Creating and Running Specs
 ```bash
