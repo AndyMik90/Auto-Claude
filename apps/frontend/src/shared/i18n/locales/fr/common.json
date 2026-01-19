@@ -437,6 +437,7 @@
     "window7Day": "Fenêtre de 7 jours",
     "window5HoursQuota": "Quota de 5 heures",
     "windowMonthlyToolsQuota": "Quota mensuel d'outils"
+  },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",
     "enterCodeDescription": "Ce dialogue n'est nécessaire que si le navigateur n'a pas redirigé automatiquement. Si l'authentification est déjà terminée dans votre navigateur, vous pouvez fermer ce dialogue.",

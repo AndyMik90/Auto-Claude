@@ -437,6 +437,7 @@
     "window7Day": "7-day window",
     "window5HoursQuota": "5 Hours Quota",
     "windowMonthlyToolsQuota": "Monthly Tools Quota"
+  },
   "oauth": {
     "enterCode": "Manual Code Entry (Fallback)",
     "enterCodeDescription": "This dialog is only needed if the browser didn't redirect automatically. If authentication already completed in your browser, you can close this dialog.",
