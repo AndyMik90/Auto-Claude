@@ -838,6 +838,8 @@ export class UsageMonitor extends EventEmitter {
       weeklyPercent: Math.round(sevenDayUtil * 100),
       sessionResetTime: this.formatResetTime(data.five_hour_reset_at),
       weeklyResetTime: this.formatResetTime(data.seven_day_reset_at),
+      sessionResetTimestamp: data.five_hour_reset_at,
+      weeklyResetTimestamp: data.seven_day_reset_at,
       profileId,
       profileName,
       fetchedAt: new Date(),
