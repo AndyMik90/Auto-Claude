@@ -17,14 +17,19 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
   const commandDir = path.dirname(command);
   const currentPath = env.PATH || '';
   const pathEntries = currentPath.split(pathSeparator);
-  const normalizedCommandDir = path.normalize(commandDir);
-  const hasCommandDir = isWindows()
-    ? pathEntries
-      .map((entry) => path.normalize(entry).toLowerCase())
-      .includes(normalizedCommandDir.toLowerCase())
-    : pathEntries
-      .map((entry) => path.normalize(entry))
-      .includes(normalizedCommandDir);
+
+  // Create a Set for O(1) lookup instead of O(n) array includes
+  const normalizedPathSet = new Set(
+    isWindows()
+      ? pathEntries.map((entry) => path.normalize(entry).toLowerCase())
+      : pathEntries.map((entry) => path.normalize(entry))
+  );
+
+  const normalizedCommandDir = isWindows()
+    ? path.normalize(commandDir).toLowerCase()
+    : path.normalize(commandDir);
+
+  const hasCommandDir = normalizedPathSet.has(normalizedCommandDir);
 
   // Collect directories to add
   let dirsToAdd = hasCommandDir ? [] : [commandDir];
@@ -40,17 +45,12 @@ function ensureCommandDirInPath(command: string, env: Record<string, string>): R
     return env;
   }
 
-  // Filter out directories already in PATH (case-insensitive on Windows)
+  // Filter out directories already in PATH using the Set for O(1) lookups
   const pathEntriesToAdd = dirsToAdd.filter((dir) => {
-    const normalizedDir = path.normalize(dir);
-    if (isWindows()) {
-      return !pathEntries
-        .map((entry) => path.normalize(entry).toLowerCase())
-        .includes(normalizedDir.toLowerCase());
-    }
-    return !pathEntries
-      .map((entry) => path.normalize(entry))
-      .includes(normalizedDir);
+    const normalizedDir = isWindows()
+      ? path.normalize(dir).toLowerCase()
+      : path.normalize(dir);
+    return !normalizedPathSet.has(normalizedDir);
   });
 
   if (pathEntriesToAdd.length === 0) {

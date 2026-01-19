@@ -8,8 +8,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import { existsSync, readdirSync } from 'fs';
-import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension } from './index';
-import { sortNvmVersionDirs } from '../cli-tool-manager';
+import { isWindows, isMacOS, getHomebrewPath, joinPaths, getExecutableExtension, sortNvmVersionDirs } from './index';
 
 /**
  * Resolve Claude CLI executable path
@@ -184,34 +183,40 @@ export function findNodeJsDirectories(): string[] {
   }
 
   const homeDir = os.homedir();
-  // Use environment variables with fallbacks for cross-system compatibility
-  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
-  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-  const appData = process.env.APPDATA || joinPaths(homeDir, 'AppData', 'Roaming');
-  const programData = process.env.ProgramData || 'C:\\ProgramData';
+  // Use environment variables only - no hardcoded fallbacks
+  const programFiles = process.env.ProgramFiles;
+  const programFilesX86 = process.env['ProgramFiles(x86)'];
+  const appData = process.env.APPDATA;
+  const programData = process.env.ProgramData;
 
-  const candidates: string[] = [
-    // Standard Node.js installer location
-    joinPaths(programFiles, 'nodejs'),
-    joinPaths(programFilesX86, 'nodejs'),
+  const candidates: string[] = [];
 
-    // User-level npm global directory (may contain node.exe with nvm-windows)
-    joinPaths(appData, 'npm'),
+  // Standard Node.js installer location (only if env vars are set)
+  if (programFiles) {
+    candidates.push(joinPaths(programFiles, 'nodejs'));
+    candidates.push(joinPaths(programFiles, 'nvm'));
+  }
+  if (programFilesX86) {
+    candidates.push(joinPaths(programFilesX86, 'nodejs'));
+  }
 
-    // NVM for Windows default location
-    joinPaths(appData, 'nvm'),
-    joinPaths(programFiles, 'nvm'),
+  // User-level npm global directory (may contain node.exe with nvm-windows)
+  if (appData) {
+    candidates.push(joinPaths(appData, 'npm'));
+    candidates.push(joinPaths(appData, 'nvm'));
+  }
 
-    // Scoop installation
-    joinPaths(homeDir, 'scoop', 'apps', 'nodejs', 'current'),
+  // Scoop installation (uses home directory, always available)
+  candidates.push(joinPaths(homeDir, 'scoop', 'apps', 'nodejs', 'current'));
 
-    // Chocolatey installation
-    joinPaths(programData, 'chocolatey', 'bin'),
-  ];
+  // Chocolatey installation
+  if (programData) {
+    candidates.push(joinPaths(programData, 'chocolatey', 'bin'));
+  }
 
   // For NVM, we need to find the active Node.js version directory
-  const nvmPath = joinPaths(appData, 'nvm');
-  if (existsSync(nvmPath)) {
+  const nvmPath = appData ? joinPaths(appData, 'nvm') : null;
+  if (nvmPath && existsSync(nvmPath)) {
     try {
       // Find all version directories (e.g., v20.0.0, v18.17.1)
       const entries = readdirSync(nvmPath, { withFileTypes: true });

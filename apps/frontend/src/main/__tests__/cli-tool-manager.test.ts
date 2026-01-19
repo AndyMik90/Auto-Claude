@@ -175,8 +175,9 @@ const mockIsWindows = vi.fn(() => false);
 const mockIsMacOS = vi.fn(() => false);
 const mockIsUnix = vi.fn(() => true);
 
-vi.mock('../platform', async () => {
+vi.mock('../platform', async (importOriginal) => {
   const path = await import('path');
+  const original = await importOriginal<typeof import('../platform')>();
 
   return {
     isWindows: () => mockIsWindows(),
@@ -184,13 +185,19 @@ vi.mock('../platform', async () => {
     isUnix: () => mockIsUnix(),
     joinPaths: (...segments: string[]) => path.join(...segments),
     getExecutableExtension: () => mockIsWindows() ? '.exe' : '',
-    findNodeJsDirectories: vi.fn(() => [])
+    findNodeJsDirectories: vi.fn(() => []),
+    // Use the actual sortNvmVersionDirs implementation for testing
+    sortNvmVersionDirs: original.sortNvmVersionDirs
   };
 });
 
 describe('cli-tool-manager - Claude CLI NVM detection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset platform mocks to default Linux state
+    mockIsWindows.mockReturnValue(false);
+    mockIsMacOS.mockReturnValue(false);
+    mockIsUnix.mockReturnValue(true);
     // Set default platform to Linux
     Object.defineProperty(process, 'platform', {
       value: 'linux',
@@ -250,6 +257,10 @@ describe('cli-tool-manager - Claude CLI NVM detection', () => {
         value: 'win32',
         writable: true
       });
+      // Configure platform mocks for Windows
+      mockIsWindows.mockReturnValue(true);
+      mockIsMacOS.mockReturnValue(false);
+      mockIsUnix.mockReturnValue(false);
 
       vi.mocked(os.homedir).mockReturnValue('C:\\Users\\test');
       vi.mocked(existsSync).mockReturnValue(false);
@@ -478,6 +489,10 @@ describe('cli-tool-manager - Helper Functions', () => {
         value: 'win32',
         writable: true
       });
+      // Configure platform mocks for Windows
+      mockIsWindows.mockReturnValue(true);
+      mockIsMacOS.mockReturnValue(false);
+      mockIsUnix.mockReturnValue(false);
 
       const paths = getClaudeDetectionPaths('C:\\Users\\test');
 
@@ -789,6 +804,10 @@ describe('cli-tool-manager - Claude CLI Windows where.exe detection', () => {
 describe('cli-tool-manager - Claude CLI async Windows where.exe detection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Configure platform mocks for Windows
+    mockIsWindows.mockReturnValue(true);
+    mockIsMacOS.mockReturnValue(false);
+    mockIsUnix.mockReturnValue(false);
     Object.defineProperty(process, 'platform', {
       value: 'win32',
       writable: true

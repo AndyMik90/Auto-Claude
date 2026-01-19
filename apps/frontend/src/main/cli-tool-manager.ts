@@ -27,7 +27,10 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, findNodeJsDirectories } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, findNodeJsDirectories, sortNvmVersionDirs } from './platform';
+
+// Re-export sortNvmVersionDirs for backwards compatibility with existing imports
+export { sortNvmVersionDirs };
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -185,46 +188,6 @@ export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
   const nvmVersionsDir = joinPaths(homeDir, '.nvm', 'versions', 'node');
 
   return { homebrewPaths, platformPaths, nvmVersionsDir };
-}
-
-/**
- * Sort NVM version directories by semantic version (newest first).
- *
- * Filters entries to only include directories starting with 'v' (version directories)
- * and sorts them in descending order so the newest Node.js version is checked first.
- *
- * @param entries - Directory entries from readdir with { name, isDirectory() }
- * @returns Array of version directory names sorted newest first
- *
- * @example
- * const entries = [
- *   { name: 'v18.0.0', isDirectory: () => true },
- *   { name: 'v20.0.0', isDirectory: () => true },
- *   { name: '.DS_Store', isDirectory: () => false },
- * ];
- * sortNvmVersionDirs(entries); // ['v20.0.0', 'v18.0.0']
- */
-export function sortNvmVersionDirs(
-  entries: Array<{ name: string; isDirectory(): boolean }>
-): string[] {
-  // Regex to match valid semver directories: v20.0.0, v18.17.1, etc.
-  // This prevents NaN from malformed versions (e.g., v20.abc.1) breaking sort
-  const semverRegex = /^v\d+\.\d+\.\d+$/;
-
-  return entries
-    .filter((entry) => entry.isDirectory() && semverRegex.test(entry.name))
-    .sort((a, b) => {
-      // Parse version numbers: v20.0.0 -> [20, 0, 0]
-      const vA = a.name.slice(1).split('.').map(Number);
-      const vB = b.name.slice(1).split('.').map(Number);
-      // Compare major, minor, patch in order (descending)
-      for (let i = 0; i < 3; i++) {
-        const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
-        if (diff !== 0) return diff;
-      }
-      return 0;
-    })
-    .map((entry) => entry.name);
 }
 
 /**
