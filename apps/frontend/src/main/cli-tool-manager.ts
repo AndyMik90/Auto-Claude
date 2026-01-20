@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure, expandWindowsEnvVars, getHomebrewBinPaths } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure, expandWindowsEnvVars, getHomebrewBinPaths, getCmdExecutablePath } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -1245,10 +1245,8 @@ class CLIToolManager {
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
-        // Use expandWindowsEnvVars for cross-platform compatibility
-        const cmdExe = expandWindowsEnvVars('%COMSPEC%')
-          || joinPaths(expandWindowsEnvVars('%SYSTEMROOT%'), 'System32', 'cmd.exe');
-        const cmdLine = `""${normalizedCmd}" --version"`;
+        // Use getCmdExecutablePath for proper COMSPEC resolution with fallbacks
+        const cmdExe = getCmdExecutablePath();
         const execOptions: ExecFileSyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -1256,8 +1254,9 @@ class CLIToolManager {
           windowsVerbatimArguments: true,
           env,
         };
+        // Pass executable and args as separate array elements - let execFile handle quoting
         version = normalizeExecOutput(
-          execFileSync(cmdExe, ['/d', '/s', '/c', cmdLine], execOptions)
+          execFileSync(cmdExe, ['/d', '/c', `"${normalizedCmd}"`, '--version'], execOptions)
         ).trim();
       } else {
         // For .exe files and non-Windows, use execFileSync
@@ -1397,10 +1396,8 @@ class CLIToolManager {
             message: `Claude CLI path failed security validation: ${unquotedCmd}`,
           };
         }
-        // Use expandWindowsEnvVars for cross-platform compatibility
-        const cmdExe = expandWindowsEnvVars('%COMSPEC%')
-          || joinPaths(expandWindowsEnvVars('%SYSTEMROOT%'), 'System32', 'cmd.exe');
-        const cmdLine = `""${normalizedCmd}" --version"`;
+        // Use getCmdExecutablePath for proper COMSPEC resolution with fallbacks
+        const cmdExe = getCmdExecutablePath();
         const execOptions: ExecFileAsyncOptionsWithVerbatim = {
           encoding: 'utf-8',
           timeout: 5000,
@@ -1408,7 +1405,8 @@ class CLIToolManager {
           windowsVerbatimArguments: true,
           env,
         };
-        const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], execOptions);
+        // Pass executable and args as separate array elements - let execFile handle quoting
+        const result = await execFileAsync(cmdExe, ['/d', '/c', `"${normalizedCmd}"`, '--version'], execOptions);
         stdout = result.stdout;
       } else {
         // For .exe files and non-Windows, use execFileAsync

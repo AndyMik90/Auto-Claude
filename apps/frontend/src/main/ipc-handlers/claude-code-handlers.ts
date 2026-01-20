@@ -60,15 +60,13 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     };
 
     let stdout: string;
-    // For Windows .cmd/.bat files, use cmd.exe with proper quoting
+    // For Windows .cmd/.bat files, use cmd.exe to execute
     // /d = disable AutoRun registry commands
-    // /s = strip first and last quotes, preserving inner quotes
     // /c = run command then terminate
     if (isWindows && /\.(cmd|bat)$/i.test(normalizedCliPath)) {
       // Get cmd.exe path using platform abstraction with proper fallbacks
       const cmdExe = getCmdExecutablePath();
-      // Use double-quoted command line for paths with spaces
-      const cmdLine = `""${normalizedCliPath}" --version"`;
+      // Pass executable and args as separate array elements - let execFile handle quoting
       const execOptions: ExecFileAsyncOptionsWithVerbatim = {
         encoding: 'utf-8',
         timeout: 5000,
@@ -76,7 +74,7 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
         windowsVerbatimArguments: true,
         env,
       };
-      const result = await execFileAsync(cmdExe, ['/d', '/s', '/c', cmdLine], execOptions);
+      const result = await execFileAsync(cmdExe, ['/d', '/c', `"${normalizedCliPath}"`, '--version'], execOptions);
       stdout = result.stdout;
     } else {
       const result = await execFileAsync(normalizedCliPath, ['--version'], {
@@ -159,17 +157,24 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   // 2. Check system PATH via which/where
   try {
     if (isWindows) {
-      // Use 'where.exe' explicitly to find all instances of claude.exe
-      // This is the most reliable method as it searches PATH, App Paths registry, and current directory
-      const { stdout } = await execFileAsync('where.exe', ['claude'], {
-        encoding: 'utf-8',
-        timeout: 5000,
-        windowsHide: true,
-      });
-      // Parse paths - where.exe returns paths separated by \r\n on Windows
-      const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
-      for (const p of paths) {
-        await addInstallation(p.trim(), 'system-path');
+      // Search for claude.cmd (npm), claude.exe (official installer), claude.bat (legacy)
+      // where.exe requires exact extension - it does NOT use PATHEXT like shell commands
+      const extensions = ['cmd', 'exe', 'bat'];
+      for (const ext of extensions) {
+        try {
+          const { stdout } = await execFileAsync('where.exe', [`claude.${ext}`], {
+            encoding: 'utf-8',
+            timeout: 5000,
+            windowsHide: true,
+          });
+          // Parse paths - where.exe returns paths separated by \r\n on Windows
+          const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
+          for (const p of paths) {
+            await addInstallation(p.trim(), 'system-path');
+          }
+        } catch {
+          // where.exe returns error code if not found - continue to next extension
+        }
       }
     } else {
       // Use 'which' with -a flag to find all instances of claude

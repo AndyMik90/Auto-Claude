@@ -121,26 +121,32 @@ export function findWindowsExecutableViaWhere(
   }
 
   try {
-    // Use 'where' command to find the executable
-    // where.exe is a built-in Windows command that finds executables
-    const result = execFileSync('where.exe', [executable], {
-      encoding: 'utf-8',
-      timeout: 5000,
-      windowsHide: true,
-    }).trim();
+    // Try to find the executable with common Windows extensions
+    // where.exe requires exact extension - it does NOT use PATHEXT
+    const extensions = ['', '.cmd', '.exe', '.bat'];
+    for (const ext of extensions) {
+      try {
+        const searchName = ext ? `${executable}${ext}` : executable;
+        const result = execFileSync('where.exe', [searchName], {
+          encoding: 'utf-8',
+          timeout: 5000,
+          windowsHide: true,
+        }).trim();
 
-    // 'where' returns multiple paths separated by newlines if found in multiple locations
-    // Prefer paths with .cmd or .exe extensions (executable files)
-    const paths = result.split(/\r?\n/).filter(p => p.trim());
+        // 'where' returns multiple paths separated by newlines if found in multiple locations
+        const paths = result.split(/\r?\n/).filter(p => p.trim());
 
-    if (paths.length > 0) {
-      // Prefer .cmd, .bat, or .exe extensions, otherwise take first path
-      const foundPath = (paths.find(p => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
+        if (paths.length > 0) {
+          // Take first matching path
+          const foundPath = paths[0].trim();
 
-      // Validate the path exists and is secure
-      if (existsSync(foundPath) && isSecurePath(foundPath)) {
-        console.log(`${logPrefix} Found via where: ${foundPath}`);
-        return foundPath;
+          // Validate the path exists and is secure
+          if (existsSync(foundPath) && isSecurePath(foundPath)) {
+            console.log(`${logPrefix} Found via where: ${foundPath}`);
+            return foundPath;
+          }
+        }
+      } catch {
       }
     }
 
@@ -224,31 +230,37 @@ export async function findWindowsExecutableViaWhereAsync(
   }
 
   try {
-    // Use 'where' command to find the executable
-    // where.exe is a built-in Windows command that finds executables
-    const { stdout } = await execFileAsync('where.exe', [executable], {
-      encoding: 'utf-8',
-      timeout: 5000,
-      windowsHide: true,
-    });
-
-    // 'where' returns multiple paths separated by newlines if found in multiple locations
-    // Prefer paths with .cmd, .bat, or .exe extensions (executable files)
-    const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
-
-    if (paths.length > 0) {
-      // Prefer .cmd, .bat, or .exe extensions, otherwise take first path
-      const foundPath = (paths.find(p => /\.(cmd|bat|exe)$/i.test(p)) || paths[0]).trim();
-
-      // Validate the path exists and is secure
+    // Try to find the executable with common Windows extensions
+    // where.exe requires exact extension - it does NOT use PATHEXT
+    const extensions = ['', '.cmd', '.exe', '.bat'];
+    for (const ext of extensions) {
       try {
-        await access(foundPath, constants.F_OK);
-        if (isSecurePath(foundPath)) {
-          console.log(`${logPrefix} Found via where: ${foundPath}`);
-          return foundPath;
+        const searchName = ext ? `${executable}${ext}` : executable;
+        const { stdout } = await execFileAsync('where.exe', [searchName], {
+          encoding: 'utf-8',
+          timeout: 5000,
+          windowsHide: true,
+        });
+
+        // 'where' returns multiple paths separated by newlines if found in multiple locations
+        const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
+
+        if (paths.length > 0) {
+          // Take first matching path
+          const foundPath = paths[0].trim();
+
+          // Validate the path exists and is secure
+          try {
+            await access(foundPath, constants.F_OK);
+            if (isSecurePath(foundPath)) {
+              console.log(`${logPrefix} Found via where: ${foundPath}`);
+              return foundPath;
+            }
+          } catch {
+            // Path doesn't exist, try next extension
+          }
         }
       } catch {
-        // Path doesn't exist
       }
     }
 
