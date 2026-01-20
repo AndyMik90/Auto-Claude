@@ -121,7 +121,7 @@ describe('shell-escape', () => {
       });
 
       it('returns empty string for empty path', () => {
-        expect(buildCdCommand(undefined)).toBe('');
+        expect(buildCdCommand('')).toBe('');
       });
     });
 
@@ -236,7 +236,7 @@ describe('shell-escape', () => {
 
     it('handles mixed special characters', () => {
       expect(escapeForWindowsDoubleQuote('C:\\My "Path" & %VAR%'))
-        .toContain('""');
+        .toBe('C:\\My ""Path"" & %%VAR%%');
     });
 
     it('handles empty strings', () => {

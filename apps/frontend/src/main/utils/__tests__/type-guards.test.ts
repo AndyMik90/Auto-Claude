@@ -55,25 +55,21 @@ describe('type-guards', () => {
       }
     });
 
-    it('recognizes common error codes', () => {
-      const commonCodes = [
-        'ENOENT',
-        'EEXIST',
-        'EACCES',
-        'EISDIR',
-        'ENOTDIR',
-        'EPIPE',
-        'ETIMEDOUT',
-        'EBUSY',
-        'ENOTEMPTY',
-        'ECONNREFUSED'
-      ];
-
-      for (const code of commonCodes) {
-        const error = new Error('Test');
-        (error as NodeJS.ErrnoException).code = code;
-        expect(isNodeError(error)).toBe(true);
-      }
+    it.each([
+      'ENOENT',
+      'EEXIST',
+      'EACCES',
+      'EISDIR',
+      'ENOTDIR',
+      'EPIPE',
+      'ETIMEDOUT',
+      'EBUSY',
+      'ENOTEMPTY',
+      'ECONNREFUSED'
+    ])('recognizes common error code: %s', (code) => {
+      const error = new Error('Test');
+      (error as NodeJS.ErrnoException).code = code;
+      expect(isNodeError(error)).toBe(true);
     });
 
     it('handles empty string code', () => {

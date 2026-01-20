@@ -33,25 +33,40 @@ function joinXdgPath(...segments: string[]): string {
 /**
  * Get the XDG config home directory
  * Uses $XDG_CONFIG_HOME if set, otherwise defaults to ~/.config
+ * Returns normalized XDG-style path with forward slashes.
  */
 export function getXdgConfigHome(): string {
-  return getEnvVar('XDG_CONFIG_HOME') || path.join(os.homedir(), '.config');
+  const envValue = getEnvVar('XDG_CONFIG_HOME');
+  if (envValue) {
+    return joinXdgPath(envValue);
+  }
+  return joinXdgPath(os.homedir(), '.config');
 }
 
 /**
  * Get the XDG data home directory
  * Uses $XDG_DATA_HOME if set, otherwise defaults to ~/.local/share
+ * Returns normalized XDG-style path with forward slashes.
  */
 export function getXdgDataHome(): string {
-  return getEnvVar('XDG_DATA_HOME') || path.join(os.homedir(), '.local', 'share');
+  const envValue = getEnvVar('XDG_DATA_HOME');
+  if (envValue) {
+    return joinXdgPath(envValue);
+  }
+  return joinXdgPath(os.homedir(), '.local', 'share');
 }
 
 /**
  * Get the XDG cache home directory
  * Uses $XDG_CACHE_HOME if set, otherwise defaults to ~/.cache
+ * Returns normalized XDG-style path with forward slashes.
  */
 export function getXdgCacheHome(): string {
-  return getEnvVar('XDG_CACHE_HOME') || path.join(os.homedir(), '.cache');
+  const envValue = getEnvVar('XDG_CACHE_HOME');
+  if (envValue) {
+    return joinXdgPath(envValue);
+  }
+  return joinXdgPath(os.homedir(), '.cache');
 }
 
 /**

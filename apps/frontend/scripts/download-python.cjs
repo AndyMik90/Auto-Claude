@@ -359,8 +359,8 @@ function extractTarGz(archivePath, destDir) {
   // Windows Server 2019+ and Windows 10+ have bsdtar at %SystemRoot%\System32\tar.exe
   if (isWindows()) {
     // Use explicit path to Windows tar to avoid Git Bash's /usr/bin/tar
-    // Use SystemRoot environment variable to handle non-standard Windows installations
-    // Use case-insensitive lookup for Windows environment variables
+    // Fallback chain handles non-standard Windows installs and cross-compilation/CI scenarios
+    // (native Windows already supports case-insensitive env var access)
     const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || process.env.windir || 'C:\\Windows';
     const windowsTar = path.join(systemRoot, 'System32', 'tar.exe');
 

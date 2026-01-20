@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawnSync } = require('child_process');
-const { isWindows, isMacOS } = require('../src/shared/platform.cjs');
+const { isWindows, isMacOS, isLinux } = require('../src/shared/platform.cjs');
 
 const FRONTEND_DIR = path.resolve(__dirname, '..');
 const PYTHON_RUNTIME_DIR = path.join(FRONTEND_DIR, 'python-runtime');
@@ -16,7 +16,19 @@ console.log('=== Python Bundling Verification ===\n');
 
 // Check 1: Python runtime downloaded?
 console.log('1. Checking if Python runtime is downloaded...');
-const platform = isWindows() ? 'win' : isMacOS() ? 'mac' : 'linux';
+const platform = isWindows()
+  ? 'win'
+  : isMacOS()
+    ? 'mac'
+    : isLinux()
+      ? 'linux'
+      : null;
+
+if (!platform) {
+  console.log('   ✗ Unsupported platform for bundling verification');
+  process.exit(1);
+}
+
 const arch = process.arch;
 const runtimePath = path.join(PYTHON_RUNTIME_DIR, `${platform}-${arch}`, 'python');
 

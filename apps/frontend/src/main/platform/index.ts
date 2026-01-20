@@ -69,16 +69,22 @@ export function isUnix(): boolean {
  * Provides case-insensitive environment variable access on Windows,
  * where environment variable names are case-insensitive (e.g., PATH, Path, path).
  * On Unix systems, environment variable names are case-sensitive.
+ *
+ * On Windows, tries exact match first (fast path), then falls back to
+ * case-insensitive search. The fallback chain is useful for cross-compilation
+ * scenarios where environment variables may not exist.
  */
 export function getEnvVar(name: string): string | undefined {
-  // Windows case-insensitive environment variables
   if (isWindows()) {
-    for (const key of Object.keys(process.env)) {
-      if (key.toLowerCase() === name.toLowerCase()) {
-        return process.env[key];
-      }
+    // Try exact match first
+    if (process.env[name] !== undefined) {
+      return process.env[name];
     }
-    return undefined;
+    // Fall back to case-insensitive search
+    const lowerKey = Object.keys(process.env).find(
+      (key) => key.toLowerCase() === name.toLowerCase()
+    );
+    return lowerKey !== undefined ? process.env[lowerKey] : undefined;
   }
 
   return process.env[name];
