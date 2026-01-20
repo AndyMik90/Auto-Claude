@@ -18,6 +18,7 @@ import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ip
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
 import { getPathDelimiter, normalizeExecutablePath } from '../platform';
+import { getToolInfo } from '../cli-tool-manager';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -290,9 +291,17 @@ export class AgentQueueManager {
     // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
     // 5. profileEnv (Electron app OAuth token)
     // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. CLI tool paths (CLAUDE_CLI_PATH, GITHUB_CLI_PATH) - ensure Python can find tools
+    // 7. CLI tool paths (CLAUDE_CLI_PATH) - use shared helper for consistency
     // 8. Our specific overrides
-    const cliToolEnv = this.processManager.detectAndSetCliPath('claude');
+    const cliToolEnv: Record<string, string> = {};
+
+    // Detect Claude CLI path using shared helper (same as dev/exe modes)
+    const claudeInfo = getToolInfo('claude');
+    if (claudeInfo.found && claudeInfo.path && !process.env.CLAUDE_CLI_PATH) {
+      cliToolEnv.CLAUDE_CLI_PATH = claudeInfo.path;
+      debugLog('[Agent Queue] Setting CLAUDE_CLI_PATH:', claudeInfo.path, `(source: ${claudeInfo.source})`);
+    }
+
     const finalEnv = {
       ...process.env,
       ...pythonEnv,
@@ -622,9 +631,17 @@ export class AgentQueueManager {
     // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
     // 5. profileEnv (Electron app OAuth token)
     // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. CLI tool paths (CLAUDE_CLI_PATH, GITHUB_CLI_PATH) - ensure Python can find tools
+    // 7. CLI tool paths (CLAUDE_CLI_PATH) - use shared helper for consistency
     // 8. Our specific overrides
-    const cliToolEnv = this.processManager.detectAndSetCliPath('claude');
+    const cliToolEnv: Record<string, string> = {};
+
+    // Detect Claude CLI path using shared helper (same as dev/exe modes)
+    const claudeInfo = getToolInfo('claude');
+    if (claudeInfo.found && claudeInfo.path && !process.env.CLAUDE_CLI_PATH) {
+      cliToolEnv.CLAUDE_CLI_PATH = claudeInfo.path;
+      debugLog('[Agent Queue] Setting CLAUDE_CLI_PATH:', claudeInfo.path, `(source: ${claudeInfo.source})`);
+    }
+
     const finalEnv = {
       ...process.env,
       ...pythonEnv,

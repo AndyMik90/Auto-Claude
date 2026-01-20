@@ -138,7 +138,7 @@ export class AgentProcessManager {
    * @param toolName - Name of the CLI tool (e.g., 'claude', 'gh')
    * @returns Record with env var set if tool was detected
    */
-  public detectAndSetCliPath(toolName: CliTool): Record<string, string> {
+  private detectAndSetCliPath(toolName: CliTool): Record<string, string> {
     const env: Record<string, string> = {};
     const envVarName = CLI_TOOL_ENV_MAP[toolName];
 
