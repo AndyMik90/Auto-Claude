@@ -7,6 +7,61 @@ import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
+import { getTaskWorktreeDir } from '../../worktree-paths';
+
+/**
+ * Validate taskId to prevent path traversal attacks
+ * Returns true if taskId is safe to use in path operations
+ */
+function isValidTaskId(taskId: string): boolean {
+  // Reject empty, null/undefined, or strings with path traversal characters
+  if (!taskId || typeof taskId !== 'string') return false;
+  if (taskId.includes('/') || taskId.includes('\\')) return false;
+  if (taskId === '.' || taskId === '..') return false;
+  if (taskId.includes('\0')) return false; // Null byte injection
+  return true;
+}
+
+/**
+ * Find ALL spec paths for a task, checking main directory and worktrees
+ * A task can exist in multiple locations (main + worktree), so return all paths
+ *
+ * Follows the pattern from ProjectStore.findAllSpecPaths()
+ */
+function findAllSpecPaths(projectPath: string, specsBaseDir: string, taskId: string): string[] {
+  // Validate taskId to prevent path traversal
+  if (!isValidTaskId(taskId)) {
+    console.error(`[TASK_DELETE] findAllSpecPaths: Invalid taskId rejected: ${taskId}`);
+    return [];
+  }
+
+  const paths: string[] = [];
+
+  // 1. Check main specs directory
+  const mainSpecPath = path.join(projectPath, specsBaseDir, taskId);
+  if (existsSync(mainSpecPath)) {
+    paths.push(mainSpecPath);
+  }
+
+  // 2. Check worktrees
+  const worktreesDir = getTaskWorktreeDir(projectPath);
+  if (existsSync(worktreesDir)) {
+    try {
+      const worktrees = readdirSync(worktreesDir, { withFileTypes: true });
+      for (const worktree of worktrees) {
+        if (!worktree.isDirectory()) continue;
+        const worktreeSpecPath = path.join(worktreesDir, worktree.name, specsBaseDir, taskId);
+        if (existsSync(worktreeSpecPath)) {
+          paths.push(worktreeSpecPath);
+        }
+      }
+    } catch {
+      // Ignore errors reading worktrees
+    }
+  }
+
+  return paths;
+}
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -222,29 +277,47 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         return { success: false, error: 'Cannot delete a running task. Stop the task first.' };
       }
 
-      // Delete the spec directory - use task.specsPath if available (handles worktree tasks)
-      const specDir = task.specsPath || path.join(project.path, getSpecsDir(project.autoBuildPath), task.specId);
+      // Find ALL locations where this task exists (main + worktrees)
+      // Following the archiveTasks() pattern from project-store.ts
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, task.specId);
 
-      try {
-        console.warn(`[TASK_DELETE] Attempting to delete: ${specDir} (location: ${task.location || 'unknown'})`);
-        if (existsSync(specDir)) {
+      // If spec directory doesn't exist anywhere, return success (already removed)
+      if (specPaths.length === 0) {
+        console.warn(`[TASK_DELETE] No spec directories found for task ${taskId} - already removed`);
+        projectStore.invalidateTasksCache(project.id);
+        return { success: true };
+      }
+
+      let hasErrors = false;
+      const errors: string[] = [];
+
+      // Delete from ALL locations
+      for (const specDir of specPaths) {
+        try {
+          console.warn(`[TASK_DELETE] Attempting to delete: ${specDir}`);
           await rm(specDir, { recursive: true, force: true });
           console.warn(`[TASK_DELETE] Deleted spec directory: ${specDir}`);
-        } else {
-          console.warn(`[TASK_DELETE] Spec directory not found: ${specDir}`);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`[TASK_DELETE] Error deleting spec directory ${specDir}:`, error);
+          hasErrors = true;
+          errors.push(`${specDir}: ${errorMsg}`);
+          // Continue with other locations even if one fails
         }
+      }
 
-        // Invalidate cache since a task was deleted
-        projectStore.invalidateTasksCache(project.id);
+      // Invalidate cache since a task was deleted
+      projectStore.invalidateTasksCache(project.id);
 
-        return { success: true };
-      } catch (error) {
-        console.error('[TASK_DELETE] Error deleting spec directory:', error);
+      if (hasErrors) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to delete task files'
+          error: `Failed to delete some task files: ${errors.join('; ')}`
         };
       }
+
+      return { success: true };
     }
   );
 
