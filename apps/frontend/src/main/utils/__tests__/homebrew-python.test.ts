@@ -62,7 +62,9 @@ describe('homebrew-python', () => {
 
     it('finds Python 3.14 in Apple Silicon directory', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
-        return path === '/opt/homebrew/bin/python3.14';
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        return normalized === '/opt/homebrew/bin/python3.14';
       });
 
       mockValidate.mockReturnValue({
@@ -79,7 +81,9 @@ describe('homebrew-python', () => {
 
     it('finds Python 3.13 in Intel directory', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
-        return path === '/usr/local/bin/python3.13';
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        return normalized === '/usr/local/bin/python3.13';
       });
 
       mockValidate.mockReturnValue({
@@ -95,9 +99,11 @@ describe('homebrew-python', () => {
 
     it('prioritizes Apple Silicon over Intel directory', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
         // Both have python3.12
-        return path === '/opt/homebrew/bin/python3.12' ||
-               path === '/usr/local/bin/python3.12';
+        return normalized === '/opt/homebrew/bin/python3.12' ||
+               normalized === '/usr/local/bin/python3.12';
       });
 
       mockValidate.mockReturnValue({
@@ -115,13 +121,15 @@ describe('homebrew-python', () => {
     it('prioritizes newer Python versions', () => {
       // Apple Silicon directory with multiple versions
       vi.mocked(existsSync).mockImplementation((path) => {
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
         return [
           '/opt/homebrew/bin/python3.10',
           '/opt/homebrew/bin/python3.11',
           '/opt/homebrew/bin/python3.12',
           '/opt/homebrew/bin/python3.13',
           '/opt/homebrew/bin/python3.14'
-        ].includes(path as string);
+        ].includes(normalized);
       });
 
       mockValidate.mockReturnValue({
@@ -138,7 +146,9 @@ describe('homebrew-python', () => {
 
     it('falls back to generic python3 when versioned not found', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
-        return path === '/opt/homebrew/bin/python3';
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        return normalized === '/opt/homebrew/bin/python3';
       });
 
       mockValidate.mockReturnValue({
@@ -156,10 +166,12 @@ describe('homebrew-python', () => {
       // First version (3.14) exists but is invalid
       // Second version (3.13) exists and is valid
       vi.mocked(existsSync).mockImplementation((path) => {
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
         return [
           '/opt/homebrew/bin/python3.14',
           '/opt/homebrew/bin/python3.13'
-        ].includes(path as string);
+        ].includes(normalized);
       });
 
       mockValidate.mockImplementation((path) => {
@@ -177,7 +189,9 @@ describe('homebrew-python', () => {
 
     it('handles validation errors gracefully', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
-        return path === '/opt/homebrew/bin/python3.12';
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        return normalized === '/opt/homebrew/bin/python3.12';
       });
 
       mockValidate.mockImplementation(() => {
@@ -193,10 +207,12 @@ describe('homebrew-python', () => {
       // First Python (3.14) throws error
       // Second Python (3.13) is valid
       vi.mocked(existsSync).mockImplementation((path) => {
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
         return [
           '/opt/homebrew/bin/python3.14',
           '/opt/homebrew/bin/python3.13'
-        ].includes(path as string);
+        ].includes(normalized);
       });
 
       mockValidate.mockImplementation((path) => {
@@ -214,8 +230,10 @@ describe('homebrew-python', () => {
 
     it('checks Apple Silicon directory before Intel', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
-        // Apple Intel has python3.14
-        return path === '/usr/local/bin/python3.14';
+        // Normalize path for cross-platform comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        // Intel has python3.14 (Apple Silicon dirs checked first but return false)
+        return normalized === '/usr/local/bin/python3.14';
       });
 
       mockValidate.mockReturnValue({
@@ -275,11 +293,13 @@ describe('homebrew-python', () => {
 
         // python3.14, 3.13 exist but invalid; python3.12 exists and is valid
         vi.mocked(existsSync).mockImplementation((path) => {
+          // Normalize path for cross-platform comparison (Windows may use backslashes)
+          const normalized = path.toString().replace(/\\/g, '/');
           return [
             '/opt/homebrew/bin/python3.14',
             '/opt/homebrew/bin/python3.13',
             '/opt/homebrew/bin/python3.12'
-          ].includes(path as string);
+          ].includes(normalized);
         });
 
         mockValidate.mockImplementation((path) => {
