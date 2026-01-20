@@ -57,7 +57,9 @@ export const DEFAULT_APP_SETTINGS = {
   // Language preference (default to English)
   language: 'en' as const,
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
-  sentryEnabled: true
+  sentryEnabled: true,
+  // Auto-name Claude terminals based on initial message (enabled by default)
+  autoNameClaudeTerminals: true
 };
 
 // ============================================

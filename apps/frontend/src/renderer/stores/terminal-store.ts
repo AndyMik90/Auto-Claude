@@ -94,6 +94,7 @@ export interface Terminal {
   isClaudeBusy?: boolean;  // Whether Claude Code is actively processing (for visual indicator)
   pendingClaudeResume?: boolean;  // Whether this terminal has a pending Claude resume (deferred until tab activated)
   displayOrder?: number;  // Display order for tab persistence (lower = further left)
+  claudeNamedOnce?: boolean;  // Whether this Claude terminal has been auto-named based on initial message (prevents repeated naming)
 }
 
 interface TerminalLayout {
@@ -126,6 +127,7 @@ interface TerminalState {
   setWorktreeConfig: (id: string, config: TerminalWorktreeConfig | undefined) => void;
   setClaudeBusy: (id: string, isBusy: boolean) => void;
   setPendingClaudeResume: (id: string, pending: boolean) => void;
+  setClaudeNamedOnce: (id: string, named: boolean) => void;
   clearAllTerminals: () => void;
   setHasRestoredSessions: (value: boolean) => void;
   reorderTerminals: (activeId: string, overId: string) => void;
@@ -316,8 +318,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
               ...t,
               isClaudeMode,
               status: isClaudeMode ? 'claude-active' : 'running',
-              // Reset busy state when leaving Claude mode
-              isClaudeBusy: isClaudeMode ? t.isClaudeBusy : undefined
+              // Reset busy state and naming flag when leaving Claude mode
+              isClaudeBusy: isClaudeMode ? t.isClaudeBusy : undefined,
+              claudeNamedOnce: isClaudeMode ? t.claudeNamedOnce : undefined
             }
           : t
       ),
@@ -360,6 +363,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     set((state) => ({
       terminals: state.terminals.map((t) =>
         t.id === id ? { ...t, pendingClaudeResume: pending } : t
+      ),
+    }));
+  },
+
+  setClaudeNamedOnce: (id: string, named: boolean) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) =>
+        t.id === id ? { ...t, claudeNamedOnce: named } : t
       ),
     }));
   },
