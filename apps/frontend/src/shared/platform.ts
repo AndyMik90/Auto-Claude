@@ -5,6 +5,11 @@
  * that can be easily mocked in tests. Tests can mock the getCurrentPlatform
  * function to test platform-specific behavior without relying on the
  * actual runtime platform.
+ *
+ * IMPORTANT: This file must not import from ../main/platform to avoid
+ * pulling Node.js modules (fs, os, path, child_process) into the renderer
+ * bundle, where they are not available. All functions here must use only
+ * process.platform and process.env, which are available in the renderer.
  */
 
 /**
@@ -64,5 +69,31 @@ export function isUnix(): boolean {
   return isMacOS() || isLinux();
 }
 
-// Re-export getEnvVar from main platform module for single source of truth
-export { getEnvVar } from '../main/platform';
+/**
+ * Get a platform-specific environment variable value.
+ *
+ * Provides case-insensitive environment variable access on Windows,
+ * where environment variable names are case-insensitive (e.g., PATH, Path, path).
+ * On Unix systems, environment variable names are case-sensitive.
+ *
+ * This is a copy of the same function in ../main/platform/index.ts to avoid
+ * pulling Node.js dependencies into the renderer bundle. Keep both in sync.
+ *
+ * @param name - Environment variable name
+ * @returns The environment variable value, or undefined if not found
+ */
+export function getEnvVar(name: string): string | undefined {
+  if (isWindows()) {
+    // Try exact match first
+    if (process.env[name] !== undefined) {
+      return process.env[name];
+    }
+    // Fall back to case-insensitive search
+    const lowerKey = Object.keys(process.env).find(
+      (key) => key.toLowerCase() === name.toLowerCase()
+    );
+    return lowerKey !== undefined ? process.env[lowerKey] : undefined;
+  }
+
+  return process.env[name];
+}
