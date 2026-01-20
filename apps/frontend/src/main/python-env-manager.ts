@@ -703,14 +703,15 @@ if sys.version_info >= (3, 12):
       }
     }
 
-    // Build PYTHONPATH - for Windows with pywin32, we need to include win32 and win32/lib
+    // Build PYTHONPATH - for Windows with pywin32, we need to include win32, win32/lib, and Pythonwin
     // since the .pth file that normally adds these isn't processed when using PYTHONPATH
     let pythonPath = this.sitePackagesPath || '';
     if (this.sitePackagesPath && isWindows()) {
       const pathSep = getPathDelimiter();  // Platform-appropriate path separator
       const win32Path = path.join(this.sitePackagesPath, 'win32');
       const win32LibPath = path.join(this.sitePackagesPath, 'win32', 'lib');
-      pythonPath = [this.sitePackagesPath, win32Path, win32LibPath].join(pathSep);
+      const pythonwinPath = path.join(this.sitePackagesPath, 'Pythonwin');
+      pythonPath = [this.sitePackagesPath, win32Path, win32LibPath, pythonwinPath].join(pathSep);
     }
 
     // Windows-specific pywin32 DLL loading fix
@@ -752,7 +753,7 @@ if sys.version_info >= (3, 12):
       PYTHONIOENCODING: 'utf-8',
       // Disable user site-packages to avoid conflicts
       PYTHONNOUSERSITE: '1',
-      // Override PYTHONPATH if we have bundled packages
+      // Override PYTHONPATH with bundled packages and pywin32 subdirectories
       ...(pythonPath ? { PYTHONPATH: pythonPath } : {}),
     };
   }

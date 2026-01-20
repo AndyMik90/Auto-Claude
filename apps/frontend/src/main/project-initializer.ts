@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } fr
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { getToolPath } from './cli-tool-manager';
+import { isWSLPath } from '../shared/utils/wsl-utils';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -29,19 +30,89 @@ export interface GitStatus {
 }
 
 /**
+ * Check git status for WSL paths using filesystem checks
+ * This avoids slow/blocking wsl.exe commands
+ */
+function checkGitStatusViaFilesystem(projectPath: string): GitStatus {
+  const gitDir = path.join(projectPath, '.git');
+
+  // Check if .git exists (works on \\wsl$\... paths)
+  if (!existsSync(gitDir)) {
+    return {
+      isGitRepo: false,
+      hasCommits: false,
+      currentBranch: null,
+      error: 'Not a git repository. Please run "git init" to initialize git.'
+    };
+  }
+
+  // Check if HEAD file exists - indicates commits exist
+  const headPath = path.join(gitDir, 'HEAD');
+  let hasCommits = false;
+  let currentBranch: string | null = null;
+
+  if (existsSync(headPath)) {
+    try {
+      const headContent = readFileSync(headPath, 'utf-8').trim();
+      // HEAD format: "ref: refs/heads/main" or a commit hash
+      if (headContent.startsWith('ref: refs/heads/')) {
+        currentBranch = headContent.replace('ref: refs/heads/', '');
+        // Check if the branch ref file exists (indicates at least one commit)
+        const branchRefPath = path.join(gitDir, 'refs', 'heads', currentBranch);
+        hasCommits = existsSync(branchRefPath);
+      } else if (headContent.match(/^[0-9a-f]{40}$/)) {
+        // Detached HEAD with commit hash - definitely has commits
+        hasCommits = true;
+      }
+    } catch {
+      // Failed to read HEAD, assume no commits
+    }
+  }
+
+  if (!hasCommits) {
+    return {
+      isGitRepo: true,
+      hasCommits: false,
+      currentBranch,
+      error: 'Git repository has no commits. Please make an initial commit first.'
+    };
+  }
+
+  return {
+    isGitRepo: true,
+    hasCommits: true,
+    currentBranch
+  };
+}
+
+/**
  * Check if a directory is a git repository and has at least one commit
  */
 export function checkGitStatus(projectPath: string): GitStatus {
+  const useWSL = isWSLPath(projectPath);
+
+  console.log(`[checkGitStatus] Checking: ${projectPath}, useWSL: ${useWSL}`);
+
+  // For WSL paths, use filesystem checks to avoid blocking wsl.exe commands
+  // The \\wsl$\... UNC paths work fine with existsSync/readFileSync
+  if (useWSL) {
+    console.log(`[checkGitStatus] Using filesystem check for WSL path`);
+    return checkGitStatusViaFilesystem(projectPath);
+  }
+
+  // For native Windows paths, use git commands directly
   const git = getToolPath('git');
 
   try {
     // Check if it's a git repository
-    execFileSync(git, ['rev-parse', '--git-dir'], {
+    const gitDir = execFileSync(git, ['rev-parse', '--git-dir'], {
       cwd: projectPath,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-  } catch {
+    console.log(`[checkGitStatus] git-dir result: ${gitDir.trim()}`);
+  } catch (err) {
+    console.error(`[checkGitStatus] git rev-parse failed:`, err);
     return {
       isGitRepo: false,
       hasCommits: false,
