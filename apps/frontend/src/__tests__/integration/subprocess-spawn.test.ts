@@ -379,9 +379,10 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Wait for spawn to complete and verify task is tracked
-      await new Promise(resolve => setImmediate(resolve));
-      expect(manager.isRunning('task-1')).toBe(true);
+      // Wait for process to be spawned and tracked (use vi.waitFor for reliability)
+      await vi.waitFor(() => {
+        expect(manager.isRunning('task-1')).toBe(true);
+      }, { timeout: 5000 });
 
       const result = manager.killTask('task-1');
 
