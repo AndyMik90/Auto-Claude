@@ -199,3 +199,114 @@ class TestGetGitExecutable:
         result1 = get_git_executable()
         result2 = get_git_executable()
         assert result1 == result2
+
+    @patch("core.platform.is_windows", return_value=True)
+    def test_windows_path_detection_uses_is_windows(self, mock_is_windows):
+        """Should use is_windows() for Windows-specific path detection."""
+        from core.git_executable import _find_git_executable
+
+        with patch.dict(os.environ, {}, clear=False):
+            with patch("shutil.which", return_value=None):
+                with patch("os.path.isfile") as mock_isfile:
+                    # Mock Program Files git.exe to exist
+                    def isfile_side_effect(path):
+                        return "Git" in path and path.endswith("git.exe")
+
+                    mock_isfile.side_effect = isfile_side_effect
+
+                    result = _find_git_executable()
+
+                    # Verify is_windows was called
+                    assert mock_is_windows.called
+                    # Should find Windows Git path
+                    assert "Git" in result
+                    assert result.endswith("git.exe")
+
+    @patch("core.platform.is_windows", return_value=False)
+    def test_unix_skips_windows_paths(self, mock_is_windows):
+        """Should skip Windows-specific paths when is_windows() returns False."""
+        from core.git_executable import _find_git_executable
+
+        with patch.dict(os.environ, {}, clear=False):
+            with patch("shutil.which", return_value="/usr/bin/git"):
+                result = _find_git_executable()
+
+                # Verify is_windows was called
+                assert mock_is_windows.called
+                # Should return Unix git path from shutil.which
+                assert result == "/usr/bin/git"
+
+    @patch("core.platform.is_windows", return_value=True)
+    def test_windows_tries_where_command(self, mock_is_windows):
+        """Should try 'where' command on Windows when other methods fail."""
+        from core.git_executable import _find_git_executable
+
+        with patch.dict(os.environ, {}, clear=False):
+            with patch("shutil.which", return_value=None):
+                with patch("os.path.isfile", return_value=False):
+                    with patch("subprocess.run") as mock_run:
+                        mock_run.return_value = subprocess.CompletedProcess(
+                            args="where git",
+                            returncode=0,
+                            stdout="C:\\Program Files\\Git\\cmd\\git.exe",
+                            stderr=""
+                        )
+
+                        result = _find_git_executable()
+
+                        # Verify is_windows was called
+                        assert mock_is_windows.called
+                        # Verify subprocess.run was called with shell=True for 'where'
+                        mock_run.assert_called()
+                        call_kwargs = mock_run.call_args.kwargs
+                        assert call_kwargs.get("shell") is True
+                        assert "where git" in mock_run.call_args.args[0]
+
+    @patch("core.platform.is_windows", return_value=False)
+    def test_unix_skips_where_command(self, mock_is_windows):
+        """Should NOT try 'where' command on Unix systems."""
+        from core.git_executable import _find_git_executable
+
+        with patch.dict(os.environ, {}, clear=False):
+            with patch("shutil.which", return_value=None):
+                with patch("subprocess.run") as mock_run:
+                    # This should NOT be called on Unix
+                    mock_run.return_value = subprocess.CompletedProcess(
+                        args="where git",
+                        returncode=0,
+                        stdout="",
+                        stderr=""
+                    )
+
+                    result = _find_git_executable()
+
+                    # Verify is_windows was called
+                    assert mock_is_windows.called
+                    # Verify 'where' command was NOT used on Unix
+                    for call in mock_run.call_args_list:
+                        args = call.args
+                        if args and len(args) > 0:
+                            assert "where" not in str(args[0])
+
+    @patch("core.platform.is_windows", return_value=True)
+    def test_checks_bash_path_env_var(self, mock_is_windows):
+        """Should check CLAUDE_CODE_GIT_BASH_PATH env var on all platforms."""
+        from core.git_executable import _find_git_executable
+
+        # Set up mock bash path
+        mock_bash_path = "C:\\Program Files\\Git\\bin\\bash.exe"
+
+        with patch.dict(os.environ, {"CLAUDE_CODE_GIT_BASH_PATH": mock_bash_path}, clear=False):
+            with patch("pathlib.Path.exists", return_value=True):
+                with patch("pathlib.Path.is_file") as mock_isfile:
+                    # Mock git.exe to exist in cmd/ subdirectory
+                    def isfile_side_effect(path):
+                        return "git.exe" in path and "cmd" in path
+
+                    mock_isfile.side_effect = isfile_side_effect
+
+                    result = _find_git_executable()
+
+                    # Should find git.exe relative to bash.exe
+                    assert "git.exe" in result
+                    assert "cmd" in result

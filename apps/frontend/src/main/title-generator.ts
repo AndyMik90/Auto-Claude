@@ -11,11 +11,12 @@ import { EventEmitter } from 'events';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from './rate-limit-detector';
 import { parsePythonCommand, getValidatedPythonPath } from './python-detector';
 import { getConfiguredPythonPath } from './python-env-manager';
+import { getEnvVar } from './platform';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
  */
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debug(...args: unknown[]): void {
   if (DEBUG) {

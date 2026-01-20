@@ -420,7 +420,7 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     // Log debug mode status
-    const isDebugMode = process.env.DEBUG === 'true';
+    const isDebugMode = getEnvVar('DEBUG') === 'true';
     if (isDebugMode) {
       console.warn('[main] ========================================');
       console.warn('[main] DEBUG MODE ENABLED (DEBUG=true)');
@@ -428,7 +428,7 @@ app.whenReady().then(() => {
     }
 
     // Initialize app auto-updater (only in production, or when DEBUG_UPDATER is set)
-    const forceUpdater = process.env.DEBUG_UPDATER === 'true';
+    const forceUpdater = getEnvVar('DEBUG_UPDATER') === 'true';
     if (app.isPackaged || forceUpdater) {
       // Load settings to get beta updates preference
       const settings = loadSettingsSync();

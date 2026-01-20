@@ -464,3 +464,71 @@ export function getGitLabCliPaths(): string[] {
 
   return paths;
 }
+
+/**
+ * Get GitHub CLI (gh) executable paths for the current platform.
+ * Similar to getGitLabCliPaths() but for GitHub's gh CLI tool.
+ *
+ * Windows paths include:
+ * - Program Files installations
+ * - npm global installation (gh.cmd)
+ * - Scoop package manager
+ * - Chocolatey package manager
+ *
+ * macOS/Linux paths include:
+ * - Homebrew paths
+ * - Standard system locations
+ * - Snap store (Linux)
+ */
+export function getGitHubCliPaths(): string[] {
+  const paths: string[] = [];
+
+  if (isWindows()) {
+    const programFiles = getEnvVar('ProgramFiles') || 'C:\\Program Files';
+    const programFilesX86 = getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)';
+    const programData = getEnvVar('ProgramData') || 'C:\\ProgramData';
+    const homeDir = getEnvVar('USERPROFILE') || getEnvVar('HOME') || '';
+
+    // Program Files installations
+    paths.push(
+      path.join(programFiles, 'GitHub CLI', 'gh.exe'),
+      path.join(programFilesX86, 'GitHub CLI', 'gh.exe'),
+      path.join(homeDir, 'AppData', 'Local', 'Programs', 'GitHub CLI', 'gh.exe')
+    );
+
+    // npm global installation (gh.cmd)
+    paths.push(
+      path.join(homeDir, 'AppData', 'Roaming', 'npm', 'gh.cmd')
+    );
+
+    // Scoop package manager
+    paths.push(
+      path.join(homeDir, 'scoop', 'apps', 'gh', 'current', 'gh.exe')
+    );
+
+    // Chocolatey package manager
+    paths.push(
+      path.join(programData, 'chocolatey', 'lib', 'gh-cli', 'tools', 'gh.exe')
+    );
+  } else {
+    // macOS/Linux paths
+
+    // Homebrew paths (Apple Silicon, Intel Mac, Linux Homebrew)
+    paths.push(
+      '/opt/homebrew/bin/gh',
+      '/usr/local/bin/gh',
+      '/home/linuxbrew/.linuxbrew/bin/gh'
+    );
+
+    // Standard system locations
+    paths.push('/usr/bin/gh');
+
+    // Snap store (Linux)
+    paths.push('/snap/bin/gh');
+
+    // User local bin
+    paths.push(path.join(getEnvVar('HOME') || '', '.local', 'bin', 'gh'));
+  }
+
+  return paths;
+}

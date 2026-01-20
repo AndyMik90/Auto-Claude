@@ -6,6 +6,7 @@
 import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
 import { isProfileRateLimited } from './rate-limit-manager';
 import { isProfileAuthenticated } from './profile-utils';
+import { getEnvVar } from '../platform';
 
 interface ScoredProfile {
   profile: ClaudeProfile;
@@ -35,7 +36,7 @@ export function getBestAvailableProfile(
   // 2. Lower weekly usage (more important than session)
   // 3. Lower session usage
   // 4. More recently authenticated
-  const isDebug = process.env.DEBUG === 'true';
+  const isDebug = getEnvVar('DEBUG') === 'true';
 
   if (isDebug) {
     console.warn('[ProfileScorer] Evaluating', candidates.length, 'candidate profiles (excluding:', excludeProfileId, ')');

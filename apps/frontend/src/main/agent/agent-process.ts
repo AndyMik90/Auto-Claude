@@ -554,7 +554,7 @@ export class AgentProcessManager {
       completedPhases: [...completedPhases]
     });
 
-    const isDebug = ['true', '1', 'yes', 'on'].includes(process.env.DEBUG?.toLowerCase() ?? '');
+    const isDebug = ['true', '1', 'yes', 'on'].includes(getEnvVar('DEBUG')?.toLowerCase() ?? '');
 
     const processLog = (line: string) => {
       allOutput = (allOutput + line).slice(-10000);
@@ -731,7 +731,7 @@ export class AgentProcessManager {
     // Use shared platform-aware kill utility
     killProcessGracefully(agentProcess.process, {
       debugPrefix: '[AgentProcess]',
-      debug: process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development'
+      debug: getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development'
     });
 
     this.state.deleteProcess(taskId);

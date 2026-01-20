@@ -19,7 +19,7 @@ import { app } from 'electron';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import os from 'os';
-import { getCurrentOS } from './platform';
+import { getCurrentOS, getEnvVar } from './platform';
 
 // Configure electron-log (wrapped in try-catch for re-import scenarios in tests)
 try {
@@ -37,7 +37,7 @@ log.transports.file.fileName = 'main.log';
 // by renaming old files to .old format. Custom implementations were problematic.
 
 // Console transport - always show warnings and errors, debug only in dev mode
-log.transports.console.level = process.env.NODE_ENV === 'development' ? 'debug' : 'warn';
+log.transports.console.level = getEnvVar('NODE_ENV') === 'development' ? 'debug' : 'warn';
 log.transports.console.format = '[{h}:{i}:{s}] [{level}] {text}';
 
 // Determine if this is a beta version

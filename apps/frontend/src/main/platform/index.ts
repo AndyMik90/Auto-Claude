@@ -25,7 +25,8 @@ export {
   getBashExecutablePaths,
   getCmdExecutablePath,
   getTerminalLauncherPaths,
-  getGitLabCliPaths
+  getGitLabCliPaths,
+  getGitHubCliPaths
 } from './paths';
 
 /**

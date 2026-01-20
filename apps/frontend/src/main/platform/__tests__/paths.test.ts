@@ -68,6 +68,7 @@ import {
   getTerminalLauncherPaths,
   getHomebrewBinPaths,
   getGitLabCliPaths,
+  getGitHubCliPaths,
 } from '../paths';
 
 // Get mocked functions
@@ -1071,6 +1072,82 @@ describe('Platform Paths Module', () => {
       it('includes user local bin path', () => {
         const paths = getGitLabCliPaths();
         expect(paths.some(p => p.includes('.local') && p.includes('bin') && p.includes('glab'))).toBe(true);
+      });
+    });
+  });
+
+  describe('getGitHubCliPaths', () => {
+    describeWindows('returns Windows-specific GitHub CLI paths', () => {
+      it('includes Program Files GitHub CLI paths', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.some(p => p.includes('Program Files') && p.includes('GitHub CLI'))).toBe(true);
+      });
+
+      it('includes Program Files (x86) GitHub CLI paths', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('Program Files (x86)') && p.includes('GitHub CLI'))).toBe(true);
+      });
+
+      it('includes Scoop installation path', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('scoop') && p.includes('gh') && p.endsWith('.exe'))).toBe(true);
+      });
+
+      it('includes npm global path with .cmd extension', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('npm') && p.endsWith('gh.cmd'))).toBe(true);
+      });
+
+      it('includes AppData Local Programs path', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('AppData') && p.includes('Local') && p.includes('Programs'))).toBe(true);
+      });
+
+      it('includes Chocolatey lib path', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('chocolatey') && p.includes('lib') && p.includes('gh-cli'))).toBe(true);
+      });
+    });
+
+    describeMacOS('returns macOS-specific GitHub CLI paths', () => {
+      it('includes standard system locations', () => {
+        mockPlatform('darwin');
+        const paths = getGitHubCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths).toContain('/usr/bin/gh');
+        expect(paths).toContain('/usr/local/bin/gh');
+      });
+
+      it('includes Homebrew paths', () => {
+        mockPlatform('darwin');
+        const paths = getGitHubCliPaths();
+        expect(paths).toContain('/opt/homebrew/bin/gh');
+      });
+
+      it('includes user local bin path', () => {
+        mockPlatform('darwin');
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('.local') && p.includes('bin') && p.includes('gh'))).toBe(true);
+      });
+    });
+
+    describeUnix('returns Linux-specific GitHub CLI paths', () => {
+      it('includes standard system locations', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths).toContain('/usr/bin/gh');
+        expect(paths).toContain('/usr/local/bin/gh');
+      });
+
+      it('includes Snap path', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths).toContain('/snap/bin/gh');
+      });
+
+      it('includes user local bin path', () => {
+        const paths = getGitHubCliPaths();
+        expect(paths.some(p => p.includes('.local') && p.includes('bin') && p.includes('gh'))).toBe(true);
       });
     });
   });

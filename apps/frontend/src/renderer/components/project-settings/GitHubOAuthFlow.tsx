@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
+import { getEnvVar } from '../../../shared/platform';
 
 interface GitHubOAuthFlowProps {
   onSuccess: (token: string, username?: string) => void;
@@ -20,7 +21,7 @@ interface GitHubOAuthFlowProps {
 }
 
 // Debug logging helper - logs when DEBUG env var is set or in development
-const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG === 'true';
+const DEBUG = getEnvVar('NODE_ENV') === 'development' || getEnvVar('DEBUG') === 'true';
 
 function debugLog(message: string, data?: unknown) {
   if (DEBUG) {

@@ -22,6 +22,7 @@ import {
   PRODUCTION_TRACE_SAMPLE_RATE,
   type SentryErrorEvent
 } from '../shared/utils/sentry-privacy';
+import { getEnvVar } from './platform';
 
 /**
  * Build-time constants defined in electron.vite.config.ts
@@ -48,7 +49,7 @@ function getSentryDsn(): string {
   // Falls back to runtime env var for development flexibility
   // typeof guard needed for test environments where Vite's define doesn't apply
   const buildTimeValue = typeof __SENTRY_DSN__ !== 'undefined' ? __SENTRY_DSN__ : '';
-  return buildTimeValue || process.env.SENTRY_DSN || '';
+  return buildTimeValue || getEnvVar('SENTRY_DSN') || '';
 }
 
 /**
@@ -60,7 +61,7 @@ function getTracesSampleRate(): number {
   // Try build-time constant first, then runtime env var
   // typeof guard needed for test environments where Vite's define doesn't apply
   const buildTimeValue = typeof __SENTRY_TRACES_SAMPLE_RATE__ !== 'undefined' ? __SENTRY_TRACES_SAMPLE_RATE__ : '';
-  const envValue = buildTimeValue || process.env.SENTRY_TRACES_SAMPLE_RATE;
+  const envValue = buildTimeValue || getEnvVar('SENTRY_TRACES_SAMPLE_RATE');
   if (envValue) {
     const parsed = parseFloat(envValue);
     if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
@@ -80,7 +81,7 @@ function getProfilesSampleRate(): number {
   // Try build-time constant first, then runtime env var
   // typeof guard needed for test environments where Vite's define doesn't apply
   const buildTimeValue = typeof __SENTRY_PROFILES_SAMPLE_RATE__ !== 'undefined' ? __SENTRY_PROFILES_SAMPLE_RATE__ : '';
-  const envValue = buildTimeValue || process.env.SENTRY_PROFILES_SAMPLE_RATE;
+  const envValue = buildTimeValue || getEnvVar('SENTRY_PROFILES_SAMPLE_RATE');
   if (envValue) {
     const parsed = parseFloat(envValue);
     if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
@@ -113,7 +114,7 @@ export function initSentryMain(): void {
 
   // Check if we have a DSN - if not, Sentry is effectively disabled
   const hasDsn = cachedDsn.length > 0;
-  const shouldEnable = hasDsn && (app.isPackaged || process.env.SENTRY_DEV === 'true');
+  const shouldEnable = hasDsn && (app.isPackaged || getEnvVar('SENTRY_DEV') === 'true');
 
   if (!hasDsn) {
     console.log('[Sentry] No SENTRY_DSN configured - error reporting disabled');

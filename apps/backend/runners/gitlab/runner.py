@@ -44,6 +44,7 @@ if env_file.exists():
 # Add gitlab runner directory to path for direct imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+from core.gitlab_executable import get_glab_executable
 from core.io_utils import safe_print
 from models import GitLabRunnerConfig
 from orchestrator import GitLabOrchestrator, ProgressCallback
@@ -70,13 +71,17 @@ def get_config(args) -> GitLabRunnerConfig:
         # Try to get from glab CLI
         import subprocess
 
-        try:
-            result = subprocess.run(
-                ["glab", "auth", "status", "-t"],
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError:
+        glab = get_glab_executable()
+        if glab:
+            try:
+                result = subprocess.run(
+                    [glab, "auth", "status", "-t"],
+                    capture_output=True,
+                    text=True,
+                )
+            except FileNotFoundError:
+                result = None
+        else:
             result = None
 
         if result and result.returncode == 0:

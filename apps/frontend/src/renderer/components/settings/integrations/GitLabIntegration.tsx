@@ -8,9 +8,10 @@ import { Separator } from '../../ui/separator';
 import { Button } from '../../ui/button';
 import { PasswordInput } from '../../project-settings/PasswordInput';
 import type { ProjectEnvConfig, GitLabSyncStatus, ProjectSettings } from '../../../../shared/types';
+import { getEnvVar } from '../../../../shared/platform';
 
 // Debug logging
-const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG === 'true';
+const DEBUG = getEnvVar('NODE_ENV') === 'development' || getEnvVar('DEBUG') === 'true';
 function debugLog(message: string, data?: unknown) {
   if (DEBUG) {
     if (data !== undefined) {

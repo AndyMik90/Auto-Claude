@@ -85,7 +85,7 @@ def get_gh_executable() -> str | None:
     1. GITHUB_CLI_PATH env var (user-configured path from frontend)
     2. shutil.which (if gh is in PATH)
     3. Homebrew paths on macOS
-    4. Windows Program Files paths
+    4. Windows paths: Program Files, npm global, Scoop, Chocolatey
     5. Windows 'where' command
 
     Caches the result after first successful find. Use invalidate_gh_cache()
@@ -124,12 +124,23 @@ def _find_gh_executable() -> str | None:
             if os.path.isfile(path) and _verify_gh_executable(path):
                 return path
 
-    # 4. Windows-specific: check Program Files paths
+    # 4. Windows-specific: check common installation paths
     if is_windows():
         windows_paths = [
+            # Program Files installations
             os.path.expandvars(r"%PROGRAMFILES%\GitHub CLI\gh.exe"),
             os.path.expandvars(r"%PROGRAMFILES(X86)%\GitHub CLI\gh.exe"),
             os.path.expandvars(r"%LOCALAPPDATA%\Programs\GitHub CLI\gh.exe"),
+            # npm global installation (gh.cmd)
+            os.path.join(
+                os.path.expanduser("~"), "AppData", "Roaming", "npm", "gh.cmd"
+            ),
+            # Scoop package manager
+            os.path.join(
+                os.path.expanduser("~"), "scoop", "apps", "gh", "current", "gh.exe"
+            ),
+            # Chocolatey package manager
+            os.path.expandvars(r"%PROGRAMDATA%\chocolatey\lib\gh-cli\tools\gh.exe"),
         ]
         for path in windows_paths:
             if os.path.isfile(path) and _verify_gh_executable(path):

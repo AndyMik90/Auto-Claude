@@ -12,6 +12,7 @@
 import { EventEmitter } from 'events';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import { getEnvVar } from '../platform';
 
 export class UsageMonitor extends EventEmitter {
   private static instance: UsageMonitor;
@@ -19,13 +20,13 @@ export class UsageMonitor extends EventEmitter {
   private currentUsage: ClaudeUsageSnapshot | null = null;
   private isChecking = false;
   private useApiMethod = true; // Try API first, fall back to CLI if it fails
-  
+
   // Swap loop protection: track profiles that recently failed auth
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
   private static AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
-  
+
   // Debug flag for verbose logging
-  private readonly isDebug = process.env.DEBUG === 'true';
+  private readonly isDebug = getEnvVar('DEBUG') === 'true';
 
   private constructor() {
     super();
@@ -159,12 +160,12 @@ export class UsageMonitor extends EventEmitter {
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
         const profileManager = getClaudeProfileManager();
         const activeProfile = profileManager.getActiveProfile();
-        
+
         if (activeProfile) {
           // Mark this profile as auth-failed to prevent swap loops
           this.authFailedProfiles.set(activeProfile.id, Date.now());
           console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', activeProfile.id);
-          
+
           // Clean up expired entries from the failed profiles map
           const now = Date.now();
           this.authFailedProfiles.forEach((timestamp, profileId) => {
@@ -172,7 +173,7 @@ export class UsageMonitor extends EventEmitter {
               this.authFailedProfiles.delete(profileId);
             }
           });
-          
+
           try {
             const excludeProfiles = Array.from(this.authFailedProfiles.keys());
             console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
@@ -287,7 +288,7 @@ export class UsageMonitor extends EventEmitter {
       if (error?.statusCode === 401 || error?.statusCode === 403) {
         throw error;
       }
-      
+
       console.error('[UsageMonitor] API fetch failed:', error);
       return null;
     }
@@ -347,12 +348,12 @@ export class UsageMonitor extends EventEmitter {
     additionalExclusions: string[] = []
   ): Promise<void> {
     const profileManager = getClaudeProfileManager();
-    
+
     // Get all profiles to swap to, excluding current and any additional exclusions
     const allProfiles = profileManager.getProfilesSortedByAvailability();
     const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
     const eligibleProfiles = allProfiles.filter(p => !excludeIds.has(p.id));
-    
+
     if (eligibleProfiles.length === 0) {
       console.warn('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds), ')');
       this.emit('proactive-swap-failed', {
@@ -362,7 +363,7 @@ export class UsageMonitor extends EventEmitter {
       });
       return;
     }
-    
+
     // Use the best available from eligible profiles
     const bestProfile = eligibleProfiles[0];
 

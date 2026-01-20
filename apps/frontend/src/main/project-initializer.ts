@@ -2,11 +2,12 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } fr
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { getToolPath } from './cli-tool-manager';
+import { getEnvVar } from './platform';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
  */
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debug(message: string, data?: Record<string, unknown>): void {
   if (DEBUG) {

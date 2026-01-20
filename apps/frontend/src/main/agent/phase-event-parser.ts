@@ -5,11 +5,12 @@
 
 import { PHASE_MARKER_PREFIX } from '../../shared/constants/phase-protocol';
 import { validatePhaseEvent, type PhaseEventPayload } from './phase-event-schema';
+import { getEnvVar } from '../platform';
 
 export { PHASE_MARKER_PREFIX };
 export type { PhaseEventPayload as PhaseEvent };
 
-const DEBUG = process.env.DEBUG?.toLowerCase() === 'true' || process.env.DEBUG === '1';
+const DEBUG = getEnvVar('DEBUG')?.toLowerCase() === 'true' || getEnvVar('DEBUG') === '1';
 
 export function parsePhaseEvent(line: string): PhaseEventPayload | null {
   const markerIndex = line.indexOf(PHASE_MARKER_PREFIX);

@@ -34,6 +34,7 @@ import {
 } from './git-integration';
 import { getValidatedPythonPath } from '../python-detector';
 import { getConfiguredPythonPath } from '../python-env-manager';
+import { getEnvVar } from '../platform';
 
 /**
  * Main changelog service - orchestrates all changelog operations
@@ -68,10 +69,8 @@ export class ChangelogService extends EventEmitter {
 
     // Check process.env first
     if (
-      process.env.DEBUG === 'true' ||
-      process.env.DEBUG === '1' ||
-      process.env.DEBUG === 'true' ||
-      process.env.DEBUG === '1'
+      getEnvVar('DEBUG') === 'true' ||
+      getEnvVar('DEBUG') === '1'
     ) {
       this.debugEnabled = true;
       return true;
