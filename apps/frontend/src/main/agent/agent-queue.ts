@@ -56,7 +56,7 @@ function extractErrorMessage(output: string): string | null {
   // This ensures consistent error messages across all agent types
   const authFailure = detectAuthFailure(cleanOutput);
   if (authFailure.isAuthFailure) {
-    return authFailure.message;
+    return authFailure.message.substring(0, ERROR_MESSAGE_MAX_LENGTH);
   }
 
   const lines = cleanOutput.split('\n').map(line => line.trim()).filter(Boolean);
