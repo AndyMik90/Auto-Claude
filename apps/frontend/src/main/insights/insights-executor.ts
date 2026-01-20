@@ -17,7 +17,7 @@ import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector'
 /**
  * CLI flag for YOLO mode (dangerously skip permissions)
  */
-const YOLO_MODE_FLAG = '--yolo';
+const YOLO_MODE_FLAG = '--dangerously-skip-permissions';
 
 /**
  * Message processor result
