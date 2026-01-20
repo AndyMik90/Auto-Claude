@@ -19,7 +19,7 @@ import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
-import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar, findExecutable, getPathDelimiter, getTerminalLauncherPaths } from '../platform';
+import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar, findExecutable, getPathDelimiter, getTerminalLauncherPaths, getCmdExecutablePath } from '../platform';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
 import semver from 'semver';
@@ -65,10 +65,8 @@ async function validateClaudeCliAsync(cliPath: string): Promise<[boolean, string
     // /s = strip first and last quotes, preserving inner quotes
     // /c = run command then terminate
     if (isWindows && /\.(cmd|bat)$/i.test(normalizedCliPath)) {
-      // Get cmd.exe path from environment or use default
-      // Use expandWindowsEnvVars for proper SystemRoot/ComSpec resolution with fallback
-      const systemRoot = expandWindowsEnvVars('%SYSTEMROOT%');
-      const cmdExe = expandWindowsEnvVars('%COMSPEC%') || joinPaths(systemRoot, 'System32', 'cmd.exe');
+      // Get cmd.exe path using platform abstraction with proper fallbacks
+      const cmdExe = getCmdExecutablePath();
       // Use double-quoted command line for paths with spaces
       const cmdLine = `""${normalizedCliPath}" --version"`;
       const execOptions: ExecFileAsyncOptionsWithVerbatim = {
