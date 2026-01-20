@@ -23,7 +23,7 @@ import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
-import { getToolInfo } from '../cli-tool-manager';
+import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
 import { killProcessGracefully } from '../platform';
 
 /**
@@ -134,6 +134,9 @@ export class AgentProcessManager {
    * Common issue: CLI tools installed via Homebrew or other non-standard locations
    * are not in subprocess PATH when app launches from Finder/Dock.
    *
+   * For 'claude' tool specifically, uses getClaudeCliPathForSdk() which returns null
+   * for Windows .cmd files, allowing the SDK to use its bundled claude.exe instead.
+   *
    * @param toolName - Name of the CLI tool (e.g., 'claude', 'gh')
    * @returns Record with env var set if tool was detected
    */
@@ -142,10 +145,23 @@ export class AgentProcessManager {
     const envVarName = CLI_TOOL_ENV_MAP[toolName];
     if (!process.env[envVarName]) {
       try {
-        const toolInfo = getToolInfo(toolName);
-        if (toolInfo.found && toolInfo.path) {
-          env[envVarName] = toolInfo.path;
-          console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);
+        // For 'claude' tool, use getClaudeCliPathForSdk() which returns null for Windows .cmd files
+        // This allows the Claude Agent SDK to use its bundled claude.exe instead
+        if (toolName === 'claude') {
+          const cliPath = getClaudeCliPathForSdk();
+          if (cliPath) {
+            env[envVarName] = cliPath;
+            console.log(`[AgentProcess] Setting ${envVarName}:`, cliPath, '(source: cli-tool-manager)');
+          } else {
+            console.log(`[AgentProcess] Claude CLI is .cmd file on Windows, not setting ${envVarName} - SDK will use bundled CLI`);
+          }
+        } else {
+          // For other tools, use standard detection
+          const toolInfo = getToolInfo(toolName);
+          if (toolInfo.found && toolInfo.path) {
+            env[envVarName] = toolInfo.path;
+            console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);
+          }
         }
       } catch (error) {
         console.warn(`[AgentProcess] Failed to detect ${toolName} CLI path:`, error instanceof Error ? error.message : String(error));
