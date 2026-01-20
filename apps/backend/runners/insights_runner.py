@@ -143,6 +143,7 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    dangerously_skip_permissions: bool = False,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -359,6 +360,11 @@ def main():
         choices=["none", "low", "medium", "high", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
+    parser.add_argument(
+        "--dangerously-skip-permissions",
+        action="store_true",
+        help="Skip filesystem permission checks (DANGEROUS - use only in trusted environments)",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -367,6 +373,7 @@ def main():
     user_message = args.message
     model = args.model
     thinking_level = args.thinking_level
+    dangerously_skip_permissions = args.dangerously_skip_permissions
 
     debug(
         "insights_runner",
@@ -375,6 +382,7 @@ def main():
         message_length=len(user_message),
         model=model,
         thinking_level=thinking_level,
+        dangerously_skip_permissions=dangerously_skip_permissions,
     )
 
     # Load history from file if provided, otherwise parse inline JSON
@@ -401,7 +409,16 @@ def main():
 
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(
+        run_with_sdk(
+            project_dir,
+            user_message,
+            history,
+            model,
+            thinking_level,
+            dangerously_skip_permissions,
+        )
+    )
     debug_success("insights_runner", "Query completed")
 
 
