@@ -264,9 +264,8 @@ class TestRunGh:
             result = run_gh(["auth", "status"])
 
             assert result.returncode == -1
-            assert "not found" in result.stderr
-            # Check for installation URL domain in error message
-            assert "cli.github.com" in result.stderr
+            # Check for exact expected error message
+            assert result.stderr == "GitHub CLI (gh) not found. Install from https://cli.github.com/"
 
     def test_handles_timeout(self):
         """Should handle timeout gracefully."""
