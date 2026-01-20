@@ -31,6 +31,8 @@ import {
   withExecutableExtension,
   getBinaryDirectories,
   getHomebrewPath,
+  getHomeDir,
+  expandHomePath,
   getShellConfig,
   requiresShell,
   getNpmCommand,
@@ -39,6 +41,8 @@ import {
   normalizePath,
   normalizeExecutablePath,
   joinPaths,
+  ensureLongPathCompatible,
+  escapeShellPath,
   getPlatformDescription,
   pathsAreEqual,
   getWhichCommand,
@@ -215,6 +219,51 @@ describe('Platform Module', () => {
 
       expect(config.delimiter).toBe(':');
       expect(config.executableExtensions).toEqual(['']);
+    });
+  });
+
+  describe('getHomeDir', () => {
+    it('returns the home directory', () => {
+      const homeDir = getHomeDir();
+      expect(homeDir).toBeTruthy();
+      expect(typeof homeDir).toBe('string');
+    });
+  });
+
+  describe('expandHomePath', () => {
+    it('expands ~ to home directory', () => {
+      const result = expandHomePath('~/.config');
+      const homeDir = getHomeDir();
+      expect(result).toBe(homeDir + '/.config');
+    });
+
+    it('expands ~/ to home directory', () => {
+      const result = expandHomePath('~/Documents');
+      const homeDir = getHomeDir();
+      expect(result).toBe(homeDir + '/Documents');
+    });
+
+    it('returns absolute paths unchanged', () => {
+      const absolutePath = '/etc/hosts';
+      const result = expandHomePath(absolutePath);
+      expect(result).toBe(absolutePath);
+    });
+
+    it('returns relative paths unchanged when not starting with ~', () => {
+      const relativePath = './config/file.json';
+      const result = expandHomePath(relativePath);
+      expect(result).toBe(relativePath);
+    });
+
+    it('handles empty string', () => {
+      const result = expandHomePath('');
+      expect(result).toBe('');
+    });
+
+    it('handles ~ at beginning but not alone', () => {
+      const result = expandHomePath('~backup/config');
+      const homeDir = getHomeDir();
+      expect(result).toBe(homeDir + 'backup/config');
     });
   });
 
@@ -432,6 +481,15 @@ describe('Platform Module', () => {
         expect(isSecurePath('/opt/homebrew/bin/python3')).toBe(true);
       });
     });
+
+    describe('rejects null byte injection', () => {
+      it('rejects paths with null bytes', () => {
+        // Null byte injection can be used for path truncation attacks
+        expect(isSecurePath('/usr/bin/node\x00/etc/passwd')).toBe(false);
+        expect(isSecurePath('C:\\Program Files\\node.exe\x00malicious')).toBe(false);
+        expect(isSecurePath('safe\x00path')).toBe(false);
+      });
+    });
   });
 
   describe('normalizePath', () => {
@@ -448,11 +506,114 @@ describe('Platform Module', () => {
     });
   });
 
+  describe('ensureLongPathCompatible', () => {
+    describeUnix('returns unchanged path on Unix', () => {
+      it('does not modify Unix paths', () => {
+        const longPath = '/usr/very/long/path/' + 'x'.repeat(300);
+        const result = ensureLongPathCompatible(longPath);
+        expect(result).toBe(longPath);
+      });
+    });
+
+    describeWindows('adds prefix to long paths on Windows', () => {
+      it('returns short paths unchanged', () => {
+        const shortPath = 'C:\\Users\\Test\\file.txt';
+        const result = ensureLongPathCompatible(shortPath);
+        expect(result).toBe(shortPath);
+      });
+
+      it('adds prefix to paths at or over 260 characters', () => {
+        // Create a path at least 260 characters
+        // 3 (C:\) + 100 (A's) + 1 (\) + 100 (B's) + 1 (\) + 55 (C's + .txt) = 260
+        const basePath = 'C:\\' + 'A'.repeat(100) + '\\' + 'B'.repeat(100) + '\\';
+        const fileName = 'C'.repeat(51) + '.txt';  // 51 + 4 = 55
+        const longPath = basePath + fileName;
+        expect(longPath.length).toBeGreaterThanOrEqual(260);
+
+        const result = ensureLongPathCompatible(longPath);
+        expect(result).toMatch(/^\\\\\?\\/);
+      });
+
+      it('handles UNC paths correctly', () => {
+        const uncPath = '\\\\server\\share\\' + 'x'.repeat(260);
+        const result = ensureLongPathCompatible(uncPath);
+        expect(result).toMatch(/^\\\\\?\\UNC\\/);
+      });
+
+      it('does not double-prefix already prefixed paths', () => {
+        const prefixedPath = '\\\\?\\C:\\Users\\Test\\file.txt';
+        const result = ensureLongPathCompatible(prefixedPath);
+        expect(result).toBe(prefixedPath);
+      });
+
+      it('returns relative paths unchanged', () => {
+        const relativePath = 'some\\relative\\path\\' + 'x'.repeat(300);
+        const result = ensureLongPathCompatible(relativePath);
+        expect(result).toBe(relativePath);
+      });
+    });
+  });
+
   describe('getPlatformDescription', () => {
     it('returns platform description', () => {
       const desc = getPlatformDescription();
       expect(desc).toMatch(/(Windows|macOS|Linux)/);
       expect(desc).toMatch(/\(.*\)/); // Architecture in parentheses
+    });
+  });
+
+  describe('escapeShellPath', () => {
+    describe('python context', () => {
+      it('escapes backslashes for Python string literals', () => {
+        expect(escapeShellPath('C:\\Users\\file.txt', 'python')).toBe('C:\\\\Users\\\\file.txt');
+      });
+
+      it('escapes single and double quotes', () => {
+        expect(escapeShellPath("path'with\"quotes", 'python')).toBe("path\\'with\\\"quotes");
+      });
+
+      it('escapes newlines and carriage returns', () => {
+        expect(escapeShellPath('line1\nline2\r', 'python')).toBe('line1\\nline2\\r');
+      });
+    });
+
+    describe('applescript context', () => {
+      it('escapes backslashes and double quotes', () => {
+        expect(escapeShellPath('path\\with "quotes"', 'applescript')).toBe('path\\\\with \\"quotes\\"');
+      });
+
+      it('does not escape single quotes', () => {
+        expect(escapeShellPath("path'with'quotes", 'applescript')).toBe("path'with'quotes");
+      });
+    });
+
+    describe('bash context', () => {
+      it('escapes backslashes, quotes, and dollar signs', () => {
+        expect(escapeShellPath('C:\\path"$pecial', 'bash')).toBe('C:\\\\path\\"\\$pecial');
+      });
+
+      it('escapes backticks', () => {
+        expect(escapeShellPath('path`with`backticks', 'bash')).toBe('path\\`with\\`backticks');
+      });
+
+      it('escapes newlines', () => {
+        expect(escapeShellPath('line1\nline2', 'bash')).toBe('line1\\nline2');
+      });
+    });
+
+    describe('json context', () => {
+      it('uses standard JSON escaping', () => {
+        expect(escapeShellPath('path with "quotes" and \\backslashes', 'json'))
+          .toBe('path with \\"quotes\\" and \\\\backslashes');
+      });
+
+      it('handles unicode characters', () => {
+        expect(escapeShellPath('café', 'json')).toBe('café');
+      });
+    });
+
+    it('defaults to python context', () => {
+      expect(escapeShellPath('C:\\Users\\file.txt')).toBe('C:\\\\Users\\\\file.txt');
     });
   });
 

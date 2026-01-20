@@ -82,7 +82,7 @@ def configure_safe_encoding() -> None:
     1. Regular console output (reconfigure method)
     2. Piped output from subprocess (TextIOWrapper replacement)
     """
-    if sys.platform != "win32":
+    if not is_windows():
         return
 
     # Method 1: Try reconfigure (works for TTY)

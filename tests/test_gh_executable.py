@@ -134,7 +134,7 @@ class TestFindGhExecutable:
     @patch("core.gh_executable.os.path.isfile")
     @patch("shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
-    @patch("core.platform.is_windows", return_value=False)
+    @patch("core.gh_executable.is_windows", return_value=False)
     def test_checks_homebrew_paths_on_unix(self, mock_is_windows, mock_which, mock_isfile, mock_verify):
         """Should check Homebrew paths on Unix-like systems."""
         # Clear cache to ensure clean state
@@ -148,7 +148,7 @@ class TestFindGhExecutable:
         result = _find_gh_executable()
         assert result == "/opt/homebrew/bin/gh"
 
-    @patch("core.platform.is_windows", return_value=True)
+    @patch("core.gh_executable.is_windows", return_value=True)
     def test_checks_windows_program_files_paths(self, mock_is_windows):
         """Should check Windows Program Files paths on Windows."""
         import core.gh_executable
@@ -161,7 +161,7 @@ class TestFindGhExecutable:
             assert "GitHub CLI" in result
             assert result.endswith(".exe")
 
-    @patch("core.platform.is_windows", return_value=True)
+    @patch("core.gh_executable.is_windows", return_value=True)
     def test_checks_windows_npm_scoop_chocolatey_paths(self, mock_is_windows):
         """Should check npm, Scoop, and Chocolatey paths on Windows."""
         import core.gh_executable
@@ -175,7 +175,7 @@ class TestFindGhExecutable:
             assert "npm" in result
             assert "gh.cmd" in result
 
-    @patch("core.platform.is_windows", return_value=True)
+    @patch("core.gh_executable.is_windows", return_value=True)
     def test_runs_where_command_on_windows(self, mock_is_windows):
         """Should run 'where gh' command as last resort on Windows."""
         import core.gh_executable
@@ -190,7 +190,7 @@ class TestFindGhExecutable:
     @patch("core.gh_executable.os.path.isfile", return_value=False)
     @patch("shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
-    @patch("core.platform.is_windows", return_value=False)
+    @patch("core.gh_executable.is_windows", return_value=False)
     def test_returns_none_on_unix_when_not_found(self, mock_is_windows, mock_which, mock_isfile):
         """Should return None on Unix when gh is not found."""
         result = _find_gh_executable()
@@ -199,6 +199,11 @@ class TestFindGhExecutable:
 
 class TestGetGhExecutable:
     """Tests for get_gh_executable() function."""
+
+    def setUp(self):
+        """Clear cached gh path before each test for isolation."""
+        import core.gh_executable
+        core.gh_executable._cached_gh_path = None
 
     def test_returns_cached_result(self):
         """Should cache the result after first successful find."""

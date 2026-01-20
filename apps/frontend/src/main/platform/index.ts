@@ -112,6 +112,30 @@ export function getHomeDir(): string {
 }
 
 /**
+ * Expand ~ in path to home directory.
+ *
+ * @param inputPath - Path that may start with ~
+ * @returns Path with ~ expanded to home directory, or unchanged if doesn't start with ~
+ *
+ * @example
+ * ```ts
+ * expandHomePath('~/.config')     // '/home/user/.config'
+ * expandHomePath('~/Documents')   // '/home/user/Documents'
+ * expandHomePath('/etc/hosts')    // '/etc/hosts' (unchanged)
+ * ```
+ */
+export function expandHomePath(inputPath: string): string {
+  // Validate input is a string before calling string methods
+  if (!inputPath || typeof inputPath !== 'string') return inputPath as string;
+
+  if (inputPath.startsWith('~')) {
+    const home = getHomeDir();
+    return inputPath.replace(/^~/, home);
+  }
+  return inputPath;
+}
+
+/**
  * Get path configuration for the current platform
  */
 export function getPathConfig(): PathConfig {
@@ -341,6 +365,12 @@ export function isSecurePath(candidatePath: string): boolean {
   // Reject empty strings to maintain cross-platform consistency
   if (!candidatePath) return false;
 
+  // Defense-in-depth: check null byte FIRST before any other validation
+  // Null bytes can truncate strings and bypass subsequent security checks
+  if (/\x00/.test(candidatePath)) {
+    return false;
+  }
+
   // Security validation: reject paths with dangerous patterns
   const dangerousPatterns = [
     /[;&|`${}[\]<>!"^]/,        // Shell metacharacters
@@ -378,6 +408,56 @@ export function normalizePath(inputPath: string): string {
  */
 export function joinPaths(...parts: string[]): string {
   return path.join(...parts);
+}
+
+/**
+ * Ensure a path is compatible with Windows MAX_PATH (260 character) limit.
+ *
+ * On Windows, paths longer than 260 characters fail unless prefixed with `\\?\`.
+ * This function adds the prefix when needed for absolute paths on Windows.
+ *
+ * @param inputPath - The path to make long-path compatible
+ * @returns The path with `\\?\` prefix if needed (Windows only), unchanged on Unix
+ *
+ * @example
+ * ```ts
+ * const longPath = 'C:\\Very\\Long\\Path\\...'; // >260 chars
+ * const compatible = ensureLongPathCompatible(longPath);
+ * // Returns: '\\?\C:\Very\Long\Path\...'
+ * ```
+ */
+export function ensureLongPathCompatible(inputPath: string): string {
+  if (!isWindows()) {
+    return inputPath; // Unix has no MAX_PATH limit
+  }
+
+  // Only absolute paths can use \\?\ prefix
+  // Windows absolute paths start with drive letter (C:\) or UNC (\\server\share)
+  const isAbsolutePath = /^[A-Za-z]:\\|\\\\/.test(inputPath);
+
+  if (!isAbsolutePath) {
+    return inputPath;
+  }
+
+  // Check if path already has the prefix
+  if (inputPath.startsWith('\\\\?\\')) {
+    return inputPath;
+  }
+
+  // Windows MAX_PATH is 260 characters, but we need to account for the prefix
+  const MAX_PATH = 260;
+  if (inputPath.length >= MAX_PATH) {
+    // Convert to extended-length path
+    // For UNC paths: \\server\share -> \\?\UNC\server\share
+    // For drive paths: C:\path -> \\?\C:\path
+    if (inputPath.startsWith('\\\\')) {
+      return '\\\\?\\UNC\\' + inputPath.substring(2);
+    } else {
+      return '\\\\?\\' + inputPath;
+    }
+  }
+
+  return inputPath;
 }
 
 /**
@@ -486,6 +566,74 @@ export function normalizeExecutablePath(candidatePath: string): string {
 
   // No match found - return original path (will fail validation with better error)
   return candidatePath;
+}
+
+/**
+ * Escape a path or string for use in shell commands and subprocess arguments.
+ *
+ * This is useful when passing paths to external processes or embedding them
+ * in generated scripts. Different escaping strategies are provided for different contexts.
+ *
+ * **Control Character Handling:** Control characters (newlines, carriage returns, etc.)
+ * are preserved and escaped as needed for the target context. For example, newlines become
+ * `\\n` literal sequences in Python/bash contexts for safe string literal representation.
+ *
+ * @param input - The string to escape
+ * @param context - The target context for the escaped string
+ * @returns The escaped string
+ *
+ * @example
+ * ```ts
+ * // For Python string literals
+ * escapeShellPath('C:\\Users\\file.txt', 'python')
+ * // Returns: 'C:\\\\Users\\\\file.txt'
+ *
+ * // For AppleScript strings
+ * escapeShellPath('path with "quotes"', 'applescript')
+ * // Returns: 'path with \\"quotes\\"'
+ *
+ * // For bash/zsh command arguments
+ * escapeShellPath('path with $pecial chars', 'bash')
+ * // Returns: 'path with \\$pecial chars'
+ * ```
+ */
+export function escapeShellPath(
+  input: string,
+  context: 'python' | 'applescript' | 'bash' | 'json' = 'python'
+): string {
+  switch (context) {
+    case 'python':
+      // Escape for Python string literals: backslashes, quotes, newlines
+      return input
+        .replace(/\\/g, '\\\\')   // Backslashes first
+        .replace(/'/g, "\\'")     // Single quotes
+        .replace(/"/g, '\\"')     // Double quotes
+        .replace(/\n/g, '\\n')    // Newlines
+        .replace(/\r/g, '\\r');   // Carriage returns
+
+    case 'applescript':
+      // Escape for AppleScript strings: backslashes, double quotes
+      return input
+        .replace(/\\/g, '\\\\')   // Escape backslashes first
+        .replace(/"/g, '\\"');    // Escape double quotes
+
+    case 'bash':
+      // Escape for bash/zsh: backslashes, double quotes, dollar signs, newlines
+      return input
+        .replace(/\\/g, '\\\\')   // Escape backslashes first
+        .replace(/"/g, '\\"')     // Escape double quotes
+        .replace(/\$/g, '\\$')    // Escape dollar signs
+        .replace(/`/g, '\\`')     // Escape backticks
+        .replace(/\n/g, '\\n')    // Escape newlines
+        .replace(/\r/g, '\\r');   // Escape carriage returns
+
+    case 'json':
+      // Standard JSON string escaping
+      return JSON.stringify(input).slice(1, -1);
+
+    default:
+      return input;
+  }
 }
 
 /**

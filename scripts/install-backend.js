@@ -28,7 +28,7 @@ function run(cmd, options = {}) {
 // Find Python 3.12+
 // Prefer 3.12 first since it has the most stable wheel support for native packages
 function findPython() {
-  const candidates = isWindows
+  const candidates = isWindows()
     ? ['py -3.12', 'py -3.13', 'py -3.14', 'python3.12', 'python3.13', 'python3.14', 'python3', 'python']
     : ['python3.12', 'python3.13', 'python3.14', 'python3', 'python'];
 
@@ -59,7 +59,7 @@ function findPython() {
 
 // Get pip path based on platform
 function getPipPath() {
-  return isWindows
+  return isWindows()
     ? path.join(venvDir, 'Scripts', 'pip.exe')
     : path.join(venvDir, 'bin', 'pip');
 }

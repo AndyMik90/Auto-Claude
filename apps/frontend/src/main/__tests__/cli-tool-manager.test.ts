@@ -1125,6 +1125,25 @@ describe('cli-tool-manager - isPathFromWrongPlatform', () => {
       expect(isPathFromWrongPlatform('')).toBe(false);
       expect(isPathFromWrongPlatform('   ')).toBe(false);
     });
+
+    it('should detect WSL network paths as wrong platform', () => {
+      // WSL paths accessed via Windows network share
+      expect(isPathFromWrongPlatform('\\\\wsl$\\Ubuntu\\usr\\bin\\git')).toBe(false); // UNC path - allowed
+      expect(isPathFromWrongPlatform('\\\\wsl.localhost\\Ubuntu\\usr\\bin\\python')).toBe(false); // UNC path - allowed
+    });
+
+    it('should allow MSYS2/Cygwin installation paths', () => {
+      // MSYS2/Cygwin install on Windows - looks Unix but is valid on Windows
+      expect(isPathFromWrongPlatform('C:\\msys64\\usr\\bin\\git.exe')).toBe(false);
+      expect(isPathFromWrongPlatform('C:\\cygwin64\\bin\\python.exe')).toBe(false);
+      expect(isPathFromWrongPlatform('C:\\dev\\msys\\bin\\gh.exe')).toBe(false);
+    });
+
+    it('should detect Unix-style WSL paths as wrong platform', () => {
+      // Direct WSL filesystem paths (mounted via /mnt/) are Unix-style
+      expect(isPathFromWrongPlatform('/mnt/c/Users/test/git.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('/mnt/d/Program Files/Git/bin/git.exe')).toBe(true);
+    });
   });
 
   describe('on Unix (macOS/Linux)', () => {
