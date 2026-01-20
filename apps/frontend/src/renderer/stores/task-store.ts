@@ -213,12 +213,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           let reviewReason: ReviewReason | undefined = t.reviewReason;
 
           // RACE CONDITION FIX: Don't let stale plan data override status during active execution
+          // Strengthen guard: ANY active phase means NO status recalculation from plan data
           const activePhases: ExecutionPhase[] = ['planning', 'coding', 'qa_review', 'qa_fixing'];
-          const isInActivePhase = t.executionProgress?.phase && activePhases.includes(t.executionProgress.phase);
+          const isInActivePhase = Boolean(t.executionProgress?.phase && activePhases.includes(t.executionProgress.phase));
 
           // FIX (Flip-Flop Bug): Terminal phases should NOT trigger status recalculation
           // When phase is 'complete' or 'failed', the task has finished and status should be stable
-          const isInTerminalPhase = t.executionProgress?.phase && isTerminalPhase(t.executionProgress.phase);
+          const isInTerminalPhase = Boolean(t.executionProgress?.phase && isTerminalPhase(t.executionProgress.phase));
+
+          // FIX (Subtask 2-1): Terminal task statuses should NEVER be recalculated from plan data
+          // pr_created and done are finalized workflow states set by explicit user/system actions
+          // Once a task reaches these statuses, they should only change via explicit user actions (like drag-drop)
+          // This prevents stale plan file reads from incorrectly downgrading completed tasks
+          const TERMINAL_TASK_STATUSES: TaskStatus[] = ['pr_created', 'done'];
+          const isInTerminalStatus = TERMINAL_TASK_STATUSES.includes(t.status);
 
           // FIX (Flip-Flop Bug): Respect explicit human_review status from plan file
           // When the plan explicitly says 'human_review', don't override it with calculated status
@@ -268,9 +276,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // Only recalculate status if:
           // 1. NOT in an active execution phase (planning, coding, qa_review, qa_fixing)
           // 2. NOT in a terminal phase (complete, failed) - status should be stable
-          // 3. Plan doesn't explicitly say human_review
-          // 4. Would not create an invalid terminal transition (ACS-203)
-          if (!isInActivePhase && !isInTerminalPhase && !isExplicitHumanReview) {
+          // 3. NOT in a terminal task status (pr_created, done) - finalized workflow states
+          // 4. Plan doesn't explicitly say human_review
+          // 5. Would not create an invalid terminal transition (ACS-203)
+          if (!isInActivePhase && !isInTerminalPhase && !isInTerminalStatus && !isExplicitHumanReview) {
             if (allCompleted && hasSubtasks) {
               // FIX (Flip-Flop Bug): Don't downgrade from terminal statuses to ai_review
               // Once a task reaches human_review, pr_created, or done, it should stay there
@@ -311,6 +320,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             newStatus: status,
             isInActivePhase,
             isInTerminalPhase,
+            isInTerminalStatus,
             isExplicitHumanReview,
             planStatus,
             currentPhase: t.executionProgress?.phase,
