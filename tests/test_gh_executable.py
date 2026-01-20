@@ -137,6 +137,10 @@ class TestFindGhExecutable:
     @patch("core.platform.is_windows", return_value=False)
     def test_checks_homebrew_paths_on_unix(self, mock_is_windows, mock_which, mock_isfile, mock_verify):
         """Should check Homebrew paths on Unix-like systems."""
+        # Clear cache to ensure clean state
+        import core.gh_executable
+        core.gh_executable._cached_gh_path = None
+
         # Mock /opt/homebrew/bin/gh to exist and be valid
         def isfile_side_effect(path):
             return path == "/opt/homebrew/bin/gh"
