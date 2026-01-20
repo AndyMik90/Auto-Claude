@@ -8,6 +8,7 @@
 
 import { existsSync } from 'fs';
 import path from 'path';
+import { getHomebrewBinPaths } from '../platform';
 
 /**
  * Validation result for a Python installation.
@@ -34,10 +35,8 @@ export function findHomebrewPython(
   validateFn: (pythonPath: string) => PythonValidation,
   logPrefix: string
 ): string | null {
-  const homebrewDirs = [
-    '/opt/homebrew/bin',  // Apple Silicon (M1/M2/M3)
-    '/usr/local/bin'      // Intel Mac
-  ];
+  // Use centralized Homebrew paths from platform module
+  const homebrewDirs = getHomebrewBinPaths();
 
   // Check for specific Python versions first (newest to oldest), then fall back to generic python3.
   // This ensures we find the latest available version that meets our requirements.

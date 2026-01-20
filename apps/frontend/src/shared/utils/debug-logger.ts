@@ -3,36 +3,14 @@
  * Only logs when DEBUG=true in environment
  */
 
-import { isWindows } from '../platform';
+import { getEnvVar } from '../platform';
 
 /**
- * Case-insensitive environment variable lookup for Windows compatibility
- * On Windows, environment variables are case-insensitive (DEBUG, debug, Debug all work)
- * On Unix, this falls back to direct access for performance
+ * Check if debug mode is enabled via DEBUG environment variable.
+ * Uses centralized getEnvVar for case-insensitive Windows access.
  */
-const getEnvVarCaseInsensitive = (name: string): string | undefined => {
-  if (typeof process === 'undefined' || !process.env) {
-    return undefined;
-  }
-
-  // On Windows, environment variables are case-insensitive
-  // Node.js may return keys with different casing depending on how they were set
-  if (isWindows()) {
-    const upperName = name.toUpperCase();
-    for (const [key, value] of Object.entries(process.env)) {
-      if (key.toUpperCase() === upperName) {
-        return value;
-      }
-    }
-    return undefined;
-  }
-
-  // On Unix, direct access is fine
-  return process.env[name];
-};
-
 export const isDebugEnabled = (): boolean => {
-  return getEnvVarCaseInsensitive('DEBUG') === 'true';
+  return getEnvVar('DEBUG') === 'true';
 };
 
 export const debugLog = (...args: unknown[]): void => {

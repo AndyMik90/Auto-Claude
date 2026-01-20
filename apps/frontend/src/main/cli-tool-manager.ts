@@ -27,7 +27,7 @@ import os from 'os';
 import { promisify } from 'util';
 import { app } from 'electron';
 import { findExecutable, findExecutableAsync, getAugmentedEnv, getAugmentedEnvAsync, shouldUseShell, existsAsync } from './env-utils';
-import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure, expandWindowsEnvVars } from './platform';
+import { isWindows, isMacOS, isUnix, joinPaths, getExecutableExtension, normalizeExecutablePath, isSecurePath as isPathSecure, expandWindowsEnvVars, getHomebrewBinPaths } from './platform';
 import type { ToolDetectionResult } from '../shared/types';
 import { findHomebrewPython as findHomebrewPythonUtil } from './utils/homebrew-python';
 
@@ -178,10 +178,9 @@ interface ClaudeDetectionPaths {
  * // On macOS: { homebrewPaths: ['/opt/homebrew/bin/claude', ...], ... }
  */
 export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
-  const homebrewPaths = [
-    '/opt/homebrew/bin/claude', // Apple Silicon
-    '/usr/local/bin/claude',    // Intel Mac
-  ];
+  // Use centralized Homebrew paths from platform module
+  const homebrewBinDirs = getHomebrewBinPaths();
+  const homebrewPaths = homebrewBinDirs.map(dir => path.join(dir, 'claude'));
 
   const platformPaths = isWindows()
     ? [
@@ -563,12 +562,9 @@ class CLIToolManager {
 
     // 2. Homebrew (macOS)
     if (isMacOS()) {
-      const homebrewPaths = [
-        '/opt/homebrew/bin/git', // Apple Silicon
-        '/usr/local/bin/git', // Intel Mac
-      ];
-
-      for (const gitPath of homebrewPaths) {
+      const homebrewBinDirs = getHomebrewBinPaths();
+      for (const dir of homebrewBinDirs) {
+        const gitPath = path.join(dir, 'git');
         if (existsSync(gitPath)) {
           const validation = this.validateGit(gitPath);
           if (validation.valid) {
@@ -673,12 +669,9 @@ class CLIToolManager {
 
     // 2. Homebrew (macOS)
     if (isMacOS()) {
-      const homebrewPaths = [
-        '/opt/homebrew/bin/gh', // Apple Silicon
-        '/usr/local/bin/gh', // Intel Mac
-      ];
-
-      for (const ghPath of homebrewPaths) {
+      const homebrewBinDirs = getHomebrewBinPaths();
+      for (const dir of homebrewBinDirs) {
+        const ghPath = path.join(dir, 'gh');
         if (existsSync(ghPath)) {
           const validation = this.validateGitHubCLI(ghPath);
           if (validation.valid) {
@@ -1586,24 +1579,23 @@ class CLIToolManager {
 
     // 3. Homebrew Python (macOS) - simplified async version
     if (isMacOS()) {
-      const homebrewPaths = [
-        '/opt/homebrew/bin/python3',
-        '/opt/homebrew/bin/python3.12',
-        '/opt/homebrew/bin/python3.11',
-        '/opt/homebrew/bin/python3.10',
-        '/usr/local/bin/python3',
-      ];
-      for (const pythonPath of homebrewPaths) {
-        if (await existsAsync(pythonPath)) {
-          const validation = await this.validatePythonAsync(pythonPath);
-          if (validation.valid) {
-            return {
-              found: true,
-              path: pythonPath,
-              version: validation.version,
-              source: 'homebrew',
-              message: `Using Homebrew Python: ${pythonPath}`,
-            };
+      const homebrewBinDirs = getHomebrewBinPaths();
+      // Check for specific Python versions first (newest to oldest), then fall back to generic python3
+      const pythonNames = ['python3.12', 'python3.11', 'python3.10', 'python3'];
+      for (const dir of homebrewBinDirs) {
+        for (const name of pythonNames) {
+          const pythonPath = path.join(dir, name);
+          if (await existsAsync(pythonPath)) {
+            const validation = await this.validatePythonAsync(pythonPath);
+            if (validation.valid) {
+              return {
+                found: true,
+                path: pythonPath,
+                version: validation.version,
+                source: 'homebrew',
+                message: `Using Homebrew Python: ${pythonPath}`,
+              };
+            }
           }
         }
       }
@@ -1686,12 +1678,9 @@ class CLIToolManager {
 
     // 2. Homebrew (macOS)
     if (isMacOS()) {
-      const homebrewPaths = [
-        '/opt/homebrew/bin/git',
-        '/usr/local/bin/git',
-      ];
-
-      for (const gitPath of homebrewPaths) {
+      const homebrewBinDirs = getHomebrewBinPaths();
+      for (const dir of homebrewBinDirs) {
+        const gitPath = path.join(dir, 'git');
         if (await existsAsync(gitPath)) {
           const validation = await this.validateGitAsync(gitPath);
           if (validation.valid) {
@@ -1796,12 +1785,9 @@ class CLIToolManager {
 
     // 2. Homebrew (macOS)
     if (isMacOS()) {
-      const homebrewPaths = [
-        '/opt/homebrew/bin/gh',
-        '/usr/local/bin/gh',
-      ];
-
-      for (const ghPath of homebrewPaths) {
+      const homebrewBinDirs = getHomebrewBinPaths();
+      for (const dir of homebrewBinDirs) {
+        const ghPath = path.join(dir, 'gh');
         if (await existsAsync(ghPath)) {
           const validation = await this.validateGitHubCLIAsync(ghPath);
           if (validation.valid) {

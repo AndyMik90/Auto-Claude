@@ -287,3 +287,99 @@ export function getWindowsToolPath(toolName: string, subPath?: string): string[]
 
   return paths;
 }
+
+/**
+ * Get Homebrew binary directory paths for the current platform
+ *
+ * Returns paths to Homebrew installation directories. Only applies to macOS,
+ * as Homebrew is macOS-specific. Returns empty array on other platforms.
+ *
+ * @returns Array of Homebrew binary paths (empty on non-macOS)
+ */
+export function getHomebrewBinPaths(): string[] {
+  if (!isMacOS()) {
+    return [];
+  }
+
+  // Homebrew default installation paths
+  // Apple Silicon (M1/M2/M3/M4): /opt/homebrew/bin
+  // Intel Mac: /usr/local/bin
+  return ['/opt/homebrew/bin', '/usr/local/bin'];
+}
+
+/**
+ * Get bash executable paths for the current platform
+ *
+ * Returns paths to bash executables in their standard installation locations.
+ * On Windows, searches Git Bash, Cygwin, MSYS2, and WSL.
+ * On Unix, returns standard bash locations.
+ *
+ * @returns Array of possible bash executable paths
+ */
+export function getBashExecutablePaths(): string[] {
+  const paths: string[] = [];
+
+  if (isWindows()) {
+    const systemRoot = getEnvVar('SystemRoot') || 'C:\\Windows';
+    const homeDir = os.homedir();
+
+    // Git for Windows (most common on Windows)
+    paths.push(
+      path.join('C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+      path.join('C:\\Program Files (x86)', 'Git', 'bin', 'bash.exe')
+    );
+
+    // User-specific Git installations
+    paths.push(
+      path.join(homeDir, 'AppData', 'Local', 'Programs', 'Git', 'bin', 'bash.exe')
+    );
+
+    // MSYS2
+    paths.push(path.join('C:\\msys64', 'usr', 'bin', 'bash.exe'));
+
+    // Cygwin
+    paths.push(path.join('C:\\cygwin64', 'bin', 'bash.exe'));
+
+    // WSL bash (via wsl.exe)
+    paths.push(path.join(systemRoot, 'System32', 'wsl.exe'));
+
+    // Scoop bash
+    const scoopPath = path.join(homeDir, 'scoop', 'shims', 'bash.exe');
+    paths.push(scoopPath);
+  } else {
+    // Unix: bash is typically in standard locations
+    paths.push('/bin/bash', '/usr/bin/bash', '/usr/local/bin/bash');
+
+    // Homebrew on macOS
+    if (isMacOS()) {
+      paths.push('/opt/homebrew/bin/bash', '/usr/local/bin/bash');
+    }
+  }
+
+  return paths;
+}
+
+/**
+ * Get cmd.exe path for Windows
+ *
+ * Returns the path to cmd.exe on Windows, or a fallback shell on Unix.
+ * Uses the COMSPEC environment variable if available (standard Windows convention).
+ *
+ * @returns Path to cmd.exe on Windows, 'sh' on Unix
+ */
+export function getCmdExecutablePath(): string {
+  if (!isWindows()) {
+    return 'sh';
+  }
+
+  // Use COMSPEC environment variable (points to cmd.exe on Windows)
+  // This is the standard Windows convention for finding cmd.exe
+  const comspec = getEnvVar('COMSPEC');
+  if (comspec) {
+    return comspec;
+  }
+
+  // Fallback: construct from SystemRoot
+  const systemRoot = getEnvVar('SystemRoot') || 'C:\\Windows';
+  return path.join(systemRoot, 'System32', 'cmd.exe');
+}

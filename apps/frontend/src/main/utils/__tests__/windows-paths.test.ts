@@ -69,33 +69,6 @@ vi.mock('fs/promises', async () => {
   };
 });
 
-// Mock platform module to control isWindows() behavior
-vi.mock('../../platform', async () => {
-  const actualPlatform = await vi.importActual<typeof import('../../platform')>('../../platform');
-  // Create a mock that actually expands environment variables for testing
-  const mockExpandWindowsEnvVars = vi.fn((path: string) => {
-    // Simple environment variable expansion for testing
-    return path.replace(/%([^%]+)%/g, (match, envVar) => {
-      const envVars: Record<string, string> = {
-        'PROGRAMFILES': 'C:\\Program Files',
-        'PROGRAMFILES(X86)': 'C:\\Program Files (x86)',
-        'LOCALAPPDATA': 'C:\\Users\\Test\\AppData\\Local',
-        'APPDATA': 'C:\\Users\\Test\\AppData\\Roaming',
-        'USERPROFILE': 'C:\\Users\\Test',
-        'PROGRAMDATA': 'C:\\ProgramData',
-      };
-      return envVars[envVar] || match;
-    });
-  });
-  // isWindows checks the actual process.platform (which can be mocked via mockPlatform)
-  const mockIsWindows = vi.fn(() => process.platform === 'win32');
-  return {
-    ...actualPlatform,
-    isWindows: mockIsWindows,
-    expandWindowsEnvVars: mockExpandWindowsEnvVars,
-  };
-});
-
 // Mock os.platform for platform-specific tests
 const originalPlatform = process.platform;
 
@@ -131,9 +104,9 @@ import {
   getWindowsExecutablePathsAsync,
   findWindowsExecutableViaWhere,
   findWindowsExecutableViaWhereAsync,
-  isSecurePath,
   type WindowsToolPaths,
 } from '../windows-paths';
+import { isSecurePath } from '../../platform';
 
 // Helper to get mocked execFileSync
 const getMockedExecFileSync = () => vi.mocked(childProcess.execFileSync);
@@ -591,7 +564,8 @@ describe('Windows Paths Module', () => {
 
     describe('edge cases', () => {
       it('handles empty string', () => {
-        expect(isSecurePath('')).toBe(true); // Empty path is "secure" (no injection)
+        // Platform module correctly rejects empty strings for security consistency
+        expect(isSecurePath('')).toBe(false);
       });
 
       it('handles relative paths', () => {

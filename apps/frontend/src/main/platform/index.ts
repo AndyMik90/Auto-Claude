@@ -18,7 +18,13 @@ import { spawn, ChildProcess } from 'child_process';
 import { OS, ShellType, PathConfig, ShellConfig, BinaryDirectories } from './types';
 
 // Re-export from paths.ts for backward compatibility
-export { getWindowsShellPaths, expandWindowsEnvVars } from './paths';
+export {
+  getWindowsShellPaths,
+  expandWindowsEnvVars,
+  getHomebrewBinPaths,
+  getBashExecutablePaths,
+  getCmdExecutablePath
+} from './paths';
 
 /**
  * Get the current operating system

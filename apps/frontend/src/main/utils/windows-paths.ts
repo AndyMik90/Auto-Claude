@@ -13,7 +13,7 @@ import { access, constants } from 'fs/promises';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
-import { isWindows, expandWindowsEnvVars } from '../platform';
+import { isWindows, expandWindowsEnvVars, isSecurePath } from '../platform';
 
 const execFileAsync = promisify(execFile);
 
@@ -39,23 +39,8 @@ export const WINDOWS_GIT_PATHS: WindowsToolPaths = {
   ],
 };
 
-export function isSecurePath(pathStr: string): boolean {
-  const dangerousPatterns = [
-    /[;&|`${}[\]<>!"^]/,  // Shell metacharacters (parentheses removed - safe when quoted)
-    /%[^%]+%/,              // Windows environment variable expansion (e.g., %PATH%)
-    /\.\.\//,               // Unix directory traversal
-    /\.\.\\/,               // Windows directory traversal
-    /[\r\n]/,               // Newlines (command injection)
-  ];
-
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(pathStr)) {
-      return false;
-    }
-  }
-
-  return true;
-}
+// isSecurePath is now imported from ../platform for single source of truth
+// This ensures consistent security validation across the codebase
 
 /**
  * Expand Windows environment variables in a path pattern

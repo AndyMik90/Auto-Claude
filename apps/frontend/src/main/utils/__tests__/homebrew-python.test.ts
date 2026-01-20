@@ -13,6 +13,18 @@ vi.mock('fs', () => ({
   existsSync: vi.fn()
 }));
 
+// Mock platform module to provide Homebrew paths for testing
+vi.mock('../../platform', async () => {
+  const actualPlatform = await vi.importActual<typeof import('../../platform')>('../../platform');
+  return {
+    ...actualPlatform,
+    getHomebrewBinPaths: vi.fn(() => [
+      '/opt/homebrew/bin',  // Apple Silicon
+      '/usr/local/bin'      // Intel Mac
+    ])
+  };
+});
+
 describe('homebrew-python', () => {
   beforeEach(() => {
     vi.clearAllMocks();
