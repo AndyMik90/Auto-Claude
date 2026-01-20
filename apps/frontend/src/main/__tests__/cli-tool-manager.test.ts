@@ -11,6 +11,8 @@ import {
   getToolInfo,
   getToolPathAsync,
   clearToolCache,
+  configureTools,
+  isPathFromWrongPlatform,
   getClaudeDetectionPaths,
   sortNvmVersionDirs,
   buildClaudeDetectionResult
@@ -818,5 +820,421 @@ describe('cli-tool-manager - Claude CLI async Windows where.exe detection', () =
     const result = await getToolPathAsync('claude');
 
     expect(result).toBe('claude'); // Fallback
+  });
+});
+
+/**
+ * Unit tests for configureTools() and clearToolCache()
+ */
+describe('cli-tool-manager - Tool Configuration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Clear cache before each test
+    clearToolCache();
+  });
+
+  afterEach(() => {
+    clearToolCache();
+  });
+
+  describe('configureTools', () => {
+    it('should clear cache when configuration is updated', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock a Claude CLI path
+      vi.mocked(existsSync).mockImplementation((filePath) => {
+        const pathStr = String(filePath);
+        if (pathStr.includes('bin/claude') || pathStr.includes('bin\\claude')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(execFileSync).mockReturnValue('claude-code version 1.0.0\n');
+
+      // First call should detect and cache
+      const result1 = getToolInfo('claude');
+      expect(result1.found).toBe(true);
+
+      // Configure with new settings (should clear cache)
+      configureTools({
+        pythonPath: '/custom/python3',
+        gitPath: '/custom/git',
+      });
+
+      // Next call should re-detect (cache was cleared)
+      const result2 = getToolInfo('claude');
+      expect(result2.found).toBe(true);
+    });
+
+    it('should update user configuration for pythonPath', () => {
+      // Set platform to Unix
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock findExecutable to return the user-configured path
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/python3.12');
+
+      // Mock execFileSync for version validation
+      vi.mocked(execFileSync).mockReturnValue('Python 3.12.0\n');
+
+      // Configure custom Python path
+      configureTools({
+        pythonPath: '/usr/bin/python3.12',
+      });
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(true);
+      expect(result.path).toContain('python3.12');
+    });
+
+    it('should update user configuration for gitPath', () => {
+      // Set platform to Unix
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock findExecutable to return the user-configured path
+      vi.mocked(findExecutable).mockReturnValue('/usr/local/bin/git');
+
+      // Mock execFileSync for version validation
+      vi.mocked(execFileSync).mockReturnValue('git version 2.45.0\n');
+
+      // Configure custom Git path
+      configureTools({
+        gitPath: '/usr/local/bin/git',
+      });
+
+      const result = getToolInfo('git');
+      expect(result.found).toBe(true);
+      expect(result.path).toContain('local/bin/git');
+    });
+
+    it('should update user configuration for githubCLIPath', () => {
+      // Set platform to Unix
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock findExecutable to return the user-configured path
+      vi.mocked(findExecutable).mockReturnValue('/opt/homebrew/bin/gh');
+
+      // Mock execFileSync for version validation
+      vi.mocked(execFileSync).mockReturnValue('gh version 2.50.0\n');
+
+      // Configure custom GitHub CLI path
+      configureTools({
+        githubCLIPath: '/opt/homebrew/bin/gh',
+      });
+
+      const result = getToolInfo('gh');
+      expect(result.found).toBe(true);
+      expect(result.path).toContain('homebrew/bin/gh');
+    });
+
+    it('should update user configuration for claudePath', () => {
+      // Set platform to Unix
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock findExecutable to return the user-configured path
+      vi.mocked(findExecutable).mockReturnValue('/home/user/.nvm/versions/node/v22.17.0/bin/claude');
+
+      // Mock existsSync to return true for the custom path
+      vi.mocked(existsSync).mockImplementation((filePath) => {
+        const pathStr = String(filePath);
+        if (pathStr.includes('v22.17.0') && pathStr.includes('claude')) {
+          return true;
+        }
+        return false;
+      });
+
+      // Mock execFileSync for version validation
+      vi.mocked(execFileSync).mockReturnValue('claude-code version 1.0.0\n');
+
+      // Configure custom Claude CLI path
+      configureTools({
+        claudePath: '/home/user/.nvm/versions/node/v22.17.0/bin/claude',
+      });
+
+      const result = getToolInfo('claude');
+      expect(result.found).toBe(true);
+      expect(result.path).toContain('v22.17.0');
+    });
+
+    it('should ignore paths from wrong platform', () => {
+      // Set platform to Unix
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Configure with Windows path on Unix (should be ignored)
+      configureTools({
+        pythonPath: 'C:\\Python312\\python.exe',
+      });
+
+      // Mock a fallback Unix Python
+      vi.mocked(existsSync).mockImplementation((filePath) => {
+        const pathStr = String(filePath);
+        if (pathStr.includes('usr/bin/python3')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(execFileSync).mockReturnValue('Python 3.12.0\n');
+
+      const result = getToolInfo('python');
+
+      // Should not use the Windows path, should use fallback detection
+      // The Windows path should be ignored, so result should not contain Python312
+      if (result.path) {
+        expect(result.path).not.toContain('Python312');
+      }
+    });
+
+    it('should accept empty configuration', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // Should not crash with empty config
+      expect(() => {
+        configureTools({});
+      }).not.toThrow();
+    });
+  });
+
+  describe('clearToolCache', () => {
+    it('should clear the tool cache', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // Mock a Claude CLI path
+      vi.mocked(existsSync).mockImplementation((filePath) => {
+        const pathStr = String(filePath);
+        if (pathStr.includes('bin/claude') || pathStr.includes('bin\\claude')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(execFileSync).mockReturnValue('claude-code version 1.0.0\n');
+
+      // First call should detect and cache
+      const result1 = getToolInfo('claude');
+      expect(result1.found).toBe(true);
+
+      // Clear cache
+      clearToolCache();
+
+      // Next call should re-detect (cache was cleared)
+      const result2 = getToolInfo('claude');
+      expect(result2.found).toBe(true);
+    });
+
+    it('should be safe to call multiple times', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // Should not crash when called multiple times
+      expect(() => {
+        clearToolCache();
+        clearToolCache();
+        clearToolCache();
+      }).not.toThrow();
+    });
+
+    it('should allow re-detection after clearing cache', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+
+      // First, mock Claude not found
+      vi.mocked(findExecutable).mockReturnValue(null);
+      vi.mocked(existsSync).mockReturnValue(false);
+      const result1 = getToolInfo('claude');
+      expect(result1.found).toBe(false);
+
+      // Clear cache
+      clearToolCache();
+
+      // Now mock Claude as found
+      vi.mocked(existsSync).mockImplementation((filePath) => {
+        const pathStr = String(filePath);
+        if (pathStr.includes('bin/claude') || pathStr.includes('bin\\claude')) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(execFileSync).mockReturnValue('claude-code version 1.0.0\n');
+
+      // Should now find Claude
+      const result2 = getToolInfo('claude');
+      expect(result2.found).toBe(true);
+    });
+  });
+});
+
+/**
+ * Unit tests for isPathFromWrongPlatform()
+ */
+describe('cli-tool-manager - isPathFromWrongPlatform', () => {
+  describe('on Windows', () => {
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: 'win32',
+        writable: true
+      });
+    });
+
+    it('should detect Unix absolute paths as wrong platform', () => {
+      expect(isPathFromWrongPlatform('/usr/bin/python')).toBe(true);
+      expect(isPathFromWrongPlatform('/home/user/.local/bin/claude')).toBe(true);
+      expect(isPathFromWrongPlatform('/opt/homebrew/bin/python3')).toBe(true);
+    });
+
+    it('should allow Windows paths', () => {
+      expect(isPathFromWrongPlatform('C:\\Python312\\python.exe')).toBe(false);
+      expect(isPathFromWrongPlatform('D:\\Program Files\\Git\\bin\\git.exe')).toBe(false);
+      expect(isPathFromWrongPlatform('C:\\Users\\test\\AppData\\Roaming\\npm\\claude.cmd')).toBe(false);
+    });
+
+    it('should allow UNC paths (starting with //)', () => {
+      expect(isPathFromWrongPlatform('\\\\server\\share\\python.exe')).toBe(false);
+      expect(isPathFromWrongPlatform('//server/share/python.exe')).toBe(false);
+    });
+
+    it('should handle quoted paths', () => {
+      expect(isPathFromWrongPlatform('"/usr/bin/python"')).toBe(true);
+      expect(isPathFromWrongPlatform("'C:\\Python312\\python.exe'")).toBe(false);
+    });
+
+    it('should return false for undefined or empty paths', () => {
+      expect(isPathFromWrongPlatform(undefined)).toBe(false);
+      expect(isPathFromWrongPlatform('')).toBe(false);
+      expect(isPathFromWrongPlatform('   ')).toBe(false);
+    });
+  });
+
+  describe('on Unix (macOS/Linux)', () => {
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+    });
+
+    it('should detect Windows drive letter paths as wrong platform', () => {
+      expect(isPathFromWrongPlatform('C:\\Python312\\python.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('D:/Program Files/Git/bin/git.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('E:\\tools\\claude.exe')).toBe(true);
+    });
+
+    it('should detect paths with backslashes as wrong platform', () => {
+      expect(isPathFromWrongPlatform('home\\user\\bin\\python')).toBe(true);
+      expect(isPathFromWrongPlatform('opt\\local\\bin\\git')).toBe(true);
+    });
+
+    it('should detect Windows-specific directory names as wrong platform', () => {
+      expect(isPathFromWrongPlatform('/mnt/c/Program Files/Git/git.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('/home/user/AppData/Local/python.exe')).toBe(true);
+    });
+
+    it('should allow Unix paths', () => {
+      expect(isPathFromWrongPlatform('/usr/bin/python')).toBe(false);
+      expect(isPathFromWrongPlatform('/home/user/.local/bin/claude')).toBe(false);
+      expect(isPathFromWrongPlatform('/opt/homebrew/bin/python3')).toBe(false);
+    });
+
+    it('should handle quoted paths', () => {
+      expect(isPathFromWrongPlatform('"C:\\Python312\\python.exe"')).toBe(true);
+      expect(isPathFromWrongPlatform("'/usr/bin/python'")).toBe(false);
+    });
+
+    it('should return false for undefined or empty paths', () => {
+      expect(isPathFromWrongPlatform(undefined)).toBe(false);
+      expect(isPathFromWrongPlatform('')).toBe(false);
+      expect(isPathFromWrongPlatform('   ')).toBe(false);
+    });
+
+    it('should allow relative paths on Unix', () => {
+      expect(isPathFromWrongPlatform('./python')).toBe(false);
+      expect(isPathFromWrongPlatform('../bin/git')).toBe(false);
+      expect(isPathFromWrongPlatform('python3')).toBe(false);
+    });
+  });
+
+  describe('on Linux', () => {
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+    });
+
+    it('should detect Windows paths as wrong platform', () => {
+      expect(isPathFromWrongPlatform('C:\\Python312\\python.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('D:/usr/bin/git')).toBe(true);
+    });
+
+    it('should allow Linux paths', () => {
+      expect(isPathFromWrongPlatform('/usr/bin/python3')).toBe(false);
+      expect(isPathFromWrongPlatform('/home/user/.local/bin/gh')).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle paths with mixed quotes and whitespace', () => {
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+
+      expect(isPathFromWrongPlatform('  "C:\\Python312\\python.exe"  ')).toBe(true);
+      expect(isPathFromWrongPlatform("  '/usr/bin/python'  ")).toBe(false);
+    });
+
+    it('should handle single-quoted paths', () => {
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
+      expect(isPathFromWrongPlatform("'C:\\Program Files\\Git\\git.exe'")).toBe(true);
+      expect(isPathFromWrongPlatform("'/usr/local/bin/python'")).toBe(false);
+    });
+
+    it('should handle paths with AppData or Program Files on Unix', () => {
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+
+      // Even with forward slashes, these are Windows-specific names
+      expect(isPathFromWrongPlatform('/mnt/c/Program Files/Git/git.exe')).toBe(true);
+      expect(isPathFromWrongPlatform('/mnt/c/Users/test/AppData/Local/python.exe')).toBe(true);
+    });
+
+    it('should not flag false positives on Unix', () => {
+      Object.defineProperty(process, 'platform', {
+        value: 'darwin',
+        writable: true
+      });
+
+      // These look like they might be Windows but are valid Unix paths
+      expect(isPathFromWrongPlatform('/usr/local/bin/appdata')).toBe(false);
+      expect(isPathFromWrongPlatform('/home/user/program')).toBe(false);
+    });
   });
 });
