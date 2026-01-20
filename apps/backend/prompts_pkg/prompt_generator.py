@@ -336,7 +336,7 @@ def load_subtask_context(
         full_path = project_dir / pattern_path
         if full_path.exists():
             try:
-                lines = full_path.read_text().split("\n")
+                lines = full_path.read_text(encoding="utf-8").split("\n")
                 if len(lines) > max_file_lines:
                     content = "\n".join(lines[:max_file_lines])
                     content += (
@@ -353,7 +353,7 @@ def load_subtask_context(
         full_path = project_dir / file_path
         if full_path.exists():
             try:
-                lines = full_path.read_text().split("\n")
+                lines = full_path.read_text(encoding="utf-8").split("\n")
                 if len(lines) > max_file_lines:
                     content = "\n".join(lines[:max_file_lines])
                     content += (

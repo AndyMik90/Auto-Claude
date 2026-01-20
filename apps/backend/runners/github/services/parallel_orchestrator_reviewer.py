@@ -20,6 +20,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from collections import defaultdict
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +44,7 @@ try:
     from .category_utils import map_category
     from .io_utils import safe_print
     from .pr_worktree_manager import PRWorktreeManager
-    from .pydantic_models import ParallelOrchestratorResponse
+    from .pydantic_models import AgentAgreement, ParallelOrchestratorResponse
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import PRContext, PRContextGatherer, _validate_git_ref
@@ -61,7 +63,7 @@ except (ImportError, ValueError, SystemError):
     from services.category_utils import map_category
     from services.io_utils import safe_print
     from services.pr_worktree_manager import PRWorktreeManager
-    from services.pydantic_models import ParallelOrchestratorResponse
+    from services.pydantic_models import AgentAgreement, ParallelOrchestratorResponse
     from services.sdk_utils import process_sdk_stream
 
 
@@ -72,6 +74,125 @@ DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 
 # Directory for PR review worktrees (inside github/pr for consistency)
 PR_WORKTREE_DIR = ".auto-claude/github/pr/worktrees"
+
+
+class ConfidenceTier(str, Enum):
+    """Confidence tiers for finding routing.
+
+    Findings are routed based on their confidence score:
+    - HIGH (>=0.8): Included as-is
+    - MEDIUM (0.5-0.8): Included with "[Potential]" prefix
+    - LOW (<0.5): Logged but excluded from output
+    """
+
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+    # Thresholds (class-level constants)
+    @classmethod
+    def get_tier(cls, confidence: float) -> ConfidenceTier:
+        """Get tier for a given confidence value."""
+        if confidence >= 0.8:  # HIGH_THRESHOLD
+            return cls.HIGH
+        elif confidence >= 0.5:  # LOW_THRESHOLD
+            return cls.MEDIUM
+        else:
+            return cls.LOW
+
+
+def _validate_finding_evidence(finding: PRReviewFinding) -> tuple[bool, str]:
+    """
+    Check if finding has actual code evidence, not just descriptions.
+
+    Returns:
+        Tuple of (is_valid, reason)
+    """
+    if not finding.evidence:
+        return False, "No evidence provided"
+
+    evidence = finding.evidence.strip()
+    if len(evidence) < 10:
+        return False, "Evidence too short (< 10 chars)"
+
+    # Reject generic descriptions that aren't code
+    description_patterns = [
+        "the code",
+        "this function",
+        "it appears",
+        "seems to",
+        "may be",
+        "could be",
+        "might be",
+        "appears to",
+        "there is",
+        "there are",
+    ]
+    evidence_lower = evidence.lower()
+    for pattern in description_patterns:
+        if evidence_lower.startswith(pattern):
+            return False, f"Evidence starts with description pattern: '{pattern}'"
+
+    # Evidence should look like code (has syntax characters)
+    code_chars = [
+        "=",
+        "(",
+        ")",
+        "{",
+        "}",
+        ";",
+        ":",
+        ".",
+        "->",
+        "::",
+        "[",
+        "]",
+        "'",
+        '"',
+    ]
+    has_code_syntax = any(char in evidence for char in code_chars)
+
+    if not has_code_syntax:
+        return False, "Evidence lacks code syntax characters"
+
+    return True, "Valid evidence"
+
+
+def _is_finding_in_scope(
+    finding: PRReviewFinding,
+    changed_files: list[str],
+) -> tuple[bool, str]:
+    """
+    Check if finding is within PR scope.
+
+    Args:
+        finding: The finding to check
+        changed_files: List of file paths changed in the PR
+
+    Returns:
+        Tuple of (is_in_scope, reason)
+    """
+    if not finding.file:
+        return False, "No file specified"
+
+    # Check if file is in changed files
+    if finding.file not in changed_files:
+        # Allow impact findings (about how changes affect other files)
+        impact_keywords = ["breaks", "affects", "impact", "caller", "depends"]
+        description_lower = (finding.description or "").lower()
+        is_impact_finding = any(kw in description_lower for kw in impact_keywords)
+
+        if not is_impact_finding:
+            return (
+                False,
+                f"File '{finding.file}' not in PR changed files and not an impact finding",
+            )
+
+    # Check line number is reasonable (> 0)
+    if finding.line is not None and finding.line <= 0:
+        return False, f"Invalid line number: {finding.line}"
+
+    return True, "In scope"
 
 
 class ParallelOrchestratorReviewer:
@@ -188,6 +309,7 @@ class ParallelOrchestratorReviewer:
         logic_prompt = self._load_prompt("pr_logic_agent.md")
         codebase_fit_prompt = self._load_prompt("pr_codebase_fit_agent.md")
         ai_triage_prompt = self._load_prompt("pr_ai_triage.md")
+        validator_prompt = self._load_prompt("pr_finding_validator.md")
 
         return {
             "security-reviewer": AgentDefinition(
@@ -243,6 +365,19 @@ class ParallelOrchestratorReviewer:
                 ),
                 prompt=ai_triage_prompt
                 or "You are an AI triage expert. Validate AI comments.",
+                tools=["Read", "Grep", "Glob"],
+                model="inherit",
+            ),
+            "finding-validator": AgentDefinition(
+                description=(
+                    "Finding validation specialist. Re-investigates findings to validate "
+                    "they are actually real issues, not false positives. "
+                    "Reads the ACTUAL CODE at the finding location with fresh eyes. "
+                    "CRITICAL: Invoke for ALL findings after specialist agents complete. "
+                    "Can confirm findings as valid OR dismiss them as false positives."
+                ),
+                prompt=validator_prompt
+                or "You validate whether findings are real issues.",
                 tools=["Read", "Grep", "Glob"],
                 model="inherit",
             ),
@@ -677,6 +812,68 @@ The SDK will run invoked agents in parallel automatically.
             # Deduplicate findings
             unique_findings = self._deduplicate_findings(findings)
 
+            # Cross-validate findings: boost confidence when multiple agents agree
+            cross_validated_findings, agent_agreement = self._cross_validate_findings(
+                unique_findings
+            )
+
+            # Log cross-validation results
+            logger.info(
+                f"[PRReview] Cross-validation: {len(agent_agreement.agreed_findings)} multi-agent, "
+                f"{len(cross_validated_findings) - len(agent_agreement.agreed_findings)} single-agent"
+            )
+
+            # Log full agreement details at debug level for monitoring
+            logger.debug(
+                f"[PRReview] AgentAgreement: {agent_agreement.model_dump_json()}"
+            )
+
+            # Apply programmatic evidence and scope filters
+            # These catch edge cases that slip through the finding-validator
+            changed_file_paths = [f.path for f in context.changed_files]
+            validated_findings = []
+            filtered_findings = []
+
+            for finding in cross_validated_findings:
+                # Check evidence quality
+                evidence_valid, evidence_reason = _validate_finding_evidence(finding)
+                if not evidence_valid:
+                    logger.info(
+                        f"[PRReview] Filtered finding {finding.id}: {evidence_reason}"
+                    )
+                    filtered_findings.append((finding, evidence_reason))
+                    continue
+
+                # Check scope
+                scope_valid, scope_reason = _is_finding_in_scope(
+                    finding, changed_file_paths
+                )
+                if not scope_valid:
+                    logger.info(
+                        f"[PRReview] Filtered finding {finding.id}: {scope_reason}"
+                    )
+                    filtered_findings.append((finding, scope_reason))
+                    continue
+
+                validated_findings.append(finding)
+
+            logger.info(
+                f"[PRReview] Findings: {len(validated_findings)} valid, "
+                f"{len(filtered_findings)} filtered"
+            )
+
+            # Apply confidence routing to filter low-confidence findings
+            # and mark medium-confidence findings with "[Potential]" prefix
+            routed_findings = self._apply_confidence_routing(validated_findings)
+
+            logger.info(
+                f"[PRReview] Confidence routing: {len(routed_findings)} included, "
+                f"{len(validated_findings) - len(routed_findings)} dropped (low confidence)"
+            )
+
+            # Use routed findings for verdict and summary
+            unique_findings = routed_findings
+
             logger.info(
                 f"[ParallelOrchestrator] Review complete: {len(unique_findings)} findings"
             )
@@ -927,6 +1124,166 @@ The SDK will run invoked agents in parallel automatically.
                 unique.append(f)
 
         return unique
+
+    def _cross_validate_findings(
+        self, findings: list[PRReviewFinding]
+    ) -> tuple[list[PRReviewFinding], AgentAgreement]:
+        """
+        Cross-validate findings to boost confidence when multiple agents agree.
+
+        Groups findings by location key (file, line, category) and:
+        - For groups with 2+ findings: merges into one, boosts confidence by 0.15,
+          sets cross_validated=True, collects all source agents
+        - For single-agent findings: keeps as-is, ensures source_agents is populated
+
+        Args:
+            findings: List of deduplicated findings to cross-validate
+
+        Returns:
+            Tuple of (cross-validated findings, AgentAgreement tracking object)
+        """
+        # Confidence boost for multi-agent agreement
+        CONFIDENCE_BOOST = 0.15
+        MAX_CONFIDENCE = 0.95
+
+        # Group findings by location key: (file, line, category)
+        groups: dict[tuple, list[PRReviewFinding]] = defaultdict(list)
+        for finding in findings:
+            key = (finding.file, finding.line, finding.category.value)
+            groups[key].append(finding)
+
+        validated_findings: list[PRReviewFinding] = []
+        agreed_finding_ids: list[str] = []
+
+        for key, group in groups.items():
+            if len(group) >= 2:
+                # Multi-agent agreement: merge findings
+                # Sort by severity to keep highest severity finding
+                severity_order = {
+                    ReviewSeverity.CRITICAL: 0,
+                    ReviewSeverity.HIGH: 1,
+                    ReviewSeverity.MEDIUM: 2,
+                    ReviewSeverity.LOW: 3,
+                }
+                group.sort(key=lambda f: severity_order.get(f.severity, 99))
+                primary = group[0]
+
+                # Collect all source agents from group
+                all_agents: list[str] = []
+                for f in group:
+                    if f.source_agents:
+                        for agent in f.source_agents:
+                            if agent not in all_agents:
+                                all_agents.append(agent)
+
+                # Combine evidence from all findings
+                all_evidence: list[str] = []
+                for f in group:
+                    if f.evidence and f.evidence.strip():
+                        all_evidence.append(f.evidence.strip())
+                combined_evidence = (
+                    "\n---\n".join(all_evidence) if all_evidence else None
+                )
+
+                # Combine descriptions
+                all_descriptions: list[str] = [primary.description]
+                for f in group[1:]:
+                    if f.description and f.description not in all_descriptions:
+                        all_descriptions.append(f.description)
+                combined_description = " | ".join(all_descriptions)
+
+                # Boost confidence (capped at MAX_CONFIDENCE)
+                base_confidence = primary.confidence or 0.5
+                boosted_confidence = min(
+                    base_confidence + CONFIDENCE_BOOST, MAX_CONFIDENCE
+                )
+
+                # Update the primary finding with merged data
+                primary.confidence = boosted_confidence
+                primary.cross_validated = True
+                primary.source_agents = all_agents
+                primary.evidence = combined_evidence
+                primary.description = combined_description
+
+                validated_findings.append(primary)
+                agreed_finding_ids.append(primary.id)
+
+                logger.debug(
+                    f"[PRReview] Cross-validated finding {primary.id}: "
+                    f"merged {len(group)} findings, agents={all_agents}, "
+                    f"confidence={boosted_confidence:.2f}"
+                )
+            else:
+                # Single-agent finding: keep as-is
+                finding = group[0]
+
+                # Ensure source_agents is populated (use empty list if not set)
+                if not finding.source_agents:
+                    finding.source_agents = []
+
+                validated_findings.append(finding)
+
+        # Create agent agreement tracking object
+        agent_agreement = AgentAgreement(
+            agreed_findings=agreed_finding_ids,
+            conflicting_findings=[],  # Not implemented yet - reserved for future
+            resolution_notes=None,
+        )
+
+        return validated_findings, agent_agreement
+
+    def _apply_confidence_routing(
+        self, findings: list[PRReviewFinding]
+    ) -> list[PRReviewFinding]:
+        """
+        Route findings based on confidence scores.
+
+        - HIGH (>=0.8): Keep as-is, include in output
+        - MEDIUM (0.5-0.8): Prepend "[Potential] " to title, include in output
+        - LOW (<0.5): Log with logger.info(), exclude from output
+
+        Args:
+            findings: List of findings to route
+
+        Returns:
+            Filtered list of findings (HIGH and MEDIUM only)
+        """
+        routed = []
+        tier_counts = {"high": 0, "medium": 0, "low": 0}
+
+        for finding in findings:
+            # Handle missing confidence gracefully (default to 0.5)
+            confidence = getattr(finding, "confidence", 0.5)
+            if confidence is None:
+                confidence = 0.5
+            confidence = self._normalize_confidence(confidence)
+
+            tier = ConfidenceTier.get_tier(confidence)
+            tier_counts[tier] += 1
+
+            if tier == ConfidenceTier.HIGH:
+                # HIGH: Include as-is
+                routed.append(finding)
+            elif tier == ConfidenceTier.MEDIUM:
+                # MEDIUM: Prepend "[Potential] " to title
+                if not finding.title.startswith("[Potential] "):
+                    finding.title = f"[Potential] {finding.title}"
+                routed.append(finding)
+            else:
+                # LOW: Log and exclude
+                logger.info(
+                    f"[PRReview] Dropping low-confidence finding: "
+                    f"'{finding.title}' (confidence={confidence:.2f}, "
+                    f"file={finding.file}:{finding.line})"
+                )
+
+        logger.info(
+            f"[PRReview] Confidence routing: HIGH={tier_counts['high']}, "
+            f"MEDIUM={tier_counts['medium']}, LOW={tier_counts['low']} "
+            f"(dropped {tier_counts['low']} low-confidence findings)"
+        )
+
+        return routed
 
     def _generate_verdict(
         self,
