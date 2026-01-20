@@ -16,16 +16,14 @@ import copy
 import json
 import logging
 import os
-import shutil
-import subprocess
 import threading
 import time
 from pathlib import Path
 from typing import Any
 
 from core.platform import (
-    get_comspec_path,
     is_windows,
+    validate_cli_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -824,7 +822,7 @@ def create_client(
     # Optional: Allow CLI path override via environment variable
     # The SDK bundles its own CLI, but users can override if needed
     env_cli_path = os.environ.get("CLAUDE_CLI_PATH")
-    if env_cli_path and Path(env_cli_path).exists():
+    if env_cli_path and validate_cli_path(env_cli_path):
         options_kwargs["cli_path"] = env_cli_path
         logger.info(f"Using CLAUDE_CLI_PATH override: {env_cli_path}")
 
