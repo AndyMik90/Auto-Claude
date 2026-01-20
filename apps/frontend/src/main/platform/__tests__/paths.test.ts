@@ -64,6 +64,9 @@ import {
   expandWindowsEnvVars,
   getWindowsToolPath,
   getCmdExecutablePath,
+  getBashExecutablePaths,
+  getTerminalLauncherPaths,
+  getHomebrewBinPaths,
 } from '../paths';
 
 // Get mocked functions
@@ -676,6 +679,187 @@ describe('Platform Paths Module', () => {
       it('returns sh as shell', () => {
         const result = getCmdExecutablePath();
         expect(result).toBe('sh');
+      });
+    });
+  });
+
+  describe('getBashExecutablePaths', () => {
+    describeWindows('returns bash paths on Windows', () => {
+      const originalEnv = { ...process.env };
+
+      beforeEach(() => {
+        // Clear SystemRoot to test defaults
+        delete process.env.SystemRoot;
+      });
+
+      afterEach(() => {
+        process.env = originalEnv;
+      });
+
+      it('includes Git for Windows bash paths', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.some(p => p.includes('Git') && p.includes('bash.exe'))).toBe(true);
+        expect(paths.some(p => p.includes('Program Files') && p.includes('Git'))).toBe(true);
+      });
+
+      it('includes both Program Files and Program Files (x86) Git paths', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('Program Files') && !p.includes('(x86)'))).toBe(true);
+        expect(paths.some(p => p.includes('Program Files (x86)'))).toBe(true);
+      });
+
+      it('includes user-local Git installation path', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('AppData') && p.includes('Local') && p.includes('Programs'))).toBe(true);
+      });
+
+      it('includes MSYS2 bash path', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('msys64') && p.includes('bash.exe'))).toBe(true);
+      });
+
+      it('includes Cygwin bash path', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('cygwin64') && p.includes('bash.exe'))).toBe(true);
+      });
+
+      it('includes WSL bash path', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('wsl.exe'))).toBe(true);
+      });
+
+      it('uses SystemRoot environment variable when set', () => {
+        process.env.SystemRoot = 'D:\\Windows';
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('System32') && p.includes('wsl.exe'))).toBe(true);
+      });
+    });
+
+    describeUnix('returns bash paths on Linux', () => {
+      it('includes /bin/bash', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/bin/bash');
+      });
+
+      it('includes /usr/bin/bash', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/usr/bin/bash');
+      });
+
+      it('includes /usr/local/bin/bash', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/usr/local/bin/bash');
+      });
+
+      it('does not include Windows bash paths', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths.some(p => p.includes('bash.exe'))).toBe(false);
+        expect(paths.some(p => p.includes('Git') || p.includes('msys64') || p.includes('cygwin'))).toBe(false);
+      });
+    });
+
+    describeMacOS('includes Homebrew bash paths on macOS', () => {
+      it('includes Apple Silicon Homebrew bash', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/opt/homebrew/bin/bash');
+      });
+
+      it('includes Intel Homebrew bash', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/usr/local/bin/bash');
+      });
+
+      it('includes standard Unix bash paths', () => {
+        const paths = getBashExecutablePaths();
+        expect(paths).toContain('/bin/bash');
+        expect(paths).toContain('/usr/bin/bash');
+      });
+    });
+  });
+
+  describe('getTerminalLauncherPaths', () => {
+    describeWindows('returns terminal launcher paths on Windows', () => {
+      it('includes Cygwin mintty paths', () => {
+        const paths = getTerminalLauncherPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.some(p => p.includes('cygwin64') && p.includes('mintty.exe'))).toBe(true);
+        expect(paths.some(p => p.includes('cygwin') && p.includes('mintty.exe'))).toBe(true);
+      });
+
+      it('includes MSYS2 shell launchers', () => {
+        const paths = getTerminalLauncherPaths();
+        expect(paths.some(p => p.includes('msys64') && p.includes('msys2_shell.cmd'))).toBe(true);
+        expect(paths.some(p => p.includes('msys64') && p.includes('mingw64.exe'))).toBe(true);
+      });
+
+      it('includes MSYS2 mintty terminal emulator', () => {
+        const paths = getTerminalLauncherPaths();
+        expect(paths.some(p => p.includes('msys64') && p.includes('usr') && p.includes('bin') && p.includes('mintty.exe'))).toBe(true);
+      });
+
+      it('does not include unrelated terminal paths', () => {
+        const paths = getTerminalLauncherPaths();
+        expect(paths.some(p => p.includes('WindowsTerminal'))).toBe(false);
+        expect(paths.some(p => p.includes('PowerShell'))).toBe(false);
+      });
+    });
+
+    describeUnix('returns empty array on Linux', () => {
+      it('returns empty array', () => {
+        const paths = getTerminalLauncherPaths();
+        expect(paths).toEqual([]);
+      });
+    });
+
+    describeMacOS('returns empty array on macOS', () => {
+      it('returns empty array', () => {
+        mockPlatform('darwin');
+        const paths = getTerminalLauncherPaths();
+        expect(paths).toEqual([]);
+      });
+    });
+  });
+
+  describe('getHomebrewBinPaths', () => {
+    describeMacOS('returns Homebrew binary paths on macOS', () => {
+      it('returns Apple Silicon Homebrew path as first entry', () => {
+        mockPlatform('darwin');
+        const paths = getHomebrewBinPaths();
+        expect(paths).toContain('/opt/homebrew/bin');
+      });
+
+      it('returns Intel Homebrew path as second entry', () => {
+        mockPlatform('darwin');
+        const paths = getHomebrewBinPaths();
+        expect(paths).toContain('/usr/local/bin');
+      });
+
+      it('returns exactly two paths', () => {
+        mockPlatform('darwin');
+        const paths = getHomebrewBinPaths();
+        expect(paths.length).toBe(2);
+      });
+
+      it('Apple Silicon path comes before Intel path', () => {
+        mockPlatform('darwin');
+        const paths = getHomebrewBinPaths();
+        expect(paths[0]).toBe('/opt/homebrew/bin');
+        expect(paths[1]).toBe('/usr/local/bin');
+      });
+    });
+
+    describeUnix('returns empty array on Linux', () => {
+      it('returns empty array', () => {
+        const paths = getHomebrewBinPaths();
+        expect(paths).toEqual([]);
+      });
+    });
+
+    describeWindows('returns empty array on Windows', () => {
+      it('returns empty array', () => {
+        const paths = getHomebrewBinPaths();
+        expect(paths).toEqual([]);
       });
     });
   });

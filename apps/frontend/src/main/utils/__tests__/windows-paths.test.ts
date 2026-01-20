@@ -10,39 +10,33 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 
 // Mock child_process for where.exe tests
-// Create configurable spies for execFileSync, execFile (both callback and promisified versions)
-// No default implementations - tests configure them explicitly with mockReturnValue/mockResolvedValue
-const mockExecFileSyncImpl: any = vi.fn();
-const mockExecFileImpl: any = vi.fn();
-const mockExecFilePromisified: any = vi.fn();
-
+// The mock factory creates and stores mocks in a way that's accessible after import
 vi.mock('child_process', async () => {
   const actualChildProcess = await vi.importActual<typeof import('child_process')>('child_process');
 
-  // Create the mock execFileSync that can be configured per test
-  const mockExecFileSync = vi.fn((...args: any[]) => {
-    // Call the configurable implementation
-    return mockExecFileSyncImpl(...args);
-  });
-
-  // Create the mock execFile that can be configured per test
-  const mockExecFile = vi.fn((file: any, args: any, options: any, callback: any) => {
-    // Call the configurable implementation
-    return mockExecFileImpl(file, args, options, callback);
-  });
+  // Create the mock functions inside the factory
+  const mockExecFileSync = vi.fn();
+  const mockExecFile = vi.fn();
+  const mockExecFilePromisified = vi.fn();
 
   // Add custom promisify implementation that util.promisify will use
-  // Note: Must use wrapper function to avoid "before initialization" error
-  (mockExecFile as any)[Symbol.for('nodejs.util.promisify.custom')] = vi.fn((...args: any[]) => {
-    // Call the configurable promisified implementation
-    return mockExecFilePromisified(...args);
-  });
+  (mockExecFile as any)[Symbol.for('nodejs.util.promisify.custom')] = mockExecFilePromisified;
 
-  return {
+  // Return the mocks with a special property for test access
+  const mockedModule = {
     ...actualChildProcess,
     execFileSync: mockExecFileSync,
     execFile: mockExecFile,
   };
+
+  // Attach mocks to the returned module for test access
+  (mockedModule as any).__mocks = {
+    execFileSync: mockExecFileSync,
+    execFile: mockExecFile,
+    execFilePromisified: mockExecFilePromisified,
+  };
+
+  return mockedModule;
 });
 
 // Mock fs for security validation tests
@@ -185,29 +179,32 @@ import {
   type WindowsToolPaths,
 } from '../windows-paths';
 import { isSecurePath } from '../../platform';
+import * as childProcess from 'child_process';
 
 // Helper to get mocked execFileSync
-const getMockedExecFileSync = () => mockExecFileSyncImpl;
+const getMockedExecFileSync = () => (childProcess as any).__mocks.execFileSync;
+const getMockExecFile = () => (childProcess as any).__mocks.execFile;
+const getMockExecFilePromisified = () => (childProcess as any).__mocks.execFilePromisified;
 
 // Helper to configure execFile mock behavior for async tests
 function setupExecFileMock(stdout: string, shouldError = false) {
   if (shouldError) {
-    mockExecFilePromisified.mockRejectedValue(new Error('Command failed'));
-    mockExecFileImpl.mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
+    getMockExecFilePromisified().mockRejectedValue(new Error('Command failed'));
+    getMockExecFile().mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
       callback(new Error('Command failed'), '', '');
     });
   } else {
-    mockExecFilePromisified.mockResolvedValue({ stdout });
-    mockExecFileImpl.mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
+    getMockExecFilePromisified().mockResolvedValue({ stdout });
+    getMockExecFile().mockImplementation((_file: any, _args: any, _options: any, callback: any) => {
       callback(null, stdout, '');
     });
   }
 }
 
 function resetExecFileMock() {
-  mockExecFileSyncImpl.mockReset();
-  mockExecFilePromisified.mockReset();
-  mockExecFileImpl.mockReset();
+  getMockedExecFileSync().mockReset();
+  getMockExecFilePromisified().mockReset();
+  getMockExecFile().mockReset();
 }
 
 describe('Windows Paths Module', () => {
@@ -424,9 +421,7 @@ describe('Windows Paths Module', () => {
     });
   });
 
-  // TODO: Fix execFileSync mock - the mock factory wrapper doesn't work correctly with mockImplementation/mockReturnValue
-  // Skip these tests for now. The async version also has issues with promisify custom symbol.
-  describe.skip('findWindowsExecutableViaWhere', () => {
+  describe('findWindowsExecutableViaWhere', () => {
     describeWindows('uses where.exe to find executables', () => {
 
       it('returns executable path found by where.exe', () => {
@@ -483,9 +478,7 @@ describe('Windows Paths Module', () => {
     });
   });
 
-  // TODO: Fix promisify mock for async tests - the custom symbol wrapper doesn't work correctly
-  // Skip these tests for now. The sync version works correctly.
-  describe.skip('findWindowsExecutableViaWhereAsync', () => {
+  describe('findWindowsExecutableViaWhereAsync', () => {
     describeWindows('uses where.exe asynchronously to find executables', () => {
       beforeEach(() => {
         resetExecFileMock();
@@ -552,7 +545,7 @@ describe('Windows Paths Module', () => {
           expect(result).toBeNull();
         }
         // execFile promisified should NOT have been called for invalid names
-        expect(mockExecFilePromisified).not.toHaveBeenCalled();
+        expect(getMockExecFilePromisified()).not.toHaveBeenCalled();
       });
     });
 
