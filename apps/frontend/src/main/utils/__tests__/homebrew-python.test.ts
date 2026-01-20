@@ -76,7 +76,9 @@ describe('homebrew-python', () => {
       const result = findHomebrewPython(mockValidate, '[Test]');
 
       expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.14');
-      expect(mockValidate).toHaveBeenCalledWith('/opt/homebrew/bin/python3.14');
+      // Validate receives the actual path (may have backslashes on Windows)
+      expect(mockValidate).toHaveBeenCalledTimes(1);
+      expect(normalizePathForTest(mockValidate.mock.calls[0][0])).toBe('/opt/homebrew/bin/python3.14');
     });
 
     it('finds Python 3.13 in Intel directory', () => {
@@ -175,7 +177,9 @@ describe('homebrew-python', () => {
       });
 
       mockValidate.mockImplementation((path) => {
-        if (path === '/opt/homebrew/bin/python3.14') {
+        // Normalize path for comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        if (normalized === '/opt/homebrew/bin/python3.14') {
           return { valid: false, message: 'Version too old' };
         }
         return { valid: true, version: '3.13.0', message: 'Valid' };
@@ -216,7 +220,9 @@ describe('homebrew-python', () => {
       });
 
       mockValidate.mockImplementation((path) => {
-        if (path === '/opt/homebrew/bin/python3.14') {
+        // Normalize path for comparison (Windows may use backslashes)
+        const normalized = path.toString().replace(/\\/g, '/');
+        if (normalized === '/opt/homebrew/bin/python3.14') {
           throw new Error('Timeout');
         }
         return { valid: true, version: '3.13.0', message: 'Valid' };
@@ -304,7 +310,9 @@ describe('homebrew-python', () => {
 
         mockValidate.mockImplementation((path) => {
           validateCalls.push(path);
-          if (path === '/opt/homebrew/bin/python3.12') {
+          // Normalize path for comparison (Windows may use backslashes)
+          const normalized = path.toString().replace(/\\/g, '/');
+          if (normalized === '/opt/homebrew/bin/python3.12') {
             return { valid: true, version: '3.12.0', message: 'Valid' };
           }
           return { valid: false, message: 'Invalid' };
@@ -313,12 +321,13 @@ describe('homebrew-python', () => {
         const result = findHomebrewPython(mockValidate, '[Test]');
 
         // Should have validated 3.14 (invalid), 3.13 (invalid), 3.12 (valid, then stopped)
-        expect(validateCalls).toEqual([
+        // Normalize validateCalls for cross-platform comparison
+        expect(validateCalls.map((p) => p.replace(/\\/g, '/'))).toEqual([
           '/opt/homebrew/bin/python3.14',
           '/opt/homebrew/bin/python3.13',
           '/opt/homebrew/bin/python3.12'
         ]);
-        expect(result).toBe('/opt/homebrew/bin/python3.12');
+        expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.12');
       });
     });
   });
