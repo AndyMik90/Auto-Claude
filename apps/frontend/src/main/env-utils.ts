@@ -16,7 +16,7 @@ import { promises as fsPromises } from 'fs';
 import { execFileSync, execFile } from 'child_process';
 import { promisify } from 'util';
 import { getSentryEnvForSubprocess } from './sentry';
-import { isWindows, isUnix, getPathDelimiter, getNpmCommand, getCurrentOS, expandWindowsEnvVars } from './platform';
+import { isWindows, isUnix, getPathDelimiter, getNpmCommand, getCurrentOS, expandWindowsEnvVars, isSecurePath } from './platform';
 
 const execFileAsync = promisify(execFile);
 
@@ -316,6 +316,12 @@ export function getAugmentedEnv(additionalPaths?: string[]): Record<string, stri
  * @returns The full path to the executable, or null if not found
  */
 export function findExecutable(command: string): string | null {
+  // Defense-in-depth: validate command is secure before searching PATH
+  // Prevents shell metacharacters and path traversal in command names
+  if (!isSecurePath(command)) {
+    return null;
+  }
+
   const env = getAugmentedEnv();
   const pathSeparator = getPathDelimiter();
   const pathDirs = (env.PATH || '').split(pathSeparator);

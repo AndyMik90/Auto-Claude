@@ -20,7 +20,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable, getHomeDir, joinPaths } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
@@ -942,7 +942,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${os.homedir()}/.local/share/applications`,
+    joinPaths(getHomeDir(), '.local', 'share', 'applications'),
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1011,7 +1011,7 @@ function isAppInstalled(
   // Then check specific paths (for apps not in standard locations)
   for (const checkPath of specificPaths) {
     // Use expandWindowsEnvVars for %LOCALAPPDATA%, %USERPROFILE% expansion with fallbacks
-    const expandedPath = expandWindowsEnvVars(checkPath).replace('~', os.homedir() || '');
+    const expandedPath = expandWindowsEnvVars(checkPath).replace('~', getHomeDir() || '');
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isSecurePath(expandedPath)) {
@@ -1167,6 +1167,11 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
     // Special handling for Windows batch files (.cmd, .bat)
     // execFile doesn't search PATH, so we need shell: true for batch files
     if (isWindows() && (command.endsWith('.cmd') || command.endsWith('.bat'))) {
+      // Defense-in-depth: validate command is secure before using shell: true
+      // Commands are from pre-defined configs, but validation provides future-proofing
+      if (!isSecurePath(command)) {
+        return { success: false, error: `Invalid IDE command: ${command}` };
+      }
       return new Promise((resolve) => {
         const child = spawn(command, [dirPath], {
           shell: true,
@@ -1250,7 +1255,13 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
         const cmdPath = findExecutable('cmd') || 'cmd.exe';
         spawn(cmdPath, ['/K', 'cd', '/d', dirPath], { detached: true, stdio: 'ignore' }).unref();
       } else if (commands.length > 0) {
-        spawn(commands[0], [...commands.slice(1), dirPath], { detached: true, stdio: 'ignore' }).unref();
+        // Defense-in-depth: validate command is secure before spawning
+        // Commands are from pre-defined configs, but validation provides future-proofing
+        const terminalCommand = commands[0];
+        if (!isSecurePath(terminalCommand)) {
+          return { success: false, error: `Invalid terminal command: ${terminalCommand}` };
+        }
+        spawn(terminalCommand, [...commands.slice(1), dirPath], { detached: true, stdio: 'ignore' }).unref();
       }
     } else {
       // Linux: Use the configured terminal with execFileAsync

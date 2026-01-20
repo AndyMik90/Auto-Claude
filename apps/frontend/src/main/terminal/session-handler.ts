@@ -10,6 +10,7 @@ import type { TerminalProcess, WindowGetter } from './types';
 import { getTerminalSessionStore, type TerminalSession } from '../terminal-session-store';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { getHomeDir, joinPaths } from '../platform';
 
 /**
  * Track session IDs that have been claimed by terminals to prevent race conditions.
@@ -66,7 +67,7 @@ function getClaudeProjectSlug(projectPath: string): string {
  */
 export function findMostRecentClaudeSession(projectPath: string): string | null {
   const slug = getClaudeProjectSlug(projectPath);
-  const claudeProjectDir = path.join(os.homedir(), '.claude', 'projects', slug);
+  const claudeProjectDir = joinPaths(getHomeDir(), '.claude', 'projects', slug);
 
   try {
     if (!fs.existsSync(claudeProjectDir)) {
@@ -112,7 +113,7 @@ export function findClaudeSessionAfter(
   excludeSessionIds?: Set<string>
 ): string | null {
   const slug = getClaudeProjectSlug(projectPath);
-  const claudeProjectDir = path.join(os.homedir(), '.claude', 'projects', slug);
+  const claudeProjectDir = joinPaths(getHomeDir(), '.claude', 'projects', slug);
 
   try {
     if (!fs.existsSync(claudeProjectDir)) {

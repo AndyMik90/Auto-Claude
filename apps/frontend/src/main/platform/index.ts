@@ -98,6 +98,18 @@ export function getEnvVar(name: string): string | undefined {
 }
 
 /**
+ * Get the user's home directory path.
+ *
+ * This is a centralized wrapper around os.homedir() that provides
+ * a consistent interface for home directory access across the codebase.
+ * Use this instead of os.homedir() directly for easier testing and
+ * potential future platform-specific handling.
+ */
+export function getHomeDir(): string {
+  return os.homedir();
+}
+
+/**
  * Get path configuration for the current platform
  */
 export function getPathConfig(): PathConfig {
@@ -378,6 +390,12 @@ export function findExecutable(
   name: string,
   additionalPaths: string[] = []
 ): string | null {
+  // Defense-in-depth: validate name is secure before searching
+  // Prevents shell metacharacters and path traversal in executable names
+  if (!isSecurePath(name)) {
+    return null;
+  }
+
   const config = getPathConfig();
   const searchPaths: string[] = [];
 

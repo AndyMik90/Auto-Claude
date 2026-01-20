@@ -16,7 +16,7 @@
 
 import * as path from 'path';
 import * as os from 'os';
-import { isLinux, getEnvVar } from './platform';
+import { isLinux, getEnvVar, getHomeDir, joinPaths } from './platform';
 
 const APP_NAME = 'auto-claude';
 
@@ -40,7 +40,7 @@ export function getXdgConfigHome(): string {
   if (envValue) {
     return joinXdgPath(envValue);
   }
-  return joinXdgPath(os.homedir(), '.config');
+  return joinXdgPath(getHomeDir(), '.config');
 }
 
 /**
@@ -53,7 +53,7 @@ export function getXdgDataHome(): string {
   if (envValue) {
     return joinXdgPath(envValue);
   }
-  return joinXdgPath(os.homedir(), '.local', 'share');
+  return joinXdgPath(getHomeDir(), '.local', 'share');
 }
 
 /**
@@ -66,7 +66,7 @@ export function getXdgCacheHome(): string {
   if (envValue) {
     return joinXdgPath(envValue);
   }
-  return joinXdgPath(os.homedir(), '.cache');
+  return joinXdgPath(getHomeDir(), '.cache');
 }
 
 /**
@@ -99,7 +99,7 @@ export function getAppCacheDir(): string {
  */
 export function getMemoriesDir(): string {
   // For compatibility, we still support the legacy path
-  const legacyPath = path.join(os.homedir(), '.auto-claude', 'memories');
+  const legacyPath = joinPaths(getHomeDir(), '.auto-claude', 'memories');
 
   // On Linux with XDG variables set (AppImage, Flatpak, Snap), use XDG path
   // Use getEnvVar for consistent environment variable access pattern

@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { getEnvVar } from '../../platform';
+import { getEnvVar, getHomeDir, joinPaths } from '../../platform';
 
 export interface EnvironmentVars {
   [key: string]: string;
@@ -216,7 +216,7 @@ export interface GraphitiDatabaseDetails {
 export function getGraphitiDatabaseDetails(projectEnvVars: EnvironmentVars): GraphitiDatabaseDetails {
   const dbPath = projectEnvVars['GRAPHITI_DB_PATH'] ||
                  getEnvVar('GRAPHITI_DB_PATH') ||
-                 require('path').join(require('os').homedir(), '.auto-claude', 'memories');
+                 joinPaths(getHomeDir(), '.auto-claude', 'memories');
 
   const database = projectEnvVars['GRAPHITI_DATABASE'] ||
                    getEnvVar('GRAPHITI_DATABASE') ||

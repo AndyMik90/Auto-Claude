@@ -1,4 +1,4 @@
-import { spawn, execSync, ChildProcess } from 'child_process';
+import { spawn, execSync, execFileSync, ChildProcess } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -212,7 +212,9 @@ if sys.version_info >= (3, 12):
     import real_ladybug
     import graphiti_core
 `;
-      execSync(`"${venvPython}" -c "${checkScript.replace(/\n/g, '; ').replace(/; ; /g, '; ')}"`, {
+      // Use execFileSync with argument array to prevent shell injection
+      // The script is passed as a single argument with -c flag
+      execFileSync(venvPython, ['-c', checkScript.replace(/\n/g, '; ').replace(/; ; /g, '; ')], {
         stdio: 'pipe',
         timeout: 15000
       });
@@ -243,7 +245,8 @@ if sys.version_info >= (3, 12):
     try {
       // Get the actual executable path from the command
       // For commands like "py -3", we need to resolve to the actual executable
-      const pythonPath = execSync(`${pythonCmd} -c "import sys; print(sys.executable)"`, {
+      // Use execFileSync with argument array to prevent shell injection
+      const pythonPath = execFileSync(pythonCmd, ['-c', 'import sys; print(sys.executable)'], {
         stdio: 'pipe',
         timeout: 5000
       }).toString().trim();
@@ -736,7 +739,9 @@ if sys.version_info >= (3, 12):
       }
 
       if (currentPath && !currentPath.includes(pywin32System32)) {
-        windowsEnv['PATH'] = `${pywin32System32};${currentPath}`;
+        // Use platform-specific path delimiter
+        const pathDelimiter = getPathDelimiter();
+        windowsEnv['PATH'] = `${pywin32System32}${pathDelimiter}${currentPath}`;
       } else if (!currentPath) {
         windowsEnv['PATH'] = pywin32System32;
       } else {

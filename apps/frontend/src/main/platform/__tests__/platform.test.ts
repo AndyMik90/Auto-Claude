@@ -45,7 +45,8 @@ import {
   getVenvPythonPath,
   getPtySocketPath,
   getEnvVar,
-  findExecutable
+  findExecutable,
+  killProcessGracefully
 } from '../index.js';
 
 // Get the mocked existsSync
@@ -893,6 +894,263 @@ describe('Platform Module', () => {
 
         const result = findExecutable('tool');
         expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe('killProcessGracefully', () => {
+    // Mock spawn for taskkill tests
+    vi.mock('child_process', async () => {
+      const actualChildProcess = await vi.importActual<typeof import('child_process')>('child_process');
+      return {
+        ...actualChildProcess,
+        spawn: vi.fn(),
+      };
+    });
+
+    const mockSpawn = vi.fn();
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      const { spawn } = await import('child_process');
+      vi.mocked(spawn).mockImplementation(mockSpawn);
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    describeWindows('terminates Windows processes correctly', () => {
+      it('sends kill() signal without arguments on Windows', () => {
+        const mockProcess = {
+          pid: 1234,
+          killed: false,
+          once: vi.fn(),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1);
+        expect(mockProcess.kill).toHaveBeenCalledWith(); // No signal argument on Windows
+      });
+
+      it('schedules taskkill fallback after timeout', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: 1234,
+          killed: false,
+          once: vi.fn((event, callback) => {
+            // Simulate process not exiting
+          }),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 1000 });
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(1001);
+
+        expect(mockSpawn).toHaveBeenCalledWith(
+          'taskkill',
+          ['/pid', '1234', '/f', '/t'],
+          { stdio: 'ignore', detached: true }
+        );
+      });
+
+      it('skips taskkill if process already exited', () => {
+        vi.useFakeTimers();
+        const callbacks: (() => void)[] = [];
+        const mockProcess = {
+          pid: 1234,
+          killed: false,
+          once: vi.fn((event: string, callback: () => void) => {
+            if (event === 'exit') {
+              callbacks.push(callback);
+            }
+          }),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 1000 });
+
+        // Simulate process exiting before timeout
+        callbacks.forEach(cb => cb());
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(1001);
+
+        expect(mockSpawn).not.toHaveBeenCalled();
+      });
+
+      it('handles graceful kill failure gracefully', () => {
+        const mockProcess = {
+          pid: 1234,
+          killed: false,
+          once: vi.fn(),
+          kill: vi.fn(() => {
+            throw new Error('Process already dead');
+          }),
+        } as unknown as import('child_process').ChildProcess;
+
+        // Should not throw, should still schedule taskkill fallback
+        expect(() => killProcessGracefully(mockProcess)).not.toThrow();
+      });
+    });
+
+    describeUnix('terminates Unix processes correctly', () => {
+      it('sends SIGTERM signal on Unix', () => {
+        const mockProcess = {
+          pid: 5678,
+          killed: false,
+          once: vi.fn(),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1);
+        expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
+      });
+
+      it('schedules SIGKILL fallback after timeout', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: 5678,
+          killed: false,
+          once: vi.fn(() => {
+            // Simulate process not exiting
+          }),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 2000 });
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(2001);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(2);
+        expect(mockProcess.kill).toHaveBeenNthCalledWith(1, 'SIGTERM');
+        expect(mockProcess.kill).toHaveBeenNthCalledWith(2, 'SIGKILL');
+      });
+
+      it('skips SIGKILL if process already exited', () => {
+        vi.useFakeTimers();
+        const callbacks: (() => void)[] = [];
+        const mockProcess = {
+          pid: 5678,
+          killed: false,
+          once: vi.fn((event: string, callback: () => void) => {
+            if (event === 'exit') {
+              callbacks.push(callback);
+            }
+          }),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 2000 });
+
+        // Simulate process exiting before timeout
+        callbacks.forEach(cb => cb());
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(2001);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1); // Only SIGTERM
+      });
+
+      it('skips SIGKILL if process already marked as killed', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: 5678,
+          killed: true, // Already killed
+          once: vi.fn(),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 2000 });
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(2001);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1); // Only SIGTERM
+      });
+    });
+
+    describe('handles edge cases', () => {
+      it('cleans up error event handler', () => {
+        vi.useFakeTimers();
+        const callbacks: (() => void)[] = [];
+        const mockProcess = {
+          pid: 9999,
+          killed: false,
+          once: vi.fn((event: string, callback: () => void) => {
+            if (event === 'error') {
+              callbacks.push(callback);
+            }
+          }),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 1000 });
+
+        // Simulate error event
+        callbacks.forEach(cb => cb());
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(1001);
+
+        // Should skip force kill on error
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1); // Only graceful kill
+      });
+
+      it('uses custom timeout when provided', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: 1111,
+          killed: false,
+          once: vi.fn(),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 500 });
+
+        // Advance time but not past custom timeout
+        vi.advanceTimersByTime(400);
+
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1); // Only graceful kill so far
+      });
+
+      it('does not schedule force kill if pid is undefined', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: undefined,
+          killed: false,
+          once: vi.fn(),
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        killProcessGracefully(mockProcess, { timeoutMs: 1000 });
+
+        // Advance time past timeout
+        vi.advanceTimersByTime(1001);
+
+        // Should only have graceful kill, no force kill
+        expect(mockProcess.kill).toHaveBeenCalledTimes(1);
+      });
+
+      it('handles missing once method gracefully', () => {
+        vi.useFakeTimers();
+        const mockProcess = {
+          pid: 2222,
+          killed: false,
+          once: undefined as unknown, // Missing once method
+          kill: vi.fn(),
+        } as unknown as import('child_process').ChildProcess;
+
+        // Should not throw
+        expect(() => killProcessGracefully(mockProcess)).not.toThrow();
       });
     });
   });
