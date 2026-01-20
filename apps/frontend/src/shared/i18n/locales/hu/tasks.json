@@ -1,0 +1,262 @@
+{
+    "refreshTasks": "Feladatok frissítése",
+    "status": {
+        "backlog": "Várólistán",
+        "todo": "Teendő",
+        "in_progress": "Folyamatban",
+        "review": "Átnézés",
+        "prCreated": "PR létrehozva",
+        "complete": "Kész",
+        "archived": "Archivált"
+    },
+    "actions": {
+        "start": "Indítás",
+        "stop": "Leállítás",
+        "recover": "Helyreállítás",
+        "resume": "Folytatás",
+        "archive": "Archiválás",
+        "delete": "Törlés",
+        "view": "Részletek megtekintése",
+        "viewPR": "PR megtekintése",
+        "moveTo": "Áthelyezés ide",
+        "taskActions": "Feladat műveletek",
+        "selectTask": "Feladat kiválasztása: {{title}}"
+    },
+    "labels": {
+        "running": "Fut",
+        "aiReview": "AI átnézés",
+        "needsReview": "Átnézés szükséges",
+        "pending": "Függőben",
+        "stuck": "Elakadt",
+        "incomplete": "Befejezetlen",
+        "recovering": "Helyreállítás...",
+        "needsRecovery": "Helyreállítás szükséges",
+        "needsResume": "Folytatás szükséges"
+    },
+    "reviewReason": {
+        "completed": "Kész",
+        "hasErrors": "Hibák vannak",
+        "qaIssues": "QA problémák",
+        "approvePlan": "Terv jóváhagyása"
+    },
+    "tooltips": {
+        "archiveTask": "Feladat archiválása",
+        "archiveAllDone": "Összes kész feladat archiválása",
+        "viewPR": "Pull request megnyitása böngészőben"
+    },
+    "creation": {
+        "title": "Új feladat létrehozása",
+        "description": "Írd le, mit szeretnél készíteni",
+        "placeholder": "Írd le a feladatot..."
+    },
+    "empty": {
+        "title": "Még nincsenek feladatok",
+        "description": "Hozd létre az első feladatodat a kezdéshez"
+    },
+    "columns": {
+        "backlog": "Tervezés",
+        "in_progress": "Folyamatban",
+        "ai_review": "AI átnézés",
+        "human_review": "Emberi átnézés",
+        "done": "Kész",
+        "pr_created": "PR létrehozva"
+    },
+    "kanban": {
+        "emptyBacklog": "Nincsenek tervezett feladatok",
+        "emptyBacklogHint": "Adj hozzá egy feladatot a kezdéshez",
+        "emptyInProgress": "Semmi nem fut",
+        "emptyInProgressHint": "Indíts egy feladatot a Várólistából",
+        "emptyAiReview": "Nincsenek feladatok átnézésre",
+        "emptyAiReviewHint": "Az AI átnézi a befejezett feladatokat",
+        "emptyHumanReview": "Nincs mit átnézni",
+        "emptyHumanReviewHint": "A feladatok itt várják a jóváhagyásodat",
+        "emptyDone": "Nincsenek befejezett feladatok",
+        "emptyDoneHint": "A jóváhagyott feladatok itt jelennek meg",
+        "emptyDefault": "Nincsenek feladatok",
+        "dropHere": "Dobd ide",
+        "showArchived": "Archivált megjelenítése",
+        "addTaskAriaLabel": "Új feladat hozzáadása a várólistához",
+        "closeTaskDetailsAriaLabel": "Feladat részletek bezárása",
+        "editTask": "Feladat szerkesztése",
+        "cannotEditWhileRunning": "Nem szerkeszthető futás közben",
+        "worktreeCleanupTitle": "Munkakönyvtár tisztítás",
+        "worktreeCleanupStaged": "Ez a feladat előkészítve és munkakönyvtárral rendelkezik. Szeretnéd kitisztítani a munkakönyvtárat?",
+        "worktreeCleanupNotStaged": "Ez a feladat munkakönyvtárral rendelkezik, amiben vannak nem összefésült változtatások. Töröld a munkakönyvtárat a kész állapotra állításhoz, vagy mégse a változtatások átnézéséhez.",
+        "keepWorktree": "Munkakönyvtár megtartása",
+        "deleteWorktree": "Munkakönyvtár törlése és késznek jelölés",
+        "refreshTasks": "Feladatok frissítése",
+        "orderSaveFailedTitle": "Átrendezés nem mentve",
+        "orderSaveFailedDescription": "A feladat sorrend változtatás alkalmazva, de nem sikerült menteni a tárolóba. Frissítéskor elvész.",
+        "selectAll": "Összes kijelölése",
+        "deselectAll": "Kijelölés megszüntetése",
+        "selectedCount": "{{count}} kijelölve",
+        "selectedCountOne": "{{count}} feladat kijelölve",
+        "selectedCountOther": "{{count}} feladat kijelölve",
+        "createPRs": "PR-ok létrehozása",
+        "clearSelection": "Kijelölés törlése"
+    },
+    "execution": {
+        "phases": {
+            "idle": "Üresjárat",
+            "planning": "Tervezés",
+            "coding": "Kódolás",
+            "reviewing": "Átnézés",
+            "fixing": "Javítás",
+            "complete": "Kész",
+            "failed": "Sikertelen"
+        },
+        "labels": {
+            "interrupted": "Megszakítva",
+            "progress": "Előrehaladás",
+            "entry": "bejegyzés",
+            "entries": "bejegyzés"
+        },
+        "shortPhases": {
+            "plan": "Terv",
+            "code": "Kód",
+            "qa": "QA"
+        }
+    },
+    "files": {
+        "title": "Fájlok",
+        "tab": "Fájlok",
+        "noSpecPath": "Nincsenek elérhető spec fájlok",
+        "noFiles": "Nem találtunk fájlokat",
+        "loading": "Fájlok betöltése...",
+        "loadingContent": "Tartalom betöltése...",
+        "errorLoading": "Nem sikerült a fájlok betöltése",
+        "errorLoadingContent": "Nem sikerült a fájl tartalmának betöltése",
+        "retry": "Újra",
+        "selectFile": "Válassz egy fájlt a tartalmának megtekintéséhez",
+        "openInIDE": "Megnyitás IDE-ben"
+    },
+    "metadata": {
+        "severity": "súlyosság",
+        "pullRequest": "Pull Request"
+    },
+    "images": {
+        "removeImageAriaLabel": "{{filename}} kép eltávolítása",
+        "pasteHint": "Tipp: Illeszd be a képernyőképeket közvetlenül {{shortcut}}-vel referencia képek hozzáadásához."
+    },
+    "notifications": {
+        "backgroundTaskTitle": "Feladat folytatódik a háttérben",
+        "backgroundTaskDescription": "A feladat még fut. Újra megnyithatod ezt az ablakot az előrehaladás figyeléséhez."
+    },
+    "wizard": {
+        "createTitle": "Új feladat létrehozása",
+        "createDescription": "Írd le, mit szeretnél készíteni. Az AI elemzi a kérésedet és részletes specifikációt készít.",
+        "descriptionPlaceholder": "Írd le a funkciót, hibajavítást vagy fejlesztést, amit implementálni szeretnél. Légy minél konkrétabb a követelmények, korlátok és elvárt viselkedés tekintetében. Írj @-ot fájlok hivatkozásához.",
+        "draftRestored": "Piszkozat visszaállítva",
+        "startFresh": "Újrakezdés",
+        "hideFiles": "Fájlok elrejtése",
+        "browseFiles": "Fájlok böngészése",
+        "creating": "Létrehozás...",
+        "createTask": "Feladat létrehozása",
+        "worktreeNotice": {
+            "title": "Elkülönített munkaterület",
+            "description": "Ez a feladat elkülönített git munkakönyvtárban fut. A fő branch-ed biztonságban marad, amíg úgy nem döntesz, hogy összefésülöd."
+        },
+        "gitOptions": {
+            "title": "Git opciók (opcionális)",
+            "baseBranchLabel": "Alap branch (opcionális)",
+            "useProjectDefault": "Projekt alapértelmezett használata",
+            "useProjectDefaultWithBranch": "Projekt alapértelmezett használata ({{branch}})",
+            "searchBranches": "Branch-ek keresése...",
+            "noBranchesFound": "Nem található branch",
+            "helpText": "Felülírja a branch-et, amiből ez a feladat munkakönyvtára létrejön. Hagyd üresen a projekt konfigurált alapértelmezett branch-éhez.",
+            "useWorktreeLabel": "Elkülönített munkaterület használata (ajánlott)",
+            "useWorktreeDescription": "A változtatásokat külön git munkakönyvtárban hozza létre a biztonságos átnézéshez összefésülés előtt. Tiltsd le a közvetlen projektben való építéshez (gyorsabb, de kockázatosabb)."
+        },
+        "errors": {
+            "createFailed": "Nem sikerült a feladat létrehozása. Kérlek próbáld újra."
+        }
+    },
+    "feedback": {
+        "dragDropHint": "Húzd ide a képeket vagy illeszd be a képernyőképeket",
+        "imageAdded": "Kép sikeresen hozzáadva",
+        "maxImagesError": "Maximum {{count}} kép engedélyezett",
+        "invalidTypeError": "Érvénytelen képtípus. Engedélyezett: {{types}}",
+        "removeImage": "Kép eltávolítása",
+        "processingError": "Nem sikerült a kép feldolgozása"
+    },
+    "review": {
+        "mergeTooltip": "Összefésüli a változtatásokat a feladat munkakönyvtár branch-éből az alap branch-edbe. Az AI megoldja az esetleges konfliktusokat. Ezután eldöntheted, megtartod-e vagy eltávolítod a munkakönyvtárat."
+    },
+    "edit": {
+        "title": "Feladat szerkesztése",
+        "description": "Feladat részletek frissítése, beleértve a címet, leírást, besorolást, képeket és beállításokat. A változtatások a spec fájlokba mentődnek.",
+        "saveChanges": "Változtatások mentése",
+        "errors": {
+            "updateFailed": "Nem sikerült a feladat frissítése. Kérlek próbáld újra."
+        }
+    },
+    "form": {
+        "description": "Leírás",
+        "descriptionPlaceholder": "Írd le a funkciót, hibajavítást vagy fejlesztést, amit implementálni szeretnél. Légy minél konkrétabb a követelmények, korlátok és elvárt viselkedés tekintetében.",
+        "imageAddedSuccess": "Kép sikeresen hozzáadva!",
+        "taskTitle": "Feladat címe",
+        "titlePlaceholder": "Hagyd üresen az automatikus generáláshoz a leírásból",
+        "titleHelpText": "Rövid, leíró cím automatikusan generálódik, ha üresen hagyod.",
+        "classificationOptional": "Besorolás (opcionális)",
+        "requireReviewLabel": "Emberi átnézés szükséges kódolás előtt",
+        "requireReviewDescription": "Ha engedélyezve van, felkérést kapsz a spec és implementációs terv átnézésére a kódolási fázis előtt. Ez lehetővé teszi a jóváhagyást, változtatások kérését vagy visszajelzés adását.",
+        "errors": {
+            "descriptionRequired": "Kérlek adj meg leírást",
+            "maxImagesReached": "Maximum 5 kép engedélyezett",
+            "invalidImageType": "Érvénytelen képtípus. Engedélyezett: PNG, JPEG, GIF, WebP",
+            "processPasteFailed": "Nem sikerült a beillesztett kép feldolgozása",
+            "processDropFailed": "Nem sikerült az ejtett kép feldolgozása"
+        },
+        "classification": {
+            "category": "Kategória",
+            "selectCategory": "Kategória kiválasztása",
+            "priority": "Prioritás",
+            "selectPriority": "Prioritás kiválasztása",
+            "complexity": "Összetettség",
+            "selectComplexity": "Összetettség kiválasztása",
+            "impact": "Hatás",
+            "selectImpact": "Hatás kiválasztása",
+            "helpText": "Ezek a címkék segítenek a feladatok szervezésében és priorizálásában. Opcionálisak, de hasznosak a szűréshez.",
+            "values": {
+                "category": {
+                    "feature": "Funkció",
+                    "bug_fix": "Hibajavítás",
+                    "refactoring": "Refaktorálás",
+                    "documentation": "Dokumentáció",
+                    "security": "Biztonság"
+                },
+                "priority": {
+                    "low": "Alacsony",
+                    "medium": "Közepes",
+                    "high": "Magas",
+                    "urgent": "Sürgős"
+                },
+                "complexity": {
+                    "trivial": "Triviális",
+                    "small": "Kicsi",
+                    "medium": "Közepes",
+                    "large": "Nagy",
+                    "complex": "Összetett"
+                },
+                "impact": {
+                    "low": "Alacsony hatás",
+                    "medium": "Közepes hatás",
+                    "high": "Magas hatás",
+                    "critical": "Kritikus hatás"
+                }
+            }
+        }
+    },
+    "subtasks": {
+        "untitled": "Névtelen részfeladat"
+    },
+    "bulkPR": {
+        "selectAllInColumn": "Összes feladat kijelölése az oszlopban",
+        "deselectAllInColumn": "Összes feladat kijelölésének megszüntetése",
+        "selectionMode": "Kijelölési mód aktív",
+        "exitSelectionMode": "Kijelölési mód kilépés",
+        "noTasksToSelect": "Nincs kijelölhető feladat",
+        "confirmBulkAction": "Tömeges művelet megerősítése {{count}} feladatra",
+        "processingTasks": "Kijelölt feladatok feldolgozása..."
+    }
+}

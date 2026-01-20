@@ -1,0 +1,83 @@
+{
+    "sections": {
+        "project": "Projekt",
+        "tools": "Eszközök"
+    },
+    "items": {
+        "kanban": "Kanban tábla",
+        "terminals": "Agent terminálok",
+        "insights": "Betekintések",
+        "roadmap": "Roadmap",
+        "ideation": "Ötletelés",
+        "changelog": "Változásnapló",
+        "context": "Kontextus",
+        "githubIssues": "GitHub Issues",
+        "githubPRs": "GitHub PR-ok",
+        "gitlabIssues": "GitLab Issues",
+        "gitlabMRs": "GitLab MR-ok",
+        "worktrees": "Munkakönyvtárak",
+        "agentTools": "MCP áttekintés"
+    },
+    "actions": {
+        "settings": "Beállítások",
+        "help": "Súgó és visszajelzés",
+        "newTask": "Új feladat"
+    },
+    "tooltips": {
+        "settings": "Alkalmazás beállítások",
+        "help": "Súgó és visszajelzés"
+    },
+    "messages": {
+        "initializeToCreateTasks": "Inicializáld az Auto Claude-ot feladatok létrehozásához"
+    },
+    "updateBanner": {
+        "title": "Frissítés elérhető",
+        "version": "{{version}} verzió készen áll",
+        "updateAndRestart": "Frissítés és újraindítás",
+        "installAndRestart": "Telepítés és újraindítás",
+        "downloading": "Letöltés...",
+        "dismiss": "Elutasítás",
+        "downloadError": "Nem sikerült a frissítés letöltése"
+    },
+    "claudeCode": {
+        "checking": "Claude Code ellenőrzése...",
+        "upToDate": "Claude Code naprakész",
+        "updateAvailable": "Claude Code frissítés elérhető",
+        "notInstalled": "Claude Code nincs telepítve",
+        "error": "Hiba a Claude Code ellenőrzése közben",
+        "installed": "Telepítve",
+        "outdated": "Frissítés elérhető",
+        "missing": "Nincs telepítve",
+        "current": "Jelenlegi",
+        "latest": "Legújabb",
+        "path": "Útvonal",
+        "lastChecked": "Utoljára ellenőrizve",
+        "learnMore": "Tudj meg többet a Claude Code-ról",
+        "learnMoreAriaLabel": "Tudj meg többet a Claude Code-ról (új ablakban nyílik meg)",
+        "viewChangelog": "Claude Code változásnapló megtekintése",
+        "viewChangelogAriaLabel": "Claude Code változásnapló megtekintése (új ablakban nyílik meg)",
+        "updateWarningTitle": "Frissíted a Claude Code-ot?",
+        "updateWarningDescription": "A frissítés bezárja az összes futó Claude Code munkamenetet. Az azokban a munkamenetekben el nem mentett munka elveszhet. Mentsd el a munkádat a folytatás előtt.",
+        "updateWarningTerminalNote": "Egy terminál ablak fog megnyílni a telepítési parancs futtatásához. Kérlek várd meg, amíg a telepítés befejeződik, mielőtt folytatnád.",
+        "updateAnyway": "Terminál megnyitása és frissítés",
+        "switchVersion": "Verzió váltás",
+        "selectVersion": "Verzió kiválasztása",
+        "loadingVersions": "Verziók betöltése...",
+        "failedToLoadVersions": "Nem sikerült a verziók betöltése",
+        "installingVersion": "{{version}} verzió telepítése...",
+        "rollbackWarningTitle": "Váltás {{version}} verzióra?",
+        "rollbackWarningDescription": "A verzióváltás bezárja az összes futó Claude Code munkamenetet. Az azokban a munkamenetekben el nem mentett munka elveszhet. Mentsd el a munkádat a folytatás előtt.",
+        "rollbackWarningTerminalNote": "Egy terminál ablak fog megnyílni a telepítési parancs futtatásához. Kérlek várd meg, amíg a telepítés befejeződik, mielőtt folytatnád.",
+        "switchAnyway": "Terminál megnyitása és váltás",
+        "currentVersion": "Jelenlegi",
+        "switchInstallation": "Telepítés váltása",
+        "selectInstallation": "Telepítés kiválasztása",
+        "loadingInstallations": "Telepítések betöltése...",
+        "failedToLoadInstallations": "Nem sikerült a telepítések betöltése",
+        "activeInstallation": "Aktív",
+        "pathChangeWarningTitle": "CLI telepítés váltása?",
+        "pathChangeWarningDescription": "A CLI telepítés váltása más Claude Code binárist fog használni. A futó munkamenetek továbbra is az előző telepítést fogják használni, amíg újra nem indítják őket.",
+        "switchInstallationConfirm": "Váltás",
+        "versionUnknown": "verzió ismeretlen"
+    }
+}

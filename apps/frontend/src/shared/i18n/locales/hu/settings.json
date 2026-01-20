@@ -1,0 +1,601 @@
+{
+    "title": "Beállítások",
+    "tabs": {
+        "app": "Alkalmazás beállítások",
+        "project": "Projekt beállítások"
+    },
+    "sections": {
+        "appearance": {
+            "title": "Megjelenés",
+            "description": "Az Auto Claude megjelenésének testreszabása"
+        },
+        "display": {
+            "title": "Kijelző",
+            "description": "UI elemek méretének beállítása"
+        },
+        "language": {
+            "title": "Nyelv",
+            "description": "Válaszd ki a kívánt nyelvet"
+        },
+        "devtools": {
+            "title": "Fejlesztői eszközök",
+            "description": "IDE és terminál beállítások"
+        },
+        "agent": {
+            "title": "Agent beállítások",
+            "description": "Alapértelmezett modell és keretrendszer"
+        },
+        "paths": {
+            "title": "Útvonalak",
+            "description": "CLI eszközök és keretrendszer útvonalak"
+        },
+        "integrations": {
+            "title": "Integrációk",
+            "description": "API kulcsok és Claude fiókok"
+        },
+        "api-profiles": {
+            "title": "API profilok",
+            "description": "Egyedi API végpont profilok"
+        },
+        "updates": {
+            "title": "Frissítések",
+            "description": "Auto Claude frissítések"
+        },
+        "notifications": {
+            "title": "Értesítések",
+            "description": "Figyelmeztetés beállítások"
+        },
+        "debug": {
+            "title": "Hibakeresés és naplók",
+            "description": "Hibaelhárítási eszközök"
+        }
+    },
+    "apiProfiles": {
+        "title": "API profilok",
+        "description": "Egyedi Anthropic-kompatibilis API végpontok konfigurálása",
+        "addButton": "Profil hozzáadása",
+        "presets": {
+            "anthropic": "Anthropic",
+            "openrouter": "OpenRouter",
+            "groq": "Groq",
+            "glmGlobal": "GLM (Globális)",
+            "glmChina": "GLM (Kína)"
+        },
+        "fields": {
+            "name": "Név",
+            "preset": "Előbeállítás",
+            "baseUrl": "Alap URL",
+            "apiKey": "API kulcs"
+        },
+        "placeholders": {
+            "name": "Egyedi API-m",
+            "preset": "Válassz szolgáltató előbeállítást",
+            "baseUrl": "https://api.anthropic.com",
+            "apiKey": "sk-ant-..."
+        },
+        "hints": {
+            "preset": "Az előbeállítások kitöltik az alap URL-t; az API kulcsot még be kell illesztened.",
+            "baseUrl": "Példa: https://api.anthropic.com vagy http://localhost:8080"
+        },
+        "validation": {
+            "nameRequired": "Név megadása kötelező",
+            "baseUrlRequired": "Alap URL megadása kötelező",
+            "baseUrlInvalid": "Érvénytelen URL formátum (http:// vagy https:// kell)",
+            "apiKeyRequired": "API kulcs megadása kötelező",
+            "apiKeyInvalid": "Érvénytelen API kulcs formátum"
+        },
+        "actions": {
+            "save": "Profil mentése",
+            "saving": "Mentés...",
+            "cancel": "Mégse",
+            "changeKey": "Módosítás",
+            "cancelKeyChange": "Mégse"
+        },
+        "testConnection": {
+            "label": "Kapcsolat tesztelése",
+            "testing": "Tesztelés...",
+            "success": "Kapcsolat sikeres",
+            "failure": "Kapcsolat sikertelen"
+        },
+        "models": {
+            "title": "Opcionális: Modell név leképezések",
+            "description": "Válaszd ki a modelleket az API szolgáltatódtól. Hagyd üresen az alapértelmezettekhez.",
+            "defaultLabel": "Alapértelmezett modell (Opcionális)",
+            "haikuLabel": "Haiku modell (Opcionális)",
+            "sonnetLabel": "Sonnet modell (Opcionális)",
+            "opusLabel": "Opus modell (Opcionális)",
+            "defaultPlaceholder": "pl. claude-sonnet-4-5-20250929",
+            "haikuPlaceholder": "pl. claude-haiku-4-5-20251001",
+            "sonnetPlaceholder": "pl. claude-sonnet-4-5-20250929",
+            "opusPlaceholder": "pl. claude-opus-4-5-20251101"
+        },
+        "empty": {
+            "title": "Nincsenek API profilok konfigurálva",
+            "description": "Hozz létre egy profilt az egyedi API végpontok konfigurálásához a buildekhez.",
+            "action": "Első profil létrehozása"
+        },
+        "switchToOauth": {
+            "label": "Váltás OAuth-ra",
+            "loading": "Váltás..."
+        },
+        "activeBadge": "Aktív",
+        "customModels": "Egyedi modellek: {{models}}",
+        "setActive": {
+            "label": "Aktiválás",
+            "loading": "Beállítás..."
+        },
+        "tooltips": {
+            "edit": "Profil szerkesztése",
+            "deleteActive": "Válts OAuth-ra a törlés előtt",
+            "deleteInactive": "Profil törlése"
+        },
+        "deleteAriaLabel": "{{name}} profil törlése",
+        "toast": {
+            "create": {
+                "title": "Profil létrehozva",
+                "description": "\"{{name}}\" sikeresen hozzáadva."
+            },
+            "update": {
+                "title": "Profil frissítve",
+                "description": "\"{{name}}\" sikeresen frissítve."
+            },
+            "delete": {
+                "title": "Profil törölve",
+                "description": "\"{{name}}\" eltávolítva.",
+                "errorTitle": "Nem sikerült a profil törlése",
+                "errorFallback": "Hiba történt a profil törlése közben."
+            },
+            "switch": {
+                "oauthTitle": "Váltás OAuth-ra",
+                "oauthDescription": "Mostantól OAuth hitelesítést használ",
+                "profileTitle": "Profil aktiválva",
+                "profileDescription": "Mostantól {{name}} használatban",
+                "errorTitle": "Nem sikerült a hitelesítés váltása",
+                "errorFallback": "Hiba történt a hitelesítési módszer váltása közben."
+            }
+        },
+        "dialog": {
+            "createTitle": "API profil hozzáadása",
+            "editTitle": "Profil szerkesztése",
+            "description": "Egyedi Anthropic-kompatibilis API végpont konfigurálása a buildekhez.",
+            "deleteTitle": "Profil törlése?",
+            "deleteDescription": "Biztosan törölni szeretnéd \"{{name}}\"-t? Ez a művelet nem vonható vissza.",
+            "cancel": "Mégse",
+            "delete": "Törlés",
+            "deleting": "Törlés..."
+        }
+    },
+    "modelSelect": {
+        "placeholder": "Válassz modellt vagy írd be kézzel",
+        "placeholderManual": "Add meg a modell nevét (pl. claude-sonnet-4-5-20250929)",
+        "searchPlaceholder": "Modellek keresése...",
+        "noResults": "Nincs megfelelő modell",
+        "discoveryNotAvailable": "Modell felderítés nem elérhető. Add meg a modell nevét kézzel."
+    },
+    "language": {
+        "label": "Felület nyelve",
+        "description": "Válaszd ki az alkalmazás felületének nyelvét"
+    },
+    "scale": {
+        "presets": "Méret előbeállítások",
+        "presetsDescription": "Gyors méret opciók általános preferenciákhoz",
+        "fineTune": "Finomhangolás",
+        "fineTuneDescription": "Beállítás 75%-tól 200%-ig 5%-os lépésekben",
+        "default": "Alapértelmezett",
+        "comfortable": "Kényelmes",
+        "large": "Nagy"
+    },
+    "general": {
+        "otherAgentSettings": "Egyéb agent beállítások",
+        "otherAgentSettingsDescription": "További agent konfigurációs opciók",
+        "agentFramework": "Agent keretrendszer",
+        "agentFrameworkDescription": "Az autonóm feladatokhoz használt kódolási keretrendszer",
+        "agentFrameworkAutoClaude": "Auto Claude",
+        "aiTerminalNaming": "AI terminál elnevezés",
+        "aiTerminalNamingDescription": "Terminálok automatikus elnevezése parancsok alapján (Haiku-t használ)",
+        "featureModelSettings": "Funkció modell beállítások",
+        "featureModelSettingsDescription": "Modell és gondolkodási szint az Insights, Ideation és Roadmap-hez",
+        "model": "Modell",
+        "thinkingLevel": "Gondolkodási szint",
+        "paths": "Útvonalak",
+        "pathsDescription": "Futtatható és keretrendszer útvonalak konfigurálása",
+        "pythonPath": "Python útvonal",
+        "pythonPathDescription": "Python futtatható útvonala (hagyd üresen az automatikus felderítéshez)",
+        "pythonPathPlaceholder": "python3 (alapértelmezett)",
+        "gitPath": "Git útvonal",
+        "gitPathDescription": "Git futtatható útvonala (hagyd üresen az automatikus felderítéshez)",
+        "gitPathPlaceholder": "git (alapértelmezett)",
+        "githubCLIPath": "GitHub CLI útvonal",
+        "githubCLIPathDescription": "GitHub CLI (gh) futtatható útvonala (hagyd üresen az automatikus felderítéshez)",
+        "githubCLIPathPlaceholder": "gh (alapértelmezett)",
+        "claudePath": "Claude CLI útvonal",
+        "claudePathDescription": "Claude CLI futtatható útvonala (hagyd üresen az automatikus felderítéshez)",
+        "claudePathPlaceholder": "claude (alapértelmezett)",
+        "detectedPath": "Automatikusan felderített",
+        "detectedVersion": "Verzió",
+        "detectedSource": "Forrás",
+        "sourceUserConfig": "Felhasználói konfiguráció",
+        "sourceVenv": "Virtuális környezet",
+        "sourceHomebrew": "Homebrew",
+        "sourceNvm": "NVM",
+        "sourceSystemPath": "Rendszer PATH",
+        "sourceBundled": "Beépített",
+        "sourceFallback": "Tartalék",
+        "notDetected": "Nem észlelt",
+        "autoClaudePath": "Auto Claude útvonal",
+        "autoClaudePathDescription": "Relatív útvonal az auto-claude könyvtárhoz a projektekben",
+        "autoClaudePathPlaceholder": "auto-claude (alapértelmezett)",
+        "autoNameTerminals": "Terminálok automatikus elnevezése",
+        "autoNameTerminalsDescription": "AI használata leíró nevek generálásához a terminál fülekhez tevékenységük alapján"
+    },
+    "theme": {
+        "title": "Megjelenés",
+        "description": "Az Auto Claude megjelenésének testreszabása",
+        "mode": "Mód",
+        "modeDescription": "Válassz világos és sötét téma között",
+        "light": "Világos",
+        "dark": "Sötét",
+        "system": "Rendszer",
+        "colorTheme": "Színtéma",
+        "colorThemeDescription": "Válaszd ki a kívánt színpalettát"
+    },
+    "devtools": {
+        "title": "Fejlesztői eszközök",
+        "description": "Állítsd be a kívánt IDE-t és terminált a munkakönyvtárakkal való munkához",
+        "detecting": "Telepített eszközök keresése...",
+        "detectAgain": "Újra keresés",
+        "ide": {
+            "label": "Preferált IDE",
+            "description": "Az Auto Claude ebben a szerkesztőben nyitja meg a munkakönyvtárakat",
+            "placeholder": "IDE kiválasztása...",
+            "customPath": "Egyedi IDE útvonal",
+            "customPathPlaceholder": "/útvonal/az/ide-hez"
+        },
+        "terminal": {
+            "label": "Preferált terminál",
+            "description": "Az Auto Claude itt nyitja meg a terminál munkameneteket",
+            "placeholder": "Terminál kiválasztása...",
+            "customPath": "Egyedi terminál útvonal",
+            "customPathPlaceholder": "/útvonal/a/terminálhoz"
+        },
+        "detected": "Észlelt",
+        "notInstalled": "Nincs telepítve",
+        "detectedSummary": "Rendszereden észlelve:",
+        "noToolsDetected": "Nem észleltünk további eszközöket (VS Code és rendszer terminál lesz használva)",
+        "yoloMode": {
+            "label": "YOLO mód",
+            "description": "Claude indítása --dangerously-skip-permissions kapcsolóval, minden biztonsági kérdés átugrásával. Használd rendkívüli óvatossággal.",
+            "warning": "Ez a mód átugorja a Claude engedélyrendszerét. Csak akkor engedélyezd, ha teljesen megbízol a futtatott kódban."
+        }
+    },
+    "updates": {
+        "title": "Frissítések",
+        "description": "Auto Claude frissítések kezelése",
+        "appUpdateReady": "Alkalmazás frissítés kész",
+        "newVersion": "Új verzió",
+        "released": "Kiadva",
+        "downloading": "Letöltés...",
+        "updateDownloaded": "Frissítés letöltve! Kattints a Telepítésre az újraindításhoz és a frissítés alkalmazásához.",
+        "installAndRestart": "Telepítés és újraindítás",
+        "downloadUpdate": "Frissítés letöltése",
+        "version": "Verzió",
+        "loading": "Betöltés...",
+        "checkingForUpdates": "Frissítések keresése...",
+        "newVersionAvailable": "Új verzió elérhető:",
+        "latestVersion": "A legújabb verziót futtatod.",
+        "viewRelease": "Teljes kiadás megtekintése GitHubon",
+        "unableToCheck": "Nem sikerült a frissítéseket ellenőrizni",
+        "checkForUpdates": "Frissítések keresése",
+        "autoUpdateProjects": "Projektek automatikus frissítése",
+        "autoUpdateProjectsDescription": "Auto Claude automatikus frissítése a projektekben, ha új verzió elérhető",
+        "betaUpdates": "Béta frissítések",
+        "betaUpdatesDescription": "Előzetes béta verziók fogadása új funkciókkal (lehet, hogy kevésbé stabil)",
+        "stableDowngradeAvailable": "Stabil verzió elérhető",
+        "stableDowngradeDescription": "Jelenleg béta verzión vagy. Mivel letiltottad a béta frissítéseket, váltháts a legújabb stabil kiadásra.",
+        "stableVersion": "Stabil verzió",
+        "downloadStableVersion": "Stabil verzió letöltése"
+    },
+    "notifications": {
+        "title": "Értesítések",
+        "description": "Alapértelmezett értesítési beállítások konfigurálása",
+        "onTaskComplete": "Feladat befejezésekor",
+        "onTaskCompleteDescription": "Értesítés, ha egy feladat sikeresen befejeződik",
+        "onTaskFailed": "Feladat sikertelen",
+        "onTaskFailedDescription": "Értesítés, ha egy feladat hibát észlel",
+        "onReviewNeeded": "Átnézés szükséges",
+        "onReviewNeededDescription": "Értesítés, ha a QA átnézést igényel",
+        "sound": "Hang",
+        "soundDescription": "Hang lejátszása értesítésekkel"
+    },
+    "actions": {
+        "save": "Beállítások mentése",
+        "rerunWizard": "Varázsló újrafuttatása",
+        "rerunWizardDescription": "Beállítási varázsló újraindítása"
+    },
+    "projectSections": {
+        "general": {
+            "title": "Általános",
+            "description": "Auto-Build és agent konfig",
+            "useClaudeMd": "CLAUDE.md használata",
+            "useClaudeMdDescription": "CLAUDE.md utasítások beillesztése az agent kontextusába"
+        },
+        "claude": {
+            "title": "Claude hitelesítés",
+            "description": "Claude hitelesítés"
+        },
+        "linear": {
+            "title": "Linear",
+            "description": "Linear integráció",
+            "integrationTitle": "Linear integráció",
+            "integrationDescription": "Csatlakozás a Linear-hoz issue követéshez és feladat importáláshoz",
+            "syncDescription": "Szinkronizálás a Linear-ral issue követéshez"
+        },
+        "github": {
+            "title": "GitHub",
+            "description": "GitHub issues szinkron",
+            "integrationTitle": "GitHub integráció",
+            "integrationDescription": "Csatlakozás a GitHub-hoz issue követéshez",
+            "syncDescription": "Szinkronizálás a GitHub Issues-szal"
+        },
+        "gitlab": {
+            "title": "GitLab",
+            "description": "GitLab issues szinkron",
+            "integrationTitle": "GitLab integráció",
+            "integrationDescription": "Csatlakozás a GitLab-hoz issue követéshez",
+            "syncDescription": "Szinkronizálás a GitLab Issues-szal"
+        },
+        "memory": {
+            "title": "Memória",
+            "description": "Graphiti memória háttérrendszer",
+            "integrationTitle": "Memória",
+            "integrationDescription": "Tartós munkamenetek közötti memória konfigurálása az agentekhez",
+            "syncDescription": "Tartós memória konfigurálása"
+        }
+    },
+    "agentProfile": {
+        "label": "Agent profil",
+        "title": "Alapértelmezett agent profil",
+        "sectionDescription": "Válassz előbeállított konfigurációt a modellhez és gondolkodási szinthez",
+        "profilesInfo": "Az agent profilok előbeállított konfigurációkat biztosítanak a Claude modellhez és gondolkodási szinthez. Új feladat létrehozásakor ezek a beállítások lesznek az alapértelmezettek. A feladat létrehozási varázslóban bármikor felülírhatod őket.",
+        "custom": "Egyedi",
+        "customConfiguration": "Egyedi konfiguráció",
+        "customDescription": "Válassz modellt és gondolkodási szintet",
+        "phaseConfiguration": "Fázis konfiguráció",
+        "phaseConfigurationDescription": "Modell és gondolkodási szint testreszabása minden fázishoz",
+        "clickToCustomize": "Kattints a testreszabáshoz",
+        "model": "Modell",
+        "thinking": "Gondolkodás",
+        "thinkingLevel": "Gondolkodási szint",
+        "selectModel": "Modell kiválasztása",
+        "selectThinkingLevel": "Gondolkodási szint kiválasztása",
+        "perPhaseOptimization": "(fázisonkénti optimalizálás)",
+        "resetToDefaults": "Visszaállítás alapértelmezettekre",
+        "resetToProfileDefaults": "Visszaállítás {{profile}} alapértelmezettekre",
+        "customized": "Testreszabott",
+        "phaseConfigNote": "Ezek a beállítások lesznek az alapértelmezettek, amikor új feladatokat hozol létre ezzel a profillal. A feladat létrehozási varázslóban feladatonként felülírhatod őket.",
+        "phases": {
+            "spec": {
+                "label": "Specifikáció létrehozása",
+                "description": "Felfedezés, követelmények, kontextus gyűjtés"
+            },
+            "planning": {
+                "label": "Tervezés",
+                "description": "Implementáció tervezése és architektúra"
+            },
+            "coding": {
+                "label": "Kódolás",
+                "description": "Tényleges kód implementáció"
+            },
+            "qa": {
+                "label": "QA átnézés",
+                "description": "Minőségbiztosítás és validáció"
+            }
+        }
+    },
+    "workspace": {
+        "roles": {
+            "backend": "Backend",
+            "frontend": "Frontend",
+            "mobile": "Mobil",
+            "shared": "Megosztott",
+            "apiGateway": "API Gateway",
+            "worker": "Worker",
+            "other": "Egyéb"
+        }
+    },
+    "integrations": {
+        "title": "Integrációk",
+        "description": "Claude fiókok és API kulcsok kezelése",
+        "claudeAccounts": "Claude fiókok",
+        "claudeAccountsDescription": "Adj hozzá több Claude előfizetést, hogy automatikusan válthasson közöttük, amikor eléred a korlátot.",
+        "noAccountsYet": "Még nincsenek fiókok konfigurálva",
+        "default": "Alapértelmezett",
+        "active": "Aktív",
+        "authenticated": "Hitelesítve",
+        "needsAuth": "Hitelesítés szükséges",
+        "authenticate": "Hitelesítés",
+        "authenticating": "Hitelesítés...",
+        "setActive": "Aktiválás",
+        "manualTokenEntry": "Manuális token bevitel",
+        "runSetupToken": "Futtasd a claude-ot és írd be: /login a hitelesítéshez",
+        "tokenPlaceholder": "sk-ant-oat01-...",
+        "emailPlaceholder": "Email (opcionális, megjelenítéshez)",
+        "saveToken": "Token mentése",
+        "accountNamePlaceholder": "Fiók neve (pl. Munka, Személyes)",
+        "autoSwitching": "Automatikus fiókváltás",
+        "autoSwitchingDescription": "Automatikus váltás a Claude fiókok között a megszakítások elkerülésére. Konfiguráld a proaktív monitorozást, hogy a korlát elérése előtt váltson.",
+        "enableAutoSwitching": "Automatikus váltás engedélyezése",
+        "masterSwitch": "Fő kapcsoló az összes automatikus váltás funkcióhoz",
+        "proactiveMonitoring": "Proaktív monitorozás",
+        "proactiveDescription": "Rendszeres használat ellenőrzés és váltás a korlát elérése előtt",
+        "checkUsageEvery": "Használat ellenőrzése minden",
+        "seconds15": "15 másodperc",
+        "seconds30": "30 másodperc (ajánlott)",
+        "minute1": "1 perc",
+        "disabled": "Letiltva",
+        "sessionThreshold": "Munkamenet használati küszöb",
+        "sessionThresholdDescription": "Váltás, amikor a munkamenet használat eléri ezt a szintet (ajánlott: 95%)",
+        "weeklyThreshold": "Heti használati küszöb",
+        "weeklyThresholdDescription": "Váltás, amikor a heti használat eléri ezt a szintet (ajánlott: 99%)",
+        "reactiveRecovery": "Reaktív helyreállítás",
+        "reactiveDescription": "Automatikus váltás váratlan korlát elérésekor",
+        "apiKeys": "API kulcsok",
+        "apiKeysInfo": "Az itt beállított kulcsok alapértelmezettként használatosak. Az egyes projektek felülírhatják ezeket a beállításaikban.",
+        "openaiKey": "OpenAI API kulcs",
+        "openaiKeyDescription": "Szükséges a Graphiti memória háttérrendszerhez (beágyazások)",
+        "toast": {
+            "authSuccess": "Profil hitelesítve",
+            "authSuccessWithEmail": "Csatlakozva mint {{email}}",
+            "authSuccessGeneric": "Hitelesítés kész. Mostantól használhatod ezt a profilt.",
+            "authStartFailed": "Hitelesítés sikertelen",
+            "addProfileFailed": "Nem sikerült a profil hozzáadása",
+            "loadProfilesFailed": "Nem sikerült a profilok betöltése",
+            "deleteProfileFailed": "Nem sikerült a profil törlése",
+            "renameProfileFailed": "Nem sikerült a profil átnevezése",
+            "setActiveProfileFailed": "Nem sikerült az aktív profil beállítása",
+            "profileCreatedAuthFailed": "Profil létrehozva - Hitelesítés szükséges",
+            "profileCreatedAuthFailedDescription": "A profil hozzáadva, de a hitelesítés nem indult el. Kattints a bejelentkezés gombra a hitelesítéshez.",
+            "tokenSaved": "Token elmentve",
+            "tokenSavedDescription": "A tokened sikeresen mentve.",
+            "tokenSaveFailed": "Nem sikerült a token mentése",
+            "settingsUpdateFailed": "Nem sikerült a beállítások frissítése",
+            "tryAgain": "Kérlek próbáld újra.",
+            "terminalCreationFailed": "Nem sikerült a hitelesítési terminál létrehozása",
+            "terminalCreationFailedDescription": "Nem sikerült a hitelesítési folyamat elindítása. {{error}}",
+            "maxTerminalsReached": "Maximális terminálszám elérve",
+            "maxTerminalsReachedDescription": "Kérlek zárj be néhány terminált és próbáld újra. Maximum 12 terminál lehet nyitva.",
+            "terminalError": "Terminál hiba",
+            "terminalErrorDescription": "Nem sikerült a terminál létrehozása: {{error}}",
+            "authProcessFailed": "Hitelesítési folyamat nem indult el",
+            "authProcessFailedDescription": "A hitelesítési terminált nem sikerült létrehozni. Kérlek próbáld újra vagy ellenőrizd a naplókat a részletekért."
+        },
+        "alerts": {
+            "profileCreatedAuthFailed": "Profil létrehozva, de a hitelesítés előkészítése sikertelen: {{error}}",
+            "authPrepareFailed": "Hitelesítés előkészítése sikertelen: {{error}}",
+            "authStartFailedMessage": "Hitelesítés indítása sikertelen. Kérlek próbáld újra."
+        }
+    },
+    "debug": {
+        "title": "Hibakeresés és naplók",
+        "description": "Naplók és hibakeresési információk elérése hibaelhárításhoz",
+        "errorReporting": {
+            "label": "Anonim hibajelentés",
+            "description": "Összeomlási jelentések küldése az Auto Claude fejlesztésének segítésére. Személyes adat vagy kód nem kerül összegyűjtésre."
+        },
+        "openLogsFolder": "Naplók mappa megnyitása",
+        "copyDebugInfo": "Hibakeresési infó másolása",
+        "copied": "Másolva!",
+        "loadInfo": "Hibakeresési infó betöltése",
+        "systemInfo": "Rendszer információ",
+        "logsLocation": "Naplók helye",
+        "recentErrors": "Legutóbbi hibák",
+        "noRecentErrors": "Nincs legutóbbi hiba",
+        "helpTitle": "Hibák jelentése",
+        "helpText": "Hibák jelentésekor kattints a \"Hibakeresési infó másolása\" gombra a rendszer információk és legutóbbi hibák lekéréséhez, amelyek segítenek a probléma diagnosztizálásában."
+    },
+    "projectSettings": {
+        "noProjectSelected": {
+            "title": "Nincs projekt kiválasztva",
+            "description": "Válassz egy projektet az oldalsávból a beállításainak konfigurálásához."
+        }
+    },
+    "mcp": {
+        "title": "MCP szerver áttekintés",
+        "titleWithProject": "MCP szerver áttekintés - {{projectName}}",
+        "description": "Konfiguráld, mely MCP szerverek legyenek elérhetők az agenteknek ebben a projektben",
+        "descriptionNoProject": "Válassz egy projektet az MCP szerverek konfigurálásához",
+        "serversEnabled": "{{count}} szerver engedélyezve",
+        "configuration": "MCP szerver konfiguráció",
+        "configurationHint": "A letiltott szerverek csökkentik a kontextus felhasználást és az indítási időt",
+        "noProjectSelected": "Nincs projekt kiválasztva",
+        "noProjectSelectedDescription": "Válassz egy projektet a legördülő menüből az MCP szerverek megtekintéséhez és konfigurálásához.",
+        "projectNotInitialized": "Projekt nincs inicializálva",
+        "projectNotInitializedDescription": "Inicializáld az Auto Claude-ot ehhez a projekthez az MCP szerverek konfigurálásához.",
+        "browserAutomation": "Böngésző automatizálás (csak QA agentek)",
+        "alwaysEnabled": "mindig engedélyezett",
+        "addServer": "Szerver hozzáadása",
+        "addMcpTo": "MCP szerver hozzáadása - {{agent}}",
+        "addMcpDescription": "Válassz egy MCP szervert, hogy hozzáadd ehhez az agenthez",
+        "allMcpsAdded": "Az összes elérhető MCP szerver már hozzá van adva",
+        "added": "hozzáadva",
+        "removed": "eltávolítva",
+        "remove": "Eltávolítás",
+        "restore": "Visszaállítás",
+        "noMcpServers": "Nincsenek MCP szerverek",
+        "cannotRemove": "Nem távolítható el (kötelező)",
+        "servers": {
+            "context7": {
+                "name": "Context7",
+                "description": "Dokumentáció keresés könyvtárakhoz"
+            },
+            "graphiti": {
+                "name": "Graphiti memória",
+                "description": "Tudásgráf munkamenetek közötti kontextushoz",
+                "notConfigured": "Memória konfiguráció szükséges (lásd Memória beállítások)"
+            },
+            "linear": {
+                "name": "Linear",
+                "description": "Projektmenedzsment integráció",
+                "notConfigured": "Linear integráció szükséges (lásd Linear beállítások)"
+            },
+            "electron": {
+                "name": "Electron",
+                "description": "Asztali alkalmazás automatizálás Chrome DevTools-szal"
+            },
+            "puppeteer": {
+                "name": "Puppeteer",
+                "description": "Webes böngésző automatizálás teszteléshez"
+            },
+            "autoClaude": {
+                "name": "Auto-Claude eszközök",
+                "description": "Build előrehaladás követése"
+            }
+        },
+        "customServers": "Egyedi szerverek",
+        "addCustomServer": "Egyedi szerver hozzáadása",
+        "editCustomServer": "Egyedi szerver szerkesztése",
+        "customServerDescription": "Parancs-alapú vagy HTTP-alapú MCP szerver hozzáadása",
+        "serverType": "Szerver típus",
+        "typeCommand": "Parancs (npx/npm)",
+        "typeHttp": "HTTP",
+        "serverName": "Név",
+        "serverNamePlaceholder": "Az MCP szerver nevem",
+        "serverDescription": "Leírás",
+        "serverDescriptionPlaceholder": "Mit csinál ez a szerver",
+        "command": "Parancs",
+        "args": "Argumentumok",
+        "argsHint": "Szóközzel elválasztott argumentumok",
+        "url": "URL",
+        "headers": "Fejlécek",
+        "headerName": "Fejléc neve",
+        "headerValue": "Fejléc értéke",
+        "noCustomServers": "Nincsenek egyedi szerverek konfigurálva. Adj hozzá egyet az agentekkel való használathoz.",
+        "errorNameRequired": "Szerver név megadása kötelező",
+        "errorIdExists": "Már létezik szerver ezzel az azonosítóval",
+        "errorCommandRequired": "Parancs-alapú szervereknél parancs megadása kötelező",
+        "errorUrlRequired": "HTTP-alapú szervereknél URL megadása kötelező",
+        "testConnection": "Teszt",
+        "testing": "Tesztelés...",
+        "authToken": "Hitelesítési token",
+        "authTokenPlaceholder": "Illeszd be az API tokent vagy PAT-ot ide",
+        "authTokenHint": "Bearer tokenként használva az Authorization fejlécben",
+        "advancedHeaders": "További fejlécek",
+        "status": {
+            "healthy": "A szerver válaszol",
+            "unhealthy": "A szerver nem válaszol",
+            "needsAuth": "Hitelesítés szükséges",
+            "checking": "Ellenőrzés...",
+            "unknown": "Állapot ismeretlen"
+        },
+        "hints": {
+            "github": "Ez GitHub MCP szervernek tűnik. Szükséged lesz egy Personal Access Token-re megfelelő jogosultságokkal.",
+            "createGithubPat": "GitHub PAT létrehozása",
+            "google": "Ez Google API-nak tűnik. Szükséged lesz OAuth tokenre vagy API kulcsra.",
+            "createGoogleToken": "Google hitelesítő adatok létrehozása",
+            "anthropic": "Ez Anthropic API-nak tűnik. Szükséged lesz API kulcsra.",
+            "createAnthropicKey": "Anthropic API kulcs létrehozása",
+            "openai": "Ez OpenAI API-nak tűnik. Szükséged lesz API kulcsra.",
+            "createOpenaiKey": "OpenAI API kulcs létrehozása"
+        }
+    }
+}

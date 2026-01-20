@@ -1,0 +1,243 @@
+{
+    "wizard": {
+        "title": "Beállítási varázsló",
+        "description": "Auto Claude környezet konfigurálása néhány egyszerű lépésben",
+        "helpText": "Ez a varázsló segít beállítani a környezetedet néhány lépésben. Konfigurálhatod a Claude OAuth tokent, beállíthatod a memória funkciókat, és létrehozhatod az első feladatodat."
+    },
+    "welcome": {
+        "title": "Üdvözöl az Auto Claude",
+        "subtitle": "Készíts szoftvert autonóm módon AI-alapú agentekkel",
+        "getStarted": "Kezdés",
+        "skip": "Beállítás kihagyása",
+        "features": {
+            "aiPowered": {
+                "title": "AI-alapú fejlesztés",
+                "description": "Generálj kódot és készíts funkciókat Claude Code agentekkel"
+            },
+            "specDriven": {
+                "title": "Specifikáció-vezérelt munkafolyamat",
+                "description": "Definiálj feladatokat világos specifikációkkal, és hagyd, hogy az Auto Claude kezelje az implementációt"
+            },
+            "memory": {
+                "title": "Memória és kontextus",
+                "description": "Tartós memória a munkamenetek között Graphiti-val"
+            },
+            "parallel": {
+                "title": "Párhuzamos végrehajtás",
+                "description": "Futtass több agentet párhuzamosan a gyorsabb fejlesztési ciklusokért"
+            }
+        }
+    },
+    "oauth": {
+        "title": "Claude hitelesítés",
+        "description": "Csatlakoztasd a Claude fiókodat az AI funkciók engedélyezéséhez",
+        "configureTitle": "Claude hitelesítés konfigurálása",
+        "addAccountsDesc": "Add hozzá Claude fiókjaidat az AI funkciók engedélyezéséhez",
+        "multiAccountInfo": "Adj hozzá több Claude előfizetést, hogy automatikusan válthasson közöttük, amikor eléred a korlátot.",
+        "noAccountsYet": "Még nincsenek fiókok konfigurálva",
+        "badges": {
+            "default": "Alapértelmezett",
+            "active": "Aktív",
+            "authenticated": "Hitelesítve",
+            "needsAuth": "Hitelesítés szükséges"
+        },
+        "buttons": {
+            "authenticate": "Hitelesítés",
+            "setActive": "Aktiválás",
+            "rename": "Átnevezés",
+            "delete": "Törlés",
+            "add": "Hozzáadás",
+            "adding": "Hozzáadás...",
+            "showToken": "Token megjelenítése",
+            "hideToken": "Token elrejtése",
+            "copyToken": "Token másolása",
+            "back": "Vissza",
+            "continue": "Folytatás",
+            "skip": "Kihagyás"
+        },
+        "labels": {
+            "accountName": "Fiók neve",
+            "namePlaceholder": "Profil neve (pl. Munka, Személyes)",
+            "tokenLabel": "OAuth token",
+            "tokenPlaceholder": "Token beírása ide",
+            "tokenHint": "Illeszd be a terminálban megjelenő tokent az OAuth bejelentkezés befejezése után."
+        },
+        "keychainTitle": "Biztonságos tárolás",
+        "keychainDescription": "A tokenek titkosítva vannak a rendszer kulcstartójával. Lehet, hogy jelszó kérést látsz a macOS-től — kattints az \"Always Allow\"-ra, hogy ne lásd újra.",
+        "toast": {
+            "authSuccess": "Profil sikeresen hitelesítve",
+            "authSuccessWithEmail": "Fiók: {{email}}",
+            "authSuccessGeneric": "Hitelesítés kész. Mostantól használhatod ezt a profilt.",
+            "authStartFailed": "Nem sikerült a hitelesítés indítása",
+            "addProfileFailed": "Nem sikerült a profil hozzáadása",
+            "tokenSaved": "Token elmentve",
+            "tokenSavedDescription": "A tokened sikeresen mentve.",
+            "tokenSaveFailed": "Nem sikerült a token mentése",
+            "tryAgain": "Kérlek próbáld újra."
+        },
+        "alerts": {
+            "profileCreatedAuthFailed": "Profil létrehozva, de a hitelesítés előkészítése sikertelen: {{error}}",
+            "authPrepareFailed": "Hitelesítés előkészítése sikertelen: {{error}}",
+            "authStartFailedMessage": "Hitelesítés indítása sikertelen. Kérlek próbáld újra."
+        }
+    },
+    "memory": {
+        "title": "Memória",
+        "description": "Tartós munkamenetek közötti memória konfigurálása az agentekhez",
+        "contextDescription": "Az Auto Claude memória segít megjegyezni a kontextust a kódolási munkamenetek között",
+        "enableMemory": "Memória engedélyezése",
+        "enableMemoryDescription": "Tartós munkamenetek közötti memória LadybugDB használatával (beágyazott adatbázis)",
+        "memoryDisabledInfo": "A memória letiltva. A munkamenet betekintések csak helyi fájlokban lesznek tárolva. Engedélyezd a memóriát a tartós munkamenetek közötti kontextushoz szemantikus kereséssel.",
+        "enableAgentAccess": "Agent memória hozzáférés engedélyezése",
+        "enableAgentAccessDescription": "Agentek kereshetnek és hozzáadhatnak a tudásgráfhoz MCP-n keresztül",
+        "mcpServerUrl": "Graphiti MCP szerver URL",
+        "mcpServerUrlDescription": "A Graphiti MCP szerver URL-je az agent memória hozzáféréshez",
+        "embeddingProvider": "Beágyazás szolgáltató",
+        "embeddingProviderDescription": "Szolgáltató a szemantikus kereséshez (opcionális - kulcsszó keresés nélküle is működik)",
+        "selectEmbeddingModel": "Beágyazás modell kiválasztása",
+        "openaiApiKey": "OpenAI API kulcs",
+        "openaiApiKeyDescription": "Szükséges az OpenAI beágyazásokhoz",
+        "openaiGetKey": "Szerezd be a kulcsot innen:",
+        "voyageApiKey": "Voyage AI API kulcs",
+        "voyageApiKeyDescription": "Szükséges a Voyage AI beágyazásokhoz",
+        "googleApiKey": "Google AI API kulcs",
+        "googleApiKeyDescription": "Szükséges a Google AI beágyazásokhoz",
+        "azureConfig": "Azure OpenAI konfiguráció",
+        "azureApiKey": "API kulcs",
+        "azureBaseUrl": "Alap URL",
+        "azureEmbeddingDeployment": "Beágyazás telepítési név",
+        "memoryInfo": "A memória tárolja a felfedezéseket, mintákat és betekintéseket a kódbázisról, így a jövőbeli munkamenetek már betöltött kontextussal indulnak. Nincs szükség Docker-re - beágyazott adatbázist használ.",
+        "learnMore": "Tudj meg többet a memóriáról",
+        "back": "Vissza",
+        "skip": "Kihagyás",
+        "saving": "Mentés...",
+        "saveAndContinue": "Mentés és folytatás",
+        "providers": {
+            "ollama": "Ollama (Helyi - Ingyenes)",
+            "openai": "OpenAI",
+            "voyage": "Voyage AI",
+            "google": "Google AI",
+            "azure": "Azure OpenAI"
+        }
+    },
+    "completion": {
+        "title": "Minden kész!",
+        "subtitle": "Az Auto Claude készen áll, hogy segítsen fantasztikus szoftverek készítésében",
+        "setupComplete": "Beállítás kész",
+        "setupCompleteDescription": "A környezeted konfigurálva és kész. Azonnal elkezdhetsz feladatokat létrehozni, vagy felfedezhetel az alkalmazáson a saját tempódban.",
+        "whatsNext": "Mi a következő lépés?",
+        "createTask": {
+            "title": "Feladat létrehozása",
+            "description": "Kezdd az első feladat létrehozásával, hogy lásd az Auto Claude-ot működés közben.",
+            "action": "Feladat létrehozó megnyitása"
+        },
+        "customizeSettings": {
+            "title": "Beállítások testreszabása",
+            "description": "Finomhangold a preferenciáidat, konfiguráld az integrációkat, vagy futtasd újra ezt a varázslót.",
+            "action": "Beállítások megnyitása"
+        },
+        "exploreDocs": {
+            "title": "Dokumentáció felfedezése",
+            "description": "Tudj meg többet a haladó funkciókról, legjobb gyakorlatokról és hibaelhárításról."
+        },
+        "finish": "Befejezés és építés megkezdése",
+        "rerunHint": "Bármikor újrafuttathatod ezt a varázslót a Beállítások → Alkalmazás menüből"
+    },
+    "steps": {
+        "welcome": "Üdvözlet",
+        "authChoice": "Hitelesítési mód",
+        "auth": "Hitelesítés",
+        "claudeCode": "CLI",
+        "devtools": "Fejlesztői eszközök",
+        "privacy": "Adatvédelem",
+        "memory": "Memória",
+        "done": "Kész"
+    },
+    "privacy": {
+        "title": "Segíts az Auto Claude fejlesztésében",
+        "subtitle": "Az anonim hibajelentés segít gyorsabban javítani a hibákat",
+        "whatWeCollect": {
+            "title": "Mit gyűjtünk",
+            "crashReports": "Összeomlási jelentések és hiba verem nyomok",
+            "errorMessages": "Hibaüzenetek (anonimizált fájl útvonalakkal)",
+            "appVersion": "Alkalmazás verzió és platform információ"
+        },
+        "whatWeNeverCollect": {
+            "title": "Mit nem gyűjtünk soha",
+            "code": "A kódod vagy projekt fájljaid",
+            "filenames": "Teljes fájl útvonalak (felhasználónevek maszkolva)",
+            "apiKeys": "API kulcsok vagy tokenek",
+            "personalData": "Személyes információk vagy használati adatok"
+        },
+        "toggle": {
+            "label": "Anonim hibajelentések küldése",
+            "description": "Segíts azonosítani és javítani a problémákat"
+        }
+    },
+    "claudeCode": {
+        "title": "Claude Code CLI",
+        "description": "Telepítsd vagy frissítsd a Claude Code CLI-t az AI-alapú funkciók engedélyezéséhez",
+        "detecting": "Claude Code telepítés ellenőrzése...",
+        "info": {
+            "title": "Mi az a Claude Code?",
+            "description": "A Claude Code az Anthropic hivatalos CLI-je, ami az Auto Claude AI funkcióit működteti. Biztonságos hitelesítést és közvetlen hozzáférést biztosít a Claude modellekhez."
+        },
+        "status": {
+            "installed": "Telepítve",
+            "outdated": "Frissítés elérhető",
+            "notFound": "Nincs telepítve"
+        },
+        "version": {
+            "current": "Jelenlegi verzió",
+            "latest": "Legújabb verzió"
+        },
+        "install": {
+            "button": "Claude Code telepítése",
+            "updating": "Claude Code frissítése",
+            "inProgress": "Telepítés...",
+            "success": "Telepítési parancs elküldve a terminálba. Kérlek fejezd be a telepítést ott.",
+            "instructions": "A telepítő megnyílik a terminálban. Kövesd az utasításokat a telepítés befejezéséhez."
+        },
+        "learnMore": "Tudj meg többet a Claude Code-ról"
+    },
+    "devtools": {
+        "title": "Fejlesztői eszközök",
+        "description": "Válaszd ki a preferált IDE-t és terminált az Auto Claude munkakönyvtárakkal való munkához",
+        "detecting": "Telepített eszközök keresése...",
+        "detectAgain": "Újra keresés",
+        "whyConfigure": "Miért konfiguráld ezeket?",
+        "whyConfigureDescription": "Amikor az Auto Claude funkciókat épít elkülönített munkakönyvtárakban, közvetlenül megnyithatod őket a preferált IDE-dben vagy terminálodban a változtatások teszteléséhez és átnézéséhez.",
+        "ide": {
+            "label": "Preferált IDE",
+            "description": "Az Auto Claude ebben a szerkesztőben nyitja meg a munkakönyvtárakat",
+            "customPath": "Egyedi IDE útvonal"
+        },
+        "terminal": {
+            "label": "Preferált terminál",
+            "description": "Az Auto Claude itt nyitja meg a terminál munkameneteket",
+            "customPath": "Egyedi terminál útvonal"
+        },
+        "detectedSummary": "Rendszereden észlelve:",
+        "noToolsDetected": "Nem észleltünk további eszközöket (VS Code és rendszer terminál lesz használva)",
+        "custom": "Egyedi...",
+        "saveAndContinue": "Mentés és folytatás"
+    },
+    "ollama": {
+        "notInstalled": {
+            "title": "Ollama nincs telepítve",
+            "description": "Az Ollama ingyenes, helyi beágyazás modelleket biztosít a szemantikus kereséshez. Telepítsd egy kattintással ennek a funkciónak az engedélyezéséhez.",
+            "installSuccess": "Telepítés elindítva a terminálban. Fejezd be a telepítést ott, majd kattints az Újra gombra.",
+            "installButton": "Ollama telepítése",
+            "installing": "Telepítés...",
+            "retry": "Újra",
+            "learnMore": "Tudj meg többet",
+            "fallbackNote": "A memória kulcsszó kereséssel továbbra is működik Ollama nélkül is."
+        },
+        "notRunning": {
+            "title": "Ollama nem fut",
+            "description": "Az Ollama telepítve van, de nem fut. Indítsd el az Ollama-t a helyi beágyazás modellek használatához.",
+            "retry": "Újra",
+            "fallbackNote": "A memória kulcsszó kereséssel továbbra is működik beágyazások nélkül is."
+        }
+    }
+}

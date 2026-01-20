@@ -27,6 +27,19 @@ import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
 
+// Import Hungarian translation resources
+import huCommon from './locales/hu/common.json';
+import huNavigation from './locales/hu/navigation.json';
+import huSettings from './locales/hu/settings.json';
+import huTasks from './locales/hu/tasks.json';
+import huWelcome from './locales/hu/welcome.json';
+import huOnboarding from './locales/hu/onboarding.json';
+import huDialogs from './locales/hu/dialogs.json';
+import huGitlab from './locales/hu/gitlab.json';
+import huTaskReview from './locales/hu/taskReview.json';
+import huTerminal from './locales/hu/terminal.json';
+import huErrors from './locales/hu/errors.json';
+
 export const defaultNS = 'common';
 
 export const resources = {
@@ -55,6 +68,19 @@ export const resources = {
     taskReview: frTaskReview,
     terminal: frTerminal,
     errors: frErrors
+  },
+  hu: {
+    common: huCommon,
+    navigation: huNavigation,
+    settings: huSettings,
+    tasks: huTasks,
+    welcome: huWelcome,
+    onboarding: huOnboarding,
+    dialogs: huDialogs,
+    gitlab: huGitlab,
+    taskReview: huTaskReview,
+    terminal: huTerminal,
+    errors: huErrors
   }
 } as const;
 

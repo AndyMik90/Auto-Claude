@@ -1,0 +1,17 @@
+{
+    "hero": {
+        "title": "Üdvözöl az Auto Claude",
+        "subtitle": "Készíts szoftvert autonóm módon AI-alapú agentekkel"
+    },
+    "actions": {
+        "newProject": "Új projekt",
+        "openProject": "Projekt megnyitása"
+    },
+    "recentProjects": {
+        "title": "Legutóbbi projektek",
+        "empty": "Még nincsenek projektek",
+        "emptyDescription": "Hozz létre új projektet vagy nyiss meg egy meglévőt a kezdéshez",
+        "openFolder": "Mappa megnyitása",
+        "openProjectAriaLabel": "{{name}} projekt megnyitása"
+    }
+}
