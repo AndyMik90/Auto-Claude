@@ -7,11 +7,19 @@ AI-powered roadmap generation for projects.
 Analyzes project structure, understands target audience, and generates
 a strategic feature roadmap.
 
+Supports checkpoint/resume: if generation is interrupted (rate limits, token
+exhaustion, or user interrupt), progress is saved automatically. Re-running
+without --refresh will resume from where it left off.
+
 Usage:
     cd apps/backend
     python runners/roadmap_runner.py --project /path/to/project
     python runners/roadmap_runner.py --project /path/to/project --refresh
     python runners/roadmap_runner.py --project /path/to/project --output roadmap.json
+
+Resume after interruption:
+    # Just run the same command again - checkpoint is loaded automatically
+    python runners/roadmap_runner.py --project /path/to/project
 """
 
 import asyncio
@@ -77,7 +85,7 @@ def main():
     parser.add_argument(
         "--refresh",
         action="store_true",
-        help="Force regeneration even if roadmap exists",
+        help="Force regeneration from scratch, ignoring any checkpoint",
     )
     parser.add_argument(
         "--competitor-analysis",
@@ -135,6 +143,7 @@ def main():
     except KeyboardInterrupt:
         debug_warning("roadmap_runner", "Roadmap generation interrupted by user")
         print("\n\nRoadmap generation interrupted.")
+        print("Progress has been saved. Run the same command again to resume.")
         sys.exit(1)
 
 
