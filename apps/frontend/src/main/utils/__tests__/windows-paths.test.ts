@@ -94,13 +94,12 @@ vi.mock('../../platform', async () => {
 
     // On Windows, validate executable names additionally
     if (process.platform === 'win32') {
-      // Fixed REDOS: Removed nested quantifier ambiguity
-      // Old: /^[a-zA-Z]:\\(?:[^<>:"|?*\r\n]+\\)*[^<>:"|?*\r\n]*$/
-      // New: First segment required, then zero or more additional segments
-      const windowsExecutablePattern = /^[a-zA-Z]:\\[^<>:"|?*\r\n\\]+(?:\\[^<>:"|?*\r\n\\]+)*$/;
-      // Fixed REDOS: Server required, one share required, then zero or more additional path segments
-      // Changed from (?:\\[^<>:"|?*\r\n]+)+ to eliminate nested quantifier ambiguity
-      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+\\[^<>:"|?*\r\n]+(?:\\[^<>:"|?*\r\n]+)*$/;
+      // Fixed REDOS: Use \ as delimiter to eliminate ambiguity
+      // [^\\]+ matches until next backslash, creating clear boundary
+      const windowsExecutablePattern = /^[a-zA-Z]:\\(?:[^\\]+\\)*[^\\]+$/;
+      // Fixed REDOS: Server + one share required, then zero or more path segments
+      // Uses \ as delimiter for unambiguous matching
+      const uncPathPattern = /^\\\\[^\\]+(?:\\[^\\]+)+$/;
       const devicePathPattern = /^\\\\\?\\[^<>:"|?*\r\n]+$/;
 
       const isValidWindowsPath = windowsExecutablePattern.test(candidatePath) ||
