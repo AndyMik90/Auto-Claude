@@ -91,10 +91,13 @@ class IdeationGenerator:
             prompt += f"\n{additional_context}\n"
 
         # Create client with thinking budget
+        # Use planner agent type for ideation (fewer tool permission requirements)
+        # This avoids "Stream closed" errors when spawning subprocess from Claude Code CLI
         client = create_client(
             self.project_dir,
             self.output_dir,
             resolve_model_id(self.model),
+            agent_type="planner",  # Use planner to minimize tool permission requests
             max_thinking_tokens=self.thinking_budget,
         )
 
@@ -188,6 +191,7 @@ Write the fixed JSON to the file now.
             self.project_dir,
             self.output_dir,
             resolve_model_id(self.model),
+            agent_type="planner",  # Use planner to minimize tool permission requests
             max_thinking_tokens=self.thinking_budget,
         )
 
