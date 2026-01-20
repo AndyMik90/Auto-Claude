@@ -108,12 +108,10 @@ export function Insights({ projectId }: InsightsProps) {
   const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
-  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(false);
   const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Check if user is near the bottom of scroll area
   const checkIfAtBottom = useCallback((viewport: HTMLElement) => {
@@ -128,13 +126,15 @@ export function Insights({ projectId }: InsightsProps) {
     }
   }, [viewportEl, checkIfAtBottom]);
 
-  // Set up scroll listener
+  // Set up scroll listener and check initial position when viewport becomes available
   useEffect(() => {
     if (viewportEl) {
+      // Check initial scroll position to avoid auto-scrolling when loading existing session
+      setIsUserAtBottom(checkIfAtBottom(viewportEl));
       viewportEl.addEventListener('scroll', handleScroll, { passive: true });
       return () => viewportEl.removeEventListener('scroll', handleScroll);
     }
-  }, [viewportEl, handleScroll]);
+  }, [viewportEl, handleScroll, checkIfAtBottom]);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -289,7 +289,7 @@ export function Insights({ projectId }: InsightsProps) {
         </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollAreaRef} onViewportRef={setViewportEl} className="flex-1 px-6 py-4">
+      <ScrollArea onViewportRef={setViewportEl} className="flex-1 px-6 py-4">
         {messages.length === 0 && !streamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -383,7 +383,6 @@ export function Insights({ projectId }: InsightsProps) {
               </div>
             )}
 
-            <div ref={messagesEndRef} />
           </div>
         )}
       </ScrollArea>
