@@ -7,8 +7,10 @@ from unittest.mock import patch
 from core.git_executable import (
     GIT_ENV_VARS_TO_CLEAR,
     _find_git_executable,
+    _verify_git_executable,
     get_git_executable,
     get_isolated_git_env,
+    invalidate_git_cache,
     run_git,
 )
 
@@ -201,11 +203,12 @@ class TestGetGitExecutable:
         result2 = get_git_executable()
         assert result1 == result2
 
+    @patch("core.git_executable._verify_git_executable", return_value=True)
     @patch("core.git_executable.os.path.isfile")
     @patch("core.git_executable.shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
     @patch("core.git_executable.is_windows", return_value=True)
-    def test_windows_path_detection_uses_is_windows(self, mock_is_windows, mock_which, mock_isfile):
+    def test_windows_path_detection_uses_is_windows(self, mock_is_windows, mock_which, mock_isfile, mock_verify):
         """Should use is_windows() for Windows-specific path detection."""
 
         # Mock Program Files git.exe to exist
@@ -222,11 +225,12 @@ class TestGetGitExecutable:
         assert "Git" in result
         assert result.endswith("git.exe")
 
+    @patch("core.git_executable._verify_git_executable", return_value=True)
     @patch("core.git_executable.os.path.isfile")
     @patch("core.git_executable.shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
     @patch("core.git_executable.is_windows", return_value=False)
-    def test_unix_skips_windows_paths(self, mock_is_windows, mock_which, mock_isfile):
+    def test_unix_skips_windows_paths(self, mock_is_windows, mock_which, mock_isfile, mock_verify):
         """Should skip Windows-specific paths when is_windows() returns False."""
         # Mock Unix git path to exist
         def isfile_side_effect(path):
@@ -242,11 +246,12 @@ class TestGetGitExecutable:
         # Note: If git is found by shutil.which, it will return that path instead
         assert result and "git" in result
 
+    @patch("core.git_executable._verify_git_executable", return_value=True)
     @patch("core.git_executable.os.path.isfile")
     @patch("core.git_executable.shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
     @patch("core.git_executable.is_windows", return_value=True)
-    def test_windows_tries_where_command(self, mock_is_windows, mock_which, mock_isfile):
+    def test_windows_tries_where_command(self, mock_is_windows, mock_which, mock_isfile, mock_verify):
         """Should try 'where' command on Windows when other methods fail."""
         # Mock isfile to return False for common paths, only True for where command result
         # Use a path that's NOT in the hardcoded common paths list to force where command usage
@@ -302,8 +307,9 @@ class TestGetGitExecutable:
                 if args and len(args) > 0:
                     assert "where" not in str(args[0])
 
+    @patch("core.git_executable._verify_git_executable", return_value=True)
     @patch("core.git_executable.is_windows", return_value=True)
-    def test_checks_bash_path_env_var(self, mock_is_windows):
+    def test_checks_bash_path_env_var(self, mock_is_windows, mock_verify):
         """Should check CLAUDE_CODE_GIT_BASH_PATH env var on all platforms."""
         # Set up mock bash path
         mock_bash_path = "C:\\Program Files\\Git\\bin\\bash.exe"
@@ -316,3 +322,63 @@ class TestGetGitExecutable:
                     # Should find git.exe relative to bash.exe (cmd/git.exe is checked first)
                     assert "git.exe" in result
                     assert "cmd" in result
+
+
+class TestVerifyGitExecutable:
+    """Tests for _verify_git_executable() function."""
+
+    def test_returns_true_for_valid_git(self):
+        """Should return True when git --version succeeds."""
+        with patch("core.git_executable.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["git", "--version"],
+                returncode=0,
+                stdout="git version 2.43.0",
+                stderr=""
+            )
+
+            result = _verify_git_executable("/usr/bin/git")
+            assert result is True
+
+    def test_returns_false_on_non_zero_exit(self):
+        """Should return False when git --version fails."""
+        with patch("core.git_executable.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=["git", "--version"],
+                returncode=1,
+                stdout="",
+                stderr="command not found"
+            )
+
+            result = _verify_git_executable("/usr/bin/git")
+            assert result is False
+
+    def test_returns_false_on_timeout(self):
+        """Should return False when git --version times out."""
+        with patch("core.git_executable.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd="git", timeout=5)
+
+            result = _verify_git_executable("/usr/bin/git")
+            assert result is False
+
+    def test_returns_false_on_os_error(self):
+        """Should return False when git command fails with OSError."""
+        with patch("core.git_executable.subprocess.run") as mock_run:
+            mock_run.side_effect = OSError("Permission denied")
+
+            result = _verify_git_executable("/usr/bin/git")
+            assert result is False
+
+
+class TestInvalidateGitCache:
+    """Tests for invalidate_git_cache() function."""
+
+    def test_clears_cached_path(self):
+        """Should clear the cached git executable path."""
+        import core.git_executable
+        # Set a cached value
+        core.git_executable._cached_git_path = "/usr/bin/git"
+
+        invalidate_git_cache()
+
+        assert core.git_executable._cached_git_path is None

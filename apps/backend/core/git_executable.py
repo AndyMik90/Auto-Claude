@@ -64,6 +64,38 @@ def get_isolated_git_env(base_env: dict | None = None) -> dict:
     return env
 
 
+def invalidate_git_cache() -> None:
+    """Invalidate the cached git executable path.
+
+    Useful when git may have been uninstalled, updated, or when
+    CLAUDE_CODE_GIT_BASH_PATH environment variable has changed.
+    """
+    global _cached_git_path
+    _cached_git_path = None
+
+
+def _verify_git_executable(path: str) -> bool:
+    """Verify that a path is a valid git executable by checking version.
+
+    Args:
+        path: Path to the potential git executable
+
+    Returns:
+        True if the path points to a valid git executable, False otherwise
+    """
+    try:
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
 def get_git_executable() -> str:
     """Find the git executable, with Windows-specific fallbacks.
 
@@ -99,14 +131,14 @@ def _find_git_executable() -> str:
                 # Try cmd/git.exe first (preferred), then bin/git.exe
                 for git_subpath in ["cmd/git.exe", "bin/git.exe"]:
                     git_path = git_dir / git_subpath
-                    if git_path.is_file():
+                    if git_path.is_file() and _verify_git_executable(str(git_path)):
                         return str(git_path)
         except (OSError, ValueError):
             pass  # Invalid path or permission error - try next method
 
     # 2. Try shutil.which (works if git is in PATH)
     git_path = shutil.which("git")
-    if git_path:
+    if git_path and _verify_git_executable(git_path):
         return git_path
 
     # 3. Windows-specific: check common installation locations
@@ -121,7 +153,7 @@ def _find_git_executable() -> str:
         ]
         for path in common_paths:
             try:
-                if os.path.isfile(path):
+                if os.path.isfile(path) and _verify_git_executable(path):
                     return path
             except OSError:
                 continue
@@ -137,7 +169,11 @@ def _find_git_executable() -> str:
             )
             if result.returncode == 0 and result.stdout.strip():
                 found_path = result.stdout.strip().split("\n")[0].strip()
-                if found_path and os.path.isfile(found_path):
+                if (
+                    found_path
+                    and os.path.isfile(found_path)
+                    and _verify_git_executable(found_path)
+                ):
                     return found_path
         except (subprocess.TimeoutExpired, OSError):
             pass  # 'where' command failed - fall through to default
