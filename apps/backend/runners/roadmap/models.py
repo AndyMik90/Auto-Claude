@@ -58,10 +58,11 @@ class RoadmapCheckpoint:
 
     def mark_phase_complete(self, result: "RoadmapPhaseResult") -> None:
         """Mark a phase as complete and update checkpoint."""
+        now_iso = datetime.now().isoformat()
         checkpoint = PhaseCheckpoint(
             phase=result.phase,
             success=result.success,
-            completed_at=datetime.now().isoformat(),
+            completed_at=now_iso,
             output_files=result.output_files,
         )
         # Remove any existing checkpoint for this phase (in case of retry)
@@ -69,7 +70,7 @@ class RoadmapCheckpoint:
             p for p in self.completed_phases if p.phase != result.phase
         ]
         self.completed_phases.append(checkpoint)
-        self.last_updated = datetime.now().isoformat()
+        self.last_updated = now_iso
 
     def get_completed_phase_names(self) -> list[str]:
         """Get list of successfully completed phase names."""
