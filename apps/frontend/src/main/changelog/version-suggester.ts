@@ -126,6 +126,9 @@ Respond with ONLY a JSON object in this exact format (no markdown, no extra text
 
   /**
    * Create Python script to run Claude analysis
+   *
+   * On Windows, .cmd/.bat files require shell=True in subprocess.run() because
+   * they are batch scripts that need cmd.exe to execute, not direct executables.
    */
   private createAnalysisScript(prompt: string): string {
     // Escape the prompt for Python string literal
@@ -133,6 +136,15 @@ Respond with ONLY a JSON object in this exact format (no markdown, no extra text
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/\n/g, '\\n');
+
+    // Escape the claude path for Python string (handle Windows backslashes)
+    const escapedClaudePath = this.claudePath
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"');
+
+    // Detect if this is a Windows batch file (.cmd or .bat)
+    // These require shell=True in subprocess.run() because they need cmd.exe to execute
+    const isCmdFile = /\.(cmd|bat)$/i.test(this.claudePath);
 
     return `
 import subprocess
@@ -142,11 +154,13 @@ import sys
 prompt = "${escapedPrompt}"
 
 try:
+    # shell=${isCmdFile ? 'True' : 'False'} - Windows .cmd files require shell execution
     result = subprocess.run(
-        ["${this.claudePath}", "chat", "--model", "haiku", "--prompt", prompt],
+        ["${escapedClaudePath}", "chat", "--model", "haiku", "--prompt", prompt],
         capture_output=True,
         text=True,
-        check=True
+        check=True,
+        shell=${isCmdFile ? 'True' : 'False'}
     )
     print(result.stdout)
 except subprocess.CalledProcessError as e:

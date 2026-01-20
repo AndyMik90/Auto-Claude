@@ -18,7 +18,7 @@
  * - [A-Za-z] - Final byte (command)
  * - m - Specifically for SGR (Select Graphic Rendition) color codes
  */
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes require control characters
 const ANSI_CSI_PATTERN = /\x1b\[[0-9;]*[A-Za-z]/g;
 
 /**
@@ -27,9 +27,9 @@ const ANSI_CSI_PATTERN = /\x1b\[[0-9;]*[A-Za-z]/g;
  * - BEL (bell): \x1b]...\x07 - Single character terminator
  * - ST (string terminator): \x1b]...\x1b\\ - Two character terminator (ESC + backslash)
  */
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI OSC sequences use BEL terminator
 const ANSI_OSC_BEL_PATTERN = /\x1b\][^\x07]*\x07/g;
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI OSC sequences use ST terminator
 const ANSI_OSC_ST_PATTERN = /\x1b\][^\x1b]*\x1b\\/g;
 
 /**

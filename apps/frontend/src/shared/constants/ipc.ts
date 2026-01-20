@@ -78,11 +78,13 @@ export const IPC_CHANNELS = {
   TERMINAL_GET_SESSIONS_FOR_DATE: 'terminal:getSessionsForDate',
   TERMINAL_RESTORE_FROM_DATE: 'terminal:restoreFromDate',
   TERMINAL_CHECK_PTY_ALIVE: 'terminal:checkPtyAlive',
+  TERMINAL_UPDATE_DISPLAY_ORDERS: 'terminal:updateDisplayOrders',  // Persist terminal display order after drag-drop reorder
 
   // Terminal worktree operations (isolated development in worktrees)
   TERMINAL_WORKTREE_CREATE: 'terminal:worktreeCreate',
   TERMINAL_WORKTREE_REMOVE: 'terminal:worktreeRemove',
   TERMINAL_WORKTREE_LIST: 'terminal:worktreeList',
+  TERMINAL_WORKTREE_LIST_OTHER: 'terminal:worktreeListOther',
 
   // Terminal events (main -> renderer)
   TERMINAL_OUTPUT: 'terminal:output',
@@ -94,8 +96,12 @@ export const IPC_CHANNELS = {
   TERMINAL_RATE_LIMIT: 'terminal:rateLimit',  // Claude Code rate limit detected
   TERMINAL_OAUTH_TOKEN: 'terminal:oauthToken',  // OAuth token captured from setup-token output
   TERMINAL_AUTH_CREATED: 'terminal:authCreated',  // Auth terminal created for OAuth flow
+  TERMINAL_OAUTH_CODE_NEEDED: 'terminal:oauthCodeNeeded',  // Request user to paste OAuth code from browser
+  TERMINAL_OAUTH_CODE_SUBMIT: 'terminal:oauthCodeSubmit',  // User submitted OAuth code to send to terminal
   TERMINAL_CLAUDE_BUSY: 'terminal:claudeBusy',  // Claude Code busy state (for visual indicator)
   TERMINAL_CLAUDE_EXIT: 'terminal:claudeExit',  // Claude Code exited (returned to shell)
+  TERMINAL_ONBOARDING_COMPLETE: 'terminal:onboardingComplete',  // Claude onboarding complete (ready for input after login)
+  TERMINAL_PROFILE_CHANGED: 'terminal:profileChanged',  // Profile changed, terminals need refresh (main -> renderer)
 
   // Claude profile management (multi-account support)
   CLAUDE_PROFILES_GET: 'claude:profilesGet',
@@ -106,6 +112,8 @@ export const IPC_CHANNELS = {
   CLAUDE_PROFILE_SWITCH: 'claude:profileSwitch',
   CLAUDE_PROFILE_INITIALIZE: 'claude:profileInitialize',
   CLAUDE_PROFILE_SET_TOKEN: 'claude:profileSetToken',  // Set OAuth token for a profile
+  CLAUDE_PROFILE_AUTHENTICATE: 'claude:profileAuthenticate',  // Open visible terminal for OAuth login
+  CLAUDE_PROFILE_VERIFY_AUTH: 'claude:profileVerifyAuth',  // Check if profile has been authenticated
   CLAUDE_PROFILE_AUTO_SWITCH_SETTINGS: 'claude:autoSwitchSettings',
   CLAUDE_PROFILE_UPDATE_AUTO_SWITCH: 'claude:updateAutoSwitch',
   CLAUDE_PROFILE_FETCH_USAGE: 'claude:fetchUsage',
@@ -113,6 +121,8 @@ export const IPC_CHANNELS = {
 
   // SDK/CLI rate limit event (for non-terminal Claude invocations)
   CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
+  // Auth failure event (401 errors requiring re-authentication)
+  CLAUDE_AUTH_FAILURE: 'claude:authFailure',
   // Retry a rate-limited operation with a different profile
   CLAUDE_RETRY_WITH_PROFILE: 'claude:retryWithProfile',
 
@@ -373,6 +383,8 @@ export const IPC_CHANNELS = {
   GITHUB_PR_FOLLOWUP_REVIEW: 'github:pr:followupReview',
   GITHUB_PR_CHECK_NEW_COMMITS: 'github:pr:checkNewCommits',
   GITHUB_PR_CHECK_MERGE_READINESS: 'github:pr:checkMergeReadiness',
+  GITHUB_PR_MARK_REVIEW_POSTED: 'github:pr:markReviewPosted',
+  GITHUB_PR_UPDATE_BRANCH: 'github:pr:updateBranch',
 
   // GitHub PR Review events (main -> renderer)
   GITHUB_PR_REVIEW_PROGRESS: 'github:pr:reviewProgress',

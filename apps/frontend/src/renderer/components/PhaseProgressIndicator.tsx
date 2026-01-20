@@ -8,6 +8,8 @@ interface PhaseProgressIndicatorProps {
   phase?: ExecutionPhase;
   subtasks: Subtask[];
   phaseLogs?: TaskLogs | null;
+  /** Fallback progress percentage (0-100) when phaseLogs unavailable */
+  phaseProgress?: number;
   isStuck?: boolean;
   isRunning?: boolean;
   className?: string;
@@ -47,6 +49,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
   phase: rawPhase,
   subtasks,
   phaseLogs,
+  phaseProgress,
   isStuck = false,
   isRunning = false,
   className,
@@ -140,6 +143,8 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
             <span className="text-muted-foreground">
               {activeEntries} {activeEntries === 1 ? t('execution.labels.entry') : t('execution.labels.entries')}
             </span>
+          ) : isRunning && isIndeterminatePhase && (phaseProgress ?? 0) > 0 ? (
+            `${Math.round(Math.min(phaseProgress!, 100))}%`
           ) : (
             '—'
           )}
@@ -191,15 +196,6 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
             <motion.div
               key="indeterminate-static"
               className={cn('absolute h-full w-1/3 rounded-full left-1/3', colors.color)}
-            />
-          ) : totalSubtasks > 0 ? (
-            // Static progress based on subtasks (when not running)
-            <motion.div
-              key="static"
-              className={cn('h-full rounded-full', colors.color)}
-              initial={{ width: 0 }}
-              animate={{ width: `${subtaskProgress}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           ) : null}
         </AnimatePresence>

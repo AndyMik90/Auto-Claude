@@ -3,13 +3,14 @@
  * Tests project CRUD operations and task reading from filesystem
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 
-// Test directories
-const TEST_DIR = '/tmp/project-store-test';
-const USER_DATA_PATH = path.join(TEST_DIR, 'userData');
-const TEST_PROJECT_PATH = path.join(TEST_DIR, 'test-project');
+// Test directories - will be set in beforeEach with unique temp dir
+let TEST_DIR: string;
+let USER_DATA_PATH: string;
+let TEST_PROJECT_PATH: string;
 
 // Mock Electron before importing the store
 vi.mock('electron', () => ({
@@ -21,8 +22,13 @@ vi.mock('electron', () => ({
   }
 }));
 
-// Setup test directories
+// Setup test directories with unique secure temp dir
 function setupTestDirs(): void {
+  // Create a unique, secure temporary directory
+  TEST_DIR = mkdtempSync(path.join(tmpdir(), 'project-store-test-'));
+  USER_DATA_PATH = path.join(TEST_DIR, 'userData');
+  TEST_PROJECT_PATH = path.join(TEST_DIR, 'test-project');
+  
   mkdirSync(USER_DATA_PATH, { recursive: true });
   mkdirSync(path.join(USER_DATA_PATH, 'store'), { recursive: true });
   mkdirSync(TEST_PROJECT_PATH, { recursive: true });

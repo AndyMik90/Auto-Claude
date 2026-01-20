@@ -93,6 +93,15 @@
     "required": "Required",
     "dismiss": "Dismiss"
   },
+  "selection": {
+    "select": "Select",
+    "done": "Done",
+    "selected": "{{count}} selected",
+    "selectAll": "Select All",
+    "clearSelection": "Clear Selection",
+    "deleteSelected": "Delete Selected",
+    "selectedOfTotal": "{{selected}} of {{total}} selected"
+  },
   "time": {
     "justNow": "Just now",
     "minutesAgo": "{{count}}m ago",
@@ -105,7 +114,12 @@
     "operationFailed": "Operation failed",
     "networkError": "Network error",
     "notFound": "Not found",
-    "unauthorized": "Unauthorized"
+    "unauthorized": "Unauthorized",
+    "bulkDeletePartialFailure": "Some worktrees could not be deleted:",
+    "taskNotFoundForWorktree": "Task not found for worktree: {{specName}}",
+    "failedToDeleteTaskWorktree": "Failed to delete task worktree: {{specName}}",
+    "terminalWorktreeNotFound": "Terminal worktree not found: {{name}}",
+    "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}"
   },
   "notification": {
     "accountSwitched": "Account Switched",
@@ -320,6 +334,10 @@
     "initial": "Initial",
     "rerunFollowup": "Re-run follow-up review",
     "rerunReview": "Re-run review",
+    "updateBranch": "Update Branch",
+    "updatingBranch": "Updating...",
+    "branchUpdated": "Branch updated",
+    "branchUpdateFailed": "Failed to update branch",
     "loadingMore": "Loading more PRs...",
     "scrollForMore": "Scroll for more",
     "allPRsLoaded": "All PRs loaded",
@@ -389,5 +407,62 @@
     "loadingMore": "Loading more...",
     "scrollForMore": "Scroll for more",
     "allLoaded": "All issues loaded"
+  },
+  "oauth": {
+    "enterCode": "Manual Code Entry (Fallback)",
+    "enterCodeDescription": "This dialog is only needed if the browser didn't redirect automatically. If authentication already completed in your browser, you can close this dialog.",
+    "fallbackNote": "Only use this if you see a \"Paste this into Claude Code\" page in your browser.",
+    "step1": "Complete the authorization in your browser",
+    "step2": "If you see a code page, copy the code shown",
+    "step3": "Paste the code below and click Submit",
+    "codeLabel": "Authorization Code",
+    "codePlaceholder": "Paste your code here (only if needed)...",
+    "codeHint": "The code is a long string shown only if automatic redirect failed",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "codeSubmitted": "Code Submitted",
+    "codeSubmittedDescription": "Authentication should complete shortly. Check the terminal for confirmation.",
+    "codeSubmitFailed": "Failed to Submit Code",
+    "codeSubmitFailedDescription": "Please try again or copy the code manually to the terminal."
+  },
+  "authTerminal": {
+    "failedToCreate": "Failed to create terminal",
+    "unknownError": "Unknown error",
+    "instructionTitle": "Claude Authentication",
+    "step1": "Press Enter to start authentication",
+    "step2": "Complete authentication in your browser",
+    "step3": "Return here - auth will be detected automatically",
+    "authFailed": "Authentication failed",
+    "connecting": "Connecting...",
+    "authenticate": "Authenticate: {{profileName}}",
+    "completeSetup": "Complete setup: {{profileName}}",
+    "authenticatedAs": "Authenticated as {{email}}",
+    "authenticated": "Authenticated!",
+    "authError": "Authentication Error",
+    "onboardingMessage": "Token received! Complete the Claude Code setup below - this window will close automatically when done.",
+    "successMessage": "Authentication successful! Closing..."
+  },
+  "profileCreated": {
+    "title": "Profile \"{{profileName}}\" has been created.",
+    "instructions": "To authenticate this profile:",
+    "step1": "Go to Settings > Integrations",
+    "step2": "Find the profile in the Claude Accounts section",
+    "step3": "Click \"Authenticate\" to complete login",
+    "footer": "The account will be available once you complete authentication."
+  },
+  "auth": {
+    "failure": {
+      "title": "Authentication Required",
+      "profileLabel": "Profile",
+      "unknownProfile": "Unknown Profile",
+      "tokenExpired": "Your authentication token has expired.",
+      "tokenInvalid": "Your authentication token is invalid.",
+      "tokenMissing": "No authentication token found.",
+      "authFailed": "Authentication failed.",
+      "description": "Please re-authenticate your Claude profile to continue using Auto Claude.",
+      "taskAffected": "Task affected",
+      "technicalDetails": "Technical details",
+      "goToSettings": "Go to Settings"
+    }
   }
 }

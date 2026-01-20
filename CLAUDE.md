@@ -56,9 +56,10 @@ cd apps/backend && uv venv && uv pip install -r requirements.txt
 # Frontend (from apps/frontend/)
 cd apps/frontend && npm install
 
-# Set up OAuth token
-claude setup-token
-# Add to apps/backend/.env: CLAUDE_CODE_OAUTH_TOKEN=your-token
+# Authenticate (token auto-saved to Keychain)
+claude
+# Then type: /login
+# Press Enter to open browser and complete OAuth
 ```
 
 ### Creating and Running Specs
@@ -400,6 +401,139 @@ const { t } = useTranslation(['errors']);
 1. Add the translation key to ALL language files (at minimum: `en/*.json` and `fr/*.json`)
 2. Use `namespace:section.key` format (e.g., `navigation:items.githubPRs`)
 3. Never use hardcoded strings in JSX/TSX files
+
+### Cross-Platform Development
+
+**CRITICAL: This project supports Windows, macOS, and Linux. Platform-specific bugs are the #1 source of breakage.**
+
+#### The Problem
+
+When developers on macOS fix something using Mac-specific assumptions, it breaks on Windows. When Windows developers fix something, it breaks on macOS. This happens because:
+
+1. **CI only tested on Linux** - Platform-specific bugs weren't caught until after merge
+2. **Scattered platform checks** - `process.platform === 'win32'` checks were spread across 50+ files
+3. **Hardcoded paths** - Direct paths like `C:\Program Files` or `/opt/homebrew/bin` throughout code
+
+#### The Solution
+
+**1. Centralized Platform Abstraction**
+
+All platform-specific code now lives in dedicated modules:
+
+- **Frontend:** `apps/frontend/src/main/platform/`
+- **Backend:** `apps/backend/core/platform/`
+
+**Import from these modules instead of checking `process.platform` directly:**
+
+```typescript
+// ❌ WRONG - Direct platform check
+if (process.platform === 'win32') {
+  // Windows logic
+}
+
+// ✅ CORRECT - Use abstraction
+import { isWindows, getPathDelimiter } from './platform';
+
+if (isWindows()) {
+  // Windows logic
+}
+```
+
+**2. Multi-Platform CI**
+
+CI now tests on **all three platforms** (Windows, macOS, Linux). A PR cannot merge unless all platforms pass:
+
+```yaml
+# .github/workflows/ci.yml
+strategy:
+  matrix:
+    os: [ubuntu-latest, windows-latest, macos-latest]
+```
+
+**3. Platform Module API**
+
+The platform module provides:
+
+| Function | Purpose |
+|----------|---------|
+| `isWindows()` / `isMacOS()` / `isLinux()` | OS detection |
+| `getPathDelimiter()` | Get `;` (Windows) or `:` (Unix) |
+| `getExecutableExtension()` | Get `.exe` (Windows) or `` (Unix) |
+| `findExecutable(name)` | Find executables across platforms |
+| `getBinaryDirectories()` | Get platform-specific bin paths |
+| `requiresShell(command)` | Check if .cmd/.bat needs shell on Windows |
+
+**4. Path Handling Best Practices**
+
+```typescript
+// ❌ WRONG - Hardcoded Windows path
+const claudePath = 'C:\\Program Files\\Claude\\claude.exe';
+
+// ❌ WRONG - Hardcoded macOS path
+const brewPath = '/opt/homebrew/bin/python3';
+
+// ❌ WRONG - Manual path joining
+const fullPath = dir + '/subdir/file.txt';
+
+// ✅ CORRECT - Use platform abstraction
+import { findExecutable, joinPaths } from './platform';
+
+const claudePath = await findExecutable('claude');
+const fullPath = joinPaths(dir, 'subdir', 'file.txt');
+```
+
+**5. Testing Platform-Specific Code**
+
+```typescript
+// Mock process.platform for testing
+import { isWindows } from './platform';
+
+// In tests, use jest.mock or similar
+jest.mock('./platform', () => ({
+  isWindows: () => true  // Simulate Windows
+}));
+```
+
+**6. When You Need Platform-Specific Code**
+
+If you must write platform-specific code:
+
+1. **Add it to the platform module** - Not scattered in your feature code
+2. **Write tests for all platforms** - Mock `process.platform` to test each case
+3. **Use feature detection** - Check for file/path existence, not just OS name
+4. **Document why** - Explain the platform difference in comments
+
+**7. Submitting Platform-Specific Fixes**
+
+When fixing a platform-specific bug:
+
+1. Ensure your fix doesn't break other platforms
+2. Test locally if you have access to other OSs
+3. Rely on CI to catch issues you can't test
+4. Consider adding a test that mocks other platforms
+
+**Example: Adding a New Tool Detection**
+
+```typescript
+// ✅ CORRECT - Add to platform/paths.ts
+export function getMyToolPaths(): string[] {
+  if (isWindows()) {
+    return [
+      joinPaths('C:', 'Program Files', 'MyTool', 'tool.exe'),
+      // ... more Windows paths
+    ];
+  }
+  return [
+    joinPaths('/usr', 'local', 'bin', 'mytool'),
+    // ... more Unix paths
+  ];
+}
+
+// ✅ CORRECT - Use in your code
+import { findExecutable, getMyToolPaths } from './platform';
+
+const toolPath = await findExecutable('mytool', getMyToolPaths());
+```
 
 ### End-to-End Testing (Electron App)
 
