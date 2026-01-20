@@ -28,6 +28,7 @@ import { insightsService } from '../insights-service';
 import { titleGenerator } from '../title-generator';
 import type { BrowserWindow } from 'electron';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
+import { getIsolatedGitEnv } from '../utils/git-isolation';
 
 // ============================================
 // Git Helper Functions
@@ -37,6 +38,9 @@ import { getEffectiveSourcePath } from '../updater/path-resolver';
  * Get list of git branches for a directory (both local and remote)
  */
 function getGitBranches(projectPath: string): string[] {
+  // Use isolated git env to prevent contamination from worktree env vars
+  const isolatedEnv = getIsolatedGitEnv();
+
   try {
     // First fetch to ensure we have latest remote refs
     try {
@@ -44,7 +48,8 @@ function getGitBranches(projectPath: string): string[] {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 10000 // 10 second timeout for fetch
+        timeout: 10000, // 10 second timeout for fetch
+        env: isolatedEnv
       });
     } catch {
       // Fetch may fail if offline or no remote, continue with local refs
@@ -54,7 +59,8 @@ function getGitBranches(projectPath: string): string[] {
     const result = execFileSync(getToolPath('git'), ['branch', '--all', '--format=%(refname:short)'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: isolatedEnv
     });
 
     const branches = result.trim().split('\n')
@@ -94,10 +100,12 @@ function getGitBranches(projectPath: string): string[] {
  */
 function getCurrentGitBranch(projectPath: string): string | null {
   try {
+    // Use isolated git env to prevent contamination from worktree env vars
     const result = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv()
     });
     return result.trim() || null;
   } catch {
@@ -123,10 +131,12 @@ function detectMainBranch(projectPath: string): string | null {
 
   // If none of the common names found, check for origin/HEAD reference
   try {
+    // Use isolated git env to prevent contamination from worktree env vars
     const result = execFileSync(getToolPath('git'), ['symbolic-ref', 'refs/remotes/origin/HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv()
     });
     const ref = result.trim();
     // Extract branch name from refs/remotes/origin/main
