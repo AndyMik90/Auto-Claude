@@ -464,8 +464,9 @@ describe('cli-tool-manager - Helper Functions', () => {
 
       const paths = getClaudeDetectionPaths('/Users/test');
 
-      expect(paths.homebrewPaths).toContain('/opt/homebrew/bin/claude');
-      expect(paths.homebrewPaths).toContain('/usr/local/bin/claude');
+      // Use component matching to work on all platforms (path.join produces \ on Windows)
+      expect(paths.homebrewPaths.some(p => p.includes('opt') && p.includes('homebrew') && p.includes('bin') && p.includes('claude'))).toBe(true);
+      expect(paths.homebrewPaths.some(p => p.includes('usr') && p.includes('local') && p.includes('bin') && p.includes('claude'))).toBe(true);
     });
 
     it('should return Windows paths on win32', () => {

@@ -98,7 +98,7 @@ describe('path edge cases', () => {
 
     it('rejects paths with control characters', () => {
       // Control characters should be rejected for security
-      // Note: The actual isSecurePath checks for \r\n but not \x00 or \t
+      // Newlines are detected by the dangerousPatterns regex
       const controlPaths = [
         '/home/user\nproject',
         '/home/user\rproject',
@@ -109,9 +109,12 @@ describe('path edge cases', () => {
         expect(result).toBe(false);
       }
 
-      // Tab character is currently not detected as dangerous
+      // Tab character behavior is platform-dependent:
+      // - On Windows: rejected via basename validation (\w doesn't match \t)
+      // - On Unix/Linux: allowed (no basename validation for paths)
       const tabPath = '/home/user\tproject';
-      expect(isSecurePath(tabPath)).toBe(true);
+      const isWindows = process.platform === 'win32';
+      expect(isSecurePath(tabPath)).toBe(!isWindows);
     });
   });
 
@@ -250,8 +253,9 @@ describe('path edge cases', () => {
       for (const p of trailingPaths) {
         const normalized = path.normalize(p);
         expect(normalized).toBeDefined();
-        // Trailing separators should be preserved on most platforms
-        expect(normalized.endsWith('/')).toBe(true);
+        // Trailing separators are preserved (use platform-specific separator)
+        const sep = path.sep;
+        expect(normalized.endsWith(sep) || normalized.endsWith('/')).toBe(true);
       }
     });
 

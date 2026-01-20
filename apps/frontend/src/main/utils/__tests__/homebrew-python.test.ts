@@ -229,8 +229,10 @@ describe('homebrew-python', () => {
 
         vi.mocked(existsSync).mockImplementation((path) => {
           const pathStr = path.toString();
-          if (pathStr.startsWith('/opt/homebrew/bin/') || pathStr.startsWith('/usr/local/bin/')) {
-            searchOrder.push(pathStr);
+          // Normalize to forward slashes for comparison (Windows produces backslashes)
+          const normalized = pathStr.replace(/\\/g, '/');
+          if (normalized.startsWith('/opt/homebrew/bin/') || normalized.startsWith('/usr/local/bin/')) {
+            searchOrder.push(normalized);
           }
           return false; // No Python actually exists
         });
@@ -243,6 +245,7 @@ describe('homebrew-python', () => {
         findHomebrewPython(mockValidate, '[Test]');
 
         // All paths should be checked (no valid Python found)
+        // Paths are normalized to forward slashes for cross-platform comparison
         expect(searchOrder).toEqual([
           '/opt/homebrew/bin/python3.14',
           '/opt/homebrew/bin/python3.13',
