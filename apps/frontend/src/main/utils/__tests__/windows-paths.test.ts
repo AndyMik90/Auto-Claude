@@ -98,8 +98,9 @@ vi.mock('../../platform', async () => {
       // Old: /^[a-zA-Z]:\\(?:[^<>:"|?*\r\n]+\\)*[^<>:"|?*\r\n]*$/
       // New: First segment required, then zero or more additional segments
       const windowsExecutablePattern = /^[a-zA-Z]:\\[^<>:"|?*\r\n\\]+(?:\\[^<>:"|?*\r\n\\]+)*$/;
-      // Fixed REDOS: Simplified pattern - server required, then one or more path segments
-      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+(?:\\[^<>:"|?*\r\n]+)+$/;
+      // Fixed REDOS: Server required, one share required, then zero or more additional path segments
+      // Changed from (?:\\[^<>:"|?*\r\n]+)+ to eliminate nested quantifier ambiguity
+      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+\\[^<>:"|?*\r\n]+(?:\\[^<>:"|?*\r\n]+)*$/;
       const devicePathPattern = /^\\\\\?\\[^<>:"|?*\r\n]+$/;
 
       const isValidWindowsPath = windowsExecutablePattern.test(candidatePath) ||

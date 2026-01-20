@@ -63,6 +63,7 @@ import {
   getWindowsShellPaths,
   expandWindowsEnvVars,
   getWindowsToolPath,
+  getCmdExecutablePath,
 } from '../paths';
 
 // Get mocked functions
@@ -499,42 +500,42 @@ describe('Platform Paths Module', () => {
       expect(result).toContain('Test');
     });
 
-    it.skip('expands %PROGRAMFILES(X86)% (platform mocking issue)', () => {
+    it('expands %PROGRAMFILES(X86)%', () => {
       process.env['ProgramFiles(x86)'] = 'C:\\Program Files (x86)';
       const result = expandWindowsEnvVars('%PROGRAMFILES(X86)%\\tool.exe');
       expect(result).toContain('Program Files (x86)');
       expect(result).toContain('tool.exe');
     });
 
-    it.skip('expands %PROGRAMDATA% (platform mocking issue)', () => {
+    it('expands %PROGRAMDATA%', () => {
       process.env.ProgramData = 'C:\\ProgramData';
       const result = expandWindowsEnvVars('%PROGRAMDATA%\\app');
       expect(result).toContain('ProgramData');
       expect(result).toContain('app');
     });
 
-    it.skip('expands %SYSTEMROOT% (platform mocking issue)', () => {
+    it('expands %SYSTEMROOT%', () => {
       process.env.SystemRoot = 'C:\\Windows';
       const result = expandWindowsEnvVars('%SYSTEMROOT%\\System32\\cmd.exe');
       expect(result).toContain('Windows');
       expect(result).toContain('cmd.exe');
     });
 
-    it.skip('expands %TEMP% (platform mocking issue)', () => {
+    it('expands %TEMP%', () => {
       process.env.TEMP = 'C:\\Users\\Test\\AppData\\Local\\Temp';
       const result = expandWindowsEnvVars('%TEMP%\\file.tmp');
       expect(result).toContain('Temp');
       expect(result).toContain('file.tmp');
     });
 
-    it.skip('expands %TMP% (platform mocking issue)', () => {
+    it('expands %TMP%', () => {
       process.env.TMP = 'C:\\Users\\Test\\AppData\\Local\\Temp';
       const result = expandWindowsEnvVars('%TMP%\\file.tmp');
       expect(result).toContain('Temp');
       expect(result).toContain('file.tmp');
     });
 
-    describe.skip('fallback values (platform mocking issue)', () => {
+    describe('fallback values', () => {
       beforeEach(() => {
         mockPlatform('win32');
       });
@@ -615,6 +616,67 @@ describe('Platform Paths Module', () => {
       mockPlatform('darwin');
       const paths = getWindowsToolPath('mytool');
       expect(paths).toEqual([]);
+    });
+  });
+
+  describe('getCmdExecutablePath', () => {
+    describeWindows('returns cmd.exe path on Windows', () => {
+      const originalEnv = { ...process.env };
+
+      beforeEach(() => {
+        // Clear COMSPEC and SystemRoot to test fallback
+        delete process.env.COMSPEC;
+        delete process.env.SystemRoot;
+      });
+
+      afterEach(() => {
+        process.env = originalEnv;
+      });
+
+      it('uses COMSPEC environment variable when set', () => {
+        process.env.COMSPEC = 'C:\\Custom\\cmd.exe';
+        const result = getCmdExecutablePath();
+        expect(result).toBe('C:\\Custom\\cmd.exe');
+      });
+
+      it('falls back to SystemRoot\\System32\\cmd.exe when COMSPEC not set', () => {
+        // No COMSPEC set, should use default SystemRoot
+        const result = getCmdExecutablePath();
+        expect(result).toContain('System32');
+        expect(result).toContain('cmd.exe');
+      });
+
+      it('uses SystemRoot environment variable when set', () => {
+        process.env.SystemRoot = 'D:\\Windows';
+        const result = getCmdExecutablePath();
+        // Should use SystemRoot if COMSPEC is not set
+        expect(result).toContain('D:\\Windows');
+        expect(result).toContain('System32');
+        expect(result).toContain('cmd.exe');
+      });
+
+      it('uses default C:\\Windows when neither COMSPEC nor SystemRoot set', () => {
+        const result = getCmdExecutablePath();
+        // path.join() on Linux produces forward slashes, so check components
+        expect(result).toContain('C:');
+        expect(result).toContain('Windows');
+        expect(result).toContain('System32');
+        expect(result).toContain('cmd.exe');
+      });
+    });
+
+    describeUnix('returns sh on Linux', () => {
+      it('returns sh as shell', () => {
+        const result = getCmdExecutablePath();
+        expect(result).toBe('sh');
+      });
+    });
+
+    describeMacOS('returns sh on macOS', () => {
+      it('returns sh as shell', () => {
+        const result = getCmdExecutablePath();
+        expect(result).toBe('sh');
+      });
     });
   });
 });

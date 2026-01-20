@@ -241,7 +241,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
       darwin: ['/Applications/Visual Studio Code.app'],
       win32: [
         'C:\\Program Files\\Microsoft VS Code\\Code.exe',
-        'C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe'
+        '%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe'
       ],
       linux: ['/usr/share/code', '/snap/bin/code', '/usr/bin/code']
     },
@@ -264,7 +264,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'VSCodium',
     paths: {
       darwin: ['/Applications/VSCodium.app'],
-      win32: ['C:\\Program Files\\VSCodium\\VSCodium.exe', 'C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\VSCodium\\VSCodium.exe'],
+      win32: ['C:\\Program Files\\VSCodium\\VSCodium.exe', '%LOCALAPPDATA%\\Programs\\VSCodium\\VSCodium.exe'],
       linux: ['/usr/bin/codium', '/snap/bin/codium']
     },
     commands: { darwin: 'codium', win32: 'codium', linux: 'codium' }
@@ -274,7 +274,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'Cursor',
     paths: {
       darwin: ['/Applications/Cursor.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\cursor\\Cursor.exe'],
+      win32: ['%LOCALAPPDATA%\\Programs\\cursor\\Cursor.exe'],
       linux: ['/usr/bin/cursor', '/opt/Cursor/cursor']
     },
     commands: { darwin: 'cursor', win32: 'cursor.cmd', linux: 'cursor' }
@@ -283,7 +283,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'Windsurf',
     paths: {
       darwin: ['/Applications/Windsurf.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Windsurf\\Windsurf.exe'],
+      win32: ['%LOCALAPPDATA%\\Programs\\Windsurf\\Windsurf.exe'],
       linux: ['/usr/bin/windsurf', '/opt/Windsurf/windsurf']
     },
     commands: { darwin: 'windsurf', win32: 'windsurf.cmd', linux: 'windsurf' }
@@ -301,7 +301,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'Void',
     paths: {
       darwin: ['/Applications/Void.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Void\\Void.exe'],
+      win32: ['%LOCALAPPDATA%\\Programs\\Void\\Void.exe'],
       linux: ['/usr/bin/void']
     },
     commands: { darwin: 'void', win32: 'void', linux: 'void' }
@@ -392,7 +392,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'Fleet',
     paths: {
       darwin: ['/Applications/Fleet.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\JetBrains\\Toolbox\\apps\\Fleet\\ch-0\\*\\Fleet.exe'],
+      win32: ['%LOCALAPPDATA%\\JetBrains\\Toolbox\\apps\\Fleet\\ch-0\\*\\Fleet.exe'],
       linux: ['~/.local/share/JetBrains/Toolbox/apps/Fleet/ch-0/*/fleet']
     },
     commands: { darwin: 'fleet', win32: 'fleet', linux: 'fleet' }
@@ -568,7 +568,7 @@ const IDE_DETECTION: Partial<Record<SupportedIDE, { name: string; paths: Record<
     name: 'Lapce',
     paths: {
       darwin: ['/Applications/Lapce.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\lapce\\Lapce.exe'],
+      win32: ['%LOCALAPPDATA%\\lapce\\Lapce.exe'],
       linux: ['/usr/bin/lapce', '~/.cargo/bin/lapce']
     },
     commands: { darwin: 'lapce', win32: 'lapce', linux: 'lapce' }
@@ -622,7 +622,7 @@ const TERMINAL_DETECTION: Partial<Record<SupportedTerminal, { name: string; path
   // Windows Terminals
   windowsterminal: {
     name: 'Windows Terminal',
-    paths: { darwin: [], win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe'], linux: [] },
+    paths: { darwin: [], win32: ['%LOCALAPPDATA%\\Microsoft\\WindowsApps\\wt.exe'], linux: [] },
     commands: { darwin: [], win32: ['wt.exe', '-d'], linux: [] }
   },
   powershell: {
@@ -702,7 +702,7 @@ const TERMINAL_DETECTION: Partial<Record<SupportedTerminal, { name: string; path
     name: 'Alacritty',
     paths: {
       darwin: ['/Applications/Alacritty.app'],
-      win32: ['C:\\Program Files\\Alacritty\\alacritty.exe', 'C:\\Users\\%USERNAME%\\scoop\\apps\\alacritty\\current\\alacritty.exe'],
+      win32: ['C:\\Program Files\\Alacritty\\alacritty.exe', '%USERPROFILE%\\scoop\\apps\\alacritty\\current\\alacritty.exe'],
       linux: ['/usr/bin/alacritty', '/snap/bin/alacritty']
     },
     commands: {
@@ -742,7 +742,7 @@ const TERMINAL_DETECTION: Partial<Record<SupportedTerminal, { name: string; path
     name: 'Hyper',
     paths: {
       darwin: ['/Applications/Hyper.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Hyper\\Hyper.exe'],
+      win32: ['%LOCALAPPDATA%\\Programs\\Hyper\\Hyper.exe'],
       linux: ['/usr/bin/hyper', '/opt/Hyper/hyper']
     },
     commands: {
@@ -755,7 +755,7 @@ const TERMINAL_DETECTION: Partial<Record<SupportedTerminal, { name: string; path
     name: 'Tabby',
     paths: {
       darwin: ['/Applications/Tabby.app'],
-      win32: ['C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Tabby\\Tabby.exe'],
+      win32: ['%LOCALAPPDATA%\\Programs\\Tabby\\Tabby.exe'],
       linux: ['/usr/bin/tabby', '/opt/Tabby/tabby']
     },
     commands: {
@@ -1010,7 +1010,7 @@ function isAppInstalled(
 
   // Then check specific paths (for apps not in standard locations)
   for (const checkPath of specificPaths) {
-    // Use expandWindowsEnvVars for %USERNAME% expansion with fallbacks
+    // Use expandWindowsEnvVars for %LOCALAPPDATA%, %USERPROFILE% expansion with fallbacks
     const expandedPath = expandWindowsEnvVars(checkPath).replace('~', os.homedir() || '');
 
     // Validate path doesn't contain traversal attempts after expansion

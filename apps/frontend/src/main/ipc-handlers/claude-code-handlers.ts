@@ -570,7 +570,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     const osascriptPath = findExecutable('osascript') || 'osascript';
     execFileSync(osascriptPath, ['-e', script], { stdio: 'pipe' });
 
-  } else if (platform === 'win32') {
+  } else if (platformIsWindows()) {
     // Windows: Use appropriate terminal
     // Values match SupportedTerminal type: 'windowsterminal', 'powershell', 'cmd', 'conemu', 'cmder',
     // 'gitbash', 'alacritty', 'wezterm', 'hyper', 'tabby', 'cygwin', 'msys2'
