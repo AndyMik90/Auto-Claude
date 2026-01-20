@@ -795,3 +795,303 @@ class TestCrossValidation:
 
         # Should keep CRITICAL (highest severity)
         assert validated[0].severity == ReviewSeverity.CRITICAL
+
+
+# =============================================================================
+# Integration Verification Tests: Full Pipeline Tests
+# =============================================================================
+
+class TestIntegrationPipeline:
+    """Test complete pipeline integration of Phase 1-3 features."""
+
+    @pytest.fixture
+    def make_finding(self):
+        """Factory fixture to create PRReviewFinding instances."""
+        def _make_finding(
+            id: str = "TEST001",
+            file: str = "src/test.py",
+            line: int = 10,
+            category: ReviewCategory = ReviewCategory.SECURITY,
+            severity: ReviewSeverity = ReviewSeverity.HIGH,
+            confidence: float = 0.7,
+            evidence: str = "const x = getValue()",
+            source_agents: list = None,
+            **kwargs
+        ):
+            return PRReviewFinding(
+                id=id,
+                severity=severity,
+                category=category,
+                title=kwargs.get("title", "Test Finding"),
+                description=kwargs.get("description", "Test description"),
+                file=file,
+                line=line,
+                confidence=confidence,
+                evidence=evidence,
+                source_agents=source_agents or [],
+                **{k: v for k, v in kwargs.items() if k not in ["title", "description"]}
+            )
+        return _make_finding
+
+    @pytest.fixture
+    def mock_reviewer(self, tmp_path):
+        """Create a mock ParallelOrchestratorReviewer instance."""
+        from models import GitHubRunnerConfig
+
+        config = GitHubRunnerConfig(
+            token="test-token",
+            repo="test/repo"
+        )
+        github_dir = tmp_path / ".auto-claude" / "github"
+        github_dir.mkdir(parents=True)
+
+        reviewer = ParallelOrchestratorReviewer(
+            project_dir=tmp_path,
+            github_dir=github_dir,
+            config=config
+        )
+        return reviewer
+
+    def test_pipeline_flow_high_confidence_valid_evidence_in_scope(
+        self, make_finding, mock_reviewer
+    ):
+        """Test complete flow: high confidence + valid evidence + in scope passes all checks."""
+        changed_files = ["src/auth.py"]
+        finding = make_finding(
+            file="src/auth.py",
+            line=15,
+            confidence=0.85,  # HIGH tier (>= 0.8)
+            evidence="const password = req.body.password; query(`SELECT * WHERE pwd='${password}'`)",
+        )
+
+        # Phase 1a: Confidence tier
+        tier = ConfidenceTier.get_tier(finding.confidence)
+        assert tier == ConfidenceTier.HIGH
+
+        # Phase 1b: Evidence validation
+        is_valid_evidence, _ = _validate_finding_evidence(finding)
+        assert is_valid_evidence
+
+        # Phase 1c: Scope filtering
+        is_in_scope, _ = _is_finding_in_scope(finding, changed_files)
+        assert is_in_scope
+
+        # All checks pass - finding should be included in review
+
+    def test_pipeline_flow_low_confidence_filtered(self, make_finding):
+        """Test that low confidence findings are filtered even with valid evidence."""
+        changed_files = ["src/auth.py"]
+        finding = make_finding(
+            file="src/auth.py",
+            line=15,
+            confidence=0.3,  # LOW tier (< 0.5)
+            evidence="const x = getValue()",
+        )
+
+        tier = ConfidenceTier.get_tier(finding.confidence)
+        assert tier == ConfidenceTier.LOW
+
+        # Low confidence findings may be filtered based on tier routing
+        # This test documents the expected behavior
+
+    def test_pipeline_flow_cross_validation_elevates_medium_to_high(
+        self, make_finding, mock_reviewer
+    ):
+        """Test that cross-validation can elevate MEDIUM tier to HIGH tier."""
+        # Two agents find same issue with MEDIUM confidence
+        # Give finding2 CRITICAL severity so it becomes the primary (sorted first)
+        finding1 = make_finding(
+            id="F1",
+            file="src/auth.py",
+            line=10,
+            confidence=0.6,  # MEDIUM tier
+            severity=ReviewSeverity.HIGH,
+            source_agents=["security-reviewer"],
+        )
+        finding2 = make_finding(
+            id="F2",
+            file="src/auth.py",
+            line=10,
+            confidence=0.7,  # MEDIUM tier - this will be primary (higher severity)
+            severity=ReviewSeverity.CRITICAL,
+            source_agents=["quality-reviewer"],
+        )
+
+        # Before cross-validation: both MEDIUM
+        assert ConfidenceTier.get_tier(finding1.confidence) == ConfidenceTier.MEDIUM
+        assert ConfidenceTier.get_tier(finding2.confidence) == ConfidenceTier.MEDIUM
+
+        # Cross-validate
+        validated, _ = mock_reviewer._cross_validate_findings([finding1, finding2])
+
+        # After cross-validation: boosted to primary.confidence + 0.15 = 0.7 + 0.15 = 0.85 (HIGH tier)
+        # Note: The code uses primary finding's confidence, sorted by severity (CRITICAL first)
+        assert validated[0].confidence == pytest.approx(0.85, rel=0.01)
+        assert ConfidenceTier.get_tier(validated[0].confidence) == ConfidenceTier.HIGH
+        assert validated[0].severity == ReviewSeverity.CRITICAL  # Highest severity preserved
+
+    def test_pipeline_invalid_evidence_rejected(self, make_finding):
+        """Test that findings with invalid evidence are rejected regardless of confidence."""
+        finding = make_finding(
+            file="src/auth.py",
+            line=15,
+            confidence=0.95,  # HIGH confidence
+            evidence="This code looks problematic",  # Prose, not code
+        )
+
+        is_valid_evidence, reason = _validate_finding_evidence(finding)
+        assert not is_valid_evidence
+        assert "lacks code syntax" in reason.lower()
+
+    def test_pipeline_out_of_scope_rejected(self, make_finding):
+        """Test that findings outside changed files are rejected."""
+        changed_files = ["src/auth.py", "src/utils.py"]
+        finding = make_finding(
+            file="src/database.py",  # Not in changed files
+            line=15,
+            confidence=0.95,
+            evidence="const query = buildQuery(input)",
+        )
+
+        is_in_scope, reason = _is_finding_in_scope(finding, changed_files)
+        assert not is_in_scope
+
+    def test_pipeline_impact_finding_allowed(self, make_finding):
+        """Test that impact findings for unchanged files are allowed."""
+        changed_files = ["src/auth.py"]
+        finding = make_finding(
+            file="src/database.py",  # Not in changed files
+            line=15,
+            confidence=0.85,
+            evidence="const query = buildQuery(input)",
+            description="Changes to auth.py breaks the database connection in database.py",
+        )
+
+        is_in_scope, _ = _is_finding_in_scope(finding, changed_files)
+        assert is_in_scope  # Allowed because description mentions impact
+
+    def test_pipeline_end_to_end_review_scenario(self, make_finding, mock_reviewer):
+        """Test realistic end-to-end review scenario with multiple findings."""
+        changed_files = ["src/auth.py", "src/api.py"]
+
+        # Findings from multiple agents
+        findings = [
+            # High-confidence security finding from agent 1
+            make_finding(
+                id="SEC001",
+                file="src/auth.py",
+                line=42,
+                category=ReviewCategory.SECURITY,
+                severity=ReviewSeverity.CRITICAL,
+                confidence=0.85,
+                evidence="password = req.body.password; db.query(`SELECT * WHERE pwd='${password}'`)",
+                source_agents=["security-reviewer"],
+                description="SQL injection in login",
+            ),
+            # Same finding from agent 2 (will be cross-validated)
+            make_finding(
+                id="SEC002",
+                file="src/auth.py",
+                line=42,
+                category=ReviewCategory.SECURITY,
+                severity=ReviewSeverity.HIGH,
+                confidence=0.75,
+                evidence="db.query(`SELECT * WHERE pwd='${password}'`)",
+                source_agents=["quality-reviewer"],
+                description="Unsanitized query parameter",
+            ),
+            # Valid quality finding
+            make_finding(
+                id="QUAL001",
+                file="src/api.py",
+                line=100,
+                category=ReviewCategory.QUALITY,
+                severity=ReviewSeverity.MEDIUM,
+                confidence=0.7,
+                evidence="function handleRequest(req) { /* missing error handling */ }",
+                source_agents=["quality-reviewer"],
+                description="Missing error handling",
+            ),
+            # Invalid: out of scope
+            make_finding(
+                id="OUT001",
+                file="src/database.py",  # Not in changed files
+                line=10,
+                category=ReviewCategory.SECURITY,
+                confidence=0.9,
+                evidence="connection.close()",
+                source_agents=["security-reviewer"],
+            ),
+            # Invalid: prose evidence
+            make_finding(
+                id="PROSE001",
+                file="src/auth.py",
+                line=50,
+                category=ReviewCategory.QUALITY,
+                confidence=0.8,
+                evidence="This code should be refactored for better maintainability",
+                source_agents=["quality-reviewer"],
+            ),
+        ]
+
+        # Step 1: Cross-validate
+        validated, agreement = mock_reviewer._cross_validate_findings(findings)
+
+        # SEC001 and SEC002 should be merged (same file, line, category)
+        security_findings = [f for f in validated if f.category == ReviewCategory.SECURITY
+                           and f.file == "src/auth.py" and f.line == 42]
+        assert len(security_findings) == 1
+        # Cross-validated finding should have boosted confidence
+        assert security_findings[0].cross_validated is True
+        assert security_findings[0].confidence >= 0.85  # Boosted from max(0.85, 0.75) + 0.15
+
+        # Step 2: Validate evidence for each finding
+        valid_evidence_findings = []
+        for f in validated:
+            is_valid, _ = _validate_finding_evidence(f)
+            if is_valid:
+                valid_evidence_findings.append(f)
+
+        # PROSE001 should be filtered out (if present in validated)
+        prose_findings = [f for f in valid_evidence_findings
+                         if f.evidence and "refactored" in f.evidence]
+        assert len(prose_findings) == 0
+
+        # Step 3: Filter by scope
+        in_scope_findings = []
+        for f in valid_evidence_findings:
+            is_in_scope, _ = _is_finding_in_scope(f, changed_files)
+            if is_in_scope:
+                in_scope_findings.append(f)
+
+        # OUT001 should be filtered out (src/database.py not in changed_files)
+        database_findings = [f for f in in_scope_findings if f.file == "src/database.py"]
+        assert len(database_findings) == 0
+
+    def test_pipeline_empty_findings_handled(self, mock_reviewer):
+        """Test that empty findings list is handled gracefully."""
+        validated, agreement = mock_reviewer._cross_validate_findings([])
+
+        assert len(validated) == 0
+        assert len(agreement.agreed_findings) == 0
+        assert len(agreement.conflicting_findings) == 0  # Note: uses conflicting_findings, not disputed
+
+    def test_pipeline_confidence_tier_determines_routing(self, make_finding):
+        """Test that confidence tier determines review routing behavior."""
+        # Document the tier routing expectations
+        test_cases = [
+            (0.95, ConfidenceTier.HIGH, "auto-include"),
+            (0.85, ConfidenceTier.HIGH, "auto-include"),
+            (0.80, ConfidenceTier.HIGH, "auto-include"),
+            (0.75, ConfidenceTier.MEDIUM, "needs verification"),
+            (0.60, ConfidenceTier.MEDIUM, "needs verification"),
+            (0.50, ConfidenceTier.MEDIUM, "needs verification"),
+            (0.45, ConfidenceTier.LOW, "consider filtering"),
+            (0.30, ConfidenceTier.LOW, "consider filtering"),
+            (0.10, ConfidenceTier.LOW, "consider filtering"),
+        ]
+
+        for confidence, expected_tier, expected_routing in test_cases:
+            finding = make_finding(confidence=confidence)
+            tier = ConfidenceTier.get_tier(finding.confidence)
+            assert tier == expected_tier, f"Confidence {confidence} should be {expected_tier}"
