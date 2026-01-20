@@ -34,17 +34,15 @@ vi.mock('../../platform', async () => {
 
 // Import after mock to ensure mock is applied
 import { findHomebrewPython, type PythonValidation } from '../homebrew-python';
-import { getHomebrewBinPaths } from '../../platform';
-
-// Get reference to mocked function for resetting in beforeEach
-const mockGetHomebrewBinPaths = vi.mocked(getHomebrewBinPaths);
 
 describe('homebrew-python', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     // Re-configure getHomebrewBinPaths mock to ensure it returns the array
     // This is needed because vi.clearAllMocks() can affect mock implementations
-    mockGetHomebrewBinPaths.mockImplementation(() => [
+    // Import dynamically to get the mocked version, not the original
+    const { getHomebrewBinPaths } = await import('../../platform');
+    vi.mocked(getHomebrewBinPaths).mockImplementation(() => [
       '/opt/homebrew/bin',
       '/usr/local/bin'
     ]);
