@@ -505,6 +505,10 @@ export const IPC_CHANNELS = {
   DEBUG_GET_RECENT_ERRORS: 'debug:getRecentErrors',
   DEBUG_LIST_LOG_FILES: 'debug:listLogFiles',
 
+  // Prompt operations (agent prompt inspection)
+  PROMPT_GET_LIST: 'prompt:getList',
+  PROMPT_READ: 'prompt:read',
+
   // Claude Code CLI operations
   CLAUDE_CODE_CHECK_VERSION: 'claudeCode:checkVersion',
   CLAUDE_CODE_INSTALL: 'claudeCode:install',
