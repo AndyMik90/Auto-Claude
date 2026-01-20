@@ -13,6 +13,7 @@ import type { BrowserWindow } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { IPC_CHANNELS } from '../../../shared/constants';
+import type { AuthFailureInfo } from '../../../shared/types/terminal';
 import { getGitHubConfig, githubFetch } from './utils';
 import { createSpecForIssue, buildIssueContext, buildInvestigationTask, updateImplementationPlanStatus } from './spec-utils';
 import type { Project } from '../../../shared/types';
@@ -638,6 +639,10 @@ export function registerAutoFixHandlers(
             },
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
+            onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
+              debugLog('Auth failure detected in batch auto-fix', authFailureInfo);
+              mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+            },
             onComplete: () => {
               const batches = getBatches(project);
               debugLog('Batch auto-fix completed', { batchCount: batches.length });
@@ -754,6 +759,10 @@ export function registerAutoFixHandlers(
             },
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
+            onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
+              debugLog('Auth failure detected in analyze preview', authFailureInfo);
+              mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+            },
             onComplete: (stdout) => {
               const rawResult = parseJSONFromOutput<Record<string, unknown>>(stdout);
               const convertedResult = convertAnalyzePreviewResult(rawResult);

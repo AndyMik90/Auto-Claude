@@ -1108,7 +1108,10 @@ export function App() {
         <SDKRateLimitModal />
 
         {/* Auth Failure Modal - shows when Claude CLI encounters 401/auth errors */}
-        <AuthFailureModal onOpenSettings={() => setIsSettingsDialogOpen(true)} />
+        <AuthFailureModal onOpenSettings={() => {
+          setSettingsInitialSection('integrations');
+          setIsSettingsDialogOpen(true);
+        }} />
 
         {/* Version Warning Modal - one-time notice for 2.7.5 re-authentication */}
         <VersionWarningModal
