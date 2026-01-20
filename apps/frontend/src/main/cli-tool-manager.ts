@@ -146,15 +146,9 @@ interface ClaudeDetectionPaths {
  * This pure function consolidates path configuration used by both sync
  * and async detection methods.
  *
- * IMPORTANT: This function has a corresponding implementation in the Python backend:
- * apps/backend/core/client.py (_get_claude_detection_paths)
- *
- * Both implementations MUST be kept in sync to ensure consistent detection behavior
- * across the Electron frontend and Python backend.
- *
- * When adding new detection paths, update BOTH:
- * 1. This function (getClaudeDetectionPaths in cli-tool-manager.ts)
- * 2. _get_claude_detection_paths() in client.py
+ * Note: This is the single source of truth for CLI detection paths.
+ * The Python backend relies on the Claude Agent SDK's bundled CLI,
+ * so it no longer needs its own path detection logic.
  *
  * @param homeDir - User's home directory (from os.homedir())
  * @returns Object containing homebrew, platform, and NVM paths
