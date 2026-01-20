@@ -1,3 +1,18 @@
+## 2.7.5 - AI Content Localization
+
+### ✨ New Features
+
+- Add language support for AI-generated content in Ideation and Roadmap sections
+- Support for Russian, French, German, Spanish, Chinese, Japanese, and Korean languages
+- Language setting from app preferences is now passed to AI content generators
+
+### 🛠️ Improvements
+
+- AI prompts now include language instructions for non-English content generation
+- Technical terms, file paths, and code remain in English for consistency
+
+---
+
 ## 2.7.4 - Terminal & Workflow Enhancements
 
 ### ✨ New Features
