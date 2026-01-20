@@ -337,8 +337,11 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Wait for spawn to complete (ensures listeners are attached), then emit exit
-      await new Promise(resolve => setImmediate(resolve));
+      // Wait for process to be spawned and tracked (use vi.waitFor for reliability)
+      await vi.waitFor(() => {
+        expect(manager.isRunning('task-1')).toBe(true);
+      }, { timeout: 5000 });
+
       mockProcess.emit('exit', 0);
       await promise;
 
@@ -357,8 +360,11 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Wait for spawn to complete (ensures listeners are attached), then emit error
-      await new Promise(resolve => setImmediate(resolve));
+      // Wait for process to be spawned and tracked (use vi.waitFor for reliability)
+      await vi.waitFor(() => {
+        expect(manager.isRunning('task-1')).toBe(true);
+      }, { timeout: 5000 });
+
       mockProcess.emit('error', new Error('Spawn failed'));
       await promise;
 
