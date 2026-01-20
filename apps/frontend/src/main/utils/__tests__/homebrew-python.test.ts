@@ -34,7 +34,8 @@ describe('homebrew-python', () => {
     // Re-configure getHomebrewBinPaths mock to ensure it returns the array
     // This is needed because vi.clearAllMocks() can affect mock implementations
     const { getHomebrewBinPaths } = await import('../../platform');
-    vi.mocked(getHomebrewBinPaths).mockReturnValue([
+    // Use mockImplementation to ensure the mock is properly set even on Windows
+    vi.mocked(getHomebrewBinPaths).mockImplementation(() => [
       '/opt/homebrew/bin',
       '/usr/local/bin'
     ]);
