@@ -25,6 +25,21 @@ import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 import { compareVersions } from './updater/version-manager';
 
+/**
+ * Check if an available version is newer than the current version.
+ * Uses semver comparison to detect if update is actually newer.
+ * This prevents offering downgrades (e.g., v2.7.4 when on v2.7.5).
+ *
+ * @param latestVersion - The version available for download
+ * @param currentVersion - The currently installed version
+ * @returns true if latestVersion > currentVersion using semver comparison
+ */
+function isUpdateNewer(latestVersion: string, currentVersion: string): boolean {
+  const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+  console.warn(`[app-updater] Version comparison: ${latestVersion} vs ${currentVersion} -> ${isNewer ? 'NEWER' : 'NOT NEWER'}`);
+  return isNewer;
+}
+
 // GitHub repo info for API calls
 const GITHUB_OWNER = 'AndyMik90';
 const GITHUB_REPO = 'Auto-Claude';
@@ -142,13 +157,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
     const currentVersion = autoUpdater.currentVersion.version;
     const latestVersion = info.version;
 
-    // Use proper semver comparison to detect if update is actually newer
-    // This prevents offering downgrades (e.g., v2.7.4 when on v2.7.5)
-    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
-
-    console.warn(`[app-updater] Update check: ${latestVersion} vs ${currentVersion} -> ${isNewer ? 'NEWER' : 'NOT NEWER (ignoring)'}`);
-
-    if (!isNewer) {
+    if (!isUpdateNewer(latestVersion, currentVersion)) {
       console.warn('[app-updater] Ignoring update notification - current version is same or newer');
       return;
     }
@@ -168,12 +177,8 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
     const currentVersion = autoUpdater.currentVersion.version;
     const latestVersion = info.version;
 
-    // Use proper semver comparison to detect if update is actually newer
-    // This prevents offering downgrades (e.g., v2.7.4 when on v2.7.5)
-    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
-
-    if (!isNewer) {
-      console.warn(`[app-updater] Ignoring downloaded update ${latestVersion} - current version ${currentVersion} is same or newer`);
+    if (!isUpdateNewer(latestVersion, currentVersion)) {
+      console.warn('[app-updater] Ignoring downloaded update - current version is same or newer');
       return;
     }
 
@@ -279,13 +284,7 @@ export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
     const currentVersion = autoUpdater.currentVersion.version;
     const latestVersion = result.updateInfo.version;
 
-    // Use proper semver comparison to detect if update is actually newer
-    // This prevents offering downgrades (e.g., v2.7.1 when on v2.7.2-beta.6)
-    const isNewer = compareVersions(latestVersion, currentVersion) > 0;
-
-    console.warn(`[app-updater] Version comparison: ${latestVersion} vs ${currentVersion} -> ${isNewer ? 'UPDATE' : 'NO UPDATE'}`);
-
-    if (!isNewer) {
+    if (!isUpdateNewer(latestVersion, currentVersion)) {
       return null;
     }
 
