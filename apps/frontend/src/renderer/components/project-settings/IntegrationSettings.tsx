@@ -79,13 +79,20 @@ export function IntegrationSettings({
   const [branches, setBranches] = useState<string[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
-  // Load branches when GitHub section expands
+  // Load branches when GitHub section expands or GitHub connection changes
   useEffect(() => {
-    if (githubExpanded && project.path) {
+    // Only load branches when:
+    // 1. GitHub section is expanded
+    // 2. Project path exists
+    // 3. GitHub is enabled with repo configured
+    if (!githubExpanded || !project.path) return;
+    if (!envConfig?.githubEnabled || !envConfig?.githubRepo) return;
+
+    // Only load branches when we have a successful connection
+    if (gitHubConnectionStatus?.connected) {
       loadBranches();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadBranches is intentionally excluded to avoid infinite loops
-  }, [githubExpanded, project.path]);
+  }, [githubExpanded, project.path, envConfig?.githubEnabled, envConfig?.githubRepo, gitHubConnectionStatus?.connected]);
 
   const loadBranches = async () => {
     setIsLoadingBranches(true);
