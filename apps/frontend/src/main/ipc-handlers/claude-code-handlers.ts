@@ -161,9 +161,15 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
   // 2. Check system PATH via which/where
   try {
     if (isWindows) {
-      const wherePath = findExecutable('where') || 'where';
-      const result = await execFileAsync(wherePath, ['claude'], { timeout: 5000 });
-      const paths = result.stdout.trim().split('\n').filter(p => p.trim());
+      // Use 'where.exe' explicitly to find all instances of claude.exe
+      // This is the most reliable method as it searches PATH, App Paths registry, and current directory
+      const { stdout } = await execFileAsync('where.exe', ['claude'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+      });
+      // Parse paths - where.exe returns paths separated by \r\n on Windows
+      const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
       for (const p of paths) {
         await addInstallation(p.trim(), 'system-path');
       }
