@@ -15,6 +15,13 @@ import {
   type PythonPathValidation
 } from '../python-detector';
 
+// Normalize path for cross-platform comparison
+// Windows uses backslashes, tests expect forward slashes
+function normalizePathForTest(p: string | null | undefined): string | null {
+  if (!p) return null;
+  return p.replace(/\\/g, '/');
+}
+
 // Mock electron app
 vi.mock('electron', () => ({
   app: {
@@ -98,7 +105,7 @@ describe('python-detector', () => {
       mockIsWindows.mockReturnValue(false);
 
       const result = getBundledPythonPath();
-      expect(result).toBe('/resources/python/bin/python3');
+      expect(normalizePathForTest(result)).toBe('/resources/python/bin/python3');
     });
 
     it('returns bundled Python path on Windows when packaged', () => {
@@ -235,7 +242,7 @@ describe('python-detector', () => {
 
         const result = validatePythonPath('/usr/bin/python3');
         expect(result.valid).toBe(true);
-        expect(result.sanitizedPath).toBe('/usr/bin/python3');
+        expect(normalizePathForTest(result.sanitizedPath)).toBe('/usr/bin/python3');
       });
 
       it('accepts Homebrew Python path on macOS', () => {
@@ -245,7 +252,7 @@ describe('python-detector', () => {
 
         const result = validatePythonPath('/opt/homebrew/bin/python3');
         expect(result.valid).toBe(true);
-        expect(result.sanitizedPath).toBe('/opt/homebrew/bin/python3');
+        expect(normalizePathForTest(result.sanitizedPath)).toBe('/opt/homebrew/bin/python3');
       });
 
       it('accepts virtual environment paths on Unix', () => {

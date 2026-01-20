@@ -7,6 +7,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { existsSync } from 'fs';
 
+// Normalize path for cross-platform comparison
+// Windows uses backslashes, tests expect forward slashes
+function normalizePathForTest(p: string | null | undefined): string | null {
+  if (!p) return null;
+  return p.replace(/\\/g, '/');
+}
+
 // Mock existsSync
 vi.mock('fs', () => ({
   existsSync: vi.fn()
@@ -66,7 +73,7 @@ describe('homebrew-python', () => {
 
       const result = findHomebrewPython(mockValidate, '[Test]');
 
-      expect(result).toBe('/opt/homebrew/bin/python3.14');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.14');
       expect(mockValidate).toHaveBeenCalledWith('/opt/homebrew/bin/python3.14');
     });
 
@@ -83,7 +90,7 @@ describe('homebrew-python', () => {
 
       const result = findHomebrewPython(mockValidate, '[Test]');
 
-      expect(result).toBe('/usr/local/bin/python3.13');
+      expect(normalizePathForTest(result)).toBe('/usr/local/bin/python3.13');
     });
 
     it('prioritizes Apple Silicon over Intel directory', () => {
@@ -102,7 +109,7 @@ describe('homebrew-python', () => {
       const result = findHomebrewPython(mockValidate, '[Test]');
 
       // Should return Apple Silicon path first
-      expect(result).toBe('/opt/homebrew/bin/python3.12');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.12');
     });
 
     it('prioritizes newer Python versions', () => {
@@ -126,7 +133,7 @@ describe('homebrew-python', () => {
       const result = findHomebrewPython(mockValidate, '[Test]');
 
       // Should find python3.14 first (newest)
-      expect(result).toBe('/opt/homebrew/bin/python3.14');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.14');
     });
 
     it('falls back to generic python3 when versioned not found', () => {
@@ -142,7 +149,7 @@ describe('homebrew-python', () => {
 
       const result = findHomebrewPython(mockValidate, '[Test]');
 
-      expect(result).toBe('/opt/homebrew/bin/python3');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3');
     });
 
     it('skips invalid Python versions', () => {
@@ -164,7 +171,7 @@ describe('homebrew-python', () => {
 
       const result = findHomebrewPython(mockValidate, '[Test]');
 
-      expect(result).toBe('/opt/homebrew/bin/python3.13');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.13');
       expect(mockValidate).toHaveBeenCalledTimes(2);
     });
 
@@ -201,7 +208,7 @@ describe('homebrew-python', () => {
 
       const result = findHomebrewPython(mockValidate, '[Test]');
 
-      expect(result).toBe('/opt/homebrew/bin/python3.13');
+      expect(normalizePathForTest(result)).toBe('/opt/homebrew/bin/python3.13');
       expect(mockValidate).toHaveBeenCalledTimes(2);
     });
 
@@ -220,7 +227,7 @@ describe('homebrew-python', () => {
       const result = findHomebrewPython(mockValidate, '[Test]');
 
       // Should still find it, just later in the search
-      expect(result).toBe('/usr/local/bin/python3.14');
+      expect(normalizePathForTest(result)).toBe('/usr/local/bin/python3.14');
     });
 
     describe('version priority order', () => {

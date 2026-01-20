@@ -276,12 +276,20 @@ describe('Subprocess Spawn Integration', () => {
       const logHandler = vi.fn();
       manager.on('log', logHandler);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+
+      // Wait for spawn to complete (ensures listeners are attached)
+      await new Promise(resolve => setImmediate(resolve));
 
       // Simulate stdout data (must include newline for buffered output processing)
       mockStdout.emit('data', Buffer.from('Test log output\n'));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Test log output\n');
+
+      // Clean up - emit exit to complete the promise
+      mockProcess.emit('exit', 0);
+      await promise;
     }, 15000);  // Increase timeout for Windows CI
 
     it('should emit log events from stderr', async () => {
@@ -292,12 +300,20 @@ describe('Subprocess Spawn Integration', () => {
       const logHandler = vi.fn();
       manager.on('log', logHandler);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+
+      // Wait for spawn to complete (ensures listeners are attached)
+      await new Promise(resolve => setImmediate(resolve));
 
       // Simulate stderr data (must include newline for buffered output processing)
       mockStderr.emit('data', Buffer.from('Progress: 50%\n'));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Progress: 50%\n');
+
+      // Clean up - emit exit to complete the promise
+      mockProcess.emit('exit', 0);
+      await promise;
     }, 15000);  // Increase timeout for Windows CI
 
     it('should emit exit event when process exits', async () => {
@@ -308,10 +324,13 @@ describe('Subprocess Spawn Integration', () => {
       const exitHandler = vi.fn();
       manager.on('exit', exitHandler);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Simulate process exit
+      // Wait for spawn to complete (ensures listeners are attached), then emit exit
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('exit', 0);
+      await promise;
 
       // Exit event includes taskId, exit code, and process type
       expect(exitHandler).toHaveBeenCalledWith('task-1', 0, expect.any(String));
@@ -325,10 +344,13 @@ describe('Subprocess Spawn Integration', () => {
       const errorHandler = vi.fn();
       manager.on('error', errorHandler);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Simulate process error
+      // Wait for spawn to complete (ensures listeners are attached), then emit error
+      await new Promise(resolve => setImmediate(resolve));
       mockProcess.emit('error', new Error('Spawn failed'));
+      await promise;
 
       expect(errorHandler).toHaveBeenCalledWith('task-1', 'Spawn failed');
     }, 15000);  // Increase timeout for Windows CI
@@ -338,8 +360,11 @@ describe('Subprocess Spawn Integration', () => {
 
       const manager = new AgentManager();
       manager.configure(undefined, AUTO_CLAUDE_SOURCE);
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
+      // Wait for spawn to complete and verify task is tracked
+      await new Promise(resolve => setImmediate(resolve));
       expect(manager.isRunning('task-1')).toBe(true);
 
       const result = manager.killTask('task-1');
@@ -351,6 +376,9 @@ describe('Subprocess Spawn Integration', () => {
       } else {
         expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
       }
+
+      // Wait for kill to complete
+      await promise;
       expect(manager.isRunning('task-1')).toBe(false);
     }, 15000);  // Increase timeout for Windows CI
 
@@ -397,7 +425,13 @@ describe('Subprocess Spawn Integration', () => {
       const manager = new AgentManager();
       manager.configure('/custom/python3', AUTO_CLAUDE_SOURCE);
 
-      await manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+      // Start the async operation
+      const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
+
+      // Wait for spawn to complete
+      await new Promise(resolve => setImmediate(resolve));
+      mockProcess.emit('exit', 0);
+      await promise;
 
       expect(spawn).toHaveBeenCalledWith(
         '/custom/python3',
