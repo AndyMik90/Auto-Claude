@@ -442,6 +442,317 @@ def load_claude_md(project_dir: Path) -> str | None:
     return None
 
 
+# =============================================================================
+# Claude Code Rules Support (.claude/rules/)
+# =============================================================================
+# Supports Claude Code's path-based rules convention where rules in .claude/rules/
+# are automatically loaded based on which files are being modified.
+#
+# Rule files use YAML frontmatter with 'paths' array containing glob patterns:
+#
+#   ---
+#   paths:
+#     - src/app/api/**/*.ts
+#     - src/components/**/*.tsx
+#   ---
+#
+#   # Rule Content Here
+#   ...
+
+
+def should_use_claude_rules() -> bool:
+    """
+    Check if .claude/rules/ should be loaded based on file paths.
+
+    When USE_CLAUDE_MD is enabled, rules are also enabled by default.
+    Can be explicitly disabled with USE_CLAUDE_RULES=false.
+    """
+    explicit_setting = os.environ.get("USE_CLAUDE_RULES", "").lower()
+    if explicit_setting == "false":
+        return False
+    if explicit_setting == "true":
+        return True
+    # Default: enabled if USE_CLAUDE_MD is enabled
+    return should_use_claude_md()
+
+
+def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
+    """
+    Parse YAML frontmatter from a rule file to extract path patterns and required skills.
+
+    Args:
+        content: Full content of the rule file
+
+    Returns:
+        Tuple of (path_patterns, required_skills, rule_content_without_frontmatter)
+    """
+    if not content.startswith("---"):
+        return [], [], content
+
+    # Find the closing ---
+    lines = content.split("\n")
+    end_idx = -1
+    for i, line in enumerate(lines[1:], 1):
+        if line.strip() == "---":
+            end_idx = i
+            break
+
+    if end_idx == -1:
+        return [], [], content
+
+    # Parse the frontmatter
+    frontmatter_lines = lines[1:end_idx]
+    paths = []
+    skills = []
+
+    in_paths = False
+    in_skills = False
+    for line in frontmatter_lines:
+        stripped = line.strip()
+
+        # Parse paths: array
+        if stripped.startswith("paths:"):
+            in_paths = True
+            in_skills = False
+            # Check for inline array: paths: [a, b, c]
+            if "[" in stripped:
+                import re
+                match = re.search(r'\[(.*)\]', stripped)
+                if match:
+                    paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
+                in_paths = False
+        # Parse require_skills: array
+        elif stripped.startswith("require_skills:"):
+            in_skills = True
+            in_paths = False
+            # Check for inline array: require_skills: [/skill1, /skill2]
+            if "[" in stripped:
+                import re
+                match = re.search(r'\[(.*)\]', stripped)
+                if match:
+                    skills = [s.strip().strip("'\"") for s in match.group(1).split(",")]
+                in_skills = False
+        elif in_paths:
+            if stripped.startswith("- "):
+                paths.append(stripped[2:].strip().strip("'\""))
+            elif stripped and not stripped.startswith("#"):
+                # End of paths array
+                in_paths = False
+        elif in_skills:
+            if stripped.startswith("- "):
+                skills.append(stripped[2:].strip().strip("'\""))
+            elif stripped and not stripped.startswith("#"):
+                # End of skills array
+                in_skills = False
+
+    # Return content without frontmatter
+    rule_content = "\n".join(lines[end_idx + 1:]).strip()
+    return paths, skills, rule_content
+
+
+def _match_glob_pattern(pattern: str, filepath: str) -> bool:
+    """
+    Match a glob pattern against a file path.
+
+    Supports:
+    - ** for any directory depth
+    - * for any characters within a path segment
+    - Direct path matching
+
+    Args:
+        pattern: Glob pattern (e.g., "src/app/api/**/*.ts")
+        filepath: File path to check (e.g., "src/app/api/films/route.ts")
+
+    Returns:
+        True if the pattern matches the filepath
+    """
+    import fnmatch
+
+    # Normalize paths
+    pattern = pattern.replace("\\", "/").strip("/")
+    filepath = filepath.replace("\\", "/").strip("/")
+
+    # Handle ** patterns by converting to regex-compatible fnmatch
+    if "**" in pattern:
+        # Split pattern into parts
+        parts = pattern.split("**")
+        if len(parts) == 2:
+            prefix, suffix = parts
+            prefix = prefix.rstrip("/")
+            suffix = suffix.lstrip("/")
+
+            # Check if filepath starts with prefix
+            if prefix and not filepath.startswith(prefix):
+                return False
+
+            # Check if filepath ends with suffix pattern
+            if suffix:
+                # Get the part after the prefix
+                if prefix:
+                    remaining = filepath[len(prefix):].lstrip("/")
+                else:
+                    remaining = filepath
+
+                # The suffix might contain wildcards
+                if "*" in suffix:
+                    # Match the suffix pattern against the end of remaining
+                    # Try matching against each possible suffix of remaining
+                    remaining_parts = remaining.split("/")
+                    suffix_parts = suffix.split("/")
+
+                    for i in range(len(remaining_parts) - len(suffix_parts) + 1):
+                        candidate = "/".join(remaining_parts[i:])
+                        if fnmatch.fnmatch(candidate, suffix):
+                            return True
+                    return False
+                else:
+                    return remaining.endswith(suffix) or fnmatch.fnmatch(remaining, f"*/{suffix}")
+            return True
+
+    # Simple glob matching
+    return fnmatch.fnmatch(filepath, pattern)
+
+
+def _discover_rules_directory(project_dir: Path) -> Path | None:
+    """
+    Find the .claude/rules/ directory if it exists.
+
+    Args:
+        project_dir: Root directory of the project
+
+    Returns:
+        Path to rules directory if found, None otherwise
+    """
+    rules_dir = project_dir / ".claude" / "rules"
+    if rules_dir.exists() and rules_dir.is_dir():
+        return rules_dir
+    return None
+
+
+def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[str], str]]:
+    """
+    Recursively collect all rule files from the rules directory.
+
+    Args:
+        rules_dir: Path to .claude/rules/
+
+    Returns:
+        List of tuples: (rule_path, path_patterns, required_skills, rule_content)
+    """
+    rules = []
+
+    for rule_path in rules_dir.rglob("*.md"):
+        try:
+            content = rule_path.read_text(encoding="utf-8")
+            paths, skills, rule_content = _parse_rule_frontmatter(content)
+            if paths and rule_content:
+                rules.append((rule_path, paths, skills, rule_content))
+        except Exception as e:
+            logger.debug(f"Failed to read rule file {rule_path}: {e}")
+
+    return rules
+
+
+def load_claude_rules(
+    project_dir: Path,
+    files_to_check: list[str] | None = None,
+) -> tuple[str, list[str], list[str]]:
+    """
+    Load Claude Code rules from .claude/rules/ that match the given files.
+
+    Rules are markdown files with YAML frontmatter containing path patterns
+    and optional required skills.
+
+    Only rules whose patterns match at least one file in files_to_check are loaded.
+
+    Args:
+        project_dir: Root directory of the project
+        files_to_check: List of file paths being modified/created.
+                       If None, loads ALL rules (useful for planning phases).
+
+    Returns:
+        Tuple of (combined_rules_content, list_of_matched_rule_names, list_of_required_skills)
+    """
+    rules_dir = _discover_rules_directory(project_dir)
+    if not rules_dir:
+        return "", [], []
+
+    all_rules = _collect_all_rules(rules_dir)
+    if not all_rules:
+        return "", [], []
+
+    matched_rules = []
+    matched_names = []
+    all_required_skills: set[str] = set()
+
+    for rule_path, patterns, skills, content in all_rules:
+        # Get relative name for display
+        rel_name = str(rule_path.relative_to(rules_dir))
+
+        # If no files specified, load all rules
+        if files_to_check is None:
+            matched_rules.append((rel_name, content))
+            matched_names.append(rel_name)
+            all_required_skills.update(skills)
+            continue
+
+        # Check if any pattern matches any file
+        for pattern in patterns:
+            for filepath in files_to_check:
+                if _match_glob_pattern(pattern, filepath):
+                    matched_rules.append((rel_name, content))
+                    matched_names.append(rel_name)
+                    all_required_skills.update(skills)
+                    break
+            else:
+                continue
+            break
+
+    if not matched_rules:
+        return "", [], []
+
+    # Combine matched rules into a single string
+    combined = []
+    for name, content in matched_rules:
+        combined.append(f"## Rule: {name}\n\n{content}")
+
+    return "\n\n---\n\n".join(combined), matched_names, sorted(all_required_skills)
+
+
+def _get_files_from_implementation_plan(spec_dir: Path) -> list[str]:
+    """
+    Extract all files_to_modify and files_to_create from implementation_plan.json.
+
+    Args:
+        spec_dir: Directory containing the spec
+
+    Returns:
+        List of all file paths mentioned in the plan
+    """
+    plan_path = spec_dir / "implementation_plan.json"
+    if not plan_path.exists():
+        return []
+
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        files = set()
+
+        # Collect from all phases and subtasks
+        for phase in plan.get("phases", []):
+            for subtask in phase.get("subtasks", []):
+                files.update(subtask.get("files_to_modify", []))
+                files.update(subtask.get("files_to_create", []))
+
+        # Also check top-level if present
+        files.update(plan.get("files_to_modify", []))
+        files.update(plan.get("files_to_create", []))
+
+        return list(files)
+    except Exception as e:
+        logger.debug(f"Failed to read implementation plan: {e}")
+        return []
+
+
 def create_client(
     project_dir: Path,
     spec_dir: Path,
@@ -793,6 +1104,48 @@ def create_client(
             print("   - CLAUDE.md: not found in project root")
     else:
         print("   - CLAUDE.md: disabled by project settings")
+
+    # Include .claude/rules/ if enabled
+    # Rules are matched based on files being modified in the implementation plan
+    required_skills: list[str] = []
+    if should_use_claude_rules():
+        files_in_plan = _get_files_from_implementation_plan(spec_dir)
+        if files_in_plan:
+            rules_content, matched_rules, required_skills = load_claude_rules(project_dir, files_in_plan)
+            if rules_content:
+                base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
+                print(f"   - .claude/rules/: {len(matched_rules)} rules matched")
+                for rule_name in matched_rules[:5]:  # Show first 5
+                    print(f"     • {rule_name}")
+                if len(matched_rules) > 5:
+                    print(f"     • ... and {len(matched_rules) - 5} more")
+            else:
+                print("   - .claude/rules/: no matching rules for files in plan")
+        else:
+            # No implementation plan yet (planning phase) - load all rules
+            rules_content, matched_rules, required_skills = load_claude_rules(project_dir, None)
+            if rules_content:
+                base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
+                print(f"   - .claude/rules/: {len(matched_rules)} rules loaded (all)")
+            else:
+                print("   - .claude/rules/: no rules found")
+
+        # Add required skills instruction if any rules specify them
+        if required_skills:
+            skills_formatted = ", ".join(f"`{s}`" for s in required_skills)
+            skill_instruction = (
+                f"\n\n# Required Skills\n\n"
+                f"The following skills MUST be invoked before completing this task:\n"
+                f"{skills_formatted}\n\n"
+                f"Use the Skill tool to invoke each required skill. For example:\n"
+                f"- `/security-audit` - Run security audit on modified files\n"
+                f"- `/review` - Review code changes for quality and patterns\n\n"
+                f"Do NOT mark the task as complete until all required skills have been run."
+            )
+            base_prompt = f"{base_prompt}{skill_instruction}"
+            print(f"   - Required skills: {', '.join(required_skills)}")
+    else:
+        print("   - .claude/rules/: disabled")
     print()
 
     # Build options dict, conditionally including output_format

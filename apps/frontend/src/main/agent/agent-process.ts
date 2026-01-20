@@ -418,6 +418,15 @@ export class AgentProcessManager {
       if (project.settings.useClaudeMd !== false) {
         env['USE_CLAUDE_MD'] = 'true';
       }
+
+      // .claude/rules/ integration (follows useClaudeMd by default)
+      // Can be explicitly enabled/disabled via useClaudeRules setting
+      if (project.settings.useClaudeRules === true) {
+        env['USE_CLAUDE_RULES'] = 'true';
+      } else if (project.settings.useClaudeRules === false) {
+        env['USE_CLAUDE_RULES'] = 'false';
+      }
+      // If undefined, the backend will default to following USE_CLAUDE_MD
     }
 
     return env;

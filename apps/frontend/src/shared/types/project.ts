@@ -28,6 +28,8 @@ export interface ProjectSettings {
   useClaudeMd?: boolean;
   /** Maximum parallel tasks allowed (default: 3) */
   maxParallelTasks?: number;
+  /** Include .claude/rules/ path-based rules in agent system prompt (default: follows useClaudeMd) */
+  useClaudeRules?: boolean;
 }
 
 export interface NotificationSettings {
