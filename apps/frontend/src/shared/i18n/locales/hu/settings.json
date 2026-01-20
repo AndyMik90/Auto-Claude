@@ -291,7 +291,7 @@
         "betaUpdates": "Béta frissítések",
         "betaUpdatesDescription": "Előzetes béta verziók fogadása új funkciókkal (lehet, hogy kevésbé stabil)",
         "stableDowngradeAvailable": "Stabil verzió elérhető",
-        "stableDowngradeDescription": "Jelenleg béta verzión vagy. Mivel letiltottad a béta frissítéseket, váltháts a legújabb stabil kiadásra.",
+        "stableDowngradeDescription": "Jelenleg béta verzión vagy. Mivel letiltottad a béta frissítéseket, válthatsz a legújabb stabil kiadásra.",
         "stableVersion": "Stabil verzió",
         "downloadStableVersion": "Stabil verzió letöltése"
     },
