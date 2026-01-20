@@ -1,0 +1,48 @@
+name: 'Setup Node.js Frontend'
+description: 'Set up Node.js with npm and cached dependencies for the frontend'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '24'
+  ignore-scripts:
+    description: 'Whether to use --ignore-scripts flag during npm ci'
+    required: false
+    default: 'false'
+
+outputs:
+  cache-hit:
+    description: 'Whether npm cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Get npm cache directory
+      id: npm-cache-dir
+      shell: bash
+      run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache npm dependencies
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.npm-cache-dir.outputs.dir }}
+        key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json', 'apps/frontend/package-lock.json') }}
+        restore-keys: ${{ runner.os }}-npm-
+
+    - name: Install dependencies
+      working-directory: apps/frontend
+      shell: bash
+      run: |
+        if [ "${{ inputs.ignore-scripts }}" == "true" ]; then
+          npm ci --ignore-scripts
+        else
+          npm ci
+        fi

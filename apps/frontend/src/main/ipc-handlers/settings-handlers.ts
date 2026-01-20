@@ -504,8 +504,6 @@ export function registerSettingsHandlers(
               opened = true;
               break;
             } catch {
-              // Try next terminal
-              continue;
             }
           }
 
