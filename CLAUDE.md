@@ -56,9 +56,10 @@ cd apps/backend && uv venv && uv pip install -r requirements.txt
 # Frontend (from apps/frontend/)
 cd apps/frontend && npm install
 
-# Set up OAuth token
-claude setup-token
-# Add to apps/backend/.env: CLAUDE_CODE_OAUTH_TOKEN=your-token
+# Authenticate (token auto-saved to Keychain)
+claude
+# Then type: /login
+# Press Enter to open browser and complete OAuth
 ```
 
 ### Creating and Running Specs

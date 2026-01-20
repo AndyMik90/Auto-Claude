@@ -407,5 +407,47 @@
     "loadingMore": "Chargement...",
     "scrollForMore": "Défiler pour plus",
     "allLoaded": "Toutes les issues chargées"
+  },
+  "oauth": {
+    "enterCode": "Saisie manuelle du code (secours)",
+    "enterCodeDescription": "Ce dialogue n'est nécessaire que si le navigateur n'a pas redirigé automatiquement. Si l'authentification est déjà terminée dans votre navigateur, vous pouvez fermer ce dialogue.",
+    "fallbackNote": "N'utilisez ceci que si vous voyez une page « Collez ceci dans Claude Code » dans votre navigateur.",
+    "step1": "Complétez l'autorisation dans votre navigateur",
+    "step2": "Si vous voyez une page de code, copiez le code affiché",
+    "step3": "Collez le code ci-dessous et cliquez sur Soumettre",
+    "codeLabel": "Code d'autorisation",
+    "codePlaceholder": "Collez votre code ici (seulement si nécessaire)...",
+    "codeHint": "Le code est une longue chaîne affichée uniquement si la redirection automatique a échoué",
+    "submit": "Soumettre",
+    "submitting": "Soumission...",
+    "codeSubmitted": "Code soumis",
+    "codeSubmittedDescription": "L'authentification devrait se terminer bientôt. Vérifiez le terminal pour confirmation.",
+    "codeSubmitFailed": "Échec de la soumission du code",
+    "codeSubmitFailedDescription": "Veuillez réessayer ou copier le code manuellement dans le terminal."
+  },
+  "authTerminal": {
+    "failedToCreate": "Échec de la création du terminal",
+    "unknownError": "Erreur inconnue",
+    "instructionTitle": "Authentification Claude",
+    "step1": "Appuyez sur Entrée pour démarrer l'authentification",
+    "step2": "Complétez l'authentification dans votre navigateur",
+    "step3": "Revenez ici - l'authentification sera détectée automatiquement",
+    "authFailed": "Échec de l'authentification",
+    "connecting": "Connexion...",
+    "authenticate": "Authentifier : {{profileName}}",
+    "completeSetup": "Terminer la configuration : {{profileName}}",
+    "authenticatedAs": "Authentifié en tant que {{email}}",
+    "authenticated": "Authentifié !",
+    "authError": "Erreur d'authentification",
+    "onboardingMessage": "Jeton reçu ! Terminez la configuration de Claude Code ci-dessous - cette fenêtre se fermera automatiquement une fois terminé.",
+    "successMessage": "Authentification réussie ! Fermeture..."
+  },
+  "profileCreated": {
+    "title": "Le profil « {{profileName}} » a été créé.",
+    "instructions": "Pour authentifier ce profil :",
+    "step1": "Allez dans Paramètres > Intégrations",
+    "step2": "Trouvez le profil dans la section Comptes Claude",
+    "step3": "Cliquez sur « Authentifier » pour terminer la connexion",
+    "footer": "Le compte sera disponible une fois l'authentification terminée."
   }
 }

@@ -197,15 +197,6 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
               key="indeterminate-static"
               className={cn('absolute h-full w-1/3 rounded-full left-1/3', colors.color)}
             />
-          ) : totalSubtasks > 0 ? (
-            // Static progress based on subtasks (when not running)
-            <motion.div
-              key="static"
-              className={cn('h-full rounded-full', colors.color)}
-              initial={{ width: 0 }}
-              animate={{ width: `${subtaskProgress}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            />
           ) : null}
         </AnimatePresence>
       </div>

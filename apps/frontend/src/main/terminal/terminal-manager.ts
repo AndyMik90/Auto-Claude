@@ -10,7 +10,8 @@ import type { TerminalSession } from '../terminal-session-store';
 import type {
   TerminalProcess,
   WindowGetter,
-  TerminalOperationResult
+  TerminalOperationResult,
+  TerminalProfileChangeInfo
 } from './types';
 import * as PtyManager from './pty-manager';
 import * as SessionHandler from './session-handler';
@@ -348,6 +349,13 @@ export class TerminalManager {
   }
 
   /**
+   * Get a terminal by ID (for debugging/inspection)
+   */
+  getTerminal(id: string): TerminalProcess | undefined {
+    return this.terminals.get(id);
+  }
+
+  /**
    * Check if a terminal is in Claude mode
    */
   isClaudeMode(id: string): boolean {
@@ -361,6 +369,27 @@ export class TerminalManager {
   getClaudeSessionId(id: string): string | undefined {
     const terminal = this.terminals.get(id);
     return terminal?.claudeSessionId;
+  }
+
+  /**
+   * Get info about all terminals for profile change operations.
+   * Returns info needed to migrate sessions and notify frontend.
+   */
+  getTerminalsForProfileChange(): TerminalProfileChangeInfo[] {
+    const result: TerminalProfileChangeInfo[] = [];
+
+    for (const [id, terminal] of this.terminals) {
+      result.push({
+        id,
+        cwd: terminal.cwd,
+        projectPath: terminal.projectPath,
+        claudeSessionId: terminal.claudeSessionId,
+        claudeProfileId: terminal.claudeProfileId,
+        isClaudeMode: terminal.isClaudeMode
+      });
+    }
+
+    return result;
   }
 
   /**
