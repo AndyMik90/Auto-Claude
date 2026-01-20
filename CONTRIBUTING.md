@@ -16,6 +16,7 @@ Thank you for your interest in contributing to Auto Claude! This document provid
 - [Testing](#testing)
 - [Continuous Integration](#continuous-integration)
 - [Git Workflow](#git-workflow)
+  - [Working with Forks](#working-with-forks)
   - [Branch Overview](#branch-overview)
   - [Main Branches](#main-branches)
   - [Supporting Branches](#supporting-branches)
@@ -516,6 +517,72 @@ npm run typecheck
 ## Git Workflow
 
 We use a **Git Flow** branching strategy to manage releases and parallel development.
+
+### Working with Forks
+
+When contributing to Auto Claude, you'll typically fork the repository first. Proper fork configuration is essential to avoid sync issues.
+
+#### Initial Fork Setup
+
+```bash
+# 1. Fork on GitHub (click the Fork button on the repo page)
+
+# 2. Clone YOUR fork (not the original repo)
+git clone https://github.com/YOUR-USERNAME/Auto-Claude.git
+cd Auto-Claude
+
+# 3. Verify your remotes point to YOUR fork
+git remote -v
+# Should show:
+# origin  https://github.com/YOUR-USERNAME/Auto-Claude.git (fetch)
+# origin  https://github.com/YOUR-USERNAME/Auto-Claude.git (push)
+
+# 4. Add upstream remote to sync with the original repo
+git remote add upstream https://github.com/AndyMik90/Auto-Claude.git
+```
+
+#### Keeping Your Fork Updated
+
+```bash
+# Fetch latest changes from upstream
+git fetch upstream
+
+# Sync your develop branch with upstream
+git checkout develop
+git merge upstream/develop
+git push origin develop
+```
+
+#### Converting a Fork to Standalone
+
+> ⚠️ **Common Issue:** After making a fork standalone (e.g., disconnecting from the original repo on GitHub), your local git configuration may still reference the original forked repository, causing push/pull issues.
+
+If you convert your fork to a standalone repository:
+
+```bash
+# 1. Update origin to point to your standalone repo
+git remote set-url origin https://github.com/YOUR-USERNAME/Your-Standalone-Repo.git
+
+# 2. Remove the upstream remote (no longer applicable)
+git remote remove upstream
+
+# 3. Verify your configuration
+git remote -v
+# Should only show your standalone repo as origin
+
+# 4. Update your default branch tracking if needed
+git branch --set-upstream-to=origin/main main
+git branch --set-upstream-to=origin/develop develop
+```
+
+#### Troubleshooting Fork Issues
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| `Permission denied` on push | Origin points to upstream repo | `git remote set-url origin <your-fork-url>` |
+| `Repository not found` | Fork was deleted or made standalone | Update remote URL to current repo location |
+| Can't push to develop | Local branch tracks wrong remote | `git branch --set-upstream-to=origin/develop` |
+| Commits show wrong author | Git config not set | `git config user.email "you@example.com"` |
 
 ### Branch Overview
 

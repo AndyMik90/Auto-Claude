@@ -121,6 +121,8 @@ export const IPC_CHANNELS = {
 
   // SDK/CLI rate limit event (for non-terminal Claude invocations)
   CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
+  // Auth failure event (401 errors requiring re-authentication)
+  CLAUDE_AUTH_FAILURE: 'claude:authFailure',
   // Retry a rate-limited operation with a different profile
   CLAUDE_RETRY_WITH_PROFILE: 'claude:retryWithProfile',
 

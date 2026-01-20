@@ -48,6 +48,7 @@ import { AgentTools } from './components/AgentTools';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
+import { AuthFailureModal } from './components/AuthFailureModal';
 import { OnboardingWizard } from './components/onboarding';
 import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
@@ -1074,6 +1075,9 @@ export function App() {
 
         {/* SDK Rate Limit Modal - shows when SDK/CLI operations hit limits (changelog, tasks, etc.) */}
         <SDKRateLimitModal />
+
+        {/* Auth Failure Modal - shows when Claude CLI encounters 401/auth errors */}
+        <AuthFailureModal onOpenSettings={() => setIsSettingsDialogOpen(true)} />
 
         {/* Onboarding Wizard - shows on first launch when onboardingCompleted is false */}
         <OnboardingWizard

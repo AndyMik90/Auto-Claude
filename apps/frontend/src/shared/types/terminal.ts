@@ -136,6 +136,28 @@ export interface SDKRateLimitInfo {
 }
 
 /**
+ * Authentication failure information for SDK/CLI operations.
+ * Emitted when Claude CLI encounters a 401 or other auth error,
+ * indicating the token needs to be refreshed via re-authentication.
+ */
+export interface AuthFailureInfo {
+  /** The profile ID that failed to authenticate */
+  profileId: string;
+  /** The profile name for display */
+  profileName?: string;
+  /** Type of auth failure */
+  failureType: 'missing' | 'invalid' | 'expired' | 'unknown';
+  /** User-friendly message describing the failure */
+  message: string;
+  /** Original error message from the process output */
+  originalError?: string;
+  /** Task ID if applicable (for task-related auth failures) */
+  taskId?: string;
+  /** When detected (Note: serialized as ISO string over IPC) */
+  detectedAt: Date;
+}
+
+/**
  * Request to retry a rate-limited operation with a different profile
  */
 export interface RetryWithProfileRequest {
