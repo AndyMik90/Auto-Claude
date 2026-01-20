@@ -37,18 +37,22 @@ def is_graphiti_memory_enabled() -> bool:
         return False
 
 
-def get_graphiti_memory(
+async def get_graphiti_memory(
     spec_dir: Path, project_dir: Path | None = None
 ) -> "GraphitiMemory | None":
     """
-    Get a GraphitiMemory instance if available.
+    Get an initialized GraphitiMemory instance if available.
 
     Args:
         spec_dir: Spec directory
         project_dir: Project root directory (defaults to spec_dir.parent.parent)
 
     Returns:
-        GraphitiMemory instance or None if not available
+        Initialized GraphitiMemory instance or None if not available
+
+    Note:
+        This function is async and calls initialize() on the memory instance
+        before returning, following the GitHub pattern for proper initialization.
     """
     if not is_graphiti_memory_enabled():
         return None
@@ -59,8 +63,16 @@ def get_graphiti_memory(
         if project_dir is None:
             project_dir = spec_dir.parent.parent
         # Use project-wide shared memory for cross-spec learning
-        return GraphitiMemory(spec_dir, project_dir, group_id_mode=GroupIdMode.PROJECT)
+        memory = GraphitiMemory(spec_dir, project_dir, group_id_mode=GroupIdMode.PROJECT)
+
+        # Initialize the memory instance (following GitHub pattern)
+        await memory.initialize()
+
+        return memory
     except ImportError:
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to initialize Graphiti memory: {e}")
         return None
 
 
@@ -105,7 +117,7 @@ async def save_to_graphiti_async(
     Returns:
         True if save succeeded, False otherwise
     """
-    graphiti = get_graphiti_memory(spec_dir, project_dir)
+    graphiti = await get_graphiti_memory(spec_dir, project_dir)
     if graphiti is None:
         return False
 
