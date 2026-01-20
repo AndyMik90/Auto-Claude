@@ -174,9 +174,13 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
         await addInstallation(p.trim(), 'system-path');
       }
     } else {
-      const whichPath = findExecutable('which') || 'which';
-      const result = await execFileAsync(whichPath, ['-a', 'claude'], { timeout: 5000 });
-      const paths = result.stdout.trim().split('\n').filter(p => p.trim());
+      // Use 'which' with -a flag to find all instances of claude
+      // On Unix, 'which' is always available in standard locations
+      const { stdout } = await execFileAsync('which', ['-a', 'claude'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+      });
+      const paths = stdout.trim().split(/\r?\n/).filter(p => p.trim());
       for (const p of paths) {
         await addInstallation(p.trim(), 'system-path');
       }

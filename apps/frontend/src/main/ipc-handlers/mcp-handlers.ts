@@ -467,7 +467,8 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
 
       // Try to parse JSON response
       try {
-        const lines = stdout.split('\n').filter(l => l.trim());
+        // Split on \n or \r\n for cross-platform compatibility (Windows uses \r\n)
+        const lines = stdout.split(/\r?\n/).filter(l => l.trim());
         for (const line of lines) {
           const response = JSON.parse(line);
           if (response.id === 1 && response.result) {
