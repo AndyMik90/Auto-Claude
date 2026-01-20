@@ -200,6 +200,20 @@ Common fixes:
 Write the fixed JSON to the file now.
 """
 
+        # Add language instruction if not English
+        if self.language and self.language != "en":
+            language_names = {
+                "ru": "Russian",
+                "fr": "French",
+                "de": "German",
+                "es": "Spanish",
+                "zh": "Chinese",
+                "ja": "Japanese",
+                "ko": "Korean",
+            }
+            lang_name = language_names.get(self.language, self.language)
+            recovery_prompt += f"\n**IMPORTANT - Output Language**: All text content (titles, descriptions, rationale) must be in {lang_name}. Keep only technical terms, file paths, and code in English.\n"
+
         client = create_client(
             self.project_dir,
             self.output_dir,
