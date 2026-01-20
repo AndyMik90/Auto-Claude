@@ -279,11 +279,16 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Wait for spawn to complete (ensures listeners are attached)
-      await new Promise(resolve => setImmediate(resolve));
+      // Wait for process to be spawned and tracked (use vi.waitFor for reliability)
+      await vi.waitFor(() => {
+        expect(manager.isRunning('task-1')).toBe(true);
+      }, { timeout: 5000 });
 
       // Simulate stdout data (must include newline for buffered output processing)
       mockStdout.emit('data', Buffer.from('Test log output\n'));
+
+      // Wait for event to propagate
+      await new Promise(resolve => setImmediate(resolve));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Test log output\n');
 
@@ -303,11 +308,16 @@ describe('Subprocess Spawn Integration', () => {
       // Start the async operation
       const promise = manager.startSpecCreation('task-1', TEST_PROJECT_PATH, 'Test');
 
-      // Wait for spawn to complete (ensures listeners are attached)
-      await new Promise(resolve => setImmediate(resolve));
+      // Wait for process to be spawned and tracked (use vi.waitFor for reliability)
+      await vi.waitFor(() => {
+        expect(manager.isRunning('task-1')).toBe(true);
+      }, { timeout: 5000 });
 
       // Simulate stderr data (must include newline for buffered output processing)
       mockStderr.emit('data', Buffer.from('Progress: 50%\n'));
+
+      // Wait for event to propagate
+      await new Promise(resolve => setImmediate(resolve));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Progress: 50%\n');
 
