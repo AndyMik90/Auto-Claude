@@ -131,7 +131,7 @@ class TestFindGhExecutable:
                         assert result == "/usr/bin/gh"
 
     @patch("core.gh_executable._verify_gh_executable", return_value=True)
-    @patch("core.gh_executable.os.path.isfile", return_value=False)
+    @patch("core.gh_executable.os.path.isfile")
     @patch("shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
     @patch("core.platform.is_windows", return_value=False)
@@ -261,8 +261,8 @@ class TestRunGh:
 
             assert result.returncode == -1
             assert "not found" in result.stderr
-            # Check for full installation URL to avoid CodeQL alert about URL substring sanitization
-            assert "https://cli.github.com/" in result.stderr or "cli.github.com" in result.stderr
+            # Check for installation URL domain in error message
+            assert "cli.github.com" in result.stderr
 
     def test_handles_timeout(self):
         """Should handle timeout gracefully."""

@@ -242,17 +242,27 @@ class TestGetGitExecutable:
         # Note: If git is found by shutil.which, it will return that path instead
         assert result and "git" in result
 
-    @patch("core.git_executable.os.path.isfile", return_value=False)
+    @patch("core.git_executable.os.path.isfile")
     @patch("core.git_executable.shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
     @patch("core.git_executable.is_windows", return_value=True)
     def test_windows_tries_where_command(self, mock_is_windows, mock_which, mock_isfile):
         """Should try 'where' command on Windows when other methods fail."""
+        # Mock isfile to return False for common paths, only True for where command result
+        # Use a path that's NOT in the hardcoded common paths list to force where command usage
+        where_result = "C:\\GitHub\\Homebrew\\git.exe"
+
+        def isfile_side_effect(path):
+            # Only return True for the exact path returned by where command
+            return path == where_result
+
+        mock_isfile.side_effect = isfile_side_effect
+
         with patch("core.git_executable.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(
                 args="where git",
                 returncode=0,
-                stdout="C:\\Program Files\\Git\\cmd\\git.exe",
+                stdout=where_result,
                 stderr=""
             )
 
@@ -265,6 +275,8 @@ class TestGetGitExecutable:
             call_kwargs = mock_run.call_args.kwargs
             assert call_kwargs.get("shell") is True
             assert "where git" in mock_run.call_args.args[0]
+            # Verify result contains Windows git path
+            assert result and "git.exe" in result
 
     @patch("core.git_executable.shutil.which", return_value=None)
     @patch.dict(os.environ, {}, clear=False)
