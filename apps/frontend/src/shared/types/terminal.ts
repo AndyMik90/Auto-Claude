@@ -16,6 +16,10 @@ export interface TerminalCreateOptions {
   cols?: number;
   rows?: number;
   projectPath?: string;
+  /** Skip injecting OAuth token into terminal environment (used for auth terminals) */
+  skipOAuthToken?: boolean;
+  /** Custom environment variables to add to the terminal (merged with defaults) */
+  env?: Record<string, string>;
 }
 
 export interface TerminalResizeOptions {

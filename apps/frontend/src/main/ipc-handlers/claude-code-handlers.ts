@@ -9,7 +9,8 @@
 
 import { ipcMain } from 'electron';
 import { exec, execFileSync, spawn, execFile } from 'child_process';
-import { existsSync, promises as fsPromises } from 'fs';
+import { existsSync, readFileSync, promises as fsPromises } from 'fs';
+import { mkdir, rename, unlink } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { promisify } from 'util';
@@ -19,6 +20,8 @@ import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationI
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
+import { getClaudeProfileManager } from '../claude-profile-manager';
+import { isValidConfigDir } from '../utils/config-path-validator';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -340,10 +343,16 @@ function getInstallCommand(isUpdate: boolean): string {
 }
 
 /**
- * Escape single quotes in a string for use in AppleScript
+ * Escape a string for use inside AppleScript double-quoted strings.
+ * In AppleScript:
+ * - Backslashes must be escaped: \ → \\
+ * - Double quotes must be escaped: " → \"
+ * - Single quotes do NOT need escaping inside double-quoted strings
  */
 export function escapeAppleScriptString(str: string): string {
-  return str.replace(/'/g, "'\\''");
+  return str
+    .replace(/\\/g, '\\\\')  // Escape backslashes first
+    .replace(/"/g, '\\"');   // Escape double quotes
 }
 
 /**
@@ -382,6 +391,18 @@ export function escapeGitBashCommand(str: string): string {
 }
 
 /**
+ * Escape a string for safe use in bash -c context (Linux terminals).
+ * Uses the same escaping rules as escapeGitBashCommand for consistency.
+ * Defense-in-depth: Currently all commands come from trusted sources (getInstallCommand,
+ * getInstallVersionCommand), but this prevents potential command injection if future
+ * code adds new call sites with less controlled input.
+ */
+export function escapeBashCommand(str: string): string {
+  // Reuse the same escaping logic as Git Bash
+  return escapeGitBashCommand(str);
+}
+
+/**
  * Open a terminal with the given command
  * Uses the user's preferred terminal from settings
  * Supports macOS, Windows, and Linux terminals
@@ -391,8 +412,8 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
   const settings = readSettingsFile();
   const preferredTerminal = settings?.preferredTerminal as string | undefined;
 
-  console.log('[Claude Code] Platform:', platform);
-  console.log('[Claude Code] Preferred terminal:', preferredTerminal);
+  console.warn('[Claude Code] Platform:', platform);
+  console.warn('[Claude Code] Preferred terminal:', preferredTerminal);
 
   if (platform === 'darwin') {
     // macOS: Use AppleScript to open terminal with command
@@ -403,18 +424,30 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // Values come from settings.preferredTerminal (SupportedTerminal type)
     const terminalId = preferredTerminal?.toLowerCase() || 'terminal';
 
-    console.log('[Claude Code] Using terminal:', terminalId);
+    console.warn('[Claude Code] Using terminal:', terminalId);
 
     if (terminalId === 'iterm2') {
-      // iTerm2
+      // iTerm2 - handle both running and not-running cases to prevent double windows
       script = `
-        tell application "iTerm"
-          activate
-          create window with default profile
-          tell current session of current window
-            write text "${escapedCommand}"
+        if application "iTerm" is running then
+          tell application "iTerm"
+            create window with default profile
+            tell current session of current window
+              write text "${escapedCommand}"
+            end tell
+            activate
           end tell
-        end tell
+        else
+          tell application "iTerm"
+            activate
+          end tell
+          delay 0.5
+          tell application "iTerm"
+            tell current session of current window
+              write text "${escapedCommand}"
+            end tell
+          end tell
+        end if
       `;
     } else if (terminalId === 'warp') {
       // Warp - open and send command
@@ -488,7 +521,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       `;
     }
 
-    console.log('[Claude Code] Running AppleScript...');
+    console.warn('[Claude Code] Running AppleScript...');
     execFileSync('osascript', ['-e', script], { stdio: 'pipe' });
 
   } else if (platform === 'win32') {
@@ -497,14 +530,14 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // 'gitbash', 'alacritty', 'wezterm', 'hyper', 'tabby', 'cygwin', 'msys2'
     const terminalId = preferredTerminal?.toLowerCase() || 'powershell';
 
-    console.log('[Claude Code] Using terminal:', terminalId);
-    console.log('[Claude Code] Command to run:', command);
+    console.warn('[Claude Code] Using terminal:', terminalId);
+    console.warn('[Claude Code] Command to run:', command);
 
     // For Windows, use exec with a properly formed command string
     // This is more reliable than spawn for complex PowerShell commands with pipes
     const runWindowsCommand = (cmdString: string): Promise<void> => {
       return new Promise((resolve) => {
-        console.log(`[Claude Code] Executing: ${cmdString}`);
+        console.warn(`[Claude Code] Executing: ${cmdString}`);
         // Fire and forget - don't wait for the terminal to close
         // The -NoExit flag keeps the terminal open, so we can't wait for exec to complete
         const child = exec(cmdString, { windowsHide: false });
@@ -592,7 +625,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           // Launch Hyper and it will pick up the shell; send command via PowerShell since Hyper
           // doesn't have a built-in way to run commands on startup
           await runWindowsCommand(`start "" "${hyperPath}"`);
-          console.log('[Claude Code] Hyper opened - command must be pasted manually');
+          console.warn('[Claude Code] Hyper opened - command must be pasted manually');
         } else {
           console.warn('[Claude Code] Hyper not found, falling back to PowerShell');
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
@@ -607,7 +640,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         if (tabbyPath) {
           // Tabby opens with default shell; similar to Hyper, no command line arg for running commands
           await runWindowsCommand(`start "" "${tabbyPath}"`);
-          console.log('[Claude Code] Tabby opened - command must be pasted manually');
+          console.warn('[Claude Code] Tabby opened - command must be pasted manually');
         } else {
           console.warn('[Claude Code] Tabby not found, falling back to PowerShell');
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
@@ -663,9 +696,13 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     // Values match SupportedTerminal type: 'gnometerminal', 'konsole', 'xfce4terminal', 'tilix', etc.
     const terminalId = preferredTerminal?.toLowerCase() || '';
 
-    console.log('[Claude Code] Using terminal:', terminalId || 'auto-detect');
+    console.warn('[Claude Code] Using terminal:', terminalId || 'auto-detect');
 
     // Command to run (keep terminal open after execution)
+    // Note: Currently all commands come from trusted sources (getInstallCommand, getInstallVersionCommand),
+    // which return multi-statement commands with semicolons as separators.
+    // We do NOT escape these commands to preserve the semicolon command separators.
+    // If future code needs to pass user input here, that input must be pre-sanitized.
     const bashCommand = `${command}; exec bash`;
 
     // Try to use preferred terminal if specified
@@ -742,7 +779,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       try {
         spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
         opened = true;
-        console.log('[Claude Code] Opened terminal:', cmd);
+        console.warn('[Claude Code] Opened terminal:', cmd);
         break;
       } catch {
       }
@@ -755,6 +792,107 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 }
 
 /**
+ * Result of authentication check
+ */
+interface AuthCheckResult {
+  authenticated: boolean;
+  email?: string;
+  /** The full oauthAccount data from .claude.json (if available) */
+  oauthAccount?: {
+    emailAddress?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Check if a profile's config directory has authentication.
+ * Checks multiple locations based on platform:
+ * - macOS: .claude.json with oauthAccount containing emailAddress
+ * - Linux: .credentials.json OR .claude.json (Claude uses different storage on Linux)
+ * - Windows: .claude.json with oauthAccount containing emailAddress
+ *
+ * Also returns the full oauthAccount data so we can update the profile token.
+ */
+function checkProfileAuthentication(configDir: string): AuthCheckResult {
+  // Validate path to prevent reading arbitrary files
+  if (!isValidConfigDir(configDir)) {
+    console.error('[Claude Code] Security: Rejected authentication check for invalid configDir:', configDir);
+    return { authenticated: false };
+  }
+
+  // Expand ~ to home directory
+  const expandedConfigDir = configDir.startsWith('~')
+    ? path.join(os.homedir(), configDir.slice(1))
+    : configDir;
+
+  const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
+  const credentialsJsonPath = path.join(expandedConfigDir, '.credentials.json');
+
+  try {
+    // First check .claude.json (primary on macOS/Windows, also used on some Linux setups)
+    if (existsSync(claudeJsonPath)) {
+      const content = readFileSync(claudeJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check for oauthAccount with emailAddress
+      if (data.oauthAccount && data.oauthAccount.emailAddress) {
+        return {
+          authenticated: true,
+          email: data.oauthAccount.emailAddress,
+          oauthAccount: data.oauthAccount
+        };
+      }
+    }
+
+    // On Linux, also check .credentials.json (Claude CLI may store tokens here)
+    if (process.platform === 'linux' && existsSync(credentialsJsonPath)) {
+      const content = readFileSync(credentialsJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // .credentials.json may have different structure
+      // Check for claudeAiOauth or oauthAccount
+      if (data.claudeAiOauth) {
+        // Extract email from claudeAiOauth if available
+        const email = data.claudeAiOauth.email || data.claudeAiOauth.emailAddress;
+        return {
+          authenticated: true,
+          email: email,
+          oauthAccount: data.claudeAiOauth
+        };
+      }
+
+      if (data.oauthAccount && data.oauthAccount.emailAddress) {
+        return {
+          authenticated: true,
+          email: data.oauthAccount.emailAddress,
+          oauthAccount: data.oauthAccount
+        };
+      }
+
+      // If .credentials.json exists with any oauth-related content, consider it authenticated
+      if (data.accessToken || data.refreshToken || data.token) {
+        return {
+          authenticated: true,
+          email: undefined, // Email might not be available in this format
+          oauthAccount: {
+            accessToken: data.accessToken || data.token,
+            refreshToken: data.refreshToken
+          }
+        };
+      }
+    }
+
+    return { authenticated: false };
+  } catch (error) {
+    console.error('[Claude Code] Error checking authentication:', error);
+    return { authenticated: false };
+  }
+}
+
+/**
  * Register Claude Code IPC handlers
  */
 export function registerClaudeCodeHandlers(): void {
@@ -763,27 +901,27 @@ export function registerClaudeCodeHandlers(): void {
     IPC_CHANNELS.CLAUDE_CODE_CHECK_VERSION,
     async (): Promise<IPCResult<ClaudeCodeVersionInfo>> => {
       try {
-        console.log('[Claude Code] Checking version...');
+        console.warn('[Claude Code] Checking version...');
 
         // Get installed version via cli-tool-manager
         let detectionResult;
         try {
           detectionResult = getToolInfo('claude');
-          console.log('[Claude Code] Detection result:', JSON.stringify(detectionResult, null, 2));
+          console.warn('[Claude Code] Detection result:', JSON.stringify(detectionResult, null, 2));
         } catch (detectionError) {
           console.error('[Claude Code] Detection error:', detectionError);
           throw new Error(`Detection failed: ${detectionError instanceof Error ? detectionError.message : 'Unknown error'}`);
         }
 
         const installed = detectionResult.found ? detectionResult.version || null : null;
-        console.log('[Claude Code] Installed version:', installed);
+        console.warn('[Claude Code] Installed version:', installed);
 
         // Fetch latest version from npm
         let latest: string;
         try {
-          console.log('[Claude Code] Fetching latest version from npm...');
+          console.warn('[Claude Code] Fetching latest version from npm...');
           latest = await fetchLatestVersion();
-          console.log('[Claude Code] Latest version:', latest);
+          console.warn('[Claude Code] Latest version:', latest);
         } catch (error) {
           console.warn('[Claude Code] Failed to fetch latest version, continuing with unknown:', error);
           // If we can't fetch latest, still return installed info
@@ -813,7 +951,7 @@ export function registerClaudeCodeHandlers(): void {
           }
         }
 
-        console.log('[Claude Code] Check complete:', { installed, latest, isOutdated });
+        console.warn('[Claude Code] Check complete:', { installed, latest, isOutdated });
         return {
           success: true,
           data: {
@@ -845,17 +983,17 @@ export function registerClaudeCodeHandlers(): void {
         try {
           const detectionResult = getToolInfo('claude');
           isUpdate = detectionResult.found && !!detectionResult.version;
-          console.log('[Claude Code] Is update:', isUpdate, 'detected version:', detectionResult.version);
+          console.warn('[Claude Code] Is update:', isUpdate, 'detected version:', detectionResult.version);
         } catch {
           // Detection failed, assume fresh install
           isUpdate = false;
         }
 
         const command = getInstallCommand(isUpdate);
-        console.log('[Claude Code] Install command:', command);
-        console.log('[Claude Code] Opening terminal...');
+        console.warn('[Claude Code] Install command:', command);
+        console.warn('[Claude Code] Opening terminal...');
         await openTerminalWithCommand(command);
-        console.log('[Claude Code] Terminal opened successfully');
+        console.warn('[Claude Code] Terminal opened successfully');
 
         return {
           success: true,
@@ -1013,6 +1151,208 @@ export function registerClaudeCodeHandlers(): void {
         return {
           success: false,
           error: `Failed to set active Claude CLI path: ${errorMsg}`,
+        };
+      }
+    }
+  );
+
+  // Authenticate Claude profile - returns terminal config for embedded terminal
+  // The frontend creates an embedded terminal with CLAUDE_CONFIG_DIR set,
+  // and the terminal ID pattern enables automatic token capture on /login
+  ipcMain.handle(
+    IPC_CHANNELS.CLAUDE_PROFILE_AUTHENTICATE,
+    async (_event, profileId: string): Promise<IPCResult<{ terminalId: string; configDir: string }>> => {
+      try {
+        console.warn('[Claude Code] Authenticating profile:', profileId);
+
+        const profileManager = getClaudeProfileManager();
+        const profile = profileManager.getProfile(profileId);
+
+        if (!profile) {
+          return {
+            success: false,
+            error: `Profile not found: ${profileId}`
+          };
+        }
+
+        // For default profile, use the default Claude config dir
+        const configDir = profile.configDir || '~/.claude';
+
+        // Validate path to prevent operations on arbitrary directories
+        if (!isValidConfigDir(configDir)) {
+          return {
+            success: false,
+            error: `Invalid config directory path: ${configDir}. Config directories must be within the user's home directory.`
+          };
+        }
+
+        // Ensure the config directory exists
+        const expandedConfigDir = configDir.startsWith('~')
+          ? path.join(os.homedir(), configDir.slice(1))
+          : configDir;
+
+        // Create directory if it doesn't exist
+        await mkdir(expandedConfigDir, { recursive: true });
+
+        console.warn('[Claude Code] Config directory:', expandedConfigDir);
+
+        // Backwards compatibility: If re-authenticating an existing profile that was
+        // set up with the old setup-token system, we need to clear the existing
+        // credentials so that /login opens the browser for fresh OAuth.
+        // We back up the existing .claude.json to .claude.json.bak
+        const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
+        const claudeJsonBakPath = path.join(expandedConfigDir, '.claude.json.bak');
+
+        // NOTE: We intentionally do NOT clean up .claude.json.bak here.
+        // If both files exist, we cannot assume the previous auth succeeded - the app
+        // may have crashed after /login wrote an incomplete .claude.json but before
+        // VERIFY_AUTH ran. The backup may contain valid credentials needed for rollback.
+        //
+        // Backup cleanup happens safely in two places:
+        // 1. VERIFY_AUTH handler (lines ~1339-1347): After confirming valid credentials
+        // 2. Below (lines ~1229-1231): When creating a new backup (removes old backup first)
+
+        if (existsSync(claudeJsonPath)) {
+          try {
+            const content = readFileSync(claudeJsonPath, 'utf-8');
+            const data = JSON.parse(content);
+
+            // Check if this has OAuth credentials (old setup-token or previous /login)
+            if (data.oauthAccount) {
+              console.warn('[Claude Code] Found existing OAuth credentials, backing up for re-authentication');
+
+              // Remove old backup if exists
+              if (existsSync(claudeJsonBakPath)) {
+                await unlink(claudeJsonBakPath);
+              }
+
+              // Backup current credentials
+              await rename(claudeJsonPath, claudeJsonBakPath);
+              console.warn('[Claude Code] Backed up .claude.json to .claude.json.bak');
+            }
+          } catch (backupError) {
+            // Non-fatal: if backup fails, /login might still work or show "already logged in"
+            console.warn('[Claude Code] Could not backup existing credentials:', backupError);
+          }
+        }
+
+        // Generate terminal ID with pattern: claude-login-{profileId}-{timestamp}
+        // This pattern is used by claude-integration-handler.ts to identify
+        // which profile to save captured OAuth tokens to
+        const terminalId = `claude-login-${profileId}-${Date.now()}`;
+        console.warn('[Claude Code] Generated terminal ID:', terminalId);
+
+        return {
+          success: true,
+          data: {
+            terminalId,
+            configDir: expandedConfigDir
+          }
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claude Code] Authentication failed:', errorMsg, error);
+        return {
+          success: false,
+          error: `Failed to prepare authentication: ${errorMsg}`
+        };
+      }
+    }
+  );
+
+  // Verify if a profile has been authenticated
+  ipcMain.handle(
+    IPC_CHANNELS.CLAUDE_PROFILE_VERIFY_AUTH,
+    async (_event, profileId: string): Promise<IPCResult<{ authenticated: boolean; email?: string }>> => {
+      try {
+        console.warn('[Claude Code] Verifying auth for profile:', profileId);
+
+        const profileManager = getClaudeProfileManager();
+        const profile = profileManager.getProfile(profileId);
+
+        if (!profile) {
+          return {
+            success: false,
+            error: `Profile not found: ${profileId}`
+          };
+        }
+
+        const configDir = profile.configDir || '~/.claude';
+        const result = checkProfileAuthentication(configDir);
+
+        console.warn('[Claude Code] Auth verification result:', result);
+
+        // Expand configDir for backup restoration check
+        const expandedConfigDir = configDir.startsWith('~')
+          ? path.join(os.homedir(), configDir.slice(1))
+          : configDir;
+
+        const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
+        const claudeJsonBakPath = path.join(expandedConfigDir, '.claude.json.bak');
+
+        // If NOT authenticated AND backup exists, restore the backup
+        // This handles cases where authentication was cancelled or failed
+        if (!result.authenticated && existsSync(claudeJsonBakPath)) {
+          try {
+            console.warn('[Claude Code] Authentication failed and backup exists, restoring .claude.json.bak');
+
+            // Remove incomplete .claude.json if it exists
+            if (existsSync(claudeJsonPath)) {
+              await unlink(claudeJsonPath);
+            }
+
+            // Restore the backup
+            await rename(claudeJsonBakPath, claudeJsonPath);
+            console.warn('[Claude Code] Restored .claude.json from backup');
+          } catch (restoreError) {
+            console.warn('[Claude Code] Failed to restore backup:', restoreError);
+            // Non-fatal: user can manually restore from .claude.json.bak
+          }
+        }
+
+        // If authenticated, update the profile with the email and OAuth token
+        if (result.authenticated) {
+          profile.isAuthenticated = true;
+
+          if (result.email) {
+            profile.email = result.email;
+          }
+
+          // Save the OAuth token if available (critical for re-authentication)
+          if (result.oauthAccount?.accessToken) {
+            console.warn('[Claude Code] Saving OAuth token for profile:', profileId);
+            profileManager.setProfileToken(
+              profileId,
+              result.oauthAccount.accessToken,
+              result.email
+            );
+          } else {
+            // No OAuth token, just save the email update
+            profileManager.saveProfile(profile);
+          }
+
+          // Clean up backup file after successful authentication
+          if (existsSync(claudeJsonBakPath)) {
+            try {
+              await unlink(claudeJsonBakPath);
+              console.warn('[Claude Code] Cleaned up .claude.json.bak after successful auth');
+            } catch (cleanupError) {
+              console.warn('[Claude Code] Failed to clean up backup:', cleanupError);
+              // Non-fatal: backup file can remain for safety
+            }
+          }
+        }
+
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claude Code] Auth verification failed:', errorMsg, error);
+        return {
+          success: false,
+          error: `Failed to verify authentication: ${errorMsg}`
         };
       }
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Key,
@@ -27,8 +27,8 @@ import { Switch } from '../ui/switch';
 import { cn } from '../../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { SettingsSection } from './SettingsSection';
+import { AuthTerminal } from './AuthTerminal';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
-import { useClaudeLoginTerminal } from '../../hooks/useClaudeLoginTerminal';
 import { useToast } from '../../hooks/use-toast';
 import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
 
@@ -68,6 +68,14 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
   const [isLoadingAutoSwitch, setIsLoadingAutoSwitch] = useState(false);
 
+  // Auth terminal state - for embedded authentication
+  const [authTerminal, setAuthTerminal] = useState<{
+    terminalId: string;
+    configDir: string;
+    profileId: string;
+    profileName: string;
+  } | null>(null);
+
   // Load Claude profiles and auto-swap settings when section is shown
   useEffect(() => {
     if (isOpen) {
@@ -75,51 +83,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       loadAutoSwitchSettings();
     }
   }, [isOpen]);
-
-  // Listen for login terminal creation - makes the terminal visible so user can see OAuth flow
-  useClaudeLoginTerminal();
-
-  // Listen for OAuth authentication completion
-  useEffect(() => {
-    const unsubscribe = window.electronAPI.onTerminalOAuthToken(async (info) => {
-      if (info.success && info.profileId) {
-        // Reload profiles to show updated state
-        await loadClaudeProfiles();
-        // Show simple success notification (non-blocking)
-        toast({
-          title: t('integrations.toast.authSuccess'),
-          description: info.email ? t('integrations.toast.authSuccessWithEmail', { email: info.email }) : t('integrations.toast.authSuccessGeneric'),
-        });
-      } else if (!info.success) {
-        // Handle authentication failure
-        await loadClaudeProfiles();
-
-        const errorMessage = info.message || '';
-        let title = t('integrations.toast.authStartFailed');
-        let description = t('integrations.toast.tryAgain');
-
-        // Provide specific error messages based on error type
-        if (errorMessage.toLowerCase().includes('cancelled') || errorMessage.toLowerCase().includes('timeout')) {
-          title = t('integrations.toast.authProcessFailed');
-          description = errorMessage || t('integrations.toast.authProcessFailedDescription');
-        } else if (errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('token')) {
-          title = t('integrations.toast.tokenSaveFailed');
-          description = errorMessage || t('integrations.toast.tryAgain');
-        } else if (errorMessage) {
-          title = t('integrations.toast.authProcessFailed');
-          description = errorMessage;
-        }
-
-        toast({
-          variant: 'destructive',
-          title,
-          description,
-        });
-      }
-    });
-
-    return unsubscribe;
-  }, [t, toast]);
 
   const loadClaudeProfiles = async () => {
     setIsLoadingProfiles(true);
@@ -159,6 +122,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       const profileName = newProfileName.trim();
       const profileSlug = profileName.toLowerCase().replace(/\s+/g, '-');
 
+      // Create the profile first
       const result = await window.electronAPI.saveClaudeProfile({
         id: `profile-${Date.now()}`,
         name: profileName,
@@ -168,38 +132,26 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
       });
 
       if (result.success && result.data) {
-        // Initialize the profile
-        const initResult = await window.electronAPI.initializeClaudeProfile(result.data.id);
+        await loadClaudeProfiles();
+        setNewProfileName('');
 
-        if (initResult.success) {
-          await loadClaudeProfiles();
-          setNewProfileName('');
-          // Note: The terminal is now visible in the UI via the onTerminalAuthCreated event
-          // Users can see the 'claude setup-token' output directly
-        } else {
-          await loadClaudeProfiles();
-          setNewProfileName('');
+        // Get terminal config for authentication
+        const authResult = await window.electronAPI.authenticateClaudeProfile(result.data.id);
 
-          const errorMessage = initResult.error || '';
-          let title = t('integrations.toast.profileCreatedAuthFailed');
-          let description = t('integrations.toast.profileCreatedAuthFailedDescription');
+        if (authResult.success && authResult.data) {
+          setAuthenticatingProfileId(result.data.id);
 
-          if (errorMessage.toLowerCase().includes('max terminals')) {
-            title = t('integrations.toast.maxTerminalsReached');
-            description = t('integrations.toast.maxTerminalsReachedDescription');
-          } else if (errorMessage.toLowerCase().includes('terminal creation')) {
-            title = t('integrations.toast.terminalCreationFailed');
-            description = t('integrations.toast.terminalCreationFailedDescription', { error: errorMessage });
-          } else if (errorMessage.toLowerCase().includes('terminal')) {
-            title = t('integrations.toast.terminalError');
-            description = t('integrations.toast.terminalErrorDescription', { error: errorMessage });
-          }
-
-          toast({
-            variant: 'destructive',
-            title,
-            description,
+          // Set up embedded auth terminal
+          setAuthTerminal({
+            terminalId: authResult.data.terminalId,
+            configDir: authResult.data.configDir,
+            profileId: result.data.id,
+            profileName,
           });
+
+          console.warn('[IntegrationSettings] New profile auth terminal ready:', authResult.data);
+        } else {
+          alert(t('integrations.alerts.profileCreatedAuthFailed', { error: authResult.error || t('integrations.toast.tryAgain') }));
         }
       }
     } catch (err) {
@@ -299,49 +251,60 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   };
 
   const handleAuthenticateProfile = async (profileId: string) => {
+    // Find the profile name for display
+    const profile = claudeProfiles.find(p => p.id === profileId);
+    const profileName = profile?.name || 'Profile';
+
     setAuthenticatingProfileId(profileId);
     try {
-      const initResult = await window.electronAPI.initializeClaudeProfile(profileId);
-      if (!initResult.success) {
-        const errorMessage = initResult.error || '';
-        let title: string;
-        let description: string;
+      // Get terminal config from backend (terminalId and configDir)
+      const result = await window.electronAPI.authenticateClaudeProfile(profileId);
 
-        if (errorMessage.toLowerCase().includes('max terminals')) {
-          title = t('integrations.toast.maxTerminalsReached');
-          description = t('integrations.toast.maxTerminalsReachedDescription');
-        } else if (errorMessage.toLowerCase().includes('terminal creation')) {
-          title = t('integrations.toast.terminalCreationFailed');
-          description = t('integrations.toast.terminalCreationFailedDescription', { error: errorMessage });
-        } else if (errorMessage.toLowerCase().includes('terminal')) {
-          title = t('integrations.toast.terminalError');
-          description = t('integrations.toast.terminalErrorDescription', { error: errorMessage });
-        } else if (errorMessage) {
-          title = t('integrations.toast.authProcessFailed');
-          description = errorMessage;
-        } else {
-          title = t('integrations.toast.authProcessFailed');
-          description = t('integrations.toast.authProcessFailedDescription');
-        }
-
-        toast({
-          variant: 'destructive',
-          title,
-          description,
-        });
+      if (!result.success || !result.data) {
+        alert(t('integrations.alerts.authPrepareFailed', { error: result.error || t('integrations.toast.tryAgain') }));
+        setAuthenticatingProfileId(null);
+        return;
       }
-      // Note: If successful, the terminal is now visible in the UI via the onTerminalAuthCreated event
-      // Users can see the 'claude setup-token' output and complete OAuth flow directly
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: t('integrations.toast.authStartFailed'),
-        description: t('integrations.toast.tryAgain'),
+
+      // Set up embedded auth terminal
+      setAuthTerminal({
+        terminalId: result.data.terminalId,
+        configDir: result.data.configDir,
+        profileId,
+        profileName,
       });
-    } finally {
+
+      console.warn('[IntegrationSettings] Auth terminal ready:', result.data);
+    } catch (err) {
+      console.error('Failed to authenticate profile:', err);
+      alert(t('integrations.alerts.authStartFailedMessage'));
       setAuthenticatingProfileId(null);
     }
   };
+
+  // Handle auth terminal close
+  const handleAuthTerminalClose = useCallback(() => {
+    setAuthTerminal(null);
+    setAuthenticatingProfileId(null);
+  }, []);
+
+  // Handle auth terminal success
+  const handleAuthTerminalSuccess = useCallback(async (email?: string) => {
+    console.warn('[IntegrationSettings] Auth success:', email);
+
+    // Close terminal immediately
+    setAuthTerminal(null);
+    setAuthenticatingProfileId(null);
+
+    // Reload profiles to get updated auth state
+    await loadClaudeProfiles();
+  }, []);
+
+  // Handle auth terminal error
+  const handleAuthTerminalError = useCallback((error: string) => {
+    console.error('[IntegrationSettings] Auth error:', error);
+    // Don't auto-close on error - let user see the error and close manually
+  }, []);
 
   const toggleTokenEntry = (profileId: string) => {
     if (expandedTokenProfileId === profileId) {
@@ -532,7 +495,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                                     {t('integrations.active')}
                                   </span>
                                 )}
-                                {(profile.oauthToken || (profile.isDefault && profile.configDir)) ? (
+                                {profile.isAuthenticated ? (
                                   <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                                     <Check className="h-3 w-3" />
                                     {t('integrations.authenticated')}
@@ -553,8 +516,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                       {editingProfileId !== profile.id && (
                         <div className="flex items-center gap-1">
                           {/* Authenticate button - show only if NOT authenticated */}
-                          {/* A profile is authenticated if: has OAuth token OR (is default AND has configDir) */}
-                          {!(profile.oauthToken || (profile.isDefault && profile.configDir)) ? (
+                          {!profile.isAuthenticated ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -563,11 +525,16 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               className="gap-1 h-7 text-xs"
                             >
                               {authenticatingProfileId === profile.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  {t('integrations.authenticating')}
+                                </>
                               ) : (
-                                <LogIn className="h-3 w-3" />
+                                <>
+                                  <LogIn className="h-3 w-3" />
+                                  {t('integrations.authenticate')}
+                                </>
                               )}
-                              {t('integrations.authenticate')}
                             </Button>
                           ) : (
                             /* Re-authenticate button for already authenticated profiles */
@@ -733,6 +700,22 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
               </div>
             )}
 
+            {/* Embedded Auth Terminal */}
+            {authTerminal && (
+              <div className="mb-4">
+                <div className="rounded-lg border border-primary/30 overflow-hidden" style={{ height: '320px' }}>
+                  <AuthTerminal
+                    terminalId={authTerminal.terminalId}
+                    configDir={authTerminal.configDir}
+                    profileName={authTerminal.profileName}
+                    onClose={handleAuthTerminalClose}
+                    onAuthSuccess={handleAuthTerminalSuccess}
+                    onAuthError={handleAuthTerminalError}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Add new account */}
             <div className="flex items-center gap-2">
               <Input
@@ -740,6 +723,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                 value={newProfileName}
                 onChange={(e) => setNewProfileName(e.target.value)}
                 className="flex-1 h-8 text-sm"
+                disabled={!!authTerminal}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newProfileName.trim()) {
                     handleAddProfile();
@@ -748,7 +732,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
               />
               <Button
                 onClick={handleAddProfile}
-                disabled={!newProfileName.trim() || isAddingProfile}
+                disabled={!newProfileName.trim() || isAddingProfile || !!authTerminal}
                 size="sm"
                 className="gap-1 shrink-0"
               >

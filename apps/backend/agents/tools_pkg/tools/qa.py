@@ -140,7 +140,7 @@ def create_qa_tools(spec_dir: Path, project_dir: Path) -> list:
             except json.JSONDecodeError:
                 tests_passed = {}
 
-            with open(plan_file) as f:
+            with open(plan_file, encoding="utf-8") as f:
                 plan = json.load(f)
 
             qa_session = _apply_qa_update(plan, status, issues, tests_passed)

@@ -53,7 +53,7 @@ def _get_version() -> str:
         if package_json.exists():
             import json
 
-            with open(package_json) as f:
+            with open(package_json, encoding="utf-8") as f:
                 data = json.load(f)
                 return data.get("version", "0.0.0")
     except Exception as e:

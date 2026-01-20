@@ -142,10 +142,17 @@ export class ClaudeProfileManager {
 
   /**
    * Get all profiles and settings
+   * Computes isAuthenticated for each profile by checking configDir credentials
    */
   getSettings(): ClaudeProfileSettings {
+    // Compute isAuthenticated for each profile
+    const profilesWithAuth = this.data.profiles.map(profile => ({
+      ...profile,
+      isAuthenticated: this.isProfileAuthenticated(profile) || hasValidToken(profile)
+    }));
+
     return {
-      profiles: this.data.profiles,
+      profiles: profilesWithAuth,
       activeProfileId: this.data.activeProfileId,
       autoSwitch: this.data.autoSwitch || DEFAULT_AUTO_SWITCH_SETTINGS
     };
@@ -355,21 +362,39 @@ export class ClaudeProfileManager {
 
   /**
    * Get environment variables for spawning processes with the active profile.
-   * Returns { CLAUDE_CODE_OAUTH_TOKEN: token } if token is available (decrypted).
+   * Sets CLAUDE_CONFIG_DIR to point Claude CLI to the profile's config directory.
+   * Claude CLI handles token storage in the system Keychain.
+   *
+   * IMPORTANT: When CLAUDE_CONFIG_DIR is set, we do NOT set CLAUDE_CODE_OAUTH_TOKEN
+   * because Claude Code prioritizes CLAUDE_CODE_OAUTH_TOKEN over Keychain lookup.
+   * The OAuth token alone doesn't contain subscription tier info (like "max"),
+   * causing Claude Code to show "Claude API" instead of "Claude Max".
+   * By only setting CLAUDE_CONFIG_DIR, Claude Code reads from the Keychain which
+   * has the full credential object including subscriptionType and rateLimitTier.
    */
   getActiveProfileEnv(): Record<string, string> {
     const profile = this.getActiveProfile();
     const env: Record<string, string> = {};
 
-    if (profile?.oauthToken) {
-      // Decrypt the token before putting in environment
+    // For non-default profiles, set CLAUDE_CONFIG_DIR
+    // Claude CLI will use credentials stored in that directory's Keychain
+    if (profile?.configDir && !profile.isDefault) {
+      // Expand ~ to home directory for the environment variable
+      const expandedConfigDir = profile.configDir.startsWith('~')
+        ? profile.configDir.replace(/^~/, require('os').homedir())
+        : profile.configDir;
+      env.CLAUDE_CONFIG_DIR = expandedConfigDir;
+      console.warn('[ClaudeProfileManager] Using configDir for profile:', profile.name, expandedConfigDir);
+      // DO NOT set CLAUDE_CODE_OAUTH_TOKEN here - let Claude Code use Keychain
+      // credentials which include subscription tier info. See comment above.
+    } else if (profile?.oauthToken) {
+      // Only use stored OAuth token for default profile (no configDir)
+      // This is a legacy path for backward compatibility
       const decryptedToken = decryptToken(profile.oauthToken);
       if (decryptedToken) {
         env.CLAUDE_CODE_OAUTH_TOKEN = decryptedToken;
+        console.warn('[ClaudeProfileManager] Using stored OAuth token for profile:', profile.name);
       }
-    } else if (profile?.configDir && !profile.isDefault) {
-      // Fallback to configDir for backward compatibility
-      env.CLAUDE_CONFIG_DIR = profile.configDir;
     }
 
     return env;
