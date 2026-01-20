@@ -8,14 +8,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isDebugEnabled, debugLog, debugWarn, debugError } from './debug-logger';
 
-// Mock the platform module
-vi.mock('../platform', () => ({
-  isWindows: vi.fn(),
-  isMacOS: vi.fn(),
-  isLinux: vi.fn(),
-  getCurrentPlatform: vi.fn(),
-  getEnvVar: vi.fn(),
-}));
+// Mock the platform module - need to handle the re-export from ../main/platform
+vi.mock('../platform', async () => {
+  // Create mock functions for all platform exports
+  const mockIsWindows = vi.fn();
+  const mockIsMacOS = vi.fn();
+  const mockIsLinux = vi.fn();
+  const mockGetCurrentPlatform = vi.fn();
+  const mockGetEnvVar = vi.fn();
+
+  return {
+    isWindows: mockIsWindows,
+    isMacOS: mockIsMacOS,
+    isLinux: mockIsLinux,
+    getCurrentPlatform: mockGetCurrentPlatform,
+    getEnvVar: mockGetEnvVar,
+  };
+});
 
 import { isWindows, getEnvVar } from '../platform';
 const mockIsWindows = vi.mocked(isWindows);
