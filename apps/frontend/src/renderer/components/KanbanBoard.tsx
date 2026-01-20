@@ -30,6 +30,7 @@ import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks } from '../stores/task-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { InspectPromptsButton } from './InspectPromptsButton';
 import type { Task, TaskStatus } from '../../shared/types';
 
 // Type guard for valid drop column targets - preserves literal type from TASK_STATUS_COLUMNS
@@ -566,9 +567,10 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   return (
     <div className="flex h-full flex-col">
-      {/* Kanban header with refresh button */}
-      {onRefresh && (
-        <div className="flex items-center justify-end px-6 pt-4 pb-2">
+      {/* Kanban header with refresh button and prompt inspection */}
+      <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-2">
+        <InspectPromptsButton context="kanban" variant="ghost" size="sm" />
+        {onRefresh && (
           <Button
             variant="ghost"
             size="sm"
@@ -579,8 +581,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             {isRefreshing ? t('common:buttons.refreshing') : t('tasks:refreshTasks')}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       {/* Kanban columns */}
       <DndContext
         sensors={sensors}
