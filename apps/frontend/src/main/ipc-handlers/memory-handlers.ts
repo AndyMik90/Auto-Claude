@@ -10,7 +10,6 @@ import { spawn, execFileSync } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
-import * as os from 'os';
 import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths, getHomeDir, getBinaryDirectories } from '../platform';
 
 // ESM-compatible __dirname

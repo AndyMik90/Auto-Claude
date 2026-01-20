@@ -15,7 +15,6 @@
  */
 
 import * as path from 'path';
-import * as os from 'os';
 import { isLinux, getEnvVar, getHomeDir, joinPaths } from './platform';
 
 const APP_NAME = 'auto-claude';

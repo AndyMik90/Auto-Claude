@@ -5,7 +5,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import type { TerminalProcess, WindowGetter } from './types';
 import { getTerminalSessionStore, type TerminalSession } from '../terminal-session-store';
 import { IPC_CHANNELS } from '../../shared/constants';

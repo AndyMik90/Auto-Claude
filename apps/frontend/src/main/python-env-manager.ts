@@ -1,4 +1,4 @@
-import { spawn, execSync, execFileSync, ChildProcess } from 'child_process';
+import { spawn, execFileSync, ChildProcess } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
