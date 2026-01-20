@@ -3,7 +3,7 @@ import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_M
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
 import { minimatch } from 'minimatch';
-import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, statSync, readFileSync, promises as fsPromises } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
@@ -2196,7 +2196,6 @@ export function registerWorktreeHandlers(
                 const commitMsgPath = path.join(specDir, 'suggested_commit_message.txt');
                 try {
                   if (existsSync(commitMsgPath)) {
-                    const { promises: fsPromises } = require('fs');
                     suggestedCommitMessage = (await fsPromises.readFile(commitMsgPath, 'utf-8')).trim();
                     debug('Read suggested commit message:', suggestedCommitMessage?.substring(0, 100));
                   }
@@ -2218,8 +2217,6 @@ export function registerWorktreeHandlers(
                 const worktreeSpecDir = path.join(worktreePath, project.autoBuildPath || '.auto-claude', 'specs', task.specId);
                 planPaths.push({ path: path.join(worktreeSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), isMain: false });
               }
-
-              const { promises: fsPromises } = require('fs');
 
               // Update plan file with retry logic for transient failures
               // Uses EAFP pattern (try/catch) instead of LBYL (existsSync check) to avoid TOCTOU race conditions
@@ -2838,7 +2835,6 @@ export function registerWorktreeHandlers(
         const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
 
         // Use EAFP pattern (try/catch) instead of LBYL (existsSync check) to avoid TOCTOU race conditions
-        const { promises: fsPromises } = require('fs');
         const isFileNotFound = (err: unknown): boolean =>
           !!(err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT');
 

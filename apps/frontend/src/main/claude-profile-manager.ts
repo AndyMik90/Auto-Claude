@@ -14,6 +14,7 @@
 import { app } from 'electron';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
+import os from 'os';
 import type {
   ClaudeProfile,
   ClaudeProfileSettings,
@@ -381,7 +382,7 @@ export class ClaudeProfileManager {
     if (profile?.configDir && !profile.isDefault) {
       // Expand ~ to home directory for the environment variable
       const expandedConfigDir = profile.configDir.startsWith('~')
-        ? profile.configDir.replace(/^~/, require('os').homedir())
+        ? profile.configDir.replace(/^~/, os.homedir())
         : profile.configDir;
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
       console.warn('[ClaudeProfileManager] Using configDir for profile:', profile.name, expandedConfigDir);
