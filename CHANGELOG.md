@@ -1,3 +1,11 @@
+## 2.7.6 - AI Content Localization Fix
+
+### 🐛 Bug Fixes
+
+- Fix ideation recovery agent generating content in English instead of selected language
+
+---
+
 ## 2.7.5 - AI Content Localization
 
 ### ✨ New Features
