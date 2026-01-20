@@ -28,7 +28,7 @@ interface ParsedSessionInsight {
   subtasks_completed?: string[];
   what_worked?: string[];
   what_failed?: string[];
-  recommendations_for_next_session?: string[];
+  recommendations_for_next_session?: Array<string | { category?: string; recommendation?: string; priority?: string; effort?: string }>;
   discoveries?: {
     file_insights?: Array<{ path?: string; purpose?: string; changes_made?: string }>;
     patterns_discovered?: Array<{ pattern?: string; applies_to?: string } | string>;
@@ -39,7 +39,7 @@ interface ParsedSessionInsight {
       why_it_worked?: string;
       why_it_failed?: string;
     };
-    recommendations?: string[];
+    recommendations?: Array<string | { category?: string; recommendation?: string; priority?: string; effort?: string }>;
     changed_files?: string[];
   };
 }
@@ -199,7 +199,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
         </div>
 
         {/* Expanded Content */}
-        {expanded && parsed && (
+        {expanded && parsed && hasContent && (
           <div className="mt-4 space-y-4 pt-4 border-t border-border/50">
             {/* What Worked */}
             {parsed.what_worked && parsed.what_worked.length > 0 && (
@@ -260,12 +260,14 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                   count={(parsed.recommendations_for_next_session?.length ?? 0) + (parsed.discoveries?.recommendations?.length ?? 0)}
                 />
                 <ul className="space-y-0.5">
-                  {parsed.recommendations_for_next_session?.map((item, idx) => (
-                    <ListItem key={`rec-${idx}`}>{item}</ListItem>
-                  ))}
-                  {parsed.discoveries?.recommendations?.map((item, idx) => (
-                    <ListItem key={`disc-rec-${idx}`}>{item}</ListItem>
-                  ))}
+                  {parsed.recommendations_for_next_session?.map((item, idx) => {
+                    const text = typeof item === 'string' ? item : (item as { recommendation?: string }).recommendation;
+                    return text ? <ListItem key={`rec-${idx}`}>{text}</ListItem> : null;
+                  })}
+                  {parsed.discoveries?.recommendations?.map((item, idx) => {
+                    const text = typeof item === 'string' ? item : (item as { recommendation?: string }).recommendation;
+                    return text ? <ListItem key={`disc-rec-${idx}`}>{text}</ListItem> : null;
+                  })}
                 </ul>
               </div>
             )}
@@ -356,8 +358,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
           </div>
         )}
 
-        {/* Fallback for unparseable content */}
-        {expanded && !parsed && (
+        {/* Fallback for unparseable content or empty parsed content */}
+        {expanded && (!parsed || !hasContent) && (
           <pre className="mt-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono p-3 bg-background rounded-lg max-h-64 overflow-auto border border-border/50">
             {memory.content}
           </pre>
