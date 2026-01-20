@@ -1,0 +1,56 @@
+{
+  "$schema": "model_limits_schema.json",
+  "description": "Model-specific token limits for Claude API. All values are in tokens.",
+  "models": {
+    "claude-opus-4-5-20251101": {
+      "display_name": "Claude Opus 4.5",
+      "max_output_tokens": 64000,
+      "context_window": 200000,
+      "max_thinking_tokens": 60000,
+      "notes": "Maximum output increased from 32K (Opus 4.1) to 64K"
+    },
+    "claude-sonnet-4-5-20250929": {
+      "display_name": "Claude Sonnet 4.5",
+      "max_output_tokens": 64000,
+      "context_window": 200000,
+      "max_thinking_tokens": 60000,
+      "notes": "Standard output limit, 1M context available in beta"
+    },
+    "claude-haiku-4-5-20251001": {
+      "display_name": "Claude Haiku 4.5",
+      "max_output_tokens": 64000,
+      "context_window": 200000,
+      "max_thinking_tokens": 60000,
+      "notes": "Output increased from 8K (Haiku 3.5) to 64K"
+    }
+  },
+  "thinking_levels": {
+    "none": {
+      "budget": null,
+      "description": "No extended thinking"
+    },
+    "low": {
+      "budget": 1024,
+      "description": "Brief consideration (1K tokens)"
+    },
+    "medium": {
+      "budget": 4096,
+      "description": "Moderate analysis (4K tokens)"
+    },
+    "high": {
+      "budget": 16384,
+      "description": "Deep thinking for complex tasks (16K tokens)"
+    },
+    "ultrathink": {
+      "budget": 60000,
+      "description": "Maximum reasoning depth (60K tokens, leaves 4K buffer for SDK overhead)",
+      "safety_note": "SDK may reduce max_tokens, so we keep 4K buffer below the 64K limit"
+    }
+  },
+  "validation_rules": {
+    "max_thinking_tokens_must_be_less_than_max_output": true,
+    "min_thinking_budget": 1024,
+    "safety_buffer_tokens": 4000,
+    "notes": "API constraint: max_tokens > thinking.budget_tokens. SDK bug #8756 causes intermittent validation errors when max_tokens is reduced without adjusting thinking budget."
+  }
+}
