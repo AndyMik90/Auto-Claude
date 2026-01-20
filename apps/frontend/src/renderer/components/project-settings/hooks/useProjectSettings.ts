@@ -5,6 +5,7 @@ import {
   initializeProject
 } from '../../../stores/project-store';
 import { checkGitHubConnection as checkGitHubConnectionGlobal } from '../../../stores/github';
+import { setProjectEnvConfig } from '../../../stores/project-env-store';
 import type {
   Project,
   ProjectSettings as ProjectSettingsType,
@@ -156,6 +157,8 @@ export function useProjectSettings(
           const result = await window.electronAPI.getProjectEnv(project.id);
           if (result.success && result.data) {
             setEnvConfig(result.data);
+            // Update the shared store so other components (like Sidebar) can react
+            setProjectEnvConfig(project.id, result.data);
           } else {
             setEnvError(result.error || 'Failed to load environment config');
           }
@@ -376,6 +379,9 @@ export function useProjectSettings(
 
       // Then update local state (triggers effects that read from disk)
       setEnvConfig(newConfig);
+
+      // Update the shared store so other components (like Sidebar) can react immediately
+      setProjectEnvConfig(project.id, newConfig);
     }
   };
 
