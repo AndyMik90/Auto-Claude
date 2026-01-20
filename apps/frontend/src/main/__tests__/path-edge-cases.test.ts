@@ -7,11 +7,10 @@
  * - Symlinks (symbolic links)
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as path from 'path';
 import * as os from 'os';
 import { isSecurePath, normalizeExecutablePath } from '../platform';
-import { isValidConfigDir } from '../utils/config-path-validator';
 
 // Mock fs for symlink tests
 vi.mock('fs', () => ({

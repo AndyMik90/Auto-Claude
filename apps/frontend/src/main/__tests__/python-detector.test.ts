@@ -6,8 +6,6 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import * as path from 'path';
-import * as os from 'os';
 import {
   getBundledPythonPath,
   findPythonCommand,
@@ -51,7 +49,7 @@ vi.mock('../platform', () => ({
 }));
 
 import * as childProcess from 'child_process';
-import { existsSync, accessSync, constants } from 'fs';
+import { existsSync, accessSync } from 'fs';
 import { app } from 'electron';
 import { findHomebrewPython } from '../utils/homebrew-python';
 import { isWindows, normalizeExecutablePath } from '../platform';
@@ -172,7 +170,7 @@ describe('python-detector', () => {
       mockNormalizeExecutablePath.mockImplementation((p) => p.replace(/python$/, 'python.exe'));
       mockExistsSync.mockImplementation((p) => p === '/usr/bin/python.exe');
 
-      const [cmd, args] = parsePythonCommand('/usr/bin/python');
+      const [cmd] = parsePythonCommand('/usr/bin/python');
       // parsePythonCommand returns the original command if the normalized path exists
       // but in this case, the mock returns the normalized path
       expect(cmd).toBeTruthy();

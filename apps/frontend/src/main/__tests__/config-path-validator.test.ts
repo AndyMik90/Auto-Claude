@@ -279,15 +279,11 @@ describe('isValidConfigDir - Security Validation', () => {
   });
 
   describe('Edge cases and special inputs', () => {
-    test('handles empty string based on cwd resolution', () => {
-      // Empty string resolves to cwd via path.resolve()
-      // If cwd is within home, it will be accepted
+    test('handles empty string - rejected explicitly by implementation', () => {
+      // The implementation explicitly rejects empty strings at line 21-24
+      // This is a security measure to prevent ambiguous paths
       const result = isValidConfigDir('');
-      const resolvedPath = path.resolve('');
-      const homeDir = os.homedir();
-      const shouldBeValid = resolvedPath === homeDir || resolvedPath.startsWith(homeDir + path.sep);
-
-      expect(result).toBe(shouldBeValid);
+      expect(result).toBe(false);
     });
 
     test('handles paths with null bytes based on path normalization', () => {
