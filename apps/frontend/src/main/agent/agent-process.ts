@@ -142,15 +142,8 @@ export class AgentProcessManager {
     const env: Record<string, string> = {};
     const envVarName = CLI_TOOL_ENV_MAP[toolName];
     if (!getEnvVar(envVarName)) {
-      // Skip detection for tools not yet supported by cli-tool-manager
-      // Users can still manually set the environment variable
-      if (toolName === 'glab') {
-        console.warn(`[AgentProcess] ${toolName} CLI path detection not yet implemented. Set ${envVarName} environment variable manually.`);
-        return env;
-      }
-
       try {
-        const toolInfo = getToolInfo(toolName as 'claude' | 'gh');  // Only supported tools
+        const toolInfo = getToolInfo(toolName as 'claude' | 'gh' | 'glab');  // Supported tools
         if (toolInfo.found && toolInfo.path) {
           env[envVarName] = toolInfo.path;
           console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);

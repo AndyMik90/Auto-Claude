@@ -53,7 +53,7 @@ import {
 /**
  * Supported CLI tools managed by this system
  */
-export type CLITool = 'python' | 'git' | 'gh' | 'claude';
+export type CLITool = 'python' | 'git' | 'gh' | 'glab' | 'claude';
 
 /**
  * User configuration for CLI tool paths
@@ -63,6 +63,7 @@ export interface ToolConfig {
   pythonPath?: string;
   gitPath?: string;
   githubCLIPath?: string;
+  gitlabCLIPath?: string;
   claudePath?: string;
 }
 
@@ -397,6 +398,8 @@ class CLIToolManager {
         return this.detectGit();
       case 'gh':
         return this.detectGitHubCLI();
+      case 'glab':
+        return this.detectGitLabCLI();
       case 'claude':
         return this.detectClaude();
       default:
@@ -759,6 +762,131 @@ class CLIToolManager {
   }
 
   /**
+   * Detect GitLab CLI with multi-level priority
+   *
+   * Priority order:
+   * 1. User configuration (if valid for current platform)
+   * 2. Homebrew (macOS)
+   * 3. System PATH (augmented)
+   * 4. Windows Program Files / Scoop / Chocolatey
+   * 5. Windows where.exe
+   *
+   * @returns Detection result for GitLab CLI
+   */
+  private detectGitLabCLI(): ToolDetectionResult {
+    // 1. User configuration
+    if (this.userConfig.gitlabCLIPath) {
+      // Check if path is from wrong platform (e.g., Windows path on macOS)
+      if (isWrongPlatformPath(this.userConfig.gitlabCLIPath)) {
+        console.warn(
+          `[GitLab CLI] User-configured path is from different platform, ignoring: ${this.userConfig.gitlabCLIPath}`
+        );
+      } else {
+        const validation = this.validateGitLabCLI(this.userConfig.gitlabCLIPath);
+        if (validation.valid) {
+          return buildToolDetectionResult(
+            this.userConfig.gitlabCLIPath,
+            validation,
+            'user-config',
+            `Using user-configured GitLab CLI: ${this.userConfig.gitlabCLIPath}`
+          );
+        }
+        console.warn(
+          `[GitLab CLI] User-configured path invalid: ${validation.message}`
+        );
+      }
+    }
+
+    // 2. Homebrew (macOS)
+    if (isMacOS()) {
+      const homebrewBinDirs = getHomebrewBinPaths();
+      for (const dir of homebrewBinDirs) {
+        const glabPath = joinPaths(dir, 'glab');
+        if (existsSync(glabPath)) {
+          const validation = this.validateGitLabCLI(glabPath);
+          if (validation.valid) {
+            return buildToolDetectionResult(
+              glabPath,
+              validation,
+              'homebrew',
+              `Using Homebrew GitLab CLI: ${glabPath}`
+            );
+          }
+        }
+      }
+    }
+
+    // 3. System PATH (augmented)
+    const glabPath = findExecutable('glab');
+    if (glabPath) {
+      const validation = this.validateGitLabCLI(glabPath);
+      if (validation.valid) {
+        return buildToolDetectionResult(
+          glabPath,
+          validation,
+          'system-path',
+          `Using system GitLab CLI: ${glabPath}`
+        );
+      }
+    }
+
+    // 4. Windows Program Files
+    if (isWindows()) {
+      // 4a. Try 'where' command first - finds glab regardless of installation location
+      const whereGlabPath = findWindowsExecutableViaWhere('glab', '[GitLab CLI]');
+      if (whereGlabPath) {
+        const validation = this.validateGitLabCLI(whereGlabPath);
+        if (validation.valid) {
+          return buildToolDetectionResult(
+            whereGlabPath,
+            validation,
+            'system-path',
+            `Using Windows GitLab CLI: ${whereGlabPath}`
+          );
+        }
+      }
+
+      // 4b. Check known installation locations
+      const homeDir = os.homedir();
+      const programFiles = expandWindowsEnvVars('%PROGRAMFILES%');
+      const programFilesX86 = expandWindowsEnvVars('%PROGRAMFILES(X86)%');
+      const programData = expandWindowsEnvVars('%PROGRAMDATA%');
+      const windowsPaths = [
+        joinPaths(programFiles, 'GitLab', 'glab', 'bin', 'glab.exe'),
+        joinPaths(programFilesX86, 'GitLab', 'glab', 'bin', 'glab.exe'),
+        joinPaths(programFiles, 'GitLab', 'glab', 'glab.exe'),
+        // npm global installation
+        joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'glab.cmd'),
+        // Scoop package manager
+        joinPaths(homeDir, 'scoop', 'apps', 'glab', 'current', 'glab.exe'),
+        // Chocolatey package manager
+        joinPaths(programData, 'chocolatey', 'lib', 'glab', 'tools', 'glab.exe'),
+      ];
+
+      for (const glabPath of windowsPaths) {
+        if (existsSync(glabPath)) {
+          const validation = this.validateGitLabCLI(glabPath);
+          if (validation.valid) {
+            return buildToolDetectionResult(
+              glabPath,
+              validation,
+              'system-path',
+              `Using Windows GitLab CLI: ${glabPath}`
+            );
+          }
+        }
+      }
+    }
+
+    // 5. Not found
+    return {
+      found: false,
+      source: 'fallback',
+      message: 'GitLab CLI (glab) not found. Install from https://gitlab.com/gitlab-org/cli',
+    };
+  }
+
+  /**
    * Detect Claude CLI with multi-level priority
    *
    * Priority order:
@@ -1023,6 +1151,49 @@ class CLIToolManager {
       return {
         valid: false,
         message: `Failed to validate GitHub CLI: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Validate GitLab CLI availability and version
+   *
+   * @param glabCmd - The GitLab CLI command to validate
+   * @returns Validation result with version information
+   */
+  private validateGitLabCLI(glabCmd: string): ToolValidation {
+    try {
+      // Normalize the path on Windows to handle missing extensions
+      // e.g., C:\...\npm\glab -> C:\...\npm\glab.cmd
+      const normalizedCmd = normalizeExecutablePath(glabCmd);
+
+      // Security validation: reject paths with dangerous patterns
+      if (!isPathSecure(normalizedCmd)) {
+        return {
+          valid: false,
+          message: `Invalid GitLab CLI path: contains dangerous characters or patterns`,
+        };
+      }
+
+      const version = execFileSync(normalizedCmd, ['--version'], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+      }).trim();
+
+      const match = version.match(/glab version (\d+\.\d+\.\d+)/);
+      const versionStr = match ? match[1] : version.split('\n')[0];
+
+      return {
+        valid: true,
+        version: versionStr,
+        message: `GitLab CLI ${versionStr} is available`,
+        normalizedPath: normalizedCmd, // Return normalized path for Windows compatibility
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        message: `Failed to validate GitLab CLI: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
