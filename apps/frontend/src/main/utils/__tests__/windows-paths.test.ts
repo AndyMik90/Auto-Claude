@@ -94,8 +94,12 @@ vi.mock('../../platform', async () => {
 
     // On Windows, validate executable names additionally
     if (process.platform === 'win32') {
-      const windowsExecutablePattern = /^[a-zA-Z]:\\(?:[^<>:"|?*\r\n]+\\)*[^<>:"|?*\r\n]*$/;
-      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+\\[^<>:"|?*\r\n]*(?:\\[^<>:"|?*\r\n]*)*$/;
+      // Fixed REDOS: Removed nested quantifier ambiguity
+      // Old: /^[a-zA-Z]:\\(?:[^<>:"|?*\r\n]+\\)*[^<>:"|?*\r\n]*$/
+      // New: First segment required, then zero or more additional segments
+      const windowsExecutablePattern = /^[a-zA-Z]:\\[^<>:"|?*\r\n\\]+(?:\\[^<>:"|?*\r\n\\]+)*$/;
+      // Fixed REDOS: Simplified pattern - server required, then one or more path segments
+      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+(?:\\[^<>:"|?*\r\n]+)+$/;
       const devicePathPattern = /^\\\\\?\\[^<>:"|?*\r\n]+$/;
 
       const isValidWindowsPath = windowsExecutablePattern.test(candidatePath) ||
