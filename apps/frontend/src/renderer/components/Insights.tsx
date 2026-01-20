@@ -47,6 +47,9 @@ import {
   TASK_COMPLEXITY_COLORS
 } from '../../shared/constants';
 
+// Scroll threshold in pixels - user is considered "at bottom" if within this distance
+const SCROLL_BOTTOM_THRESHOLD_PX = 100;
+
 // createSafeLink - factory function that creates a SafeLink component with i18n support
 const createSafeLink = (opensInNewWindowText: string) => {
   return function SafeLink({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
@@ -106,39 +109,32 @@ export function Insights({ projectId }: InsightsProps) {
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+  const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Get the scroll viewport element
-  const getViewport = useCallback(() => {
-    return scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-  }, []);
-
-  // Check if user is near the bottom of scroll area (within 100px threshold)
+  // Check if user is near the bottom of scroll area
   const checkIfAtBottom = useCallback((viewport: HTMLElement) => {
-    const threshold = 100;
     const { scrollTop, scrollHeight, clientHeight } = viewport;
-    return scrollHeight - scrollTop - clientHeight <= threshold;
+    return scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD_PX;
   }, []);
 
   // Handle scroll events to track user position
   const handleScroll = useCallback(() => {
-    const viewport = getViewport();
-    if (viewport) {
-      setIsUserAtBottom(checkIfAtBottom(viewport));
+    if (viewportEl) {
+      setIsUserAtBottom(checkIfAtBottom(viewportEl));
     }
-  }, [getViewport, checkIfAtBottom]);
+  }, [viewportEl, checkIfAtBottom]);
 
   // Set up scroll listener
   useEffect(() => {
-    const viewport = getViewport();
-    if (viewport) {
-      viewport.addEventListener('scroll', handleScroll);
-      return () => viewport.removeEventListener('scroll', handleScroll);
+    if (viewportEl) {
+      viewportEl.addEventListener('scroll', handleScroll, { passive: true });
+      return () => viewportEl.removeEventListener('scroll', handleScroll);
     }
-  }, [getViewport, handleScroll]);
+  }, [viewportEl, handleScroll]);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -149,13 +145,10 @@ export function Insights({ projectId }: InsightsProps) {
 
   // Smart auto-scroll: only scroll if user is already at bottom
   useEffect(() => {
-    if (isUserAtBottom) {
-      const viewport = getViewport();
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
+    if (isUserAtBottom && viewportEl) {
+      viewportEl.scrollTop = viewportEl.scrollHeight;
     }
-  }, [session?.messages, streamingContent, isUserAtBottom, getViewport]);
+  }, [session?.messages, streamingContent, isUserAtBottom, viewportEl]);
 
   // Focus textarea on mount
   useEffect(() => {
@@ -296,7 +289,7 @@ export function Insights({ projectId }: InsightsProps) {
         </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 py-4">
+      <ScrollArea ref={scrollAreaRef} onViewportRef={setViewportEl} className="flex-1 px-6 py-4">
         {messages.length === 0 && !streamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
