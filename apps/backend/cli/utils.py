@@ -86,8 +86,16 @@ def setup_environment() -> Path:
     sys.path.insert(0, str(script_dir))
 
     # Load .env file - check both auto-claude/ and dev/auto-claude/ locations
+    # Load .env info
+    cwd_env_file = Path.cwd() / ".env"
     env_file = script_dir / ".env"
     dev_env_file = script_dir.parent / "dev" / "auto-claude" / ".env"
+
+    # Load from CWD first (allows project-specific overrides)
+    if cwd_env_file.exists() and cwd_env_file.resolve() != env_file.resolve():
+        load_dotenv(cwd_env_file)
+
+    # Then load base config (fills in missing values)
     if env_file.exists():
         load_dotenv(env_file)
     elif dev_env_file.exists():
