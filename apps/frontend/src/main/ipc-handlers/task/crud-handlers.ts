@@ -69,11 +69,22 @@ function findAllSpecPaths(projectPath: string, specsBaseDir: string, taskId: str
 export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
   /**
    * List all tasks for a project
+   * @param projectId - The project ID to fetch tasks for
+   * @param options - Optional parameters
+   * @param options.forceRefresh - If true, invalidates cache before fetching (for refresh button)
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_LIST,
-    async (_, projectId: string): Promise<IPCResult<Task[]>> => {
-      console.warn('[IPC] TASK_LIST called with projectId:', projectId);
+    async (_, projectId: string, options?: { forceRefresh?: boolean }): Promise<IPCResult<Task[]>> => {
+      console.warn('[IPC] TASK_LIST called with projectId:', projectId, 'options:', options);
+
+      // If forceRefresh is requested, invalidate cache first
+      // This ensures the refresh button always returns fresh data from disk
+      if (options?.forceRefresh) {
+        projectStore.invalidateTasksCache(projectId);
+        console.warn('[IPC] TASK_LIST cache invalidated for forceRefresh');
+      }
+
       const tasks = projectStore.getTasks(projectId);
       console.warn('[IPC] TASK_LIST returning', tasks.length, 'tasks');
       return { success: true, data: tasks };

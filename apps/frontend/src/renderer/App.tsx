@@ -531,7 +531,9 @@ export function App() {
     if (!currentProjectId) return;
     setIsRefreshingTasks(true);
     try {
-      await loadTasks(currentProjectId);
+      // Pass forceRefresh: true to invalidate cache and get fresh data from disk
+      // This ensures the refresh button always shows the latest task state
+      await loadTasks(currentProjectId, { forceRefresh: true });
     } finally {
       setIsRefreshingTasks(false);
     }

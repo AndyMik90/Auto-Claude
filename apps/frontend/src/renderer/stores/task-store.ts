@@ -454,14 +454,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
 /**
  * Load tasks for a project
+ * @param projectId - The project ID to load tasks for
+ * @param options - Optional parameters
+ * @param options.forceRefresh - If true, invalidates server-side cache before fetching (for refresh button)
  */
-export async function loadTasks(projectId: string): Promise<void> {
+export async function loadTasks(projectId: string, options?: { forceRefresh?: boolean }): Promise<void> {
   const store = useTaskStore.getState();
   store.setLoading(true);
   store.setError(null);
 
   try {
-    const result = await window.electronAPI.getTasks(projectId);
+    const result = await window.electronAPI.getTasks(projectId, options);
     if (result.success && result.data) {
       store.setTasks(result.data);
     } else {
