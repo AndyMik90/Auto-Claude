@@ -8,6 +8,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import * as os from 'os';
 import { isValidConfigDir } from '../config-path-validator';
+import { isWindows } from '../../platform';
 
 describe('config-path-validator', () => {
   const originalHome = os.homedir();
@@ -72,7 +73,7 @@ describe('config-path-validator', () => {
     });
 
     it('rejects other user home directories', () => {
-      if (process.platform !== 'win32') {
+      if (!isWindows()) {
         expect(isValidConfigDir('/home/otheruser/.claude')).toBe(false);
         expect(isValidConfigDir('/users/otheruser/.claude')).toBe(false);
       }
@@ -86,7 +87,7 @@ describe('config-path-validator', () => {
 
   describe('invalid paths - suspicious patterns', () => {
     it('rejects Windows system directories', () => {
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('C:\\Windows\\System32\\config')).toBe(false);
         expect(isValidConfigDir('C:\\Program Files')).toBe(false);
       }
@@ -128,7 +129,7 @@ describe('config-path-validator', () => {
   describe('security - prefix boundary checking', () => {
     it('prevents prefix bypass with similar usernames', () => {
       // A path like /home/alice-malicious should not match /home/alice
-      if (process.platform !== 'win32') {
+      if (!isWindows()) {
         const maliciousDir = '/home/alice-malicious/.claude';
 
         // If alice directory exists, validate that alice-malicious doesn't pass
@@ -147,7 +148,7 @@ describe('config-path-validator', () => {
 
   describe('cross-platform behavior', () => {
     it('handles both forward and backward separators on Windows', () => {
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         const forwardSlash = `${originalHome}/.claude`;
         const backslash = originalHome.replace(/\//g, '\\') + '\\.claude';
         expect(isValidConfigDir(forwardSlash)).toBe(true);

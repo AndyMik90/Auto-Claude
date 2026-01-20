@@ -12,6 +12,7 @@ import { mkdirSync, rmSync, existsSync, writeFileSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 import { findPythonCommand, parsePythonCommand } from '../../main/python-detector';
+import { isWindows } from '../../main/platform';
 
 // Test directories - use secure temp directory with random suffix
 let TEST_DIR: string;
@@ -345,7 +346,7 @@ describe('Subprocess Spawn Integration', () => {
 
       expect(result).toBe(true);
       // On Windows, kill() is called without arguments; on Unix, kill('SIGTERM') is used
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(mockProcess.kill).toHaveBeenCalled();
       } else {
         expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');

@@ -20,7 +20,7 @@ import {
   findWindowsExecutableViaWhereAsync
 } from '../utils/windows-paths';
 import { findExecutable, findExecutableAsync } from '../env-utils';
-import { isSecurePath } from '../platform';
+import { isSecurePath, isWindows } from '../platform';
 
 type SpawnOptions = Parameters<(typeof import('../env-utils'))['getSpawnOptions']>[1];
 type MockDirent = import('fs').Dirent<import('node:buffer').NonSharedBuffer>;
@@ -138,7 +138,7 @@ vi.mock('../env-utils', () => {
     // Mock getSpawnCommand to match actual behavior
     const trimmed = command.trim();
     // On Windows, quote .cmd/.bat files
-    if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(trimmed)) {
+    if (isWindows() && /\.(cmd|bat)$/i.test(trimmed)) {
       // Idempotent - if already quoted, return as-is
       if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
         return trimmed;

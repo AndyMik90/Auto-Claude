@@ -59,6 +59,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import os from 'os';
 import path from 'path';
 import { isValidConfigDir } from '../utils/config-path-validator';
+import { isWindows } from '../platform';
 
 describe('isValidConfigDir - Security Validation', () => {
   let originalHomedir: string;
@@ -201,7 +202,7 @@ describe('isValidConfigDir - Security Validation', () => {
       // NOTE: Windows-style paths only work correctly when running on Windows
       // On Unix, backslashes are valid filename characters, so these become
       // relative paths like ./C:\Windows (which may be within home if cwd is in home)
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('C:\\Windows')).toBe(false);
         expect(isValidConfigDir('C:\\Windows\\System32')).toBe(false);
         expect(isValidConfigDir('C:\\Program Files')).toBe(false);
@@ -220,7 +221,7 @@ describe('isValidConfigDir - Security Validation', () => {
 
     test('rejects paths in other users home directories on Windows', () => {
       // NOTE: Windows-style paths only work correctly when running on Windows
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('C:\\Users\\OtherUser')).toBe(false);
         expect(isValidConfigDir('C:\\Users\\OtherUser\\.claude')).toBe(false);
       }
@@ -333,7 +334,7 @@ describe('isValidConfigDir - Security Validation', () => {
     test('rejects UNC paths on Windows', () => {
       // NOTE: UNC paths (\\server\share) only work correctly on Windows
       // On Unix, backslashes are filename characters, making these relative paths
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('\\\\server\\share')).toBe(false);
         expect(isValidConfigDir('\\\\server\\share\\config')).toBe(false);
       }
@@ -341,7 +342,7 @@ describe('isValidConfigDir - Security Validation', () => {
 
     test('rejects paths with mixed separators on Windows', () => {
       // NOTE: Mixed separator detection only works correctly on Windows
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('C:/Windows\\System32')).toBe(false);
         expect(isValidConfigDir('~\\..\\/etc')).toBe(false);
       }
@@ -409,7 +410,7 @@ describe('isValidConfigDir - Security Validation', () => {
 
     test('prevents Windows drive letter hopping', () => {
       // NOTE: Windows drive letters only work correctly on Windows
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('D:\\sensitive-data')).toBe(false);
         expect(isValidConfigDir('E:\\other-drive')).toBe(false);
       }
@@ -422,7 +423,7 @@ describe('isValidConfigDir - Security Validation', () => {
       expect(isValidConfigDir('/etc/security')).toBe(false);
 
       // Windows paths only work correctly on Windows
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(isValidConfigDir('C:\\Windows\\System32\\config')).toBe(false);
       }
     });

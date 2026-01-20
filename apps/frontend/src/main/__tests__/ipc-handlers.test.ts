@@ -7,6 +7,7 @@ import { EventEmitter } from "events";
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
+import { isWindows, isMacOS, isLinux } from "../platform";
 
 // Test data directory
 const TEST_DIR = mkdtempSync(path.join(tmpdir(), "ipc-handlers-test-"));
@@ -28,9 +29,9 @@ vi.mock("electron-updater", () => ({
 vi.mock("@electron-toolkit/utils", () => ({
   is: {
     dev: true,
-    windows: process.platform === "win32",
-    macos: process.platform === "darwin",
-    linux: process.platform === "linux",
+    windows: isWindows(),
+    macos: isMacOS(),
+    linux: isLinux(),
   },
   electronApp: {
     setAppUserModelId: vi.fn(),

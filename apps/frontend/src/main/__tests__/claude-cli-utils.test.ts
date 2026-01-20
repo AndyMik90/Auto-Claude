@@ -1,5 +1,6 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isWindows, getPathDelimiter } from '../platform';
 
 const mockGetToolPath = vi.fn<() => string>();
 const mockGetAugmentedEnv = vi.fn<() => Record<string, string>>();
@@ -20,11 +21,11 @@ describe('claude-cli-utils', () => {
   });
 
   it('prepends the CLI directory to PATH when the command is absolute', async () => {
-    const command = process.platform === 'win32'
+    const command = isWindows()
       ? 'C:\\Tools\\claude\\claude.exe'
       : '/opt/claude/bin/claude';
     const env = {
-      PATH: process.platform === 'win32'
+      PATH: isWindows()
         ? 'C:\\Windows\\System32'
         : '/usr/bin',
       HOME: '/tmp',
@@ -35,14 +36,14 @@ describe('claude-cli-utils', () => {
     const { getClaudeCliInvocation } = await import('../claude-cli-utils');
     const result = getClaudeCliInvocation();
 
-    const separator = process.platform === 'win32' ? ';' : ':';
+    const separator = getPathDelimiter();
     expect(result.command).toBe(command);
     expect(result.env.PATH.split(separator)[0]).toBe(path.dirname(command));
     expect(result.env.HOME).toBe(env.HOME);
   });
 
   it('sets PATH to the command directory when PATH is empty', async () => {
-    const command = process.platform === 'win32'
+    const command = isWindows()
       ? 'C:\\Tools\\claude\\claude.exe'
       : '/opt/claude/bin/claude';
     const env = { PATH: '' };
@@ -56,7 +57,7 @@ describe('claude-cli-utils', () => {
   });
 
   it('sets PATH to the command directory when PATH is missing', async () => {
-    const command = process.platform === 'win32'
+    const command = isWindows()
       ? 'C:\\Tools\\claude\\claude.exe'
       : '/opt/claude/bin/claude';
     const env = {};
@@ -71,7 +72,7 @@ describe('claude-cli-utils', () => {
 
   it('keeps PATH unchanged when the command is not absolute', async () => {
     const env = {
-      PATH: process.platform === 'win32'
+      PATH: isWindows()
         ? 'C:\\Windows;C:\\Windows\\System32'
         : '/usr/bin:/bin',
     };
@@ -86,11 +87,11 @@ describe('claude-cli-utils', () => {
   });
 
   it('does not duplicate the command directory in PATH', async () => {
-    const command = process.platform === 'win32'
+    const command = isWindows()
       ? 'C:\\Tools\\claude\\claude.exe'
       : '/opt/claude/bin/claude';
     const commandDir = path.dirname(command);
-    const separator = process.platform === 'win32' ? ';' : ':';
+    const separator = getPathDelimiter();
     const env = { PATH: `${commandDir}${separator}/usr/bin` };
 
     mockGetToolPath.mockReturnValue(command);
