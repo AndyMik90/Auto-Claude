@@ -11,7 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
-import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths, getHomeDir } from '../platform';
+import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths, getHomeDir, getBinaryDirectories } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -133,12 +133,20 @@ function checkOllamaInstalled(): OllamaInstallStatus {
       joinPaths(getHomeDir(), '.local', 'bin', 'ollama')
     );
   } else {
-    // Linux: Check common paths
-    pathsToCheck.push(
-      '/usr/local/bin/ollama',
-      '/usr/bin/ollama',
-      joinPaths(getHomeDir(), '.local', 'bin', 'ollama')
-    );
+    // Linux: Check common paths using centralized binary directories
+    const bins = getBinaryDirectories();
+    const systemBinDirs = bins.system;
+    const userBinDirs = bins.user;
+
+    // Add ollama executable path to each system binary directory
+    for (const dir of systemBinDirs) {
+      pathsToCheck.push(joinPaths(dir, 'ollama'));
+    }
+
+    // Add user-local binary directories
+    for (const dir of userBinDirs) {
+      pathsToCheck.push(joinPaths(dir, 'ollama'));
+    }
   }
 
   // Check each path

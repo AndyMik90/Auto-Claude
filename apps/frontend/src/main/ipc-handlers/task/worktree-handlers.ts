@@ -20,7 +20,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable, getHomeDir, joinPaths } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable, getHomeDir, joinPaths, getBinaryDirectories } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
@@ -975,8 +975,8 @@ async function detectLinuxApps(): Promise<Set<string>> {
     }
   }
 
-  // Also check common binary paths
-  const binPaths = ['/usr/bin', '/usr/local/bin', '/snap/bin'];
+  // Also check common binary paths using centralized helper
+  const binPaths = getBinaryDirectories().system;
   for (const binPath of binPaths) {
     try {
       if (existsSync(binPath)) {
