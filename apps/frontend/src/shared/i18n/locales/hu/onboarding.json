@@ -124,7 +124,7 @@
         "title": "Minden kész!",
         "subtitle": "Az Auto Claude készen áll, hogy segítsen fantasztikus szoftverek készítésében",
         "setupComplete": "Beállítás kész",
-        "setupCompleteDescription": "A környezeted konfigurálva és kész. Azonnal elkezdhetsz feladatokat létrehozni, vagy felfedezhetel az alkalmazáson a saját tempódban.",
+        "setupCompleteDescription": "A környezeted konfigurálva és kész. Azonnal elkezdhetsz feladatokat létrehozni, vagy felfedezhetsz az alkalmazáson a saját tempódban.",
         "whatsNext": "Mi a következő lépés?",
         "createTask": {
             "title": "Feladat létrehozása",
