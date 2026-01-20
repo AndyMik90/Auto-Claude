@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawnSync } = require('child_process');
-const { isWindows, isMacOS, isLinux } = require('../src/shared/platform.cjs');
+const { isWindows, isMacOS } = require('../src/shared/platform.cjs');
 
 const FRONTEND_DIR = path.resolve(__dirname, '..');
 const PYTHON_RUNTIME_DIR = path.join(FRONTEND_DIR, 'python-runtime');

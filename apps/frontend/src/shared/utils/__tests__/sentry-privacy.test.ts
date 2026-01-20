@@ -279,7 +279,7 @@ describe('sentry-privacy', () => {
 
       const result = processEvent(event);
 
-      expect(result.exception).toBeNull();
+      expect(result.exception).toBeUndefined();
       expect(result.breadcrumbs).toBeUndefined();
       expect(result.message).toBeNull();
     });

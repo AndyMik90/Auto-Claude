@@ -18,6 +18,12 @@ import os from 'os';
  * @returns true if the path is safe, false otherwise
  */
 export function isValidConfigDir(configDir: string): boolean {
+  // Reject empty strings immediately
+  if (!configDir) {
+    console.warn('[Config Path Validator] Rejected empty configDir path');
+    return false;
+  }
+
   // Expand ~ to home directory for validation
   const expandedPath = configDir.startsWith('~')
     ? path.join(os.homedir(), configDir.slice(1))

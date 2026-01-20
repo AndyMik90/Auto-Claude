@@ -5,7 +5,7 @@
  * Prevents path traversal attacks.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import * as os from 'os';
 import { isValidConfigDir } from '../config-path-validator';
 
@@ -129,7 +129,6 @@ describe('config-path-validator', () => {
     it('prevents prefix bypass with similar usernames', () => {
       // A path like /home/alice-malicious should not match /home/alice
       if (process.platform !== 'win32') {
-        const aliceDir = '/home/alice';
         const maliciousDir = '/home/alice-malicious/.claude';
 
         // If alice directory exists, validate that alice-malicious doesn't pass
