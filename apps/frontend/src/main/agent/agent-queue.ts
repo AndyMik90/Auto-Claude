@@ -55,7 +55,7 @@ function extractErrorMessage(output: string): string | null {
   // Check for authentication errors first - use the same detection as agent-process.ts
   // This ensures consistent error messages across all agent types
   const authFailure = detectAuthFailure(cleanOutput);
-  if (authFailure.isAuthFailure) {
+  if (authFailure.isAuthFailure && authFailure.message) {
     return authFailure.message.substring(0, ERROR_MESSAGE_MAX_LENGTH);
   }
 
