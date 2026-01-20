@@ -17,6 +17,21 @@ const sentryDefines = {
   '__SENTRY_PROFILES_SAMPLE_RATE__': JSON.stringify(process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1'),
 };
 
+/**
+ * Platform polyfills for the renderer process.
+ *
+ * In Electron's renderer, `process.platform` and `process.env` are available in production
+ * but need to be defined for the dev server (Vite).
+ *
+ * Note: process.env is polyfilled as an empty object in dev since env vars are
+ * accessed through contextBridge in production. The getEnvVar function in
+ * shared/platform.ts handles this gracefully.
+ */
+const platformDefines = {
+  'process.platform': JSON.stringify(process.platform),
+  'process.env': JSON.stringify({}),
+};
+
 export default defineConfig({
   main: {
     define: sentryDefines,
@@ -67,7 +82,10 @@ export default defineConfig({
     }
   },
   renderer: {
-    define: sentryDefines,
+    define: {
+      ...sentryDefines,
+      ...platformDefines,
+    },
     root: resolve(__dirname, 'src/renderer'),
     build: {
       rollupOptions: {

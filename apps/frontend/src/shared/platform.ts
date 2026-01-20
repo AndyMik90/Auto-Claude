@@ -10,6 +10,9 @@
  * pulling Node.js modules (fs, os, path, child_process) into the renderer
  * bundle, where they are not available. All functions here must use only
  * process.platform and process.env, which are available in the renderer.
+ *
+ * In development (Vite dev server), process is polyfilled by vite config.
+ * In production (Electron renderer), process is provided by Electron.
  */
 
 /**
@@ -26,6 +29,10 @@ export type Platform = 'win32' | 'darwin' | 'linux' | 'unknown';
  * @returns The current platform identifier
  */
 export function getCurrentPlatform(): Platform {
+  // Guard for development where process might not be defined immediately
+  if (typeof process === 'undefined' || !process.platform) {
+    return 'unknown';
+  }
   const p = process.platform;
   if (p === 'win32' || p === 'darwin' || p === 'linux') {
     return p;
@@ -83,6 +90,11 @@ export function isUnix(): boolean {
  * @returns The environment variable value, or undefined if not found
  */
 export function getEnvVar(name: string): string | undefined {
+  // Guard for development where process might not be defined immediately
+  if (typeof process === 'undefined' || !process.env) {
+    return undefined;
+  }
+
   if (isWindows()) {
     // Try exact match first
     if (process.env[name] !== undefined) {
