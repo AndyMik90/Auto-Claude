@@ -113,6 +113,7 @@ For each finding, provide:
 2. What the current code produces
 3. What it should produce
 
+<!-- SYNC: This section is shared. See partials/full_context_analysis.md for canonical version -->
 ## CRITICAL: Full Context Analysis
 
 Before reporting ANY finding, you MUST:

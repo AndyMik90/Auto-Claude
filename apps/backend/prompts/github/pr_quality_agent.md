@@ -114,6 +114,7 @@ When your finding claims something is **missing** (no error handling, no fallbac
 - Respect framework idioms (React hooks, etc.)
 - Distinguish between "wrong" and "not my style"
 
+<!-- SYNC: This section is shared. See partials/full_context_analysis.md for canonical version -->
 ## CRITICAL: Full Context Analysis
 
 Before reporting ANY finding, you MUST:

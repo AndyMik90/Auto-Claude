@@ -21,6 +21,7 @@ import hashlib
 import logging
 import os
 from collections import defaultdict
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -75,10 +76,9 @@ DEBUG_MODE = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 PR_WORKTREE_DIR = ".auto-claude/github/pr/worktrees"
 
 
-class ConfidenceTier:
+class ConfidenceTier(str, Enum):
     """Confidence tiers for finding routing.
 
-    Simple class with constants (not enum) to match codebase style.
     Findings are routed based on their confidence score:
     - HIGH (>=0.8): Included as-is
     - MEDIUM (0.5-0.8): Included with "[Potential]" prefix
@@ -89,16 +89,13 @@ class ConfidenceTier:
     MEDIUM = "medium"
     LOW = "low"
 
-    # Thresholds
-    HIGH_THRESHOLD = 0.8
-    LOW_THRESHOLD = 0.5
-
+    # Thresholds (class-level constants)
     @classmethod
-    def get_tier(cls, confidence: float) -> str:
+    def get_tier(cls, confidence: float) -> ConfidenceTier:
         """Get tier for a given confidence value."""
-        if confidence >= cls.HIGH_THRESHOLD:
+        if confidence >= 0.8:  # HIGH_THRESHOLD
             return cls.HIGH
-        elif confidence >= cls.LOW_THRESHOLD:
+        elif confidence >= 0.5:  # LOW_THRESHOLD
             return cls.MEDIUM
         else:
             return cls.LOW

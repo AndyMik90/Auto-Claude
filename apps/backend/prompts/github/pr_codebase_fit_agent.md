@@ -92,6 +92,7 @@ Before flagging a "should use existing utility" issue:
 2. Check if existing utility has the right signature/behavior
 3. Consider if the new implementation is intentionally different
 
+<!-- SYNC: This section is shared. See partials/full_context_analysis.md for canonical version -->
 ## CRITICAL: Full Context Analysis
 
 Before reporting ANY finding, you MUST:

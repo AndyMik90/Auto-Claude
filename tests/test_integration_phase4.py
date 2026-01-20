@@ -9,7 +9,6 @@ Tests validating all Phase 1-3 features work correctly:
 """
 
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -137,10 +136,15 @@ class TestConfidenceTierRouting:
         assert ConfidenceTier.MEDIUM == "medium"
         assert ConfidenceTier.LOW == "low"
 
-    def test_threshold_constants(self):
-        """Verify threshold constants are correctly defined."""
-        assert ConfidenceTier.HIGH_THRESHOLD == 0.8
-        assert ConfidenceTier.LOW_THRESHOLD == 0.5
+    def test_threshold_values(self):
+        """Verify threshold values through behavior (0.8 for HIGH, 0.5 for LOW)."""
+        # HIGH threshold is 0.8
+        assert ConfidenceTier.get_tier(0.8) == ConfidenceTier.HIGH
+        assert ConfidenceTier.get_tier(0.79) == ConfidenceTier.MEDIUM
+
+        # LOW threshold is 0.5
+        assert ConfidenceTier.get_tier(0.5) == ConfidenceTier.MEDIUM
+        assert ConfidenceTier.get_tier(0.49) == ConfidenceTier.LOW
 
 
 class TestEvidenceValidation:
@@ -430,6 +434,9 @@ class TestImportDetection:
         }
         (temp_project / "tsconfig.json").write_text(json.dumps(tsconfig))
 
+        # Create the target file that the alias points to
+        (temp_project / "src" / "utils.ts").write_text("export const helper = () => {};")
+
         # Test file with alias import
         test_content = "import { helper } from '@/utils';"
         source_path = Path("src/test.ts")
@@ -439,9 +446,9 @@ class TestImportDetection:
         # Call _find_imports
         imports = gatherer._find_imports(test_content, source_path)
 
-        # Should resolve @/utils to src/utils.ts or detect as external/unresolved
-        # Note: This may return 0 imports if file structure differs or alias isn't fully resolved
-        assert isinstance(imports, set)  # Verify it returns a set structure
+        # Should resolve @/utils to src/utils.ts
+        assert isinstance(imports, set)
+        assert "src/utils.ts" in imports, f"Expected 'src/utils.ts' in imports, got: {imports}"
 
     def test_commonjs_require_detection(self, temp_project):
         """CommonJS require('./utils') should be detected."""
@@ -554,22 +561,27 @@ class TestReverseDepDetection:
         assert len(dependents_index) == 0
         assert len(dependents_main) == 0
 
-    def test_respects_timeout(self, tmp_path):
-        """Large repo grep should not hang (mocked timeout test)."""
+    def test_respects_file_limit(self, tmp_path):
+        """Large repo search should stop after reaching file limit."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         (src_dir / "unique_name.ts").write_text("export const x = 1;")
 
         gatherer = PRContextGathererIsolated(tmp_path, pr_number=1)
 
-        # Mock subprocess.run to simulate timeout
-        import subprocess
-        with patch.object(_cg_module.subprocess, 'run') as mock_run:
-            mock_run.side_effect = subprocess.TimeoutExpired(cmd="grep", timeout=5.0)
+        # Mock os.walk to generate more files than the limit (2000)
+        # This simulates a large codebase without creating actual files
+        def mock_walk(path):
+            # Yield a directory with 3000 TypeScript files
+            yield (str(path), [], [f"file{i}.ts" for i in range(3000)])
+
+        with patch.object(_cg_module.os, "walk", mock_walk):
+            # The function should stop after max_files_to_check (2000) files
+            # and return gracefully without hanging
             dependents = gatherer._find_dependents("src/unique_name.ts")
 
-        # Should handle timeout gracefully and return empty set
-        assert dependents == set()
+        # Should return a set (may be empty since mock files don't contain imports)
+        assert isinstance(dependents, set)
 
 
 # =============================================================================

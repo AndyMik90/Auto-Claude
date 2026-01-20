@@ -912,37 +912,16 @@ class PRContextGatherer:
             if ts_paths:
                 for match in re.finditer(alias_pattern, content):
                     import_path = match.group(1)
-                    resolved_alias = self._resolve_path_alias(import_path, ts_paths)
-                    if resolved_alias:
-                        # Resolve to actual file path using the alias-resolved path
-                        full_resolved = self._resolve_import_path(
-                            "./" + resolved_alias, source_path.parent / resolved_alias
-                        )
-                        if full_resolved:
-                            imports.add(full_resolved)
+                    resolved = self._resolve_alias_import(import_path, ts_paths)
+                    if resolved:
+                        imports.add(resolved)
 
             # Pattern 3: CommonJS require (NEW)
             # Matches: require('./utils'), require('@/config')
             require_pattern = r"require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)"
             for match in re.finditer(require_pattern, content):
                 import_path = match.group(1)
-                if import_path.startswith("."):
-                    resolved = self._resolve_import_path(import_path, source_path)
-                elif import_path.startswith("@") or import_path.startswith("~"):
-                    if ts_paths:
-                        resolved_alias = self._resolve_path_alias(import_path, ts_paths)
-                        resolved = (
-                            self._resolve_import_path(
-                                "./" + resolved_alias,
-                                source_path.parent / resolved_alias,
-                            )
-                            if resolved_alias
-                            else None
-                        )
-                    else:
-                        resolved = None
-                else:
-                    resolved = None  # Skip node_modules packages
+                resolved = self._resolve_any_import(import_path, source_path, ts_paths)
                 if resolved:
                     imports.add(resolved)
 
@@ -951,23 +930,7 @@ class PRContextGatherer:
             reexport_pattern = r"export\s+(?:\*|\{[^}]*\})\s+from\s+['\"]([^'\"]+)['\"]"
             for match in re.finditer(reexport_pattern, content):
                 import_path = match.group(1)
-                if import_path.startswith("."):
-                    resolved = self._resolve_import_path(import_path, source_path)
-                elif import_path.startswith("@") or import_path.startswith("~"):
-                    if ts_paths:
-                        resolved_alias = self._resolve_path_alias(import_path, ts_paths)
-                        resolved = (
-                            self._resolve_import_path(
-                                "./" + resolved_alias,
-                                source_path.parent / resolved_alias,
-                            )
-                            if resolved_alias
-                            else None
-                        )
-                    else:
-                        resolved = None
-                else:
-                    resolved = None
+                resolved = self._resolve_any_import(import_path, source_path, ts_paths)
                 if resolved:
                     imports.add(resolved)
 
@@ -976,6 +939,61 @@ class PRContextGatherer:
             imports.update(self._find_python_imports(content, source_path))
 
         return imports
+
+    def _resolve_alias_import(
+        self, import_path: str, ts_paths: dict[str, list[str]]
+    ) -> str | None:
+        """
+        Resolve a path alias import to an actual file path.
+
+        Path aliases (e.g., @/utils, ~/config) are project-root relative,
+        not relative to the importing file.
+
+        Args:
+            import_path: Path alias import like '@/utils' or '~/config'
+            ts_paths: tsconfig paths mapping
+
+        Returns:
+            Resolved path relative to project root, or None if not found
+        """
+        resolved_alias = self._resolve_path_alias(import_path, ts_paths)
+        if not resolved_alias:
+            return None
+
+        # Path aliases are project-root relative, so resolve from root
+        # by using an empty base path (Path(".").parent = Path("."))
+        return self._resolve_import_path("./" + resolved_alias, Path("."))
+
+    def _resolve_any_import(
+        self, import_path: str, source_path: Path, ts_paths: dict[str, list[str]] | None
+    ) -> str | None:
+        """
+        Resolve any import path (relative, alias, or node_modules).
+
+        Handles all import types:
+        - Relative: './utils', '../config'
+        - Path aliases: '@/utils', '~/config'
+        - Node modules: 'lodash' (returns None - not project files)
+
+        Args:
+            import_path: The import path from the source code
+            source_path: Path of the file doing the importing
+            ts_paths: tsconfig paths mapping, or None
+
+        Returns:
+            Resolved path relative to project root, or None if not found/external
+        """
+        if import_path.startswith("."):
+            # Relative import
+            return self._resolve_import_path(import_path, source_path)
+        elif import_path.startswith("@") or import_path.startswith("~"):
+            # Path alias import
+            if ts_paths:
+                return self._resolve_alias_import(import_path, ts_paths)
+            return None
+        else:
+            # Node modules package - skip
+            return None
 
     def _resolve_import_path(self, import_path: str, source_path: Path) -> str | None:
         """
@@ -1247,7 +1265,20 @@ class PRContextGatherer:
                 pass
 
             # Fall back to comment stripping (outside strings only)
-            # This regex-based approach handles single-line comments
+            # First, remove block comments /* ... */
+            # Simple approach: remove everything between /* and */
+            # This handles multi-line block comments
+            while "/*" in content:
+                start = content.find("/*")
+                end = content.find("*/", start)
+                if end == -1:
+                    # Unclosed block comment - remove to end
+                    content = content[:start]
+                    break
+                content = content[:start] + content[end + 2 :]
+
+            # Then handle single-line comments
+            # This regex-based approach handles // comments
             # outside of strings by checking for quotes
             lines = content.split("\n")
             cleaned_lines = []
@@ -1317,6 +1348,9 @@ class PRContextGatherer:
             Resolved path like 'src/utils/helpers', or None if no match
         """
         for alias_pattern, target_paths in paths.items():
+            # Skip empty target_paths (malformed tsconfig entry)
+            if not target_paths:
+                continue
             # Convert '@/*' to regex pattern '^@/(.*)$'
             regex_pattern = "^" + alias_pattern.replace("*", "(.*)") + "$"
             match = re.match(regex_pattern, import_path)

@@ -108,6 +108,7 @@ When your finding claims protection is **missing** (no validation, no sanitizati
 - Check if mitigation exists elsewhere (e.g., WAF, input validation)
 - Review framework security features (does React escape by default?)
 
+<!-- SYNC: This section is shared. See partials/full_context_analysis.md for canonical version -->
 ## CRITICAL: Full Context Analysis
 
 Before reporting ANY finding, you MUST:

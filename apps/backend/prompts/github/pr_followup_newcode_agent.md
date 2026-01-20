@@ -124,6 +124,7 @@ For findings claiming something is **missing** (no fallback, no validation, no e
 
 **Only report if you can confidently say**: "I verified the complete scope and the safeguard does not exist."
 
+<!-- SYNC: This section is shared. See partials/full_context_analysis.md for canonical version -->
 ## CRITICAL: Full Context Analysis
 
 Before reporting ANY finding, you MUST:
