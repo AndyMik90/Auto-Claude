@@ -96,7 +96,8 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+      'Content-Type': 'application/json',
     };
 
     // Add custom headers if configured
@@ -104,14 +105,37 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       Object.assign(headers, server.headers);
     }
 
+    appLog.info('[MCP Health] Checking HTTP server:', server.url);
+    appLog.info('[MCP Health] Headers:', JSON.stringify(headers));
+
+    // Use POST with MCP initialize for health check (many MCP servers don't support GET)
+    const initRequest = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          roots: { listChanged: true },
+        },
+        clientInfo: {
+          name: 'auto-claude',
+          version: '1.0.0',
+        },
+      },
+    };
+
     const response = await fetch(server.url, {
-      method: 'GET',
+      method: 'POST',
       headers,
+      body: JSON.stringify(initRequest),
       signal: controller.signal,
     });
 
     clearTimeout(timeout);
     const responseTime = Date.now() - startTime;
+
+    appLog.info('[MCP Health] Response status:', response.status, response.statusText);
 
     let status: McpHealthStatus;
     let message: string;
@@ -123,6 +147,13 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       status = 'needs_auth';
       message = response.status === 401 ? 'Authentication required' : 'Access forbidden';
     } else {
+      // Try to get error body for debugging
+      try {
+        const errorBody = await response.text();
+        appLog.error('[MCP Health] Error response:', errorBody.substring(0, 500));
+      } catch {
+        // Ignore
+      }
       status = 'unhealthy';
       message = `HTTP ${response.status}: ${response.statusText}`;
     }
@@ -271,12 +302,15 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      'Accept': 'application/json, text/event-stream',
     };
 
     if (server.headers) {
       Object.assign(headers, server.headers);
     }
+
+    appLog.info('[MCP Test] Testing connection to:', server.url);
+    appLog.info('[MCP Test] Headers:', JSON.stringify(headers));
 
     // Send MCP initialize request
     const initRequest = {
@@ -285,9 +319,11 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
       method: 'initialize',
       params: {
         protocolVersion: '2024-11-05',
-        capabilities: {},
+        capabilities: {
+          roots: { listChanged: true },
+        },
         clientInfo: {
-          name: 'auto-claude-health-check',
+          name: 'auto-claude',
           version: '1.0.0',
         },
       },
@@ -303,13 +339,24 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     clearTimeout(timeout);
     const responseTime = Date.now() - startTime;
 
+    appLog.info('[MCP Test] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
+      // Try to get error body for more details
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+        appLog.error('[MCP Test] Error response body:', errorBody.substring(0, 500));
+      } catch {
+        // Ignore
+      }
+
       if (response.status === 401 || response.status === 403) {
         return {
           serverId: server.id,
           success: false,
           message: 'Authentication failed',
-          error: `HTTP ${response.status}: ${response.statusText}`,
+          error: `HTTP ${response.status}: ${response.statusText}${errorBody ? ` - ${errorBody.substring(0, 200)}` : ''}`,
           responseTime,
         };
       }
@@ -317,12 +364,72 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
         serverId: server.id,
         success: false,
         message: `Server returned error`,
-        error: `HTTP ${response.status}: ${response.statusText}`,
+        error: `HTTP ${response.status}: ${response.statusText}${errorBody ? ` - ${errorBody.substring(0, 200)}` : ''}`,
         responseTime,
       };
     }
 
-    const data = await response.json();
+    // Check content type - SSE servers may return event stream
+    const contentType = response.headers.get('content-type') || '';
+    appLog.info('[MCP Test] Content-Type:', contentType);
+
+    let data: any;
+    const responseText = await response.text();
+    appLog.info('[MCP Test] Response text (first 500):', responseText.substring(0, 500));
+
+    // Handle SSE response format
+    if (contentType.includes('text/event-stream') || responseText.startsWith('event:') || responseText.startsWith('data:')) {
+      // Parse SSE format - extract JSON from data lines
+      const dataLines = responseText.split('\n').filter(line => line.startsWith('data:'));
+      if (dataLines.length > 0) {
+        try {
+          const jsonStr = dataLines[0].replace('data:', '').trim();
+          data = JSON.parse(jsonStr);
+        } catch {
+          // SSE response but can't parse - still consider it working
+          appLog.info('[MCP Test] SSE response received but could not parse JSON');
+          return {
+            serverId: server.id,
+            success: true,
+            message: 'Connected successfully (SSE transport)',
+            responseTime,
+          };
+        }
+      } else {
+        // SSE response without data - consider it working
+        return {
+          serverId: server.id,
+          success: true,
+          message: 'Connected successfully (SSE transport)',
+          responseTime,
+        };
+      }
+    } else {
+      // Standard JSON response
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        appLog.error('[MCP Test] Failed to parse response as JSON:', parseError);
+        // Non-JSON 200 response - might still be valid SSE server
+        if (response.ok) {
+          return {
+            serverId: server.id,
+            success: true,
+            message: 'Server responded (non-JSON)',
+            responseTime,
+          };
+        }
+        return {
+          serverId: server.id,
+          success: false,
+          message: 'Invalid response format',
+          error: `Could not parse response: ${responseText.substring(0, 100)}`,
+          responseTime,
+        };
+      }
+    }
+
+    appLog.info('[MCP Test] Parsed data:', JSON.stringify(data).substring(0, 500));
 
     if (data.error) {
       return {
@@ -334,7 +441,17 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
       };
     }
 
-    // Now try to list tools
+    // If we got a valid initialize response, the server is working
+    if (data.result) {
+      return {
+        serverId: server.id,
+        success: true,
+        message: 'Connected successfully',
+        responseTime,
+      };
+    }
+
+    // Try to list tools as additional verification
     const toolsRequest = {
       jsonrpc: '2.0',
       id: 2,
