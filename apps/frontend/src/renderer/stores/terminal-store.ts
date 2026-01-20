@@ -258,7 +258,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       title,
       status: 'running',  // External terminals are already running
       // Use HOME on Unix, USERPROFILE on Windows, fallback to ~
-      cwd: cwd || process.env.HOME || process.env.USERPROFILE || '~',
+      // Use getEnvVar for case-insensitive Windows environment variable access
+      cwd: cwd || getEnvVar('HOME') || getEnvVar('USERPROFILE') || '~',
       createdAt: new Date(),
       isClaudeMode: false,
       projectPath,
