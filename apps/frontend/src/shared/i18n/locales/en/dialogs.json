@@ -159,5 +159,23 @@
     "downloadError": "Failed to download update",
     "claudeCodeChangelog": "View Claude Code Changelog",
     "claudeCodeChangelogAriaLabel": "View Claude Code Changelog (opens in new window)"
+  },
+  "promptInspection": {
+    "buttonLabel": "Inspect Prompts",
+    "tooltipContent": "View agent prompts used in this context",
+    "titleRoadmap": "Roadmap Agent Prompts",
+    "titleKanban": "Task Pipeline Agent Prompts",
+    "description": "View the prompts used by agents in this context",
+    "selectPrompt": "Select a prompt",
+    "selectPromptHint": "Select a prompt to view its content",
+    "noPrompts": "No prompts available",
+    "loadError": "Failed to load prompts",
+    "contentError": "Failed to load prompt content",
+    "retry": "Retry",
+    "copyToClipboard": "Copy",
+    "copied": "Copied!",
+    "copiedDescription": "Prompt content copied to clipboard",
+    "copyError": "Copy failed",
+    "copyErrorDescription": "Failed to copy to clipboard"
   }
 }
