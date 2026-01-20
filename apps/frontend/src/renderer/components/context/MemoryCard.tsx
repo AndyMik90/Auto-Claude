@@ -261,11 +261,11 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 />
                 <ul className="space-y-0.5">
                   {parsed.recommendations_for_next_session?.map((item, idx) => {
-                    const text = typeof item === 'string' ? item : (item as { recommendation?: string }).recommendation;
+                    const text = typeof item === 'string' ? item : item.recommendation;
                     return text ? <ListItem key={`rec-${idx}`}>{text}</ListItem> : null;
                   })}
                   {parsed.discoveries?.recommendations?.map((item, idx) => {
-                    const text = typeof item === 'string' ? item : (item as { recommendation?: string }).recommendation;
+                    const text = typeof item === 'string' ? item : item.recommendation;
                     return text ? <ListItem key={`disc-rec-${idx}`}>{text}</ListItem> : null;
                   })}
                 </ul>
