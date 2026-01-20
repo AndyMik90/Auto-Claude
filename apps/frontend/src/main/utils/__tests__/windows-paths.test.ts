@@ -69,6 +69,56 @@ vi.mock('fs/promises', async () => {
   };
 });
 
+// Mock platform module for isSecurePath
+vi.mock('../../platform', async () => {
+  const actualPlatform = await vi.importActual<typeof import('../../platform')>('../../platform');
+
+  // Create a secure path mock that respects the current process.platform
+  const mockIsSecurePath = (candidatePath: string): boolean => {
+    if (!candidatePath) return false;
+
+    // Same dangerousPatterns as the real implementation
+    const dangerousPatterns = [
+      /[;&|`${}[\]<>!"^]/,        // Shell metacharacters
+      /%[^%]+%/,                   // Windows environment variable expansion
+      /\.\.\//,                    // Unix directory traversal
+      /\.\.\\/,                    // Windows directory traversal
+      /[\r\n]/                     // Newlines (command injection)
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(candidatePath)) {
+        return false;
+      }
+    }
+
+    // On Windows, validate executable names additionally
+    if (process.platform === 'win32') {
+      const windowsExecutablePattern = /^[a-zA-Z]:\\(?:[^<>:"|?*\r\n]+\\)*[^<>:"|?*\r\n]*$/;
+      const uncPathPattern = /^\\\\[^<>:"|?*\r\n]+\\[^<>:"|?*\r\n]*(?:\\[^<>:"|?*\r\n]*)*$/;
+      const devicePathPattern = /^\\\\\?\\[^<>:"|?*\r\n]+$/;
+
+      const isValidWindowsPath = windowsExecutablePattern.test(candidatePath) ||
+                                  uncPathPattern.test(candidatePath) ||
+                                  devicePathPattern.test(candidatePath);
+
+      if (!isValidWindowsPath) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  return {
+    ...actualPlatform,
+    isSecurePath: mockIsSecurePath,
+    isWindows: () => process.platform === 'win32',
+    isMacOS: () => process.platform === 'darwin',
+    isLinux: () => process.platform === 'linux',
+  };
+});
+
 // Mock os.platform for platform-specific tests
 const originalPlatform = process.platform;
 

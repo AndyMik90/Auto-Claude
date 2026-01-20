@@ -14,10 +14,12 @@ vi.mock('../platform', () => ({
   isMacOS: vi.fn(),
   isLinux: vi.fn(),
   getCurrentPlatform: vi.fn(),
+  getEnvVar: vi.fn(),
 }));
 
-import { isWindows } from '../platform';
+import { isWindows, getEnvVar } from '../platform';
 const mockIsWindows = vi.mocked(isWindows);
+const mockGetEnvVar = vi.mocked(getEnvVar);
 
 describe('debug-logger', () => {
   const originalEnv = { ...process.env };
@@ -31,6 +33,16 @@ describe('debug-logger', () => {
     describe('on Windows (case-insensitive)', () => {
       beforeEach(() => {
         mockIsWindows.mockReturnValue(true);
+        // Mock getEnvVar to simulate case-insensitive behavior
+        mockGetEnvVar.mockImplementation((varName: string) => {
+          // On Windows, check for DEBUG in any case
+          for (const [key, value] of Object.entries(process.env)) {
+            if (key.toUpperCase() === 'DEBUG') {
+              return value;
+            }
+          }
+          return undefined;
+        });
       });
 
       it('returns true when DEBUG=true', () => {
@@ -82,6 +94,11 @@ describe('debug-logger', () => {
     describe('on Unix (case-sensitive)', () => {
       beforeEach(() => {
         mockIsWindows.mockReturnValue(false);
+        // Mock getEnvVar to simulate case-sensitive behavior
+        mockGetEnvVar.mockImplementation((varName: string) => {
+          // On Unix, exact case match only
+          return process.env[varName];
+        });
       });
 
       it('returns true when DEBUG=true (exact case)', () => {
@@ -109,7 +126,7 @@ describe('debug-logger', () => {
   describe('debugLog', () => {
     it('logs when debug is enabled', () => {
       mockIsWindows.mockReturnValue(false);
-      process.env.DEBUG = 'true';
+      mockGetEnvVar.mockReturnValue('true');
 
       // Console.log is called; we just verify no error is thrown
       expect(() => debugLog('Test message')).not.toThrow();
@@ -117,7 +134,7 @@ describe('debug-logger', () => {
 
     it('does not log when debug is disabled', () => {
       mockIsWindows.mockReturnValue(false);
-      delete process.env.DEBUG;
+      mockGetEnvVar.mockReturnValue(undefined);
 
       // Console.log is not called; we just verify no error is thrown
       expect(() => debugLog('Test message')).not.toThrow();
@@ -127,14 +144,14 @@ describe('debug-logger', () => {
   describe('debugWarn', () => {
     it('logs warning when debug is enabled', () => {
       mockIsWindows.mockReturnValue(false);
-      process.env.DEBUG = 'true';
+      mockGetEnvVar.mockReturnValue('true');
 
       expect(() => debugWarn('Test warning')).not.toThrow();
     });
 
     it('does not log when debug is disabled', () => {
       mockIsWindows.mockReturnValue(false);
-      delete process.env.DEBUG;
+      mockGetEnvVar.mockReturnValue(undefined);
 
       expect(() => debugWarn('Test warning')).not.toThrow();
     });
@@ -143,14 +160,14 @@ describe('debug-logger', () => {
   describe('debugError', () => {
     it('logs error when debug is enabled', () => {
       mockIsWindows.mockReturnValue(false);
-      process.env.DEBUG = 'true';
+      mockGetEnvVar.mockReturnValue('true');
 
       expect(() => debugError('Test error')).not.toThrow();
     });
 
     it('does not log when debug is disabled', () => {
       mockIsWindows.mockReturnValue(false);
-      delete process.env.DEBUG;
+      mockGetEnvVar.mockReturnValue(undefined);
 
       expect(() => debugError('Test error')).not.toThrow();
     });

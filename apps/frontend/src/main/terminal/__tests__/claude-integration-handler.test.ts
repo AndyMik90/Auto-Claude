@@ -13,6 +13,7 @@ vi.mock('../../platform', () => ({
   isLinux: vi.fn(() => false),
   isUnix: vi.fn(() => false),
   getCurrentOS: vi.fn(() => 'linux'),
+  getEnvVar: vi.fn(() => undefined),
 }));
 
 import { isWindows } from '../../platform';
