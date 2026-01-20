@@ -5,5 +5,11 @@
       "titleSuffix": "(JSON Error)",
       "description": "⚠️ JSON Parse Error: {{error}}\n\nThe implementation_plan.json file is malformed. Run the backend auto-fix or manually repair the file."
     }
+  },
+  "ladybug": {
+    "pythonNotFound": "Python not found. Please install Python 3.12 or later.",
+    "notInstalled": "LadybugDB (real_ladybug) is not installed. On Windows, this may require Visual Studio Build Tools to compile.",
+    "buildTools": "Failed to build LadybugDB. Please install Visual Studio Build Tools with C++ workload.",
+    "checkFailed": "Failed to check LadybugDB installation status."
   }
 }

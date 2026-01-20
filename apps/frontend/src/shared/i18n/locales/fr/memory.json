@@ -1,0 +1,11 @@
+{
+  "database": "Base de données",
+  "path": "Chemin",
+  "fallbacks": {
+    "auto_claude_memory": "auto_claude_memory",
+    "memories_directory": "répertoire des mémoires"
+  },
+  "errors": {
+    "graphiti_not_configured": "La mémoire Graphiti n'est pas configurée"
+  }
+}

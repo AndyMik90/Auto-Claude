@@ -239,5 +239,11 @@
       "retry": "Réessayer",
       "fallbackNote": "La mémoire fonctionnera toujours avec la recherche par mots-clés même sans embeddings."
     }
+  },
+  "ladybug": {
+    "notInstalled": "LadybugDB non installé",
+    "downloadBuildTools": "Télécharger Visual Studio Build Tools",
+    "restartAfterInstall": "Après l'installation des outils de compilation, redémarrez l'application pour réessayer.",
+    "checkFailed": "Échec de la vérification du statut de l'infrastructure"
   }
 }

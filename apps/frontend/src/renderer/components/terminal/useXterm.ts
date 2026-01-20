@@ -32,6 +32,23 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T;
 }
 
+/**
+ * Calculate optimal font size based on device pixel ratio (Windows DPI scaling).
+ * devicePixelRatio > 1 indicates high-DPI displays (125%, 150%, 200% scaling).
+ * Base size: 13px for 100% scaling (devicePixelRatio = 1).
+ * Adjust font size using square root of scale factor for smoother scaling.
+ * This makes the reduction less aggressive on high-DPI displays.
+ * For 150% scaling (1.5x), use 13 * (1 / sqrt(1.5)) ~ 10.6 logical pixels.
+ * Minimum of 11px to maintain readability.
+ */
+function getAdjustedFontSize(baseFontSize: number = 13): number {
+  const scaleFactor = window.devicePixelRatio || 1;
+  const adjustedFontSize = scaleFactor > 1
+    ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
+    : baseFontSize;
+  return Math.round(adjustedFontSize);
+}
+
 export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
@@ -46,23 +63,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
-    // Calculate optimal font size based on device pixel ratio (Windows DPI scaling)
-    // devicePixelRatio > 1 indicates high-DPI displays (125%, 150%, 200% scaling)
-    // Base size: 13px for 100% scaling (devicePixelRatio = 1)
-    const baseFontSize = 13;
-    const scaleFactor = window.devicePixelRatio || 1;
-    // Adjust font size using square root of scale factor for smoother scaling
-    // This makes the reduction less aggressive on high-DPI displays
-    // For 150% scaling (1.5x), use 13 * (1 / sqrt(1.5)) ≈ 10.6 logical pixels
-    // Minimum of 11px to maintain readability
-    const adjustedFontSize = scaleFactor > 1
-      ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
-      : baseFontSize;
-
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: Math.round(adjustedFontSize),
+      fontSize: getAdjustedFontSize(),
       fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
@@ -400,15 +404,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
     const handleDPIChange = debounce(() => {
       if (xtermRef.current) {
-        const baseFontSize = 13;
-        const scaleFactor = window.devicePixelRatio || 1;
-        // Adjust font size using square root for smoother scaling on high-DPI displays
-        const adjustedFontSize = scaleFactor > 1
-          ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
-          : baseFontSize;
-
-        // Update font size dynamically
-        xtermRef.current.options.fontSize = Math.round(adjustedFontSize);
+        // Update font size dynamically using the helper
+        xtermRef.current.options.fontSize = getAdjustedFontSize();
 
         // Trigger a fit to recalculate terminal dimensions with new font size
         if (fitAddonRef.current && terminalRef.current) {

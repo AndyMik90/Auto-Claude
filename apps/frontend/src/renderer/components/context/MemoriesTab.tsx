@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
   Database,
@@ -77,6 +78,7 @@ export function MemoriesTab({
   searchLoading,
   onSearch
 }: MemoriesTabProps) {
+  const { t } = useTranslation(['memory', 'errors']);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [memoriesDir, setMemoriesDir] = useState<string>('');
@@ -159,8 +161,8 @@ export function MemoriesTab({
             {memoryStatus?.available ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                  <InfoItem label="Database" value={memoryStatus.database || 'auto_claude_memory'} />
-                  <InfoItem label="Path" value={memoryStatus.dbPath || memoriesDir || 'memories directory'} />
+                  <InfoItem label={t('memory:database')} value={memoryStatus.database || t('memory:fallbacks.auto_claude_memory')} />
+                  <InfoItem label={t('memory:path')} value={memoryStatus.dbPath || memoriesDir || t('memory:fallbacks.memories_directory')} />
                 </div>
 
                 {/* Memory Stats Summary */}
@@ -197,7 +199,7 @@ export function MemoriesTab({
               </>
             ) : (
               <div className="text-sm text-muted-foreground">
-                <p>{memoryStatus?.reason || 'Graphiti memory is not configured'}</p>
+                <p>{memoryStatus?.reason || t('memory:errors.graphiti_not_configured')}</p>
                 <p className="mt-2 text-xs">
                   To enable graph memory, set <code className="bg-muted px-1 py-0.5 rounded">GRAPHITI_ENABLED=true</code> in project settings.
                 </p>

@@ -756,6 +756,17 @@ export interface LadybugInstallStatus {
 
 let ladybugInstallCache: LadybugInstallStatus | null = null;
 
+/**
+ * Error key constants for i18n translation.
+ * These keys should be defined in errors.json translation files.
+ */
+export const LADYBUG_ERROR_KEYS = {
+  pythonNotFound: 'errors:ladybug.pythonNotFound',
+  notInstalled: 'errors:ladybug.notInstalled',
+  buildTools: 'errors:ladybug.buildTools',
+  checkFailed: 'errors:ladybug.checkFailed',
+} as const;
+
 export function checkLadybugInstalled(): LadybugInstallStatus {
   // Return cached result if available (avoid repeated slow checks)
   if (ladybugInstallCache !== null) {
@@ -767,7 +778,7 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
     ladybugInstallCache = {
       installed: false,
       pythonAvailable: false,
-      error: 'Python not found. Please install Python 3.12 or later.',
+      error: LADYBUG_ERROR_KEYS.pythonNotFound,
     };
     return ladybugInstallCache;
   }
@@ -776,10 +787,14 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
     const [cmd, args] = parsePythonCommand(pythonCmd);
     const checkArgs = [...args, '-c', 'import real_ladybug; print("OK")'];
 
+    // Use getMemoryPythonEnv() to ensure real_ladybug can be found
+    const pythonEnv = getMemoryPythonEnv();
+
     const result = spawnSync(cmd, checkArgs, {
       encoding: 'utf-8',
       timeout: 10000,
       windowsHide: true,
+      env: pythonEnv,
     });
 
     if (result.status === 0 && result.stdout?.includes('OK')) {
@@ -788,19 +803,14 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
         pythonAvailable: true,
       };
     } else {
-      // Parse error to provide helpful message
+      // Parse error to provide helpful message (using i18n keys)
       const stderr = result.stderr || '';
-      let error = 'LadybugDB (real_ladybug) is not installed.';
+      let error: string = LADYBUG_ERROR_KEYS.notInstalled;
 
       if (stderr.includes('ModuleNotFoundError') || stderr.includes('No module named')) {
-        error =
-          'LadybugDB (real_ladybug) is not installed. ' +
-          'On Windows, this may require Visual Studio Build Tools to compile.';
+        error = LADYBUG_ERROR_KEYS.notInstalled;
       } else if (stderr.includes('WinError 2') || stderr.includes('system cannot find')) {
-        error =
-          'Failed to build LadybugDB. ' +
-          'Please install Visual Studio Build Tools with C++ workload from: ' +
-          'https://visualstudio.microsoft.com/visual-cpp-build-tools/';
+        error = LADYBUG_ERROR_KEYS.buildTools;
       }
 
       ladybugInstallCache = {
@@ -813,7 +823,7 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
     ladybugInstallCache = {
       installed: false,
       pythonAvailable: true,
-      error: `Failed to check LadybugDB: ${err instanceof Error ? err.message : String(err)}`,
+      error: LADYBUG_ERROR_KEYS.checkFailed,
     };
   }
 

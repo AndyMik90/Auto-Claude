@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Database,
@@ -109,6 +110,7 @@ interface ValidationStatus {
  * Allows users to configure Graphiti memory backend with multiple provider options.
  */
 export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
+  const { t } = useTranslation(['onboarding', 'errors']);
   const { settings, updateSettings } = useSettingsStore();
   const [config, setConfig] = useState<GraphitiConfig>({
     enabled: true,  // Enabled by default for better first-time experience
@@ -173,9 +175,10 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
         setKuzuAvailable(result?.success && memory?.kuzuInstalled ? true : false);
         setLadybugInstalled(memory?.ladybugInstalled ?? null);
         setLadybugError(memory?.ladybugError ?? null);
-      } catch {
+      } catch (err) {
         setKuzuAvailable(false);
         setLadybugInstalled(false);
+        setLadybugError(t('onboarding:ladybug.checkFailed'));
       } finally {
         setIsCheckingInfra(false);
       }
@@ -833,12 +836,12 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                         <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-warning">
-                            LadybugDB Not Installed
+                            {t('onboarding:ladybug.notInstalled')}
                           </p>
                           <p className="text-sm text-warning/80 mt-1">
-                            {ladybugError}
+                            {ladybugError.startsWith('errors:') ? t(ladybugError) : ladybugError}
                           </p>
-                          {ladybugError.includes('Visual Studio Build Tools') && (
+                          {(ladybugError.includes('Visual Studio Build Tools') || ladybugError === 'errors:ladybug.buildTools') && (
                             <a
                               href="https://visualstudio.microsoft.com/visual-cpp-build-tools/"
                               target="_blank"
@@ -846,11 +849,11 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                               className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 mt-2"
                             >
                               <ExternalLink className="h-3 w-3" />
-                              Download Visual Studio Build Tools
+                              {t('onboarding:ladybug.downloadBuildTools')}
                             </a>
                           )}
                           <p className="text-xs text-muted-foreground mt-2">
-                            After installing build tools, restart the application to retry.
+                            {t('onboarding:ladybug.restartAfterInstall')}
                           </p>
                         </div>
                       </div>

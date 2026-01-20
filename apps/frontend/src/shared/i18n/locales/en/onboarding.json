@@ -239,5 +239,11 @@
       "retry": "Retry",
       "fallbackNote": "Memory will still work with keyword search even without embeddings."
     }
+  },
+  "ladybug": {
+    "notInstalled": "LadybugDB Not Installed",
+    "downloadBuildTools": "Download Visual Studio Build Tools",
+    "restartAfterInstall": "After installing build tools, restart the application to retry.",
+    "checkFailed": "Failed to check infrastructure status"
   }
 }
