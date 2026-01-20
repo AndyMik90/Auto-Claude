@@ -7,7 +7,7 @@ import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig, Idea } from '../../shared/types';
-import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv, detectAuthFailure } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
@@ -21,6 +21,12 @@ import type { RawIdea } from '../ipc-handlers/ideation/types';
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
 
+/** Maximum length for error messages displayed in error dialogs */
+const ERROR_MESSAGE_MAX_LENGTH = 500;
+
+/** Number of trailing lines to show when no specific error pattern is found */
+const ERROR_FALLBACK_LINE_COUNT = 5;
+
 /**
  * Formats a raw log line for display as a status message.
  * Strips ANSI escape codes, extracts the first line, and truncates to max length.
@@ -31,6 +37,54 @@ const STATUS_MESSAGE_MAX_LENGTH = 200;
 function formatStatusMessage(log: string): string {
   if (!log) return '';
   return stripAnsiCodes(log.trim()).split('\n')[0].substring(0, STATUS_MESSAGE_MAX_LENGTH);
+}
+
+/**
+ * Extracts a meaningful error message from process output.
+ * Looks for common error patterns like ValueError, Exception messages,
+ * or authentication-related errors.
+ *
+ * @param output - Combined stdout/stderr output from the process
+ * @returns Extracted error message or null if no meaningful error found
+ */
+function extractErrorMessage(output: string): string | null {
+  if (!output) return null;
+
+  const cleanOutput = stripAnsiCodes(output);
+
+  // Check for authentication errors first - use the same detection as agent-process.ts
+  // This ensures consistent error messages across all agent types
+  const authFailure = detectAuthFailure(cleanOutput);
+  if (authFailure.isAuthFailure) {
+    return authFailure.message;
+  }
+
+  const lines = cleanOutput.split('\n').map(line => line.trim()).filter(Boolean);
+
+  // Look for common Python error patterns (search from end, most recent errors first)
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+
+    // Match Python exceptions: "ValueError: message", "Exception: message", etc.
+    const exceptionMatch = line.match(/^(\w*Error|\w*Exception):\s*(.+)$/);
+    if (exceptionMatch) {
+      return `${exceptionMatch[1]}: ${exceptionMatch[2]}`.substring(0, ERROR_MESSAGE_MAX_LENGTH);
+    }
+
+    // Match "Error:" or "ERROR:" prefixed messages
+    const errorPrefixMatch = line.match(/^(?:Error|ERROR):\s*(.+)$/i);
+    if (errorPrefixMatch) {
+      return errorPrefixMatch[1].substring(0, ERROR_MESSAGE_MAX_LENGTH);
+    }
+  }
+
+  // If no specific error pattern found, return the last few non-empty lines
+  const lastLines = lines.slice(-ERROR_FALLBACK_LINE_COUNT).join('\n');
+  if (lastLines.length > 0) {
+    return lastLines.substring(0, ERROR_MESSAGE_MAX_LENGTH);
+  }
+
+  return null;
 }
 
 /**
@@ -539,7 +593,12 @@ export class AgentQueueManager {
         }
       } else {
         debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
-        this.emitter.emit('ideation-error', projectId, `Ideation generation failed with exit code ${code}`);
+        // Extract meaningful error message from collected output
+        const errorDetail = extractErrorMessage(allOutput);
+        const errorMessage = errorDetail
+          ? `Ideation generation failed: ${errorDetail}`
+          : `Ideation generation failed with exit code ${code}`;
+        this.emitter.emit('ideation-error', projectId, errorMessage);
       }
     });
 
@@ -794,7 +853,12 @@ export class AgentQueueManager {
         }
       } else {
         debugError('[Agent Queue] Roadmap generation failed:', { projectId, code });
-        this.emitter.emit('roadmap-error', projectId, `Roadmap generation failed with exit code ${code}`);
+        // Extract meaningful error message from collected output
+        const errorDetail = extractErrorMessage(allRoadmapOutput);
+        const errorMessage = errorDetail
+          ? `Roadmap generation failed: ${errorDetail}`
+          : `Roadmap generation failed with exit code ${code}`;
+        this.emitter.emit('roadmap-error', projectId, errorMessage);
       }
     });
 
