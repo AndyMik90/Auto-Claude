@@ -26,11 +26,26 @@ export function getClaudeExecutablePath(): string[] {
     // Note: path.join('C:', 'foo') produces 'C:foo' (relative to C: drive), not 'C:\foo'
     // We must use 'C:\\' or raw paths like 'C:\\Program Files' to get absolute paths
     paths.push(
-      joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
+      // npm global installation (default and custom prefix)
       joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
-      joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
+      // Official Windows installer (ClaudeCode directory)
+      joinPaths('C:\\Program Files', 'ClaudeCode', `claude${getExecutableExtension()}`),
+      joinPaths('C:\\Program Files (x86)', 'ClaudeCode', `claude${getExecutableExtension()}`),
+      // Legacy "Claude" directory (for backwards compatibility)
       joinPaths('C:\\Program Files', 'Claude', `claude${getExecutableExtension()}`),
-      joinPaths('C:\\Program Files (x86)', 'Claude', `claude${getExecutableExtension()}`)
+      joinPaths('C:\\Program Files (x86)', 'Claude', `claude${getExecutableExtension()}`),
+      // User-specific installation directory
+      joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
+      // Scoop package manager (shims and direct app path)
+      joinPaths(homeDir, 'scoop', 'shims', `claude${getExecutableExtension()}`),
+      joinPaths(homeDir, 'scoop', 'apps', 'claude-code', 'current', `claude${getExecutableExtension()}`),
+      // Chocolatey package manager (bin shims and tools)
+      joinPaths('C:\\ProgramData', 'chocolatey', 'bin', `claude${getExecutableExtension()}`),
+      joinPaths('C:\\ProgramData', 'chocolatey', 'lib', 'claude-code', 'tools', `claude${getExecutableExtension()}`),
+      // Bun package manager
+      joinPaths(homeDir, '.bun', 'bin', `claude${getExecutableExtension()}`),
+      // Unix-style compatibility (Git Bash, WSL, MSYS2)
+      joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`)
     );
   } else {
     paths.push(

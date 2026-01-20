@@ -186,12 +186,26 @@ export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
 
   const platformPaths = isWindows()
     ? [
-        joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
+        // npm global installation (default and custom prefix)
         joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
-        joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
-        // Use expandWindowsEnvVars for cross-platform compatibility
+        // Official Windows installer (ClaudeCode directory)
+        joinPaths(expandWindowsEnvVars('%PROGRAMFILES%'), 'ClaudeCode', `claude${getExecutableExtension()}`),
+        joinPaths(expandWindowsEnvVars('%PROGRAMFILES(X86)%'), 'ClaudeCode', `claude${getExecutableExtension()}`),
+        // Legacy "Claude" directory (for backwards compatibility)
         joinPaths(expandWindowsEnvVars('%PROGRAMFILES%'), 'Claude', `claude${getExecutableExtension()}`),
         joinPaths(expandWindowsEnvVars('%PROGRAMFILES(X86)%'), 'Claude', `claude${getExecutableExtension()}`),
+        // User-specific installation directory
+        joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
+        // Scoop package manager (shims and direct app path)
+        joinPaths(homeDir, 'scoop', 'shims', `claude${getExecutableExtension()}`),
+        joinPaths(homeDir, 'scoop', 'apps', 'claude-code', 'current', `claude${getExecutableExtension()}`),
+        // Chocolatey package manager (bin shims and tools)
+        joinPaths(expandWindowsEnvVars('%PROGRAMDATA%'), 'chocolatey', 'bin', `claude${getExecutableExtension()}`),
+        joinPaths(expandWindowsEnvVars('%PROGRAMDATA%'), 'chocolatey', 'lib', 'claude-code', 'tools', `claude${getExecutableExtension()}`),
+        // Bun package manager
+        joinPaths(homeDir, '.bun', 'bin', `claude${getExecutableExtension()}`),
+        // Unix-style compatibility (Git Bash, WSL, MSYS2)
+        joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
       ]
     : [
         joinPaths(homeDir, '.local', 'bin', 'claude'),

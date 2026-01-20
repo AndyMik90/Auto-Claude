@@ -110,6 +110,31 @@ describe('Platform Paths Module', () => {
         const paths = getClaudeExecutablePath();
         expect(paths.some(p => p.includes('Program Files (x86)') && p.includes('Claude') && p.includes('claude.exe'))).toBe(true);
       });
+
+      it('includes Program Files ClaudeCode path (official installer)', () => {
+        const paths = getClaudeExecutablePath();
+        expect(paths.some(p => p.includes('Program Files') && p.includes('ClaudeCode') && p.includes('claude.exe'))).toBe(true);
+      });
+
+      it('includes Scoop shim path', () => {
+        const paths = getClaudeExecutablePath();
+        expect(paths.some(p => p.includes('scoop') && p.includes('shims') && p.includes('claude.exe'))).toBe(true);
+      });
+
+      it('includes Scoop apps path', () => {
+        const paths = getClaudeExecutablePath();
+        expect(paths.some(p => p.includes('scoop') && p.includes('apps') && p.includes('claude-code'))).toBe(true);
+      });
+
+      it('includes Chocolatey bin path', () => {
+        const paths = getClaudeExecutablePath();
+        expect(paths.some(p => p.includes('chocolatey') && p.includes('bin') && p.includes('claude.exe'))).toBe(true);
+      });
+
+      it('includes Bun package manager path', () => {
+        const paths = getClaudeExecutablePath();
+        expect(paths.some(p => p.includes('.bun') && p.includes('bin') && p.includes('claude.exe'))).toBe(true);
+      });
     });
 
     describeMacOS('returns macOS-specific paths', () => {
