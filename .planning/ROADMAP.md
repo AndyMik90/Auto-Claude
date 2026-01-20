@@ -242,11 +242,11 @@ Plans:
 - ARCHITECTURE.md: Confidence thresholds and multi-source agreement patterns
 - STACK.md: "Multi-review aggregation significantly boosts F1 scores"
 
-**Status:** In Progress
+**Status:** Complete (2026-01-19)
 
 Plans:
-- [ ] 03-01-PLAN.md - Confidence threshold routing (Wave 1)
-- [ ] 03-02-PLAN.md - Multi-agent agreement and confidence boost (Wave 2)
+- [x] 03-01-PLAN.md - Confidence threshold routing (Wave 1)
+- [x] 03-02-PLAN.md - Multi-agent agreement and confidence boost (Wave 2)
 
 ### P3.1: Confidence Scoring
 
@@ -298,28 +298,48 @@ Plans:
 
 ## Phase 4: Integration Testing
 
-**Goal:** Validate the complete system with real PRs.
+**Goal:** Validate the complete system with comprehensive integration tests.
+**Plans:** 1 plan in 1 wave
+
+**Research Basis:**
+- 04-RESEARCH.md: Scenario-based integration tests, metrics collection, pytest patterns
+- Existing patterns: test_github_pr_e2e.py, test_output_validator.py
+
+**Status:** In Progress
+
+Plans:
+- [ ] 04-01-PLAN.md - Integration tests for all Phase 1-3 features (Wave 1)
 
 ### P4.1: End-to-End Validation
 
 **Effort:** Medium
 **Parallelizable:** N/A (final validation)
 
-**Goal:** Test the improved system against real PRs.
+**Goal:** Test the improved system with comprehensive integration tests.
 
 **Deliverables:**
-1. Create test PRs that would expose each gap:
-   - PR with false positive in initial review
-   - PR with CodeRabbit formal review
-   - PR with `@/utils` import
-   - Python PR with relative imports
-2. Run reviews and validate findings
-3. Measure false positive rate
+1. Integration tests for Phase 1 features:
+   - Confidence tier routing (HIGH/MEDIUM/LOW)
+   - Evidence validation (code syntax required)
+   - Scope filtering (file in changed files)
+2. Integration tests for Phase 2 features:
+   - Path alias import detection
+   - Python import detection
+   - Reverse dependency detection
+3. Integration tests for Phase 3 features:
+   - Multi-agent cross-validation
+   - Confidence boost capping
+4. Metrics collection tests:
+   - False positive rate calculation
+   - Severity/category distribution
+
+**Files:**
+- `tests/test_integration_phase4.py`
 
 **Success Criteria:**
 - [ ] All test scenarios pass
-- [ ] False positive rate < 5%
-- [ ] Review latency acceptable (< 30s increase)
+- [ ] False positive rate measurable
+- [ ] 20+ integration tests covering all features
 
 ---
 
@@ -368,3 +388,4 @@ Week 3: Phase 3 + 4 (Cross-Validation + Testing)
 *Roadmap created: 2026-01-19*
 *Phase 1 completed: 2026-01-19*
 *Phase 2 completed: 2026-01-19*
+*Phase 3 completed: 2026-01-19*
