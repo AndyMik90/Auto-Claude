@@ -35,6 +35,55 @@ const DANGEROUS_FLAGS = new Set([
 const SHELL_METACHARACTERS = ['&', '|', '>', '<', '^', '%', ';', '$', '`', '\n', '\r'];
 
 /**
+ * MCP client name constant for consistent identification across all requests
+ */
+const MCP_CLIENT_NAME = 'auto-claude-client';
+const MCP_CLIENT_VERSION = '1.0.0';
+
+/**
+ * Sensitive header keys that should be redacted in logs
+ */
+const SENSITIVE_HEADER_KEYS = ['authorization', 'x-api-key', 'cookie', 'x-auth-token', 'bearer'];
+
+/**
+ * Redact sensitive values from headers for safe logging
+ */
+function redactSensitiveHeaders(headers: Record<string, string>): Record<string, string> {
+  const safeHeaders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    const lowerKey = key.toLowerCase();
+    if (SENSITIVE_HEADER_KEYS.some(sensitive => lowerKey.includes(sensitive))) {
+      safeHeaders[key] = '[REDACTED]';
+    } else {
+      safeHeaders[key] = value;
+    }
+  }
+  return safeHeaders;
+}
+
+/**
+ * Interface for MCP JSON-RPC response
+ */
+interface McpJsonRpcResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    protocolVersion?: string;
+    capabilities?: Record<string, unknown>;
+    serverInfo?: {
+      name: string;
+      version: string;
+    };
+    tools?: Array<{ name: string; description?: string }>;
+  };
+  error?: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
+/**
  * Validate that a command is in the safe allowlist
  */
 function isCommandSafe(command: string | undefined): boolean {
@@ -106,7 +155,7 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
     }
 
     appLog.info('[MCP Health] Checking HTTP server:', server.url);
-    appLog.info('[MCP Health] Headers:', JSON.stringify(headers));
+    appLog.debug('[MCP Health] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
 
     // Use POST with MCP initialize for health check (many MCP servers don't support GET)
     const initRequest = {
@@ -119,8 +168,8 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
           roots: { listChanged: true },
         },
         clientInfo: {
-          name: 'auto-claude',
-          version: '1.0.0',
+          name: MCP_CLIENT_NAME,
+          version: MCP_CLIENT_VERSION,
         },
       },
     };
@@ -151,8 +200,8 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       try {
         const errorBody = await response.text();
         appLog.error('[MCP Health] Error response:', errorBody.substring(0, 500));
-      } catch {
-        // Ignore
+      } catch (e) {
+        appLog.debug('[MCP Health] Failed to get error response text:', e);
       }
       status = 'unhealthy';
       message = `HTTP ${response.status}: ${response.statusText}`;
@@ -310,7 +359,7 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     }
 
     appLog.info('[MCP Test] Testing connection to:', server.url);
-    appLog.info('[MCP Test] Headers:', JSON.stringify(headers));
+    appLog.debug('[MCP Test] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
 
     // Send MCP initialize request
     const initRequest = {
@@ -323,8 +372,8 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
           roots: { listChanged: true },
         },
         clientInfo: {
-          name: 'auto-claude',
-          version: '1.0.0',
+          name: MCP_CLIENT_NAME,
+          version: MCP_CLIENT_VERSION,
         },
       },
     };
@@ -347,8 +396,8 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
       try {
         errorBody = await response.text();
         appLog.error('[MCP Test] Error response body:', errorBody.substring(0, 500));
-      } catch {
-        // Ignore
+      } catch (e) {
+        appLog.debug('[MCP Test] Failed to get error response text:', e);
       }
 
       if (response.status === 401 || response.status === 403) {
@@ -373,21 +422,30 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     const contentType = response.headers.get('content-type') || '';
     appLog.info('[MCP Test] Content-Type:', contentType);
 
-    let data: any;
+    let data: McpJsonRpcResponse | undefined;
     const responseText = await response.text();
-    appLog.info('[MCP Test] Response text (first 500):', responseText.substring(0, 500));
+    appLog.debug('[MCP Test] Response text (first 500):', responseText.substring(0, 500));
 
-    // Handle SSE response format
-    if (contentType.includes('text/event-stream') || responseText.startsWith('event:') || responseText.startsWith('data:')) {
+    // Determine if response is SSE format
+    // Only treat as SSE if content-type explicitly indicates it, or response clearly looks like SSE
+    const isSSE = contentType.includes('text/event-stream') ||
+      responseText.startsWith('event:') ||
+      (responseText.startsWith('data:') && contentType.includes('text/'));
+
+    if (isSSE) {
       // Parse SSE format - extract JSON from data lines
       const dataLines = responseText.split('\n').filter(line => line.startsWith('data:'));
       if (dataLines.length > 0) {
         try {
           const jsonStr = dataLines[0].replace('data:', '').trim();
-          data = JSON.parse(jsonStr);
-        } catch {
-          // SSE response but can't parse - still consider it working
-          appLog.info('[MCP Test] SSE response received but could not parse JSON');
+          data = JSON.parse(jsonStr) as McpJsonRpcResponse;
+        } catch (e) {
+          // SSE response but can't parse - log warning but consider it working
+          appLog.warn('[MCP Test] SSE response received but could not parse JSON - verify server configuration', {
+            serverId: server.id,
+            responseTime,
+            error: e instanceof Error ? e.message : 'Parse error'
+          });
           return {
             serverId: server.id,
             success: true,
@@ -407,31 +465,27 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     } else {
       // Standard JSON response
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(responseText) as McpJsonRpcResponse;
       } catch (parseError) {
         appLog.error('[MCP Test] Failed to parse response as JSON:', parseError);
-        // Non-JSON 200 response - might still be valid SSE server
-        if (response.ok) {
-          return {
-            serverId: server.id,
-            success: true,
-            message: 'Server responded (non-JSON)',
-            responseTime,
-          };
-        }
+        // Non-JSON 200 response - warn about non-compliance but consider it working
+        appLog.warn('[MCP Test] Server responded with non-JSON format - may not be MCP compliant', {
+          serverId: server.id,
+          responseTime,
+          contentType
+        });
         return {
           serverId: server.id,
-          success: false,
-          message: 'Invalid response format',
-          error: `Could not parse response: ${responseText.substring(0, 100)}`,
+          success: true,
+          message: 'Server responded (non-JSON)',
           responseTime,
         };
       }
     }
 
-    appLog.info('[MCP Test] Parsed data:', JSON.stringify(data).substring(0, 500));
+    appLog.debug('[MCP Test] Parsed data:', JSON.stringify(data).substring(0, 500));
 
-    if (data.error) {
+    if (data?.error) {
       return {
         serverId: server.id,
         success: false,
@@ -442,7 +496,7 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     }
 
     // If we got a valid initialize response, the server is working
-    if (data.result) {
+    if (data?.result) {
       return {
         serverId: server.id,
         success: true,
@@ -568,8 +622,8 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
         protocolVersion: '2024-11-05',
         capabilities: {},
         clientInfo: {
-          name: 'auto-claude-health-check',
-          version: '1.0.0',
+          name: MCP_CLIENT_NAME,
+          version: MCP_CLIENT_VERSION,
         },
       },
     }) + '\n';
