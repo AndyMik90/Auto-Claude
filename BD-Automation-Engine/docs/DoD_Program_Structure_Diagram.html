@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoD Program Structure - From RFP to Contractor</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0f1a;
+            --bg-panel: #111827;
+            --bg-card: #1f2937;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            z-index: 1000;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--bg-panel) 0%, #1a2744 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 3rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--text-primary), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title .icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-blue);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* Hierarchy Flow Diagram */
+        .hierarchy-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .hierarchy-level {
+            display: flex;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .level-label {
+            min-width: 180px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .level-label .level-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .level-label .level-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .level-content {
+            flex: 1;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .entity-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .entity-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--card-accent, var(--accent-blue));
+        }
+
+        .entity-card:hover {
+            border-color: var(--card-accent, var(--accent-blue));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .entity-card .card-type {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--card-accent, var(--accent-blue));
+            margin-bottom: 0.35rem;
+        }
+
+        .entity-card .card-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .entity-card .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Flow Connectors */
+        .flow-connector {
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem 0;
+        }
+
+        .connector-line {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(to bottom, var(--accent-blue), var(--accent-cyan));
+            position: relative;
+        }
+
+        .connector-line::after {
+            content: '▼';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--accent-cyan);
+            font-size: 0.6rem;
+        }
+
+        /* Contract Vehicles Section */
+        .vehicles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .vehicle-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .vehicle-card:hover {
+            border-color: var(--accent-purple);
+        }
+
+        .vehicle-card .vehicle-type {
+            display: inline-block;
+            background: var(--accent-purple);
+            color: white;
+            font-size: 0.65rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .vehicle-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .vehicle-card p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .vehicle-card ul {
+            margin-top: 0.75rem;
+            padding-left: 1.25rem;
+        }
+
+        .vehicle-card li {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.35rem;
+        }
+
+        /* RFP Timeline */
+        .timeline-container {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--border);
+            transform: translateY(-50%);
+            border-radius: 2px;
+        }
+
+        .timeline-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue), var(--accent-purple));
+            border-radius: 2px;
+            width: 100%;
+        }
+
+        .timeline-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-step {
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-dot {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-card);
+            border: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            margin: 0 auto 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .timeline-step:hover .step-dot {
+            background: var(--accent-blue);
+            transform: scale(1.1);
+        }
+
+        .step-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .step-duration {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* DCGS Example */
+        .dcgs-example {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .dcgs-example h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dcgs-example h3 .badge {
+            background: var(--accent-amber);
+            color: var(--bg-dark);
+            font-size: 0.6rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .dcgs-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .tree-branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 24px;
+        }
+
+        .tree-branch .vert {
+            width: 2px;
+            background: var(--border);
+            flex: 1;
+        }
+
+        .tree-branch .dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            margin: 4px 0;
+        }
+
+        .tree-branch .horiz {
+            width: 16px;
+            height: 2px;
+            background: var(--border);
+        }
+
+        .node-content {
+            flex: 1;
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            border-left: 3px solid var(--node-color, var(--accent-blue));
+        }
+
+        .node-content .node-level {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--node-color, var(--accent-blue));
+            margin-bottom: 0.25rem;
+        }
+
+        .node-content .node-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .node-content .node-detail {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .indented {
+            margin-left: 40px;
+        }
+
+        .indented-2 {
+            margin-left: 80px;
+        }
+
+        .indented-3 {
+            margin-left: 120px;
+        }
+
+        .indented-4 {
+            margin-left: 160px;
+        }
+
+        .indented-5 {
+            margin-left: 200px;
+        }
+
+        /* Glossary */
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+
+        .glossary-item {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+        }
+
+        .glossary-item dt {
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .glossary-item dt .abbr {
+            background: var(--bg-card);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        .glossary-item dd {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Relationships Diagram */
+        .relationships-svg {
+            width: 100%;
+            max-width: 1000px;
+            margin: 2rem auto;
+            display: block;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--bg-panel);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* Copy Button */
+        .copy-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .copy-section h4 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .copy-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background: var(--accent-green);
+        }
+
+        /* Color Accents */
+        .accent-government { --card-accent: var(--accent-blue); --node-color: var(--accent-blue); }
+        .accent-contract { --card-accent: var(--accent-purple); --node-color: var(--accent-purple); }
+        .accent-prime { --card-accent: var(--accent-amber); --node-color: var(--accent-amber); }
+        .accent-sub { --card-accent: var(--accent-cyan); --node-color: var(--accent-cyan); }
+        .accent-task { --card-accent: var(--accent-green); --node-color: var(--accent-green); }
+        .accent-job { --card-accent: var(--accent-pink); --node-color: var(--accent-pink); }
+        .accent-person { --card-accent: var(--accent-red); --node-color: var(--accent-red); }
+
+        /* Full Hierarchy Visual */
+        .full-hierarchy {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+
+        .hierarchy-row {
+            display: contents;
+        }
+
+        .hierarchy-row:hover > div {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .hierarchy-label-cell {
+            background: var(--bg-panel);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hierarchy-content-cell {
+            background: var(--bg-card);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+        }
+
+        .hierarchy-row:last-child .hierarchy-label-cell,
+        .hierarchy-row:last-child .hierarchy-content-cell {
+            border-bottom: none;
+        }
+
+        .level-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .items-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .item-tag {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            transition: all 0.15s ease;
+        }
+
+        .item-tag:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hierarchy-level {
+                flex-direction: column;
+            }
+            
+            .level-label {
+                min-width: unset;
+            }
+            
+            .timeline-steps {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .timeline-step {
+                flex: 0 0 calc(33% - 0.67rem);
+            }
+            
+            .full-hierarchy {
+                grid-template-columns: 1fr;
+            }
+            
+            .hierarchy-content-cell {
+                border-left: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    
+    <header>
+        <h1>🏛️ DoD Program Structure</h1>
+        <p>Complete hierarchy from Congressional appropriations to individual contractors — with DCGS examples</p>
+    </header>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="hierarchy">📊 Full Hierarchy</button>
+            <button class="tab-btn" data-tab="lifecycle">🔄 RFP Lifecycle</button>
+            <button class="tab-btn" data-tab="vehicles">📋 Contract Vehicles</button>
+            <button class="tab-btn" data-tab="dcgs">🎯 DCGS Example</button>
+            <button class="tab-btn" data-tab="glossary">📖 Glossary</button>
+        </div>
+
+        <!-- Tab 1: Full Hierarchy -->
+        <div class="tab-content active" id="hierarchy">
+            <div class="section-title">
+                <div class="icon">📊</div>
+                <span>DoD Program Structure — Top to Bottom</span>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-blue);"></div>
+                    <span>Government Entity</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-purple);"></div>
+                    <span>Contract Vehicle</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-amber);"></div>
+                    <span>Prime Contractor</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-cyan);"></div>
+                    <span>Subcontractor</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-green);"></div>
+                    <span>Task Order/Work Package</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-pink);"></div>
+                    <span>Functional Area</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--accent-red);"></div>
+                    <span>Individual Position</span>
+                </div>
+            </div>
+
+            <div class="full-hierarchy">
+                <!-- Level 1: Congress -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-blue);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 1</div>
+                            <div style="font-weight: 600;">Congress</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">NDAA (National Defense Authorization Act)</span>
+                            <span class="item-tag">Defense Appropriations</span>
+                            <span class="item-tag">HASC / SASC Oversight</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Congress authorizes and appropriates funds for DoD programs through annual legislation
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 2: DoD/Service Branch -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-blue);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 2</div>
+                            <div style="font-weight: 600;">DoD / Service Branch</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Air Force</span>
+                            <span class="item-tag">Army</span>
+                            <span class="item-tag">Navy</span>
+                            <span class="item-tag">Space Force</span>
+                            <span class="item-tag">DIA</span>
+                            <span class="item-tag">NGA</span>
+                            <span class="item-tag">NSA</span>
+                            <span class="item-tag">DISA</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Service branches and defense agencies that own and manage programs
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 3: Program Office -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-blue);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 3</div>
+                            <div style="font-weight: 600;">Program Office (Gov)</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Program Executive Officer (PEO)</span>
+                            <span class="item-tag">Program Manager (Gov PM)</span>
+                            <span class="item-tag">Contracting Officer (CO/KO)</span>
+                            <span class="item-tag">COR (Contracting Officer Rep)</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Government personnel who manage requirements, budget, and contract oversight
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 4: Contract Vehicle -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-purple);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 4</div>
+                            <div style="font-weight: 600;">Contract Vehicle</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">IDIQ (Indefinite Delivery/Indefinite Quantity)</span>
+                            <span class="item-tag">BPA (Blanket Purchase Agreement)</span>
+                            <span class="item-tag">GSA Schedule</span>
+                            <span class="item-tag">SEWP V</span>
+                            <span class="item-tag">CIO-SP3</span>
+                            <span class="item-tag">Alliant 2</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            The umbrella contract mechanism under which specific work is ordered
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 5: Prime Contract Award -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-amber);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 5</div>
+                            <div style="font-weight: 600;">Prime Contract Award</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">GDIT</span>
+                            <span class="item-tag">Leidos</span>
+                            <span class="item-tag">SAIC</span>
+                            <span class="item-tag">BAE Systems</span>
+                            <span class="item-tag">Raytheon</span>
+                            <span class="item-tag">L3Harris</span>
+                            <span class="item-tag">Northrop Grumman</span>
+                            <span class="item-tag">Booz Allen</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Company awarded the prime contract — responsible for overall delivery to the government
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 6: Program Management (Contractor) -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-amber);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 6</div>
+                            <div style="font-weight: 600;">Program Mgmt (Prime)</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Program Director</span>
+                            <span class="item-tag">Deputy Program Manager</span>
+                            <span class="item-tag">Site Leads</span>
+                            <span class="item-tag">Task Order Managers</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Prime contractor leadership overseeing contract execution
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 7: Subcontractors -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-cyan);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 7</div>
+                            <div style="font-weight: 600;">Subcontractors</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Large Subs (Tier 1)</span>
+                            <span class="item-tag">Small Business Subs (8(a), SDVOSB, HUBZone)</span>
+                            <span class="item-tag">Specialty Subs (Niche capabilities)</span>
+                            <span class="item-tag">Staffing Agencies (Body shop labor)</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Companies providing specialized capabilities or labor to the prime — flow-down agreements
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 8: Task Orders -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-green);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 8</div>
+                            <div style="font-weight: 600;">Task Orders</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Geographic Site (e.g., Langley Site)</span>
+                            <span class="item-tag">Functional Area (e.g., Network Ops TO)</span>
+                            <span class="item-tag">Capability Area (e.g., DevSecOps TO)</span>
+                            <span class="item-tag">Surge/Special Ops (Time-limited)</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Specific work packages issued under the IDIQ — often organized by site or function
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 9: Functional Areas -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-pink);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 9</div>
+                            <div style="font-weight: 600;">Functional Areas</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Network Engineering</span>
+                            <span class="item-tag">Cybersecurity</span>
+                            <span class="item-tag">ISR/Intelligence Analysis</span>
+                            <span class="item-tag">Software Development</span>
+                            <span class="item-tag">Systems Administration</span>
+                            <span class="item-tag">Field Service/Depot</span>
+                            <span class="item-tag">Training</span>
+                            <span class="item-tag">PMO Support</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Technical and support disciplines within a task order
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 10: Job Positions -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-red);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 10</div>
+                            <div style="font-weight: 600;">Job Positions</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">Team Lead</span>
+                            <span class="item-tag">Senior Engineer</span>
+                            <span class="item-tag">Engineer/Analyst</span>
+                            <span class="item-tag">Junior/Entry-level</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            Specific roles defined in the contract with labor categories (LCATs)
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Level 11: Individual Contractor -->
+                <div class="hierarchy-row">
+                    <div class="hierarchy-label-cell">
+                        <div class="level-indicator" style="background: var(--accent-red);"></div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;">Level 11</div>
+                            <div style="font-weight: 600;">Individual Contractor</div>
+                        </div>
+                    </div>
+                    <div class="hierarchy-content-cell">
+                        <div class="items-list">
+                            <span class="item-tag">W-2 Employee (Prime or Sub)</span>
+                            <span class="item-tag">1099 Independent Contractor</span>
+                            <span class="item-tag">Staffing Agency Placement</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                            The actual person doing the work — where PTS places cleared talent
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: RFP Lifecycle -->
+        <div class="tab-content" id="lifecycle">
+            <div class="section-title">
+                <div class="icon">🔄</div>
+                <span>RFP to Award Lifecycle</span>
+            </div>
+
+            <div class="timeline-container">
+                <div class="timeline-track">
+                    <div class="timeline-progress"></div>
+                </div>
+                <div class="timeline-steps">
+                    <div class="timeline-step">
+                        <div class="step-dot">1</div>
+                        <div class="step-label">Requirements<br>Definition</div>
+                        <div class="step-duration">3-12 months</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">2</div>
+                        <div class="step-label">Sources<br>Sought</div>
+                        <div class="step-duration">30-60 days</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">3</div>
+                        <div class="step-label">Draft RFP /<br>Industry Day</div>
+                        <div class="step-duration">30-90 days</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">4</div>
+                        <div class="step-label">Final RFP<br>Release</div>
+                        <div class="step-duration">30-90 days</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">5</div>
+                        <div class="step-label">Proposal<br>Submission</div>
+                        <div class="step-duration">Due Date</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">6</div>
+                        <div class="step-label">Evaluation<br>Phase</div>
+                        <div class="step-duration">2-6 months</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">7</div>
+                        <div class="step-label">Award<br>Decision</div>
+                        <div class="step-duration">Single day</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">8</div>
+                        <div class="step-label">Protest<br>Period</div>
+                        <div class="step-duration">10-100 days</div>
+                    </div>
+                    <div class="timeline-step">
+                        <div class="step-dot">9</div>
+                        <div class="step-label">Contract<br>Kickoff</div>
+                        <div class="step-duration">Transition</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 1.5rem;">Detailed Phase Breakdown</h3>
+                
+                <div class="vehicles-grid">
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-blue);">Phase 1</div>
+                        <h3>Requirements Definition</h3>
+                        <p>Government defines what they need:</p>
+                        <ul>
+                            <li>Market Research (what's available?)</li>
+                            <li>PWS/SOW Development (scope of work)</li>
+                            <li>IGCE (cost estimate)</li>
+                            <li>Acquisition Strategy</li>
+                            <li>Set-aside determination (small business?)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-cyan);">Phase 2</div>
+                        <h3>Sources Sought / RFI</h3>
+                        <p>Government gauges industry interest:</p>
+                        <ul>
+                            <li>Posted on SAM.gov</li>
+                            <li>Capability statements requested</li>
+                            <li>Industry feedback on requirements</li>
+                            <li>Small business interest assessment</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-purple);">Phase 3</div>
+                        <h3>Draft RFP / Industry Day</h3>
+                        <p>Government refines requirements with industry:</p>
+                        <ul>
+                            <li>Draft solicitation released</li>
+                            <li>Industry Day Q&A session</li>
+                            <li>Written questions/answers</li>
+                            <li>Teaming partner identification</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-green);">Phase 4</div>
+                        <h3>Final RFP Release</h3>
+                        <p>Official solicitation with all details:</p>
+                        <ul>
+                            <li>Performance Work Statement (PWS)</li>
+                            <li>Evaluation Criteria (LPTA, Best Value, etc.)</li>
+                            <li>Contract Line Items (CLINs)</li>
+                            <li>Labor Categories (LCATs)</li>
+                            <li>Proposal instructions</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-amber);">Phase 5-6</div>
+                        <h3>Proposal & Evaluation</h3>
+                        <p>Competition plays out:</p>
+                        <ul>
+                            <li>Technical Volume (approach, past perf)</li>
+                            <li>Management Volume (org, key personnel)</li>
+                            <li>Price/Cost Volume</li>
+                            <li>Government evaluation team scoring</li>
+                            <li>Discussions/BAFO (if applicable)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vehicle-card">
+                        <div class="vehicle-type" style="background: var(--accent-red);">Phase 7-9</div>
+                        <h3>Award & Kickoff</h3>
+                        <p>Winner announced and work begins:</p>
+                        <ul>
+                            <li>Award notification to all offerors</li>
+                            <li>Debrief requests</li>
+                            <li>GAO protest window (10 days)</li>
+                            <li>Court of Federal Claims (longer)</li>
+                            <li>Transition planning (incumbent to new)</li>
+                            <li>Contract kickoff meeting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Contract Vehicles -->
+        <div class="tab-content" id="vehicles">
+            <div class="section-title">
+                <div class="icon">📋</div>
+                <span>Contract Vehicle Types</span>
+            </div>
+
+            <div class="vehicles-grid">
+                <div class="vehicle-card">
+                    <div class="vehicle-type">IDIQ</div>
+                    <h3>Indefinite Delivery / Indefinite Quantity</h3>
+                    <p>Most common for large DoD programs. Pre-negotiated terms, task orders issued as needed.</p>
+                    <ul>
+                        <li><strong>Single-Award IDIQ:</strong> One contractor, multiple task orders</li>
+                        <li><strong>Multi-Award IDIQ (MAC):</strong> Multiple contractors compete for each TO</li>
+                        <li>Base + option years (typically 5-10 year ceiling)</li>
+                        <li>Minimum/maximum order values</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">BPA</div>
+                    <h3>Blanket Purchase Agreement</h3>
+                    <p>Simplified ordering for recurring needs. Often used under GSA schedules.</p>
+                    <ul>
+                        <li>Pre-negotiated pricing</li>
+                        <li>Simplified ordering procedures</li>
+                        <li>Single or multiple award</li>
+                        <li>Lower ceiling values than IDIQ</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">GSA</div>
+                    <h3>GSA Schedule (MAS)</h3>
+                    <p>Pre-approved vendors with negotiated rates. Agencies order directly without full competition.</p>
+                    <ul>
+                        <li>IT Schedule 70 (now consolidated)</li>
+                        <li>Professional Services Schedule</li>
+                        <li>Pre-competed pricing</li>
+                        <li>Faster procurement</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">GWACs</div>
+                    <h3>Government-Wide Acquisition Contracts</h3>
+                    <p>Large umbrella contracts available to all federal agencies:</p>
+                    <ul>
+                        <li><strong>SEWP V:</strong> NASA IT products/services</li>
+                        <li><strong>Alliant 2:</strong> GSA IT services</li>
+                        <li><strong>CIO-SP3:</strong> NIH IT services</li>
+                        <li><strong>8(a) STARS III:</strong> Small business IT</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">FFP</div>
+                    <h3>Firm Fixed Price</h3>
+                    <p>Contractor bears cost risk. Price set regardless of actual costs incurred.</p>
+                    <ul>
+                        <li>Best for well-defined requirements</li>
+                        <li>Government pays agreed price</li>
+                        <li>Contractor incentive to control costs</li>
+                        <li>Less government oversight</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">T&M / LH</div>
+                    <h3>Time & Materials / Labor Hour</h3>
+                    <p>Government pays for hours worked. Common for services with uncertain scope.</p>
+                    <ul>
+                        <li>Hourly rates by labor category</li>
+                        <li>Government bears more cost risk</li>
+                        <li>Requires more oversight</li>
+                        <li>Ceiling price (not-to-exceed)</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">CPFF</div>
+                    <h3>Cost Plus Fixed Fee</h3>
+                    <p>Government reimburses costs plus negotiated fee. For R&D and uncertain scope.</p>
+                    <ul>
+                        <li>All allowable costs reimbursed</li>
+                        <li>Fixed fee percentage</li>
+                        <li>Heavy audit requirements</li>
+                        <li>Less common for IT services</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type">OTAS</div>
+                    <h3>Other Transaction Agreements</h3>
+                    <p>Flexible agreements outside FAR. Used for prototyping and innovation.</p>
+                    <ul>
+                        <li>Not subject to FAR/DFARS</li>
+                        <li>Faster, more flexible</li>
+                        <li>Prototype OTs can lead to production</li>
+                        <li>DIU, AFWERX, SOFWERX</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border);">
+                <h3 style="margin-bottom: 1rem;">🎯 Where PTS Fits</h3>
+                <p style="color: var(--text-secondary); line-height: 1.7;">
+                    As an SDVOSB staffing company, PTS typically enters the supply chain as a <strong>Tier 2-3 subcontractor</strong> 
+                    to large primes (GDIT, BAE, Leidos). The prime holds the IDIQ or BPA, then flows down staffing requirements to 
+                    PTS through subcontract agreements. PTS can also pursue direct contracts through small business set-asides 
+                    (8(a), SDVOSB sole-source up to $5M) or GSA Schedule ordering.
+                </p>
+            </div>
+        </div>
+
+        <!-- Tab 4: DCGS Example -->
+        <div class="tab-content" id="dcgs">
+            <div class="section-title">
+                <div class="icon">🎯</div>
+                <span>Real Example: AF DCGS Program Structure</span>
+            </div>
+
+            <div class="dcgs-example">
+                <h3>
+                    AF DCGS (Distributed Common Ground System) 
+                    <span class="badge">~$500M Contract</span>
+                </h3>
+
+                <div class="dcgs-tree">
+                    <!-- Level 1: Congress -->
+                    <div class="tree-node">
+                        <div class="node-content accent-government">
+                            <div class="node-level">Level 1 — Congressional Funding</div>
+                            <div class="node-title">Air Force ISR Appropriations (NDAA)</div>
+                            <div class="node-detail">Funds the 480th ISR Wing and DCGS modernization efforts</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 2: Agency -->
+                    <div class="tree-node indented">
+                        <div class="node-content accent-government">
+                            <div class="node-level">Level 2 — Service Branch</div>
+                            <div class="node-title">U.S. Air Force</div>
+                            <div class="node-detail">Air Combat Command (ACC) owns DCGS operational sites</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 3: Program Office -->
+                    <div class="tree-node indented-2">
+                        <div class="node-content accent-government">
+                            <div class="node-level">Level 3 — Program Office</div>
+                            <div class="node-title">PEO ISR & SOF / DCGS Program Office</div>
+                            <div class="node-detail">Government PM, CO, CORs at Wright-Patterson AFB manage the contract</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 4: Contract Vehicle -->
+                    <div class="tree-node indented-2">
+                        <div class="node-content accent-contract">
+                            <div class="node-level">Level 4 — Contract Vehicle</div>
+                            <div class="node-title">Single-Award IDIQ (Operations & Sustainment)</div>
+                            <div class="node-detail">Base + 4 option years, ~$500M ceiling, multiple task orders</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 5: Prime -->
+                    <div class="tree-node indented-3">
+                        <div class="node-content accent-prime">
+                            <div class="node-level">Level 5 — Prime Contractor</div>
+                            <div class="node-title">BAE Systems (Prime) → GDIT (Major Sub)</div>
+                            <div class="node-detail">BAE holds prime; GDIT manages most of the O&S labor force</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 6: Program Management -->
+                    <div class="tree-node indented-3">
+                        <div class="node-content accent-prime">
+                            <div class="node-level">Level 6 — GDIT Program Leadership</div>
+                            <div class="node-title">David Winkelman (VP) → Program Managers → Site Leads</div>
+                            <div class="node-detail">Corporate HQ in Herndon; Site Leads at each DGS location</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 7: Subcontractors -->
+                    <div class="tree-node indented-4">
+                        <div class="node-content accent-sub">
+                            <div class="node-level">Level 7 — Subcontractors</div>
+                            <div class="node-title">PTS (SDVOSB), Staffing Agencies (IG, TEK, Apex), Specialty Vendors</div>
+                            <div class="node-detail">Flow-down agreements for cleared staffing; small business goals</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 8: Task Orders / Sites -->
+                    <div class="tree-node indented-4">
+                        <div class="node-content accent-task">
+                            <div class="node-level">Level 8 — Task Orders / Sites</div>
+                            <div class="node-title">DGS-1 (Langley) | DGS-2 (Beale) | NASIC (Wright-Patt) | PACAF (San Diego) 🔥</div>
+                            <div class="node-detail">Each site operates as a task order with its own site lead and staffing</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 9: Functional Areas -->
+                    <div class="tree-node indented-5">
+                        <div class="node-content accent-job">
+                            <div class="node-level">Level 9 — Functional Areas (Langley Example)</div>
+                            <div class="node-title">Network Ops | Cyber Security | ISR Analysis | DevSecOps | Field Service</div>
+                            <div class="node-detail">Maureen Shamaly (PM) oversees functional teams at DGS-1</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 10: Positions -->
+                    <div class="tree-node indented-5">
+                        <div class="node-content accent-person">
+                            <div class="node-level">Level 10 — Job Positions</div>
+                            <div class="node-title">Sr. Cyber Analyst | Network Engineer III | ISR Analyst II | DevOps Engineer</div>
+                            <div class="node-detail">Specific labor categories (LCATs) with defined qualifications and clearance</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 11: Individual -->
+                    <div class="tree-node indented-5">
+                        <div class="node-content accent-person">
+                            <div class="node-level">Level 11 — Individual Contractor</div>
+                            <div class="node-title">Jane Doe — Sr. Cyber Analyst (TS/SCI, CI Poly)</div>
+                            <div class="node-detail">W-2 employee of PTS, badged to GDIT, working at DGS-1 Langley</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                <div class="vehicle-card">
+                    <div class="vehicle-type" style="background: var(--accent-amber);">Money Flow</div>
+                    <h3>How Payment Works</h3>
+                    <ul>
+                        <li>Congress → Air Force (appropriations)</li>
+                        <li>Air Force → BAE (prime payment)</li>
+                        <li>BAE → GDIT (sub payment)</li>
+                        <li>GDIT → PTS (sub-sub payment)</li>
+                        <li>PTS → Contractor (W-2 payroll)</li>
+                    </ul>
+                    <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);">
+                        Each level takes a margin. PTS bills GDIT ~$100/hr, pays contractor ~$75/hr.
+                    </p>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type" style="background: var(--accent-green);">Authority Flow</div>
+                    <h3>Who Makes Decisions</h3>
+                    <ul>
+                        <li>Government CO → Contract modifications</li>
+                        <li>Government PM → Requirements changes</li>
+                        <li>Prime PM → Subcontract terms</li>
+                        <li>GDIT Site Lead → Day-to-day staffing</li>
+                        <li>PTS → Recruiting, compliance, payroll</li>
+                    </ul>
+                </div>
+
+                <div class="vehicle-card">
+                    <div class="vehicle-type" style="background: var(--accent-red);">BD Entry Points</div>
+                    <h3>Where PTS Engages</h3>
+                    <ul>
+                        <li><strong>Site Leads:</strong> Immediate staffing needs</li>
+                        <li><strong>Program Managers:</strong> Strategic partnerships</li>
+                        <li><strong>GDIT Subcontracts:</strong> Teaming agreements</li>
+                        <li><strong>Small Business Office:</strong> Set-aside requirements</li>
+                        <li><strong>ICs:</strong> HUMINT on actual gaps</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Glossary -->
+        <div class="tab-content" id="glossary">
+            <div class="section-title">
+                <div class="icon">📖</div>
+                <span>Acronym Glossary</span>
+            </div>
+
+            <div class="glossary-grid">
+                <div class="glossary-item">
+                    <dt><span class="abbr">IDIQ</span> Indefinite Delivery/Indefinite Quantity</dt>
+                    <dd>Contract type with a ceiling value but no guaranteed minimum. Task orders issued as work is needed. Most common for large DoD IT programs.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">TO</span> Task Order</dt>
+                    <dd>Specific work package issued under an IDIQ. Can be for a site, capability, or time-limited surge. Each TO has its own funding and scope.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">PWS</span> Performance Work Statement</dt>
+                    <dd>Document describing what the contractor must accomplish (outcomes). Focus on results rather than how to do the work.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">SOW</span> Statement of Work</dt>
+                    <dd>Document describing how work should be done (prescriptive). More detailed than PWS, specifies methods and processes.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">LCAT</span> Labor Category</dt>
+                    <dd>Defined job roles with minimum qualifications, experience requirements, and billing rates. E.g., "Network Engineer III" or "Sr. Cyber Analyst".</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">CLIN</span> Contract Line Item Number</dt>
+                    <dd>Specific priced item in a contract. Each CLIN has its own funding, pricing, and tracking. CLINs organize contract deliverables.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">CO/KO</span> Contracting Officer</dt>
+                    <dd>Government official with authority to enter, modify, and terminate contracts. Only person who can legally bind the government.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">COR</span> Contracting Officer's Representative</dt>
+                    <dd>Government employee designated to monitor contractor performance. Technical expert who interfaces with contractor daily.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">PEO</span> Program Executive Officer</dt>
+                    <dd>Senior government official responsible for a portfolio of related programs. Reports to service acquisition executive.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">IGCE</span> Independent Government Cost Estimate</dt>
+                    <dd>Government's internal estimate of what a contract should cost. Used to evaluate proposals and ensure fair pricing.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">BAFO</span> Best and Final Offer</dt>
+                    <dd>Final proposal revision submitted after discussions. Government requests BAFOs when negotiations reach conclusion.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">LPTA</span> Lowest Price Technically Acceptable</dt>
+                    <dd>Evaluation method where lowest price wins among technically acceptable proposals. No tradeoffs — meet requirements at lowest cost.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">SDVOSB</span> Service-Disabled Veteran-Owned Small Business</dt>
+                    <dd>Socioeconomic category for businesses owned 51%+ by service-disabled veterans. Eligible for set-asides and sole-source contracts up to $5M.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">PoP</span> Period of Performance</dt>
+                    <dd>Time frame during which contract work is performed. Typically structured as base year plus option years (e.g., 1+4).</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">FFP</span> Firm Fixed Price</dt>
+                    <dd>Contract type with set price regardless of costs. Contractor bears cost risk. Best for well-defined requirements.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">T&M</span> Time and Materials</dt>
+                    <dd>Contract type paying for hours worked at fixed rates. Government bears more risk. Common for services with uncertain scope.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">OTA</span> Other Transaction Agreement</dt>
+                    <dd>Flexible agreement outside traditional FAR rules. Used for prototyping and innovation. Faster and more flexible than traditional contracts.</dd>
+                </div>
+                <div class="glossary-item">
+                    <dt><span class="abbr">GAO</span> Government Accountability Office</dt>
+                    <dd>Congressional agency that hears bid protests. Losing offerors can protest within 10 days of award. GAO decision in ~100 days.</dd>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPML Copy Section -->
+        <div class="copy-section">
+            <h4>📋 OPML for XMind</h4>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                Copy the OPML content below and import into XMind to create an interactive mind map.
+            </p>
+            <button class="copy-btn" onclick="copyOPML()">Copy OPML to Clipboard</button>
+            <span id="copy-status" style="margin-left: 1rem; color: var(--accent-green); display: none;">✓ Copied!</span>
+        </div>
+    </div>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // OPML content for XMind
+        const opmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>DoD Program Structure - From RFP to Contractor</title>
+    <dateCreated>2025-01-19</dateCreated>
+  </head>
+  <body>
+    <outline text="DoD Program Structure" _note="Complete hierarchy from Congressional funding to individual contractors">
+      
+      <outline text="1. CONGRESS (Funding Source)" _note="Authorization and appropriations">
+        <outline text="NDAA (National Defense Authorization Act)" _note="Annual authorization for DoD programs"/>
+        <outline text="Defense Appropriations" _note="Actual funding allocation"/>
+        <outline text="HASC / SASC Oversight" _note="Congressional committees with oversight authority"/>
+      </outline>
+      
+      <outline text="2. DoD / SERVICE BRANCH (Agency Owner)" _note="Military branches and defense agencies">
+        <outline text="Air Force" _note="AF DCGS, Platform One, JSTARS">
+          <outline text="Air Combat Command (ACC)" _note="Operational DCGS sites"/>
+          <outline text="Air Force Materiel Command" _note="Acquisition and sustainment"/>
+        </outline>
+        <outline text="Army" _note="DCGS-A, RS3, PEO IEW&amp;S"/>
+        <outline text="Navy" _note="DCGS-N, NIWC"/>
+        <outline text="Defense Agencies">
+          <outline text="DIA" _note="Defense Intelligence Agency"/>
+          <outline text="NGA" _note="National Geospatial-Intelligence Agency"/>
+          <outline text="NSA" _note="National Security Agency"/>
+          <outline text="DISA" _note="Defense Information Systems Agency"/>
+        </outline>
+      </outline>
+      
+      <outline text="3. PROGRAM OFFICE (Government)" _note="Government personnel managing the program">
+        <outline text="PEO (Program Executive Officer)" _note="Senior acquisition official"/>
+        <outline text="Program Manager (Gov PM)" _note="Day-to-day program management"/>
+        <outline text="Contracting Officer (CO/KO)" _note="Only person who can bind the government contractually"/>
+        <outline text="COR (Contracting Officer Representative)" _note="Technical monitor for contractor performance"/>
+        <outline text="COTR (Contracting Officer Technical Representative)" _note="Same as COR, older terminology"/>
+      </outline>
+      
+      <outline text="4. CONTRACT VEHICLE (Mechanism)" _note="The umbrella contract structure">
+        <outline text="IDIQ (Indefinite Delivery/Indefinite Quantity)" _note="Most common for large programs">
+          <outline text="Single-Award IDIQ" _note="One contractor, multiple task orders"/>
+          <outline text="Multi-Award IDIQ (MAC)" _note="Multiple contractors compete for each TO"/>
+        </outline>
+        <outline text="BPA (Blanket Purchase Agreement)" _note="Simplified ordering for recurring needs"/>
+        <outline text="GSA Schedule (MAS)" _note="Pre-approved vendors, faster procurement"/>
+        <outline text="GWACs (Government-Wide Acquisition Contracts)">
+          <outline text="SEWP V" _note="NASA IT products and services"/>
+          <outline text="Alliant 2" _note="GSA IT services"/>
+          <outline text="CIO-SP3" _note="NIH IT services"/>
+          <outline text="8(a) STARS III" _note="Small business IT"/>
+        </outline>
+        <outline text="OTAs (Other Transaction Agreements)" _note="Flexible, outside FAR"/>
+      </outline>
+      
+      <outline text="5. PRIME CONTRACT AWARD (Lead Contractor)" _note="Company holding the prime contract">
+        <outline text="Large Primes">
+          <outline text="GDIT" _note="General Dynamics IT"/>
+          <outline text="Leidos" _note="Formerly SAIC"/>
+          <outline text="BAE Systems" _note="British defense giant"/>
+          <outline text="Raytheon" _note="RTX Corporation"/>
+          <outline text="Northrop Grumman"/>
+          <outline text="L3Harris"/>
+          <outline text="Booz Allen Hamilton"/>
+          <outline text="SAIC"/>
+          <outline text="Peraton"/>
+          <outline text="CACI"/>
+        </outline>
+      </outline>
+      
+      <outline text="6. PRIME PROGRAM MANAGEMENT (Contractor Leadership)" _note="Prime contractor organizational structure">
+        <outline text="Program Director / VP" _note="Executive sponsor, P&amp;L owner"/>
+        <outline text="Deputy Program Manager" _note="Day-to-day operations"/>
+        <outline text="Site Leads" _note="On-site leadership at each location"/>
+        <outline text="Task Order Managers" _note="Manage specific work packages"/>
+        <outline text="Capture Manager" _note="Business development for recompete"/>
+      </outline>
+      
+      <outline text="7. SUBCONTRACTORS (Support Contractors)" _note="Companies supporting the prime">
+        <outline text="Tier 1 Subcontractors" _note="Large companies with significant scope">
+          <outline text="Example: GDIT as sub to BAE on AF DCGS"/>
+        </outline>
+        <outline text="Tier 2 Subcontractors" _note="Specialized capabilities">
+          <outline text="Small Businesses (8(a), SDVOSB, HUBZone)"/>
+          <outline text="Niche Technology Vendors"/>
+        </outline>
+        <outline text="Tier 3 Subcontractors (Staffing)" _note="Labor providers">
+          <outline text="PTS (Prime Technical Services)" _note="SDVOSB cleared staffing"/>
+          <outline text="Insight Global" _note="IT staffing"/>
+          <outline text="TEKsystems" _note="IT staffing"/>
+          <outline text="Apex Systems" _note="IT staffing"/>
+        </outline>
+      </outline>
+      
+      <outline text="8. TASK ORDERS (Work Packages)" _note="Specific scope under IDIQ">
+        <outline text="Geographic Site TOs" _note="Organized by location">
+          <outline text="Langley TO (DGS-1)" _note="480th ISR Wing"/>
+          <outline text="Beale TO (DGS-2)"/>
+          <outline text="Wright-Patterson TO (NASIC)"/>
+          <outline text="PACAF TO (San Diego)" _note="CRITICAL - understaffed"/>
+        </outline>
+        <outline text="Functional TOs" _note="Organized by capability">
+          <outline text="Network Operations TO"/>
+          <outline text="Cybersecurity TO"/>
+          <outline text="DevSecOps Modernization TO"/>
+        </outline>
+        <outline text="Surge TOs" _note="Time-limited increased effort"/>
+      </outline>
+      
+      <outline text="9. FUNCTIONAL AREAS (Technical Disciplines)" _note="Work breakdown by specialty">
+        <outline text="Network Engineering" _note="LAN/WAN, SATCOM, tactical networks"/>
+        <outline text="Cybersecurity" _note="Security operations, compliance, SIEM"/>
+        <outline text="ISR / Intelligence Analysis" _note="SIGINT, GEOINT, HUMINT analysis"/>
+        <outline text="Software Development" _note="Application development, DevSecOps"/>
+        <outline text="Systems Administration" _note="Server, storage, virtualization"/>
+        <outline text="Field Service / Depot" _note="Hardware maintenance and repair"/>
+        <outline text="Training" _note="User training, curriculum development"/>
+        <outline text="PMO Support" _note="Program management office support"/>
+      </outline>
+      
+      <outline text="10. JOB POSITIONS (Labor Categories)" _note="Specific roles with defined requirements">
+        <outline text="Leadership">
+          <outline text="Task Order Manager"/>
+          <outline text="Technical Lead"/>
+          <outline text="Team Lead"/>
+        </outline>
+        <outline text="Senior Level">
+          <outline text="Senior Engineer" _note="10+ years experience"/>
+          <outline text="Principal Analyst" _note="Subject matter expert"/>
+          <outline text="Architect" _note="System/solution design"/>
+        </outline>
+        <outline text="Mid Level">
+          <outline text="Engineer III" _note="5-10 years"/>
+          <outline text="Analyst II" _note="3-5 years"/>
+        </outline>
+        <outline text="Junior Level">
+          <outline text="Engineer I" _note="0-3 years"/>
+          <outline text="Analyst I"/>
+        </outline>
+      </outline>
+      
+      <outline text="11. INDIVIDUAL CONTRACTOR (The Person)" _note="Cleared professionals doing the work">
+        <outline text="Employment Types">
+          <outline text="W-2 Employee (Prime)" _note="Direct hire by prime contractor"/>
+          <outline text="W-2 Employee (Sub)" _note="Hired by subcontractor, badged to prime"/>
+          <outline text="1099 Independent Contractor" _note="Self-employed, own benefits"/>
+          <outline text="Staffing Agency Placement" _note="W-2 of staffing firm"/>
+        </outline>
+        <outline text="Clearance Levels">
+          <outline text="Secret"/>
+          <outline text="Top Secret"/>
+          <outline text="TS/SCI"/>
+          <outline text="TS/SCI with CI Poly"/>
+          <outline text="TS/SCI with Full-Scope Poly"/>
+        </outline>
+      </outline>
+      
+      <outline text="RFP LIFECYCLE (Acquisition Process)" _note="From requirements to contract award">
+        <outline text="Phase 1: Requirements Definition (3-12 months)">
+          <outline text="Market Research"/>
+          <outline text="PWS/SOW Development"/>
+          <outline text="IGCE Development"/>
+          <outline text="Acquisition Strategy"/>
+        </outline>
+        <outline text="Phase 2: Sources Sought / RFI (30-60 days)">
+          <outline text="Posted on SAM.gov"/>
+          <outline text="Capability Statements"/>
+          <outline text="Industry Feedback"/>
+        </outline>
+        <outline text="Phase 3: Draft RFP / Industry Day (30-90 days)">
+          <outline text="Draft Solicitation"/>
+          <outline text="Industry Day Event"/>
+          <outline text="Q&amp;A Process"/>
+          <outline text="Teaming Formation"/>
+        </outline>
+        <outline text="Phase 4: Final RFP Release (30-90 days)">
+          <outline text="Performance Work Statement"/>
+          <outline text="Evaluation Criteria"/>
+          <outline text="Contract Line Items (CLINs)"/>
+          <outline text="Labor Categories (LCATs)"/>
+        </outline>
+        <outline text="Phase 5: Proposal Submission">
+          <outline text="Technical Volume"/>
+          <outline text="Management Volume"/>
+          <outline text="Past Performance"/>
+          <outline text="Price/Cost Volume"/>
+        </outline>
+        <outline text="Phase 6: Evaluation (2-6 months)">
+          <outline text="Technical Evaluation"/>
+          <outline text="Price Analysis"/>
+          <outline text="Discussions/Clarifications"/>
+          <outline text="BAFO Request"/>
+        </outline>
+        <outline text="Phase 7: Award Decision">
+          <outline text="Source Selection"/>
+          <outline text="Award Notification"/>
+          <outline text="Debrief Requests"/>
+        </outline>
+        <outline text="Phase 8: Protest Period (10-100 days)">
+          <outline text="GAO Protest (10 days to file, 100 days decision)"/>
+          <outline text="COFC (Court of Federal Claims)"/>
+        </outline>
+        <outline text="Phase 9: Contract Kickoff">
+          <outline text="Transition Planning"/>
+          <outline text="Kickoff Meeting"/>
+          <outline text="Staffing Ramp"/>
+        </outline>
+      </outline>
+      
+      <outline text="DCGS EXAMPLE (Real Program)" _note="AF DCGS ~$500M contract">
+        <outline text="Government: Air Force / PEO ISR &amp; SOF"/>
+        <outline text="Vehicle: Single-Award IDIQ"/>
+        <outline text="Prime: BAE Systems">
+          <outline text="Major Sub: GDIT" _note="Manages most O&amp;S labor">
+            <outline text="Sub-Sub: PTS" _note="SDVOSB cleared staffing"/>
+          </outline>
+        </outline>
+        <outline text="Sites">
+          <outline text="DGS-1 Langley" _note="Site Lead: Maureen Shamaly"/>
+          <outline text="DGS-2 Beale"/>
+          <outline text="NASIC Wright-Patt" _note="Craig Lindahl"/>
+          <outline text="PACAF San Diego" _note="🔥 CRITICAL - Kingsley Ero (acting)"/>
+        </outline>
+      </outline>
+      
+    </outline>
+  </body>
+</opml>`;
+
+        function copyOPML() {
+            navigator.clipboard.writeText(opmlContent).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const status = document.getElementById('copy-status');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                status.style.display = 'inline';
+                setTimeout(() => {
+                    btn.textContent = 'Copy OPML to Clipboard';
+                    btn.classList.remove('copied');
+                    status.style.display = 'none';
+                }, 3000);
+            });
+        }
+    </script>
+</body>
+</html>

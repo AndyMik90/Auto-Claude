@@ -1,0 +1,261 @@
+Program Name,Acronym,Agency,BD Priority,Prime Contractor,Contract Value,Recompete Date,Period of Performance,Key Locations,Contract Number
+16th Air Force Mission IT Support,16AF Mission IT,Air Force,,ManTech,$261M,,,Lackland TX; Eglin/Tyndall FL; Nellis NV; Hill UT,FA807519FA029
+53rd Air Wing IT/EW Support,53rd Air Wing,Air Force,Medium,"SAIC / Leidos (indicative, not confirmed)","$39,874,973.53",,,"Eglin AFB FL; Nellis AFB NV; Hill AFB UT (53rd EW Group, Test & Evaluation)",FA877319FA023
+Advanced Battle Management System,ABMS,Air Force,Medium,Multi (SAIC supports parts),"$2,893,647.82",,,"Eglin AFB, FL; Hanscom AFB, MA",FA251822F0034
+Advanced Medium-Range Air-to-Air Missile (AMRAAM) Production & Sustainment,AMRAAM,Air Force,,Raytheon,Multi-$B,,,Tucson AZ (Raytheon missile facilities); additional supplier sites across U.S. and allied nations,W31P4Q15C0022
+Aegis Ballistic Missile Defense / Aegis Program,Aegis,Navy,,Lockheed Martin,"$35,135,514,910.20",,,"Aegis ashore and afloat sites; e.g., Aurora CO; Huntsville AL; shipyards",N0001917C0001
+AF National Capital Region IT Support (AFNCR),AFNCR IT,Air Force,,Leidos (historical incumbent),$450M,,,Pentagon; Joint Base Andrews (JBA),HHSN261200800001E
+AFCENT SCORPION Cyber Task (ISSO/ISSM Support),SCORPION,Air Force,,CACI,"$600,725,818.08",,,,FA882316C0004
+Air Force Advanced Battle Management System,ABMS,Air Force,,"Multiple: SAIC, Leidos, Booz Allen Hamilton","$1,139,008,033.13",,,"Eglin AFB, FL; Hanscom AFB, MA",36C10B21N10150056
+Air Force Cyber Operations / Platform One + Cyber/DevSecOps Portfolio,Platform One / Cyber Portfolio,Air Force,,SAIC; Leidos; CACI; Booz Allen Hamilton (aggregate DevSecOps/Cyber vendors supporting CSO & P1),$1B,,,San Antonio TX; Colorado Springs CO; remote DevSecOps hubs,FA882316C0004
+Air Force GIS Program (Lockheed Martin),AFGIS (LM),Air Force,,Lockheed Martin,"$34,173,959,111.96",,,AFLCMC (multiple program offices),N0001902C3002
+ARCYBER Information Advantage / Mission Support (general),ARCYBER,Army,🟠 High,Peraton / others (Peraton lead on ARCYBER Information Advantage Enterprise line; additional primes on related work),$889M,,,"Fort Eisenhower GA (ARCYBER HQ); additional locations including Fort Meade MD, Pentagon/NCR, and distributed cyber units as required by task orders",47QFCA19F0033
+Army “Project Convergence”,,Army,,SAIC,"$39,320,458.07",,,Secret,W15QKN19F1290
+Army AESD Enterprise Service Desk,AESD,Army,,SAIC,$757M,,,Fort Liberty NC; Fort Sam Houston TX,FA877319FA023
+Army ALTESS Cloud Hosting,ALTESS,Army,,Leidos,"$4,813,063,024.90",,,Radford VA; Fort Belvoir VA,HHSN261200800001E
+Army Backbone Infrastructure Modernization – Task Order 2,BIM TO2,Army,,CACI,$3M,,,Secret → TS/SCI,W15QKN15C0049
+Army Backbone Infrastructure Modernization – Task Order 3,BIM TO3,Army,,CACI,$3M,,,TS/SCI,W15QKN15C0049
+Army Enterprise Service Desk,AESD,Army,,SAIC,$757M,,,24×7 CONUS call centers; virtual & global remote support,FA877319FA023
+Army Enterprise Service Management Framework,AESMF,Army,,SAIC,"$39,320,458.07",,,Secret / TS,W15QKN19F1290
+Army Futures Command – Project Convergence,,Army,,SAIC (major integrator; autonomy & AI work),"$39,320,458.07",,,Secret,W15QKN19F1290
+Army Integrated Battle Command System,IBCS,Army,,Northrop Grumman,$2.7B,,,Huntsville AL; Fort Sill OK; distributed test ranges,HQ085621C0003
+Army Integrated Battle Command System Support,IBCS,Army,,Northrop Grumman (prime); CACI (support),Multi-$B,,,Huntsville AL; White Sands NM; Fort Bliss TX,W15QKN15C0049
+Army IT Enterprise Mgmt Systems Solution,ITEMSS,Army,,CACI,$880M,,,Arlington VA; Springfield VA; National Guard sites nationwide,47QFRA19F0011
+Army ITES-3S,ITES-3S,Army,High,135 primes,$12.1B,,"January 1, 2018 → January 1, 2027",Army-wide,
+Army Missile & Space R&D Support (Huntsville),,Army,,Dynetics; Northrop teams,"$10,009,419,769.13",,,Huntsville AL,F4261098C0001
+Army Next-Gen C2 Prototype,NGC2,Army,,Anduril,$100M,,,Fort Irwin test sites,FA882024FB003
+Army Research Lab / Adelphi Labs,ARL,Army,,SAIC,"$39,320,458.07",,,Secret,W15QKN19F1290
+Army RS3 (Expanded PEO EIS Listing),RS3,Army,Medium,"Multiple (Belcan, SAIC, many)",$37B,,"January 1, 2018 → January 1, 2028",U.S. Army CONUS/OCONUS,W15QKN19F1290
+ARNG G-2 Intelligence IT Support,,Army,Medium,SAIC,"$39,320,458.07",,,"Guard intel sites (e.g., Fort Belvoir)",W15QKN19F1290
+Basic Ordering Agreement – Surge Staffing,BOA,Air Force,,Northrop Grumman,"$10,801,259,923.19",,,Roy UT; Colorado Springs CO; Hill AFB UT,FA821920C0006
+Basic Ordering Agreement (Lockheed Martin),BOA,DoD,,Lockheed Martin,"$35,135,514,910.20",,,Various locations,N0001917C0001
+Basic Ordering Agreement (NG BOA),BOA,Other,,Northrop Grumman,"$10,801,259,923.19",,,"Roy, UT; Hill AFB; Colorado Springs, CO",FA821920C0006
+Basic Ordering Agreement (NG Staff Augmentation),BOA,Other,,Northrop Grumman,"$10,801,259,923.19",,,Roy UT; Colorado Springs CO; Hill AFB UT,FA821920C0006
+Basic Ordering Agreement Support (Northrop Surge),BOA,Other,Medium,Northrop Grumman,"$10,801,259,923.19",,,Roy UT; Colorado Springs CO; Hill AFB UT,FA821920C0006
+Battlefield Info Collection & Exploitation System (BICES-X),BICES-X,DoD,,GDIT (incumbent pre-MPE),$5B,,,Worldwide coalition networks,19AQMM18C0185
+Battlefield Information Collection & Exploitation System,BICES,DoD,,GDIT,"$1,495,085,754.52",,,Norfolk VA; Tampa FL; Doral FL; EU sites,19AQMM18C0185
+BICES Defense Intelligence Agency Variant,BICES,DIA,,CACI + Leidos + Peraton + SAIC (various subs),$500M,,,Offutt AFB; RAF Molesworth,FA251822F0034
+BICES-X / Mission Partner Environment,BICES-X / MPE,DoD,,GDIT,$881M,,,EUCOM / CENTCOM / PACOM nodes,19AQMM18C0185
+BOA (General Staff Augmentation),BOA,Other,High,Northrop Grumman,"$10,801,259,923.19",,,Roy UT; Colorado Springs CO; Hill AFB,FA821920C0006
+BOA (Northrop Surge),BOA,Other,,Northrop Grumman,"$10,801,259,923.19",,,Roy UT; Colorado Springs CO; Hill AFB,FA821920C0006
+Business Operations & Analytics,BOA,DoD,Medium,Northrop Grumman,Multi-$M,,,Roy UT; Hill AFB UT; Colorado Springs CO,FA821920C0006
+"C2BMC (Command & Control, Battle Mgmt, Comms)",C2BMC,MDA,,Lockheed Martin,$5B,,,Colorado Springs; Huntsville AL,W31P4Q20C0023
+CAAC (Peraton),CAAC,DoD,🟡 Medium,Peraton,"$487,767,432.14",,,Secret,47QFCA19F0033
+CAMMO (AF Satellite Control Network O&M),CAMMO,Space Force,,CACI,$446M,,,Worldwide SATCOM tracking stations,FA882316C0004
+CBP Enterprise IT Support,CBP-Peraton,DHS,Medium,Peraton,"$609,128,623.96",,,CBP sites nationwide,GST0011AJ0025
+CBP Traveler Processing & Vetting / BISS,TPVS / BISS,DHS,Medium,ManTech (TPVS/BISS); CACI (BISS follow-on),"$251,830,777.48",,,TS (some SCI),70B04C20F00001357
+CDAO Advanced AI Tools (Scale AI OTA),Donovan,DoD,,Scale AI,$100M,,,DoD secure enclaves,W911QX24F0053
+CENTCOM Comms Tech Support V,CTSS V,DoD,,GovCIO (Salient CRGT),$865M,,,20 countries (SW Asia AOR),36C10B22N10030034
+CENTCOM Enterprise IT Modernization,,DoD,,GDIT,$922M,,,MacDill AFB; CENTCOM sites OCONUS,19AQMM18C0185
+CISA Enterprise Support (CACI),CISA-CACI,DHS,,CACI,"$708,253,079.87",,,NCR,47QFRA19F0011
+Cloud One,Cloud One,Air Force,,SAIC,$727M,,,Hanscom AFB; remote,FA877319FA023
+Cloud One (USAF Cloud Program),Cloud One,Air Force,,SAIC,$727M,,,Hanscom AFB; remote,FA877319FA023
+CMS Enterprise Cloud Infrastructure Services,ECIS,DoD,,Peraton / SAIC (indicative),"$600,708,181.07",,,CMS,47QFCA20F0015
+"Command & Control, Battle Mgmt & Comms (MDA) – Secondary Row",C2BMC,MDA,,Northrop Grumman,"$2,395,436,919.18",,,Colorado Springs; Huntsville,HQ085621C0003
+"Command & Control, Battle Mgmt & Comms",C2BMC,MDA,,Lockheed Martin,Multi-$B,,,Huntsville / Schriever,W31P4Q20C0023
+"Command and Control, Battle Management & Communications (MDA)",C2BMC,MDA,Medium,Northrop Grumman,"$2,395,436,919.18",,,Colorado Springs CO; Huntsville AL,HQ085621C0003
+"Command and Control, Battle Management, Communications",C2BMC,MDA,,Lockheed Martin,"$48,066,473,048.89",,,Colorado Springs CO; Huntsville AL (indicative),DEAC0494AL85000
+Common Open Operational Launch Range,COOLR,Space Force,,Lockheed Martin (indicative),"$35,135,514,910.20",,,Ranges (test ranges),N0001917C0001
+Comms Technical Support V,CTSS V,DoD,,GovCIO (Salient CRGT),$865M,,,SW Asia AOR + MacDill AFB reach-back,36C10B22N10030034
+Consolidated AFSCN Mod & Ops,CAMMO,Space Force,,CACI (via L-3 NSS acquisition),$446M,,,"Schriever SFB CO; worldwide tracking stations (HI, DG, UK)",FA882316C0004
+Consolidated AFSCN Mod & Ops – Secondary Row,CAMMO,Space Force,,CACI,$446M,,,Schriever SFB; worldwide tracking,FA882316C0004
+Conventional Prompt Strike,CPS,Army,,Lockheed Martin,Multi-$B,,,Fleet & Army strategic sites,N0001917C0001
+CTSS V (Expanded Listing),CTSS V,DoD,,GovCIO,$865M,,,Qatar; Kuwait; Bahrain; Iraq; etc.,36C10B22N10030034
+Data Center & Cloud Optimization,DCCO,DHS,,Peraton / Leidos (indicative),"$609,128,623.96",,,NCR,GST0011AJ0025
+DC3 – Defense Cyber Crime Center,DC3,DoD,,Peraton,"$487,767,432.14",,,Linthicum MD,47QFCA19F0033
+DC3 Cyber Crime Center – Secondary Row,DC3,DoD,,Peraton,"$487,767,432.14",,,TS/SCI,47QFCA19F0033
+Defense Cyber Crime Center,DC3,DoD,,Peraton,"$487,767,432.14",,,Linthicum MD,47QFCA19F0033
+Defense Enclave Services,DES,DoD,,Leidos,$11.5B,,,Fort Belvoir VA (HQ),HHSN261200800001E
+Defense Enclave Services – Fourth Estate IT Consolidation,DES,DISA,,Leidos,$11.5B,,,Fort Meade MD; Fort Belvoir VA; Columbus OH; Philadelphia PA,HHSN261200800001E
+Defense Enclave Services (DoDNet),DES (DoDNet),DISA,High,Leidos,$11.5B,,,Fort Belvoir; multiple 4th Estate bases,HHSN261200800001E
+Defense Enterprise Office 365 Migration / DoD365,DOD365,DISA,,Microsoft,"$998,940,122.69",,,Crystal City VA; remote,47QFCA22F0047
+Defense Enterprise Office Solutions,DEOS,DISA,,CSRA / Leidos (team),"$4,813,063,024.90",,,DoD & federal offices CONUS/OCONUS,HHSN261200800001E
+Defense Health Agency Desktop to Datacenter,D2D,DoD,,GDIT,$4.3B,,,San Antonio TX; NCR; Hawaii,19AQMM18C0185
+Defense Health Agency Modernization / MHS GENESIS,MHS GENESIS,DoD,,Leidos,$4.3B,,,San Antonio TX; Falls Church VA,HHSN261200800001E
+Defense Satellite Communications Modernization,DSCM (Satellite),Space Force,,CACI,"$708,253,079.87",,,Colorado Springs; Fort Meade,47QFRA19F0011
+DFAS Enterprise IT Support – Secondary Row,DFAS-Peraton,DoD,,Peraton,"$600,708,181.07",,,DFAS nationwide,47QFCA20F0015
+DFAS Enterprise Support,DFAS-Peraton,DoD,Medium,Peraton,"$600,708,181.07",,,DFAS sites,47QFCA20F0015
+DGFS (RTX),DGFS,DoD,,Raytheon (RTX),"$8,688,654,906.89",,,Tucson AZ + other sites,N0001918C1021
+DHS Data Center 2,DC2,DHS,,GDIT / Peraton (indicative),"$609,128,623.96",,,DC2 sites,GST0011AJ0025
+DHS Enterprise IT Services I,EITS I,DHS,,Leidos / SAIC (indicative),"$39,874,973.53",,,DHS HQ,FA877319FA023
+DIA Battlefield Information Networks / BICES-X,BICES-X,DIA,,CACI,"$681,999,277.86",,,Offutt AFB NE; Stuttgart Germany,47QFRA24F0005
+DIA EMERALD,EMERALD,NGA,,Peraton (Perspecta heritage),"$1,414,704,681.90",,,TS/SCI,80GSFC19C0063
+DIA Information Systems Engineering Office,ISEO,DIA,,Leidos,$400M,,,Reston VA; JBAB DC,HHSN261200800001E
+DIA Infrastructure Services Enterprise Ops,ISEO,DIA,,Leidos,$401M,,,JBAB DC; Reston VA,HHSN261200800001E
+DIA Infrastructure Services Ops,ISEO,DIA,,Leidos,$401M,,,DIA HQ (DC) + field sites,HHSN261200800001E
+DIA ISEO,ISEO,DIA,,Leidos,$400M,,,Washington DC (Bolling); remote sites,NSFDACS1219442
+DIA ISEO (IT Sustainment for DIA),ISEO,DIA,,Leidos,$400M,,,Washington DC; Fort Meade MD,HHSN261200800001E
+DIA IT Sustainment & Engineering Office,ISEO,DIA,High,Leidos,$400M,,,Reston VA; JBAB DC,HHSN261200800001E
+DIA IT Sustainment & Enterprise Ops,ISEO,DIA,,Leidos,$400M,,,JBAB DC; DIA field sites,NSFDACS1219442
+DIA IT Sustainment & Enterprise Ops (Task Order),ISEO,DIA,High,Leidos,$400M,,,JBAB DC; Reston VA,HHSN261200800001E
+DIA IT Sustainment (ISEO),ISEO,DIA,,Leidos,$400M,,,Reston VA; Bolling AFB; CO,NSFDACS1219442
+DIA SITE III,SITE III,DIA,,Leidos,$12.6B,,,Worldwide CONUS/OCONUS,NSFDACS1219442
+DIA SITE III IDIQ,SITE III,DIA,,"Leidos, CACI, others","$681,999,277.86",,,National Harbor MD (conference note),47QFRA24F0005
+DIA Solutions for the Information Technology Enterprise III,SITE III,DIA,High,Multi-award primes,$12.6B,,"January 1, 2021 → January 1, 2031",JBAB DC; DIA field sites,
+DIMS (Peraton),DIMS,Air Force,,Peraton,"$600,708,181.07",,,Secret,47QFCA20F0015
+DISA ENCORE III Cyber Task Orders,ENCORE III Cyber,DISA,,CACI,$17.5B,,,Fort Meade MD; Scott AFB IL,47QFRA19F0011
+DISA Global Service Mgmt – Ops II,GSM-O II,DISA,,Leidos,$6.52B,,,Scott AFB IL; Fort Meade MD; Montgomery AL; Lackland TX,89243318CFE000003
+DISA GSM-O II,GSM-O II,DISA,,Leidos,$6.52B,,,Worldwide (DoDIN NOCs),HHSN261200800001E
+DISA GSM-O II (Surge Staffing Focus),GSM-O II,DISA,High,Leidos,$6.5B,,,Scott AFB; Fort Meade,HHSN261200800001E
+DISA JWCC – Joint Warfighting Cloud Capability,JWCC,DISA,,Amazon; Microsoft; Google; Oracle,$9B,,,Global DoD; Crystal City VA,W91CRB20F0448
+DISA Supply Chain Mgmt (GDIT),DSCM-GDIT,DISA,Medium,GDIT,"$1,495,085,754.52",,,Fort Meade MD,19AQMM18C0185
+Distributed Common Ground System (AF),DCGS,Air Force,Medium,BAE; multiple,"$2,118,906,843.81",,,TS/SCI,FA821413C0001
+DLA J6 Enterprise Technology Services,DLA JETS,DoD,,CACI; Deloitte; SAIC; GDIT,$6B,,,Fort Belvoir; Columbus OH; Philadelphia PA,SAQMMA12C0130
+DLA J6 Enterprise Technology Services 2.0,DLA JETS 2.0,DoD,,Leidos; GDIT; Booz Allen; CACI; Peraton,$6B,,,Fort Belvoir; Columbus OH; Scott AFB IL,47QFCA21F0018
+DLA JETS 2.0 (Follow-On),JETS 2.0,DoD,,CACI; GDIT,$11.9B,,,NCR; remote,19AQMM18C0185
+DoD Health Modernization,DHMSM (MHS GENESIS),DoD,,Leidos; Cerner; Accenture,Multi-$B,,,MTFs nationwide,HHSN261200800001E
+DoD High Performance Computing Modernization Program – HITS / HITS-U Support,HITS / HITS-U,DoD,,SAIC,$586M,,,DSRC sites: ERDC (Vicksburg MS); ARL (Aberdeen MD); AFRL (Wright-Patterson AFB OH),FA877319FA023
+DoD Joint Service Provider – Pentagon IT & ICAM,JSP,DoD,,CACI (incumbent),$190M,,,Pentagon; NCR,47QFRA19F0011
+DoD JSP – Pentagon IT & ICAM (AFNCR/ICAM),AFNCR / ICAM,Air Force,Medium,Leidos,$450M,,,Pentagon; JB Andrews,HHSN261200800001E
+DSS Support,DSS Support,DoD,Medium,Northrop (mention); others,"$10,801,259,923.19",,,NCR,FA821920C0006
+DTRA IAC-MAC Research & Analysis,IAC-MAC,DoD,,CACI,$28B,,,Fort Belvoir; Kirtland AFB,GSQ0017AJ0006
+DTRA Integrated IT Support Services,I3TS,DoD,,Leidos,$205M,,,Fort Belvoir; Kirtland AFB,70T04019C9DAP3006
+DTRA Integrated IT Support Services,DTRA I3TS,DoD,,Leidos,$205M,,,Fort Belvoir VA; Kirtland AFB NM,70T04019C9DAP3006
+DTRA IT Modernization / Support Services,I3TS (ITSS),DoD,,Leidos,$205M,,,Fort Belvoir; Kirtland AFB,HHSN261200800001E
+DTRA IT Support Modernization,I3TS,DoD,,Leidos,$205M,,,Fort Belvoir; Kirtland AFB,70T04019C9DAP3006
+DTRA IT Support Services,I3TS,DoD,,Leidos,$205M,,,Fort Belvoir; Kirtland AFB,HHSN261200800001E
+"EDIS – Engineering, Development, Integration & Sustainment",EDIS,Space Force,,SAIC,$655M,,,Los Angeles AFB; Colorado Springs; Huntsville,FA251822F0034
+EDIS / HADES (follow-on),EDIS/HADES,Space Force,,SAIC / Army,"$39,874,973.53",,,LAAFB; CONUS ISR nodes,FA877319FA023
+EITaaS (Pilot – USAF),EITaaS,Air Force,,CACI (pilot),$50M,,,Multiple bases,FA882316C0004
+Engineering Development & Integration Support,EDIS,Space Force,,SAIC (via Engility),$655M,,,Los Angeles AFB; Colorado Springs,FA251822F0034
+EUCOM / AFRICOM IT & Communications Support,EUCOM/AFRICOM IT,Air Force,,CACI,$1.3B,,,Stuttgart DE; Italy; Djibouti; other OCONUS,FA882316C0004
+EUCOM/AFRICOM Enterprise IT & Comms Support,DCWAS (ref name),DoD,,CACI,$1.3B,,,Stuttgart DE + 60+ sites across Europe/Africa,47QFRA19F0011
+EUCOM/AFRICOM IT & Comms,,DoD,,CACI,$1.3B,,,Stuttgart + 60 EUCOM/AFRICOM sites,GSQ0017AJ0006
+EUCOM/AFRICOM IT & Comms Support,,Air Force,,CACI,$1.3B,,,Europe & Africa – 60+ sites,FA882316C0004
+F-35 Sustainment,F-35 Sustainment,DoD,,Lockheed Martin,Multi-$B,,,Global F-35 bases,N0001917C0001
+Fort Eisenhower (Gordon) IT Support,,Army,,SAIC,"$39,320,458.07",,,Augusta GA,W15QKN19F1290
+Future Operationally Resilient Ground Evolution,FORGE,Space Force,,Raytheon (Mission Data Apps); BAE (C2),$600M,,,Buckley SFB; Peterson SFB; Aurora CO,N0001918C1021
+GBS (Global Broadcast Service),GBS,DISA,Low,L3Harris (historical),"$421,512,821.00",,,Tampa FL (MacDill AFB); Hawaii; CONUS,N0003022C2001
+GBSD Sentinel Missile Modernization,GBSD,Air Force,,Northrop Grumman,"$10,801,259,923.19",,,Ogden UT; Hill AFB; Vandenberg SFB,FA821920C0006
+GENMOD / VMOD (Army Network/Voice Modernization),GENMOD/VMOD,Army,,CACI,$526M,,,CONUS & Pacific posts,W15QKN15C0049
+GENMOD / VMOD (Network Modernization),GENMOD,Army,,CACI,$526M,,,Pacific + CONUS,W15QKN15C0049
+GENMOD / VMOD 2 – Field Service Technicians,VMOD 2,Army,,CACI,"$733,720,754.55",,,CONUS posts,W15QKN15C0049
+Global Broadcast Service,GBS,DISA,,L3Harris,"$421,512,821.00",,,Tampa FL; Hawaii; CONUS,N0003022C2001
+Global Command and Control System – Joint,GCCS-J,DISA,,Northrop Grumman,"$10,801,259,923.19",,,Fort Meade MD; Scott AFB IL,FA821920C0006
+Global Command and Control System – Joint (Variant),GCCS-J,DISA,Medium,Leidos,$400M,,"January 1, 2019 → January 1, 2027",Suffolk VA,HHSN261200800001E
+Global Network Operations (DISA GSM-O II),GSM-O II,DISA,,Leidos,$6.5B,,,Scott AFB IL; Ft Meade MD; OCONUS nodes,NNJ09HD46C
+Global Network Operations II (PTS Subcontract),GSM-O II,DISA,,Leidos,$6.5B,,,Scott AFB; Ft Meade; Hill AFB; Honolulu HI,NNJ09HD46C
+Global Service Management – Operations II,GSM-O II,DISA,,Leidos,$6.52B,,,Scott AFB; Ft Meade; OCONUS,89243318CFE000003
+Global Service Mgmt – Ops II (variant),GSM-O II,DISA,Medium,Leidos,$6.5B,,"January 1, 2018 → January 1, 2028",Scott AFB; Ft Meade; global,89243318CFE000003
+Global Solutions Management – Operations II,GSMO II,DISA,,Leidos,"$1,306,805,321.14",,,Scott AFB; Ft Meade; Hill AFB,NNJ09HD46C
+GMD Weapon System (Ground C2),GWS (GMD),MDA,🟠 High,Northrop Grumman,$3.3B,,"January 1, 2022 → January 1, 2027",Huntsville AL; Schriever SFB; Ft Greely AK,HQ085621C0003
+GMD Weapon System Modernization,GWS (GMD),MDA,,Northrop Grumman,$3.3B,,,Huntsville AL; Schriever SFB; Ft Greely AK; Vandenberg SFB,HQ085621C0003
+GPS Next-Gen Operational Control System,GPS OCX,Space Force,,Raytheon Intelligence & Space,$7.6B,,,Colorado Springs CO (Schriever SFB),FA880710C0001
+GPS Operational Control System (sustainment),GPS OCX,Space Force,,Raytheon,$7.7B,,,Aurora CO; Schriever SFB,FA880710C0001
+GRASP (Raytheon/Peraton),GRASP,DoD,,Peraton,"$1,414,704,681.90",,,Secret,80GSFC19C0063
+Ground Based Strategic Deterrent / Sentinel,GBSD / Sentinel,Air Force,High,Northrop Grumman,$13.3B,,"January 1, 2020 → January 1, 2039",Hill AFB; Ogden UT; Roy UT; Colorado Springs; Promontory UT,FA821920C0006
+Ground-Based Interceptor,GBI,MDA,,Boeing (lead),Multi-$B,,,Vandenberg; Ft Greely,HQ085621C0003
+Ground-Based Midcourse Defense,GMD,MDA,,Boeing (prime); Northrop & Raytheon (NGI),Multi-$B,,,Fort Greely; Vandenberg; Schriever,HQ085621C0003
+Ground-Based Strategic Deterrent,GBSD,Air Force,,Northrop Grumman,Multi-$B,,,Roy UT; Hill AFB UT; Redondo Beach CA,FA821920C0006
+Ground-Based Strategic Deterrent (Sentinel),GBSD (Sentinel),Air Force,,Northrop Grumman,Multi-$B,,,Hill AFB; Offutt AFB (nuclear C3 analysts),FA821920C0006
+HHS Advanced Secure Data Repository,ASDR,DoD,Medium,GDIT / SAIC (indicative),"$1,495,085,754.52",,,NIH / HHS,19AQMM18C0185
+Hope 2.0 (prototype),Hope 2.0,Space Force,,SAIC,"$39,874,973.53",,,TS,FA877319FA023
+Hypersonic & Ballistic Tracking Space Sensor,HBTSS,MDA,,Northrop & L3Harris (co-primes),$155M,,,Orbit prototypes; SDA ground centers,HQ085621C0003
+INDOPACOM C5ISR Support,INDOPACOM C5ISR,DoD,,Amentum,$441M,,,Camp HM Smith HI; Pacific sites,0004
+Information Technology Sustainment for Enhanced Ops,ISEO,DIA,Medium,Leidos,$400M,,,Washington DC; Reston VA,HHSN261200800001E
+INSCOM GILE Support,GILE,Army,,CACI,$855M,,,Fort Belvoir VA; NCR,W15QKN15C0049
+INSCOM IT Support Services (current TO iteration),IT2S4 / I2TS,Army,High,GDIT,"$1,359,959,159.89",,,Fort Liberty; Fort Meade; Fort Sam Houston; JBLM,W56HZV19C0036
+INSCOM IT Support Services III,I2TS-III,Army,,GDIT,$300M,,,Fort Belvoir; worldwide,W56HZV19C0036
+Integrated Air & Missile Defense,IAMD,Army,,Raytheon,$1B,,,Huntsville AL,W31P4Q15C0022
+Integrated Base Defense Security System,IBDS,Army,,Leidos,"$862,620,736.01",,,Fort Meade; Aberdeen MD,70T04019C9DAP3006
+Integrated Digital Engineering Environment,IDEE,Air Force,,Northrop Grumman,"$10,801,259,923.19",,,Ogden UT,FA821920C0006
+Integrated Situational Awareness Environment,inSITE,Army,,Northrop Grumman,"$10,801,259,923.19",,,Huntsville AL; Colorado Springs CO,FA821920C0006
+Integrated Situational Awareness Tool Environment,inSITE,DISA,High,Northrop Grumman,"$10,801,259,923.19",,,Huntsville AL; Colorado Springs CO,FA821920C0006
+Integrated Situational Awareness Tool Environment (Intel Cyber),inSITE,DISA,High,Northrop Grumman,"$10,801,259,923.19",,,Huntsville AL; Colorado Springs CO,FA821920C0006
+Integrated Strategic & Expeditionary Operations (DIA ISEO variant),ISEO (ISE Ops),DIA,,Leidos,$400M,,,Washington DC; Quantico VA; Bolling AFB,70T04019C9DAP3006
+Intelligence Community Infrastructure Support,I2TS-Next,Army,,Jacobs,"$263,095,350.76",,,Fort Belvoir VA; Korea (possible),140R4024C0013
+Intelligence Systems Enterprise Operations,ISEO,DIA,High,Leidos,"$4,813,063,024.90",,,Reston VA; DIA HQ JBAB,HHSN261200800001E
+Intelligence Systems Infrastructure Tools & Enhancements,inSITE,DoD,,Northrop Grumman,$406M,,,Huntsville AL; Colorado Springs CO,FA821920C0006
+ITEMSS (IT Enterprise Mgmt Systems Solution),ITEMSS,Army,,CACI,$880M,,,NCR; Guard HQs,W15QKN15C0049
+J6 Enterprise Technology Services 2.0,DLA JETS 2.0,DoD,High,Multiple (IDIQ MA pool),$6B,,"January 1, 2024 → January 1, 2029",CONUS + OCONUS,
+JGLASS II – Shared Services,JGLASS II,DHS,Medium,Peraton / SAIC (indicative),"$609,128,623.96",,,NCR,GST0011AJ0025
+Joint Staff J7 Support,JS J7,DoD,,HII,$50M,,,Suffolk VA; Quantico VA; Ft Leavenworth,19AQMM18C0185
+Joint Tactical Ground Station Early Warning,JTAGS,Army,,Northrop (prime/sub),"$8,447,894,780.67",,,Colorado Springs; Germany; Redondo Beach,N0001918C1037
+Joint Tactical Ground Stations,JTAGS,Space Force,,Northrop Grumman,Multi-$M,,,Colorado Springs CO; Germany,FA821920C0006
+Joint Warfighting Cloud Capability,JWCC,DoD,High,AWS; Microsoft; Google; Oracle,$9B,,"January 1, 2022 → January 1, 2027",DoD/IC sites,W91CRB20F0448
+JSP Enterprise IT,JSP,DoD,,CACI,$190M,,,Pentagon / NCR,47QFRA19F0011
+JSP ETM (Pentagon IT),JSP ETM,DoD,,CACI,$190M,,,Pentagon / NCR,GSQ0017AJ0006
+Justified (SAP Security),Justified,Air Force,,SAIC (inferred),"$39,874,973.53",,,Hanscom AFB; JBAB DC,FA877319FA023
+Justified SAP Security Contract (Hanscom/Bolling),needs-scrape,Air Force,,Booz Allen Hamilton,"$1,379,603,153.12",,,Hanscom AFB; JBAB DC,47QFCA21F0018
+JWCC – ATAT Expansion Path,JWCC,DISA,Medium,AWS; Microsoft; Google; Oracle,$9B,,"January 1, 2023 → January 1, 2028",Global DoD; CCPO,W91CRB20F0448
+Kennedy Space Center BOSS,KSC BOSS,NASA,,Jacobs / Amentum (past),"$2,099,373,524.58",,,Kennedy Space Center FL,NNK13MA14C
+LANL/NNSA VTC Engineering Support,LANL VTC,NSA,,GDIT,"$1,495,085,754.52",,,Los Alamos NM,19AQMM18C0185
+LANL/NNSA VTC Support,,NSA,,GDIT,"$1,495,085,754.52",,,Los Alamos NM,19AQMM18C0185
+LATERALUS (IC Space ISR),LATERALUS,NSA,,Raytheon,$100M,,,CO / NoVA SCIFs,N0001918C1021
+LATERALUS (Space ISR),LATERALUS,NSA,,Raytheon,"$8,688,654,906.89",,,CO / NoVA,N0001918C1021
+LOGCAP V,LOGCAP V,Army,,KBR; V2X; Fluor; Amentum,$82B,,,Global theaters,W52P1J19F0394
+Logistics Civil Augmentation Program V (duplicate entry),LOGCAP V,Army,,KBR; V2X; Fluor; Amentum,$82B,,,Global,W52P1J19F0394
+LRAAM (Long Range AAM),LRAAM,Air Force,Medium,Raytheon (indicative),"$3,648,685,783.01",,,Tucson AZ,FA861108C2896
+Managed IT Services (USTRANSCOM),MITS,DoD,,SAIC,$150M,,,Scott AFB IL,FA251822F0034
+Marine Corps Enterprise Network,MCEN,Marines,,Leidos / GDIT,"$1,495,085,754.52",,,Marine bases,19AQMM18C0185
+Mark 48 Heavyweight Torpedo,Mk-48,Navy,,Raytheon (indicative),"$3,265,910,249.19",,,Middletown RI; Navy weapons centers,N0002422C5500
+Mark-48 Torpedo (sub-program reference),Mark-48,Navy,Medium,Raytheon (indicative),"$3,265,910,249.19",,,NSWC Crane; NSWC Newport; Middletown RI,N0002422C5500
+MDA Tactical Embedded Systems,,MDA,Medium,Northrop Grumman,"$2,395,436,919.18",,,"Redstone Arsenal, Huntsville AL",HQ085621C0003
+MHS GENESIS (DHMSM),DHMSM,DoD,,Leidos,$4.3B,,,NCR; San Antonio; Remote,HHSN261200800001E
+MHS GENESIS / Leidos Partnership for Defense Health,LPDH,DoD,,Leidos,"$4,813,063,024.90",,,MHS sites CONUS / OCONUS,HHSN261200800001E
+Mission Partner Environment,MPE,DoD,,GDIT,$5.6B,,,Global coalition sites,19AQMM18C0185
+Mission Partner Environment (Field Ops / MPCO),MPE / MPCO,Air Force,Medium,GDIT,"$1,495,085,754.52",,,Secret → TS/SCI,19AQMM18C0185
+Mission Partner Environment (successor to BICES),MPE,DoD,,GDIT,$5.6B,,,Global (coalition networks),19AQMM18C0185
+MOJAVE / ACADIA,,NGA,,CACI (indicative),"$824,303,222.05",,,Springfield VA; St. Louis MO,47QFCA20F0010
+MPCO VMOD (Voice Modernization),VMOD,Army,Medium,CACI (indicative),$382M,,"January 1, 2023 → January 1, 2028",CONUS Army posts,W15QKN15C0049
+MSS Smart Systems (Palantir contract),MSS,Army,,Palantir,"$70,668,314.50",,,Classified CONUS/OCONUS,W911QX24F0113
+Multi-Mission Command & Control,M2C2,MDA,,Lockheed Martin / Raytheon,"$34,173,959,111.96",,,Aurora CO; Huntsville AL; Colorado Springs CO,N0001902C3002
+NARSIL,NARSIL,DoD,,Peraton (indicative),"$487,767,432.14",,,TS/SCI,47QFCA19F0033
+NARSIL – Advanced Research for System Intelligence & Learning,NARSIL,IC,🟠 High,Peraton,"$1,414,704,681.90",,,NCR; Dayton OH (indicative),80GSFC19C0063
+NASA Enterprise Service Support Technology,NESST,NASA,Low,SAIC / Leidos (indicative),"$1,306,805,321.14",,,NASA centers,NNJ09HD46C
+NASA SENSE (Space Comms & Tracking),SENSE,NASA,,Peraton,$1.8B,,,Near-Earth network (TDRS),80GSFC19C0063
+NASA Space Network Evolution,SENSE,NASA,,Peraton,$1.8B,,,NASA SCaN Global,80GSFC19C0063
+NAVAIR Flight Operations Support,NAVAIR Flight Ops,Navy,,Vertex Aerospace,"$2,099,373,524.58",,,Pax River MD,NNK13MA14C
+Navy Aegis Combat System Modernization,AEGIS,Navy,,Lockheed Martin,"$35,135,514,910.20",,,Dahlgren VA; Moorestown NJ; shipyards,N0001917C0001
+Navy Enterprise Service Desk,NESD,Navy,,Leidos,$2.5B,,,Norfolk VA; San Diego CA; distributed Navy NOCs,89243318CFE000003
+Next Generation Interceptor,NGI,MDA,,Northrop Grumman & Boeing,$13B,,,Huntsville AL; Promontory UT; test ranges,HQ085621C0003
+NextGen GEO (Network/Ops),NGG,Space Force,,Northrop Grumman,"$3,084,107,116.60",,,Boulder CO,FA881018C0006
+Next-Gen OPIR (Ground + Payload),Next-Gen OPIR,Space Force,Medium,Northrop Grumman,Multi-$B,,,El Segundo CA; Colorado Springs CO,FA881018C0006
+Next-Generation Overhead Persistent Infrared,NG OPIR (classified),Space Force,Medium,Northrop Grumman,"$3,084,107,116.60",,,SSC / Los Angeles; Colorado Springs,FA881018C0006
+NGA Enterprise Engineering,NEE,NGA,,Peraton (Perspecta heritage),$824M,,,Springfield VA; St. Louis MO,80GSFC19C0063
+NGA Enterprise IT Modernization – MOJAVE / ACADIA,MOJAVE / ACADIA,NGA,,CACI,$500M,,,Springfield VA; St. Louis MO,47QFRA19F0011
+NGEN-R — Enterprise Network Program,NGEN-R,Navy,,Leidos,$7.7B,,,Norfolk; San Diego; global Navy/USMC,HHSN261200800001E
+"NGEN-R SMIT – Navy Next Generation Enterprise Network (Service Management, Integration & Transport)",NGEN-R SMIT,Navy,,Leidos,$7.7B,,,Norfolk VA; San Diego CA; Hawaii; global Navy/USMC bases (CONUS/OCONUS),89243318CFE000003
+NGEN-R SMIT (Already normalized — link-only reference row),NGEN-R SMIT,Navy,,Leidos,$7.7B,,,Navy/USMC worldwide,HHSN261200800001E
+NGOPIR / NGG / NGOPIR (already normalized — link row),,Space Force,,Northrop Grumman,Multi-$B,,,SSC; Colorado Springs,FA821920C0006
+NORAD/NORTHCOM IT Infrastructure Support (NISSC II),NISSC II,Air Force,,Jacobs,$455M,,,Peterson SFB CO; Cheyenne Mountain CO; Offutt AFB NE; Vandenberg CA,NNK13MA14C
+NRO Ground Systems DevOps (Seal Beach),,NRO,,Boeing,"$10,801,259,923.19",,,Seal Beach CA,FA821920C0006
+NTT Applications & BPS Support,,DoD,,NTT DATA,"$500,000,000.00",,,Texas; remote CONUS,HHSN316201500016W
+NTT DATA Enterprise Architecture (BPS / Apps),,DoD,,NTT DATA,"$500,000,000.00",,,U.S. – Heredia CR; Atlanta GA; remote,HHSN316201500016W
+OUSD(A&S) Professional Support Services,OUSD(A&S) PSS,DoD,,LMI,$116.7M,,,Pentagon; Mark Center; Crystal City,N0001917C0001
+OUSD(P&R) PRISM (Consolidated),PRISM,DoD,,"11 primes (CTC, SAIC, Booz Allen, ManTech…)",$1.8B,,,Pentagon / NCR / CONUS,47QFCA21F0018
+PAC-3 (Consolidated),PAC-3,Army,,Lockheed Martin,Multi-$B,,,Camden AR; Huntsville AL; Grand Prairie TX; WSMR,W31P4Q20C0023
+PAC-3 Missile Family (Consolidated),PAC-3 / PAC-3 MSE,Army,,Lockheed Martin Missiles & Fire Control,$10B,,,Grand Prairie TX; Camden AR; Huntsville AL; WSMR; Orlando FL,W31P4Q20C0023
+PAC-3 Missile Segment Enhancement (Deep Detail Variant),PAC-3 MSE,Army,,Lockheed Martin,$9.8B,,,Camden AR; Grand Prairie TX; Huntsville AL,W31P4Q20C0023
+PAC-3 MSE (Deep Detail Variant; Consolidated),PAC-3 MSE,Army,High,Lockheed Martin,$9.8B,,"January 1, 2024 → January 1, 2031",Grand Prairie TX; Camden AR; Huntsville AL,W31P4Q20C0023
+Peraton ARCYBER Information Advantage Enterprise,IAE,Army,,Peraton,$889M,,,Fort Eisenhower GA; Fort Meade MD,47QFCA19F0033
+Peraton NARSIL – Advanced System Intelligence,NARSIL,IC,,Peraton,$1B,,,Reston VA; Fort Meade MD,80GSFC19C0063
+Poland WISŁA – Patriot + IBCS Foreign Military Sales,WISŁA,Army,,Raytheon & Northrop Grumman,$4.8B,,,Poland; Huntsville AL labs,W31P4Q15C0022
+PRISM Support Services (Consolidated),PRISM,DoD,,"11 MA-IDIQ primes (incl. CTC, SAIC, Booz Allen, ManTech)",$1.8B,,,Pentagon; NCR; CONUS,47QFCA21F0018
+Project Convergence (JADC2 Experiments),PC,Army,,SAIC,"$39,320,458.07",,,Yuma Proving Ground; Austin TX; labs,W15QKN19F1290
+Protected Satcom & Tactical Waveform Communications,PTW / Protected TWF,Space Force,,L3Harris,"$2,226,709,932.96",,,Colorado Springs (indicative),F1962802C0010
+Protected Tactical SatCom / Waveform,PTW,Space Force,,L3Harris,"$2,226,709,932.96",,,CO (indicative),F1962802C0010
+RUSHMORE,RUSHMORE,Space Force,,Northrop Grumman,"$10,801,259,923.19",,,Aurora CO (Buckley SFB),FA821920C0006
+RUSHMORE (Already normalized),RUSHMORE,Space Force,High,Northrop,"$10,801,259,923.19",,,Aurora CO,FA821920C0006
+SCITLS,SCITLS,DoD,,GDIT,"$1,495,085,754.52",,,CONUS,19AQMM18C0185
+SCITLS (Already normalized),SCITLS,DoD,Medium,GDIT,"$1,219,847,693.56",,,Secret,SAQMMA12C0130
+SCORPION (classified),SCORPION,DoD,Medium,CACI (context only),"$960,038,373.03",,,,GSQ0017AJ0006
+SDA Tranche-0 Constellation Support,SDA Tranche-0,DoD,,"Multiple primes (Lockheed, York, SpaceX, L3Harris)","$1,826,479,031.57",,,SDA Ops Center (likely),DOCDG133E09CN0094
+Sentinel / GBSD,GBSD,Air Force,High,Northrop Grumman,"$10,801,259,923.19",,"January 1, 2020 → January 1, 2036",Roy UT; Hill AFB; Ogden UT; SLC UT; CO Springs; Huntsville AL; Vandenberg; Redondo Beach CA; Brigham City UT,FA821920C0006
+Sentinel / GBSD,GBSD,Air Force,,Northrop Grumman,$13B,,,Hill AFB; Roy UT; Ogden UT,FA821920C0006
+Sentinel GBSD,GBSD,Air Force,,Northrop Grumman,$13.3B,,,Ogden; Roy; Hill AFB,FA821920C0006
+Sentinel GBSD,GBSD,Air Force,High,Northrop Grumman,"$10,801,259,923.19",,,Roy; Hill AFB; Ogden; Redondo Beach; CO Springs; Huntsville; El Segundo; Promontory; Elkton,FA821920C0006
+Sentinel GBSD,GBSD / Sentinel,Air Force,,Northrop Grumman,$13.3B,,,Roy; Hill; Ogden; Promontory; CO Springs,FA821920C0006
+Sentinel GBSD (AFNWC Hill AFB Variant),GBSD / Sentinel,Air Force,High,Northrop Grumman,$13.3B,,"January 1, 2020 → January 1, 2039",Roy; Huntsville; Ogden; Hill AFB,FA821920C0006
+Sentinel GBSD (LGM-35A),GBSD / Sentinel,Air Force,,Northrop Grumman,"$10,801,259,923.19",,,Roy; Hill; Ogden; Redondo Beach; El Segundo; CO Springs; Huntsville; Promontory; Elkton,FA821920C0006
+Sentinel ICBM / GBSD,GBSD,Air Force,,Northrop Grumman,$85B,,,Ogden; Hill; Promontory; Remote,FA821920C0006
+Sentinel Program Cybersecurity Core,Sentinel Cyber,Air Force,,Northrop Grumman,"$10,801,259,923.19",,,Ogden; Hill AFB,FA821920C0006
+SITEC III – Enterprise Operations & Maintenance,SITEC III,SOCOM,High,Peraton,$2.8B,,,MacDill AFB; Component Commands; OCONUS deployment,47QFCA24F0002
+SOCOM Digital Applications Data Science Support,—,CIA,,Iron Eagle X (now GDIT),"$1,495,085,754.52",,,Tampa FL (MacDill AFB),19AQMM18C0185
+SOCOM Enterprise IT Support,—,SOCOM,,GDIT,"$1,495,085,754.52",,,Tampa FL; Remote,19AQMM18C0185
+SOCOM Software Solutions IDIQ,—,SOCOM,High,Iron Eagle X (now GDIT),"$1,495,085,754.52",,,Tampa FL + SOF sites,19AQMM18C0185
+SPICE (Space Payload Integration & Cyber Eng),SPICE,Space Force,,SAIC / LinQuest (indicative),"$39,874,973.53",,,LA / Colorado,FA877319FA023
+SSA IT Support Services Contract,ITSSC,CIA,Medium,Leidos / Accenture Federal (indicative),"$1,062,905,628.31",,,SSA HQ,28321322FDS030130
+STRATCOM Mission Readiness Support,SMORS,IC,🟠 High,Northrop Grumman (assumed),"$10,801,259,923.19",,,Colorado Springs; Offutt AFB,FA821920C0006
+STRATCOM SMORS,SMORS,DoD,,BAE Systems,"$4,067,162,785.79",,,Offutt AFB,W56HZV08C0460
+SMORS – STRATCOM Mission Readiness Sustainment,SMORS,DoD,High,Northrop Grumman,"$10,009,419,769.13",,,Colorado Springs CO; Offutt AFB NE,F4261098C0001
