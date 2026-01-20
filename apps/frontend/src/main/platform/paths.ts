@@ -383,3 +383,27 @@ export function getCmdExecutablePath(): string {
   const systemRoot = getEnvVar('SystemRoot') || 'C:\\Windows';
   return path.join(systemRoot, 'System32', 'cmd.exe');
 }
+
+/**
+ * Get terminal launcher paths for Windows (Cygwin, MSYS2)
+ *
+ * Returns paths to terminal emulator executables for Cygwin and MSYS2.
+ * These are used to launch terminal sessions with bash commands.
+ *
+ * @returns Array of terminal launcher paths (empty on non-Windows)
+ */
+export function getTerminalLauncherPaths(): string[] {
+  if (!isWindows()) {
+    return [];
+  }
+
+  return [
+    // Cygwin mintty (terminal emulator)
+    path.join('C:\\cygwin64', 'bin', 'mintty.exe'),
+    path.join('C:\\cygwin', 'bin', 'mintty.exe'),
+    // MSYS2 launchers
+    path.join('C:\\msys64', 'msys2_shell.cmd'),
+    path.join('C:\\msys64', 'mingw64.exe'),
+    path.join('C:\\msys64', 'usr', 'bin', 'mintty.exe'),
+  ];
+}

@@ -23,7 +23,8 @@ export {
   expandWindowsEnvVars,
   getHomebrewBinPaths,
   getBashExecutablePaths,
-  getCmdExecutablePath
+  getCmdExecutablePath,
+  getTerminalLauncherPaths
 } from './paths';
 
 /**

@@ -19,7 +19,7 @@ import type { IPCResult } from '../../shared/types';
 import type { ClaudeCodeVersionInfo, ClaudeInstallationList, ClaudeInstallationInfo } from '../../shared/types/cli';
 import { getToolInfo, configureTools, sortNvmVersionDirs, getClaudeDetectionPaths, type ExecFileAsyncOptionsWithVerbatim } from '../cli-tool-manager';
 import { readSettingsFile, writeSettingsFile } from '../settings-utils';
-import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar, findExecutable, getPathDelimiter } from '../platform';
+import { isSecurePath, isWindows as platformIsWindows, isMacOS, isLinux, getCurrentOS, normalizeExecutablePath, expandWindowsEnvVars, joinPaths, getEnvVar, findExecutable, getPathDelimiter, getTerminalLauncherPaths } from '../platform';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
 import semver from 'semver';
@@ -701,11 +701,9 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
         }
       } else if (terminalId === 'cygwin') {
-        // Cygwin terminal
-        const cygwinPaths = [
-          'C:\\cygwin64\\bin\\mintty.exe',
-          'C:\\cygwin\\bin\\mintty.exe',
-        ];
+        // Cygwin terminal - use centralized terminal launcher paths
+        const allTerminalPaths = getTerminalLauncherPaths();
+        const cygwinPaths = allTerminalPaths.filter(p => p.includes('cygwin'));
         const cygwinPath = cygwinPaths.find(p => existsSync(p));
         if (cygwinPath) {
           // mintty with bash, escaping for bash context
@@ -716,12 +714,9 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
           await runWindowsCommand(`start powershell -NoExit -Command "${escapedCommand}"`);
         }
       } else if (terminalId === 'msys2') {
-        // MSYS2 terminal
-        const msys2Paths = [
-          'C:\\msys64\\msys2_shell.cmd',
-          'C:\\msys64\\mingw64.exe',
-          'C:\\msys64\\usr\\bin\\mintty.exe',
-        ];
+        // MSYS2 terminal - use centralized terminal launcher paths
+        const allTerminalPaths = getTerminalLauncherPaths();
+        const msys2Paths = allTerminalPaths.filter(p => p.includes('msys64'));
         const msys2Path = msys2Paths.find(p => existsSync(p));
         if (msys2Path) {
           const escapedBashCommand = escapeGitBashCommand(command);

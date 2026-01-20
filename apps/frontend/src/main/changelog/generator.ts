@@ -14,7 +14,7 @@ import { getCommits, getBranchDiffCommits } from './git-integration';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { parsePythonCommand } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
-import { isWindows, getEnvVar } from '../platform';
+import { isWindows, getEnvVar, getPathDelimiter } from '../platform';
 
 /**
  * Core changelog generation logic
@@ -277,7 +277,7 @@ export class ChangelogGenerator extends EventEmitter {
     this.debug('Spawn environment', {
       HOME: spawnEnv.HOME,
       USER: spawnEnv.USER,
-      pathDirs: spawnEnv.PATH?.split(path.delimiter).length,
+      pathDirs: spawnEnv.PATH?.split(getPathDelimiter()).length,
       authMethod: spawnEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'oauth-token' : (spawnEnv.CLAUDE_CONFIG_DIR ? `config-dir:${spawnEnv.CLAUDE_CONFIG_DIR}` : 'default')
     });
 

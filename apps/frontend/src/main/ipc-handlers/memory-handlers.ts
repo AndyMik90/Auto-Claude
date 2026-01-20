@@ -11,7 +11,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
-import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath } from '../platform';
+import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -126,18 +126,18 @@ function checkOllamaInstalled(): OllamaInstallStatus {
       joinPaths(programFilesX86, 'Ollama', 'ollama.exe')
     );
   } else if (isMacOS()) {
-    // macOS: Check common paths
+    // macOS: Check Homebrew paths (centralized) and common locations
+    const homebrewPaths = getHomebrewBinPaths().map(dir => joinPaths(dir, 'ollama'));
     pathsToCheck.push(
-      '/usr/local/bin/ollama',
-      '/opt/homebrew/bin/ollama',
-      path.join(os.homedir(), '.local', 'bin', 'ollama')
+      ...homebrewPaths,
+      joinPaths(os.homedir(), '.local', 'bin', 'ollama')
     );
   } else {
     // Linux: Check common paths
     pathsToCheck.push(
       '/usr/local/bin/ollama',
       '/usr/bin/ollama',
-      path.join(os.homedir(), '.local', 'bin', 'ollama')
+      joinPaths(os.homedir(), '.local', 'bin', 'ollama')
     );
   }
 

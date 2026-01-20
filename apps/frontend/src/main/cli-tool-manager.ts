@@ -565,7 +565,7 @@ class CLIToolManager {
     if (isMacOS()) {
       const homebrewBinDirs = getHomebrewBinPaths();
       for (const dir of homebrewBinDirs) {
-        const gitPath = path.join(dir, 'git');
+        const gitPath = joinPaths(dir, 'git');
         if (existsSync(gitPath)) {
           const validation = this.validateGit(gitPath);
           if (validation.valid) {
@@ -672,7 +672,7 @@ class CLIToolManager {
     if (isMacOS()) {
       const homebrewBinDirs = getHomebrewBinPaths();
       for (const dir of homebrewBinDirs) {
-        const ghPath = path.join(dir, 'gh');
+        const ghPath = joinPaths(dir, 'gh');
         if (existsSync(ghPath)) {
           const validation = this.validateGitHubCLI(ghPath);
           if (validation.valid) {
@@ -1585,7 +1585,7 @@ class CLIToolManager {
       const pythonNames = ['python3.12', 'python3.11', 'python3.10', 'python3'];
       for (const dir of homebrewBinDirs) {
         for (const name of pythonNames) {
-          const pythonPath = path.join(dir, name);
+          const pythonPath = joinPaths(dir, name);
           if (await existsAsync(pythonPath)) {
             const validation = await this.validatePythonAsync(pythonPath);
             if (validation.valid) {
@@ -1681,7 +1681,7 @@ class CLIToolManager {
     if (isMacOS()) {
       const homebrewBinDirs = getHomebrewBinPaths();
       for (const dir of homebrewBinDirs) {
-        const gitPath = path.join(dir, 'git');
+        const gitPath = joinPaths(dir, 'git');
         if (await existsAsync(gitPath)) {
           const validation = await this.validateGitAsync(gitPath);
           if (validation.valid) {
@@ -1788,7 +1788,7 @@ class CLIToolManager {
     if (isMacOS()) {
       const homebrewBinDirs = getHomebrewBinPaths();
       for (const dir of homebrewBinDirs) {
-        const ghPath = path.join(dir, 'gh');
+        const ghPath = joinPaths(dir, 'gh');
         if (await existsAsync(ghPath)) {
           const validation = await this.validateGitHubCLIAsync(ghPath);
           if (validation.valid) {
