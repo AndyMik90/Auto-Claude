@@ -39,9 +39,14 @@ def create_openai_embedder(config: "GraphitiConfig") -> Any:
     if not config.openai_api_key:
         raise ProviderError("OpenAI embedder requires OPENAI_API_KEY")
 
-    embedder_config = OpenAIEmbedderConfig(
-        api_key=config.openai_api_key,
-        embedding_model=config.openai_embedding_model,
-    )
+    # Build embedder config with optional custom base URL
+    embedder_config_kwargs = {
+        "api_key": config.openai_api_key,
+        "embedding_model": config.openai_embedding_model,
+    }
+    if config.openai_base_url:
+        embedder_config_kwargs["base_url"] = config.openai_base_url
+
+    embedder_config = OpenAIEmbedderConfig(**embedder_config_kwargs)
 
     return OpenAIEmbedder(config=embedder_config)

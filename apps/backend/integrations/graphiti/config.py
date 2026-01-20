@@ -704,8 +704,8 @@ def get_available_providers() -> dict:
         available_llm.append("openrouter")
         available_embedder.append("openrouter")
 
-    # Check Z.AI
-    if config.zai_api_key:
+    # Check Z.AI (requires both API key and base URL)
+    if config.zai_api_key and config.zai_base_url:
         available_llm.append("zai")
 
     # Check Ollama
