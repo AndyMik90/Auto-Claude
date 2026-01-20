@@ -121,12 +121,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   updateTaskStatus: (taskId, status) =>
     set((state) => {
       const index = findTaskIndex(state.tasks, taskId);
-      if (index === -1) return state;
+      if (index === -1) {
+        debugLog('[updateTaskStatus] Task not found:', taskId);
+        return state;
+      }
 
       return {
         tasks: updateTaskAtIndex(state.tasks, index, (t) => {
           // Determine execution progress based on status transition
           let executionProgress = t.executionProgress;
+
+          // Track status transition for debugging flip-flop issues
+          const previousStatus = t.status;
+          const statusChanged = previousStatus !== status;
 
           if (status === 'backlog') {
             // When status goes to backlog, reset execution progress to idle
@@ -137,6 +144,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             // This prevents the "no active phase" UI state during startup race condition
             executionProgress = { phase: 'planning' as ExecutionPhase, phaseProgress: 0, overallProgress: 0 };
           }
+
+          // Log status transitions to help diagnose flip-flop issues
+          debugLog('[updateTaskStatus] Status transition:', {
+            taskId,
+            previousStatus,
+            newStatus: status,
+            statusChanged,
+            currentPhase: t.executionProgress?.phase,
+            newPhase: executionProgress?.phase
+          });
 
           return { ...t, status, executionProgress, updatedAt: new Date() };
         })

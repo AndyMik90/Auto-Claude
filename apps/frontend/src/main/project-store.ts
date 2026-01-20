@@ -6,6 +6,7 @@ import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, TaskErro
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
+import { debugLog } from '../shared/utils/debug-logger';
 
 interface TabState {
   openProjectIds: string[];
@@ -593,6 +594,11 @@ export class ProjectStore {
     if (plan?.status) {
       const storedStatus = statusMap[plan.status];
       if (storedStatus && TERMINAL_STATUSES.has(storedStatus)) {
+        debugLog('[determineTaskStatusAndReason] Terminal status respected:', {
+          planStatus: plan.status,
+          mappedStatus: storedStatus,
+          reason: 'Terminal statuses (done, pr_created, error) are never overridden'
+        });
         return { status: storedStatus };
       }
     }
@@ -611,11 +617,20 @@ export class ProjectStore {
 
       // During active execution, respect the stored status to prevent jumping
       if (isActiveProcessStatus && storedStatus === 'in_progress') {
+        debugLog('[determineTaskStatusAndReason] Active process status preserved:', {
+          planStatus: plan.status,
+          mappedStatus: storedStatus,
+          reason: 'Execution in progress - status recalculation blocked'
+        });
         return { status: 'in_progress' };
       }
 
       // Plan review stage (human approval of spec before coding starts)
       if (isPlanReviewStage && storedStatus === 'human_review') {
+        debugLog('[determineTaskStatusAndReason] Plan review stage detected:', {
+          planStatus: plan.status,
+          reason: 'Spec creation complete, awaiting user approval'
+        });
         return { status: 'human_review', reviewReason: 'plan_review' };
       }
 
@@ -630,11 +645,22 @@ export class ProjectStore {
         } else if (allCompleted) {
           reviewReason = 'completed';
         }
+        debugLog('[determineTaskStatusAndReason] Explicit human_review preserved:', {
+          planStatus: plan.status,
+          reviewReason,
+          hasFailedSubtasks,
+          allCompleted,
+          subtaskCount: allSubtasks.length
+        });
         return { status: 'human_review', reviewReason };
       }
 
       // Explicit ai_review status should be preserved
       if (storedStatus === 'ai_review') {
+        debugLog('[determineTaskStatusAndReason] Explicit ai_review preserved:', {
+          planStatus: plan.status,
+          subtaskCount: allSubtasks.length
+        });
         return { status: 'ai_review' };
       }
     }
@@ -647,11 +673,19 @@ export class ProjectStore {
       try {
         const content = readFileSync(qaReportPath, 'utf-8');
         if (content.includes('REJECTED') || content.includes('FAILED')) {
+          debugLog('[determineTaskStatusAndReason] QA report indicates rejection:', {
+            qaReportPath,
+            reason: 'QA rejected - needs human attention'
+          });
           return { status: 'human_review', reviewReason: 'qa_rejected' };
         }
         if (content.includes('PASSED') || content.includes('APPROVED')) {
           // QA passed - if all subtasks done, move to human_review
           if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
+            debugLog('[determineTaskStatusAndReason] QA passed with all subtasks complete:', {
+              qaReportPath,
+              subtaskCount: allSubtasks.length
+            });
             return { status: 'human_review', reviewReason: 'completed' };
           }
         }
@@ -693,6 +727,21 @@ export class ProjectStore {
         calculatedStatus = 'in_progress';
       }
     }
+
+    // Log calculated status (fallback path - no explicit status was set)
+    debugLog('[determineTaskStatusAndReason] Status calculated from subtasks (fallback):', {
+      planStatus: plan?.status || 'none',
+      calculatedStatus,
+      reviewReason,
+      subtaskStats: {
+        total: allSubtasks.length,
+        completed: allSubtasks.filter((s) => s.status === 'completed').length,
+        inProgress: allSubtasks.filter((s) => s.status === 'in_progress').length,
+        failed: allSubtasks.filter((s) => s.status === 'failed').length,
+        pending: allSubtasks.filter((s) => s.status === 'pending').length
+      },
+      isManual: metadata?.sourceType === 'manual'
+    });
 
     return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
   }
