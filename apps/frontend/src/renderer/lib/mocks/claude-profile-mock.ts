@@ -58,6 +58,8 @@ export const claudeProfileMock = {
 
   onSDKRateLimit: () => () => {},
 
+  onAuthFailure: () => () => {},
+
   retryWithProfile: async () => ({ success: true }),
 
   // Usage Monitoring (Proactive Account Switching)

@@ -449,5 +449,20 @@
     "step2": "Find the profile in the Claude Accounts section",
     "step3": "Click \"Authenticate\" to complete login",
     "footer": "The account will be available once you complete authentication."
+  },
+  "auth": {
+    "failure": {
+      "title": "Authentication Required",
+      "profileLabel": "Profile",
+      "unknownProfile": "Unknown Profile",
+      "tokenExpired": "Your authentication token has expired.",
+      "tokenInvalid": "Your authentication token is invalid.",
+      "tokenMissing": "No authentication token found.",
+      "authFailed": "Authentication failed.",
+      "description": "Please re-authenticate your Claude profile to continue using Auto Claude.",
+      "taskAffected": "Task affected",
+      "technicalDetails": "Technical details",
+      "goToSettings": "Go to Settings"
+    }
   }
 }
