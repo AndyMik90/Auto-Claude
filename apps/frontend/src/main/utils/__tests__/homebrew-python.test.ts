@@ -6,7 +6,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { existsSync } from 'fs';
-import { findHomebrewPython, type PythonValidation } from '../homebrew-python';
 
 // Mock existsSync
 vi.mock('fs', () => ({
@@ -16,18 +15,29 @@ vi.mock('fs', () => ({
 // Mock platform module to provide Homebrew paths for testing
 vi.mock('../../platform', async () => {
   const actualPlatform = await vi.importActual<typeof import('../../platform')>('../../platform');
+  const mockGetHomebrewBinPaths = vi.fn(() => [
+    '/opt/homebrew/bin',  // Apple Silicon
+    '/usr/local/bin'      // Intel Mac
+  ]);
   return {
     ...actualPlatform,
-    getHomebrewBinPaths: vi.fn(() => [
-      '/opt/homebrew/bin',  // Apple Silicon
-      '/usr/local/bin'      // Intel Mac
-    ])
+    getHomebrewBinPaths: mockGetHomebrewBinPaths
   };
 });
 
+// Import after mock to ensure mock is applied
+import { findHomebrewPython, type PythonValidation } from '../homebrew-python';
+
 describe('homebrew-python', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Re-configure getHomebrewBinPaths mock to ensure it returns the array
+    // This is needed because vi.clearAllMocks() can affect mock implementations
+    const { getHomebrewBinPaths } = await import('../../platform');
+    vi.mocked(getHomebrewBinPaths).mockReturnValue([
+      '/opt/homebrew/bin',
+      '/usr/local/bin'
+    ]);
   });
 
   describe('findHomebrewPython', () => {

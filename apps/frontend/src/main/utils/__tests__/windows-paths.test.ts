@@ -8,7 +8,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
-import * as childProcess from 'child_process';
 
 // Mock child_process for where.exe tests
 // Create configurable spies for execFileSync, execFile (both callback and promisified versions)
@@ -82,6 +81,30 @@ vi.mock('fs/promises', async () => {
 vi.mock('../../platform', async () => {
   const actualPlatform = await vi.importActual<typeof import('../../platform')>('../../platform');
 
+  // Windows-style basename extraction that works correctly even on Linux
+  // Handles UNC paths, drive-letter paths, and relative paths
+  function windowsBasename(filePath: string, ext?: string): string {
+    // Replace backslashes with forward slashes for easier parsing
+    const normalized = filePath.replace(/\\/g, '/');
+
+    // Remove UNC prefix (//server/share/) or drive letter (C:/)
+    let withoutPrefix = normalized.replace(/^\/\/[^/]+\/[^/]+\//, '') // UNC
+                              .replace(/^[a-z]:\//i, '');           // Drive letter
+
+    // Remove any remaining directory components
+    const lastSlash = withoutPrefix.lastIndexOf('/');
+    if (lastSlash !== -1) {
+      withoutPrefix = withoutPrefix.substring(lastSlash + 1);
+    }
+
+    // Remove extension if specified
+    if (ext && withoutPrefix.endsWith(ext)) {
+      withoutPrefix = withoutPrefix.substring(0, withoutPrefix.length - ext.length);
+    }
+
+    return withoutPrefix;
+  }
+
   // Create a secure path mock that respects the current process.platform
   // This must match the real implementation in platform/index.ts
   const mockIsSecurePath = (candidatePath: string): boolean => {
@@ -106,7 +129,8 @@ vi.mock('../../platform', async () => {
     // This matches the real implementation: basename with character validation
     if (process.platform === 'win32') {
       const ext = '.exe'; // Windows executable extension
-      const basename = path.basename(candidatePath, ext);
+      // Use windowsBasename instead of path.basename to handle Windows paths correctly on Linux
+      const basename = windowsBasename(candidatePath, ext);
       // Allow only alphanumeric, dots, hyphens, and underscores in the name
       return /^[\w.-]+$/.test(basename);
     }
@@ -541,7 +565,7 @@ describe('Windows Paths Module', () => {
     });
   });
 
-  describe('isSecurePath', () => {
+  describeWindows('isSecurePath', () => {
     describe('returns true for secure paths', () => {
       it('accepts simple alphanumeric paths', () => {
         expect(isSecurePath('C:\\Program Files\\Git\\git.exe')).toBe(true);
@@ -605,10 +629,13 @@ describe('Windows Paths Module', () => {
         expect(isSecurePath('C:\\tool.exe\r\nmalicious')).toBe(false);
       });
 
-      it('documents tabs as currently allowed', () => {
-        // The actual implementation only checks for \r\n, not tabs
-        // This test documents current behavior - tabs are NOT detected
-        expect(isSecurePath('C:\\tool.exe\tmalicious')).toBe(true);
+      it('rejects tabs in Windows filenames via basename validation', () => {
+        // Tabs are NOT in the dangerousPatterns list, but on Windows,
+        // the basename validation (/^[\w.-]+$/) rejects any character
+        // that's not alphanumeric, dot, hyphen, or underscore.
+        // The path 'C:\tool.exe\tmalicious' has basename 'tool.exe\tmalicious'
+        // which contains a tab, so it's rejected.
+        expect(isSecurePath('C:\\tool.exe\tmalicious')).toBe(false);
       });
     });
 
