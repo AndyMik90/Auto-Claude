@@ -1238,3 +1238,148 @@ describe('cli-tool-manager - isPathFromWrongPlatform', () => {
     });
   });
 });
+
+/**
+ * Unit tests for CLI tool validation (validatePython, validateGit, validateGitHubCLI)
+ * These methods are private, so we test them indirectly through getToolInfo
+ */
+describe('cli-tool-manager - Tool Validation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearToolCache();
+    // Set default platform to Linux
+    Object.defineProperty(process, 'platform', {
+      value: 'linux',
+      writable: true
+    });
+  });
+
+  afterEach(() => {
+    clearToolCache();
+  });
+
+  describe('Python validation', () => {
+    it('should reject Python versions below minimum (3.10.0)', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/python3');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('Python 3.9.0\n');
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(false);
+    });
+
+    it('should accept Python 3.10.0 and above', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/python3');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('Python 3.10.0\n');
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(true);
+      expect(result.version).toBe('3.10.0');
+    });
+
+    it('should accept Python 3.12.x', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/python3');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('Python 3.12.1\n');
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(true);
+      expect(result.version).toBe('3.12.1');
+    });
+
+    it('should handle malformed version strings gracefully', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/python3');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('Python 3.x.y\n');
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(false);
+    });
+
+    it('should handle Python executable not found', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue(null);
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(execFileSync).mockImplementation(() => {
+        throw new Error('Command not found');
+      });
+
+      const result = getToolInfo('python');
+      expect(result.found).toBe(false);
+      expect(result.source).toBe('fallback');
+    });
+  });
+
+  describe('Git validation', () => {
+    it('should parse Git version correctly', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/git');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('git version 2.45.0\n');
+
+      const result = getToolInfo('git');
+      expect(result.found).toBe(true);
+      expect(result.version).toBe('2.45.0');
+    });
+
+    it('should handle Git version with additional details', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue('/usr/bin/git');
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue('git version 2.39.2.apple.1\n');
+
+      const result = getToolInfo('git');
+      expect(result.found).toBe(true);
+      expect(result.version).toBe('2.39.2');
+    });
+
+    it('should handle Git not found error', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue(null);
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(execFileSync).mockImplementation(() => {
+        throw new Error('git not found');
+      });
+
+      const result = getToolInfo('git');
+      expect(result.found).toBe(false);
+    });
+
+    it('should reject insecure Git paths', () => {
+      vi.mocked(isSecurePath).mockReturnValueOnce(false);
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const result = getToolInfo('git');
+      expect(result.found).toBe(false);
+    });
+  });
+
+  describe('GitHub CLI validation', () => {
+    it('should handle gh not installed', () => {
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(findExecutable).mockReturnValue(null);
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(execFileSync).mockImplementation(() => {
+        throw new Error('gh: command not found');
+      });
+
+      const result = getToolInfo('gh');
+      expect(result.found).toBe(false);
+    });
+
+    it('should reject insecure gh paths', () => {
+      vi.mocked(isSecurePath).mockReturnValueOnce(false);
+      vi.mocked(os.homedir).mockReturnValue('/mock/home');
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const result = getToolInfo('gh');
+      expect(result.found).toBe(false);
+    });
+  });
+});

@@ -15,8 +15,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-
-const isWindows = os.platform() === 'win32';
+const { isWindows } = require('../src/shared/platform.cjs');
 
 const WINDOWS_BUILD_TOOLS_HELP = `
 ================================================================================
@@ -61,7 +60,7 @@ function getElectronVersion() {
  */
 function runElectronRebuild() {
   return new Promise((resolve, reject) => {
-    const npx = isWindows ? 'npx.cmd' : 'npx';
+    const npx = isWindows() ? 'npx.cmd' : 'npx';
     const electronVersion = getElectronVersion();
     const args = ['electron-rebuild'];
 
@@ -73,7 +72,7 @@ function runElectronRebuild() {
 
     const child = spawn(npx, args, {
       stdio: 'inherit',
-      shell: isWindows,
+      shell: isWindows(),
       cwd: path.join(__dirname, '..'),
     });
 
@@ -141,7 +140,7 @@ async function main() {
     return;
   }
 
-  if (isWindows) {
+  if (isWindows()) {
     // On Windows, try prebuilds first
     console.log('[postinstall] Windows detected - checking for prebuilt binaries...\n');
 
@@ -172,7 +171,7 @@ async function main() {
   } catch (error) {
     console.error('\n[postinstall] Failed to build native modules.\n');
 
-    if (isWindows) {
+    if (isWindows()) {
       console.error(WINDOWS_BUILD_TOOLS_HELP);
     } else {
       console.error('Error:', error.message);

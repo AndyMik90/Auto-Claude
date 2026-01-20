@@ -18,8 +18,10 @@ import { registerMRReviewHandlers } from './mr-review-handlers';
 import { registerAutoFixHandlers } from './autofix-handlers';
 import { registerTriageHandlers } from './triage-handlers';
 
+import { getEnvVar } from '../../platform';
+
 // Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debugLog(message: string): void {
   if (DEBUG) {

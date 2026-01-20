@@ -8,10 +8,11 @@ import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult, GitLabSyncStatus } from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, gitlabFetchWithCount, encodeProjectPath } from './utils';
+ import { getEnvVar } from "../../platform";
 import type { GitLabAPIProject } from './types';
 
 // Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar("DEBUG") === 'true' || getEnvVar("NODE_ENV") === 'development';
 
 function debugLog(message: string, data?: unknown): void {
   if (DEBUG) {

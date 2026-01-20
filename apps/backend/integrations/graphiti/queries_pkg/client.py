@@ -9,6 +9,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+from core.platform import is_windows
 from graphiti_config import GraphitiConfig, GraphitiState
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ def _apply_ladybug_monkeypatch() -> bool:
         logger.debug(f"LadybugDB import failed: {e}")
         # On Windows with Python 3.12+, provide more specific error details
         # (pywin32 is only required for Python 3.12+ per requirements.txt)
-        if sys.platform == "win32" and sys.version_info >= (3, 12):
+        if is_windows() and sys.version_info >= (3, 12):
             # Check if it's the pywin32 error using both name attribute and string match
             # for robustness across Python versions
             is_pywin32_error = (

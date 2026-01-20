@@ -52,6 +52,8 @@ from pathlib import Path
 
 # Configure safe encoding on Windows BEFORE any imports that might print
 # This handles both TTY and piped output (e.g., from Electron)
+# Note: We use sys.platform directly here (not is_windows()) because this
+# runs at module load time before we can safely import other modules.
 if sys.platform == "win32":
     for _stream_name in ("stdout", "stderr"):
         _stream = getattr(sys, _stream_name)

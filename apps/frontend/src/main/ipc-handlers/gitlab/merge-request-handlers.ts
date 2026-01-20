@@ -8,6 +8,7 @@ import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult, GitLabMergeRequest } from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
+import { getEnvVar } from '../../platform';
 import type { GitLabAPIMergeRequest, CreateMergeRequestOptions } from './types';
 
 // Valid merge request states per GitLab API
@@ -28,7 +29,7 @@ function isValidMrState(state: string): state is MergeRequestState {
 }
 
 // Debug logging helper - enabled in development OR when DEBUG flag is set
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debugLog(message: string, data?: unknown): void {
   if (DEBUG) {

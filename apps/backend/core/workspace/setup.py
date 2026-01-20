@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from core.git_executable import run_git
+from core.platform import is_windows
 from merge import FileTimelineTracker
 from security.constants import ALLOWLIST_FILENAME, PROFILE_FILENAME
 from ui import (
@@ -250,7 +251,7 @@ def symlink_node_modules_to_worktree(
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            if sys.platform == "win32":
+            if is_windows():
                 # On Windows, use junctions instead of symlinks (no admin rights required)
                 # Junctions require absolute paths
                 result = subprocess.run(

@@ -5,6 +5,8 @@ import type {
   RoadmapMilestone
 } from '../../../shared/types';
 
+import { getEnvVar } from '../../platform';
+
 interface RawRoadmapMilestone {
   id: string;
   title: string;
@@ -138,7 +140,7 @@ function normalizeFeatureStatus(status: string | undefined): RoadmapFeature['sta
 
   if (!normalized) {
     // Debug log for unmapped statuses to aid future mapping additions
-    if (process.env.NODE_ENV === 'development') {
+    if (getEnvVar('NODE_ENV') === 'development') {
       console.debug(`[Roadmap] normalizeFeatureStatus: unmapped status "${status}", defaulting to "under_review"`);
     }
     return 'under_review';

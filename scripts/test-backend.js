@@ -7,16 +7,15 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const { isWindows } = require('../apps/frontend/src/shared/platform.cjs');
 
-const isWindows = os.platform() === 'win32';
 const rootDir = path.join(__dirname, '..');
 const backendDir = path.join(rootDir, 'apps', 'backend');
 const testsDir = path.join(rootDir, 'tests');
 const venvDir = path.join(backendDir, '.venv');
 
 // Get pytest path based on platform
-const pytestPath = isWindows
+const pytestPath = isWindows()
   ? path.join(venvDir, 'Scripts', 'pytest.exe')
   : path.join(venvDir, 'bin', 'pytest');
 
@@ -31,7 +30,7 @@ if (!fs.existsSync(venvDir)) {
 if (!fs.existsSync(pytestPath)) {
   console.error('Error: pytest not found in virtual environment.');
   console.error('Install test dependencies:');
-  const pipPath = isWindows
+  const pipPath = isWindows()
     ? path.join(venvDir, 'Scripts', 'pip.exe')
     : path.join(venvDir, 'bin', 'pip');
   console.error(`  "${pipPath}" install -r tests/requirements-test.txt`);

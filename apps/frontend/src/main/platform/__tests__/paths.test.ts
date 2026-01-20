@@ -67,6 +67,7 @@ import {
   getBashExecutablePaths,
   getTerminalLauncherPaths,
   getHomebrewBinPaths,
+  getGitLabCliPaths,
 } from '../paths';
 
 // Get mocked functions
@@ -862,6 +863,214 @@ describe('Platform Paths Module', () => {
       it('returns empty array', () => {
         const paths = getHomebrewBinPaths();
         expect(paths).toEqual([]);
+      });
+    });
+  });
+
+  describe('expandDirPattern (internal function tested via getPythonPaths)', () => {
+    beforeEach(() => {
+      mockedExistsSync.mockReset();
+      mockedReaddirSync.mockReset();
+    });
+
+    describeWindows('expands directory patterns on Windows', () => {
+      const createMockDirent = (name: string, isDir = true): any => ({
+        name,
+        parentPath: '',
+        isDirectory: () => isDir,
+        isFile: () => !isDir,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isSymbolicLink: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+      });
+
+      it('expands Python3* pattern to find matching directories', () => {
+        mockedExistsSync.mockReturnValue(true);
+        mockedReaddirSync.mockImplementation(((dir: PathLike): any => {
+          const dirStr = String(dir);
+          if (dirStr.includes('Program Files') && !dirStr.includes('(x86)')) {
+            return [
+              createMockDirent('Python310'),
+              createMockDirent('Python311'),
+              createMockDirent('Python312'),
+              createMockDirent('Python313'),
+              // Should not match non-Python3* directories
+              createMockDirent('Python27'),
+            ];
+          }
+          return [];
+        }) as any);
+
+        const paths = getPythonPaths();
+        expect(paths.some(p => p.includes('Python310'))).toBe(true);
+        expect(paths.some(p => p.includes('Python311'))).toBe(true);
+        expect(paths.some(p => p.includes('Python312'))).toBe(true);
+        expect(paths.some(p => p.includes('Python313'))).toBe(true);
+        expect(paths.some(p => p.includes('Python27'))).toBe(false);
+      });
+
+      it('handles case-insensitive pattern matching', () => {
+        mockedExistsSync.mockReturnValue(true);
+        mockedReaddirSync.mockImplementation(((dir: PathLike): any => {
+          const dirStr = String(dir);
+          if (dirStr.includes('Program Files')) {
+            return [
+              createMockDirent('python312'),  // lowercase
+              createMockDirent('PYTHON313'),  // uppercase
+            ];
+          }
+          return [];
+        }) as any);
+
+        const paths = getPythonPaths();
+        expect(paths.some(p => p.includes('python312') || p.includes('Python312'))).toBe(true);
+        expect(paths.some(p => p.includes('PYTHON313') || p.includes('Python313'))).toBe(true);
+      });
+
+      it('returns empty array when parent directory does not exist', () => {
+        mockedExistsSync.mockReturnValue(false);
+
+        const paths = getPythonPaths();
+        expect(paths).toEqual([]);
+      });
+
+      it('handles permission errors gracefully', () => {
+        mockedExistsSync.mockReturnValue(true);
+        mockedReaddirSync.mockImplementation(() => {
+          throw new Error('EACCES: permission denied');
+        });
+
+        // Should not throw, should return empty results for failed reads
+        const paths = getPythonPaths();
+        expect(Array.isArray(paths)).toBe(true);
+      });
+
+      it('filters out files (non-directories)', () => {
+        mockedExistsSync.mockReturnValue(true);
+        mockedReaddirSync.mockImplementation(((dir: PathLike): any => {
+          if (String(dir).includes('Program Files')) {
+            return [
+              createMockDirent('Python312', true),   // directory
+              createMockDirent('python.txt', false),  // file
+              createMockDirent('Python311', true),    // directory
+            ];
+          }
+          return [];
+        }) as any);
+
+        const paths = getPythonPaths();
+        expect(paths.some(p => p.includes('Python312'))).toBe(true);
+        expect(paths.some(p => p.includes('Python311'))).toBe(true);
+        expect(paths.some(p => p.includes('python.txt'))).toBe(false);
+      });
+
+      it('handles empty directory listing', () => {
+        // existsSync should return false for user-local path, true for Program Files (parent of Python folders)
+        mockedExistsSync.mockImplementation((p: PathLike) => {
+          const pathStr = String(p);
+          // Return false for user-local AppData path
+          if (pathStr.includes('AppData') && pathStr.includes('Local') && pathStr.includes('Programs') && pathStr.includes('Python')) {
+            return false;
+          }
+          // Return true for Program Files directories (parent of Python folders)
+          return pathStr.includes('Program Files') && !pathStr.includes('Python');
+        });
+        mockedReaddirSync.mockReturnValue([]);
+
+        const paths = getPythonPaths();
+        // When Program Files exists but readdir returns empty, we get empty expansion
+        // The user-local path is not included because existsSync returns false for it
+        expect(paths).toEqual([]);
+      });
+
+      it('handles special characters in directory names', () => {
+        mockedExistsSync.mockReturnValue(true);
+        mockedReaddirSync.mockImplementation(((dir: PathLike): any => {
+          if (String(dir).includes('Program Files')) {
+            return [
+              createMockDirent('Python3.12'),  // dot in name
+              createMockDirent('Python3-12'),  // dash in name
+            ];
+          }
+          return [];
+        }) as any);
+
+        const paths = getPythonPaths();
+        expect(paths.some(p => p.includes('Python3.12'))).toBe(true);
+        expect(paths.some(p => p.includes('Python3-12'))).toBe(true);
+      });
+    });
+  });
+
+  describe('getGitLabCliPaths', () => {
+    describeWindows('returns Windows-specific GitLab CLI paths', () => {
+      it('includes Program Files GitLab paths', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.some(p => p.includes('Program Files') && p.includes('GitLab'))).toBe(true);
+      });
+
+      it('includes Program Files (x86) GitLab paths', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('Program Files (x86)') && p.includes('GitLab'))).toBe(true);
+      });
+
+      it('includes Scoop installation path', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('scoop') && p.includes('glab'))).toBe(true);
+      });
+
+      it('includes npm global path with .cmd extension', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('npm') && p.endsWith('glab.cmd'))).toBe(true);
+      });
+
+      it('includes AppData Local Programs path', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('AppData') && p.includes('Local') && p.includes('Programs'))).toBe(true);
+      });
+    });
+
+    describeMacOS('returns macOS-specific GitLab CLI paths', () => {
+      it('includes standard system locations', () => {
+        mockPlatform('darwin');
+        const paths = getGitLabCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths).toContain('/usr/bin/glab');
+        expect(paths).toContain('/usr/local/bin/glab');
+      });
+
+      it('includes Homebrew paths', () => {
+        mockPlatform('darwin');
+        const paths = getGitLabCliPaths();
+        expect(paths).toContain('/opt/homebrew/bin/glab');
+      });
+
+      it('includes user local bin path', () => {
+        mockPlatform('darwin');
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('.local') && p.includes('bin') && p.includes('glab'))).toBe(true);
+      });
+    });
+
+    describeUnix('returns Linux-specific GitLab CLI paths', () => {
+      it('includes standard system locations', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths).toContain('/usr/bin/glab');
+        expect(paths).toContain('/usr/local/bin/glab');
+      });
+
+      it('includes Snap path', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths).toContain('/snap/bin/glab');
+      });
+
+      it('includes user local bin path', () => {
+        const paths = getGitLabCliPaths();
+        expect(paths.some(p => p.includes('.local') && p.includes('bin') && p.includes('glab'))).toBe(true);
       });
     });
   });

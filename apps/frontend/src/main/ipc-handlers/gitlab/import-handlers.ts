@@ -10,9 +10,10 @@ import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
 import type { GitLabAPIIssue } from './types';
 import { createSpecForIssue, GitLabTaskInfo } from './spec-utils';
+import { getEnvVar } from '../../platform';
 
 // Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar("DEBUG") === 'true' || getEnvVar("NODE_ENV") === 'development';
 
 function debugLog(message: string, data?: unknown): void {
   if (DEBUG) {

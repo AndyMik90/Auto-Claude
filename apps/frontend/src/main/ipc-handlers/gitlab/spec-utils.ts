@@ -8,6 +8,7 @@ import path from 'path';
 import type { Project } from '../../../shared/types';
 import type { GitLabAPIIssue, GitLabConfig } from './types';
 import { labelMatchesWholeWord } from '../shared/label-utils';
+import { getEnvVar } from '../../platform';
 
 /**
  * Simplified task info returned when creating a spec from a GitLab issue.
@@ -49,7 +50,7 @@ interface SanitizedGitLabIssue {
 }
 
 // Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debugLog(message: string, data?: unknown): void {
   if (DEBUG) {

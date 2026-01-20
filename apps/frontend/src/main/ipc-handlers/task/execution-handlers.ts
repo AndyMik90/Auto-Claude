@@ -18,6 +18,7 @@ import {
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getEnvVar } from '../../platform';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -262,7 +263,7 @@ export function registerTaskExecutionHandlers(
         'in_progress'
       );
 
-      const DEBUG = process.env.DEBUG === 'true';
+      const DEBUG = getEnvVar('DEBUG') === 'true';
       if (DEBUG) {
         console.log(`[TASK_START] IPC sent immediately for task ${taskId}, deferring file persistence`);
       }
@@ -298,7 +299,7 @@ export function registerTaskExecutionHandlers(
    * Stop a task
    */
   ipcMain.on(IPC_CHANNELS.TASK_STOP, (_, taskId: string) => {
-    const DEBUG = process.env.DEBUG === 'true';
+    const DEBUG = getEnvVar('DEBUG') === 'true';
 
     agentManager.killTask(taskId);
     fileWatcher.unwatch(taskId);

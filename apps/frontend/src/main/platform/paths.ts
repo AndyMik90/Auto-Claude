@@ -441,8 +441,8 @@ export function getGitLabCliPaths(): string[] {
       path.join(programFilesX86, 'GitLab', 'glab', `glab${ext}`),
       // Scoop
       path.join(homeDir, 'scoop', 'apps', 'glab', 'current', `glab${ext}`),
-      // npm global
-      path.join(roamingAppData, 'npm', `glab${ext.replace('.', 'cmd')}`),
+      // npm global (installed via npm install -g @gitlab/cli)
+      path.join(roamingAppData, 'npm', 'glab.cmd'),
       // User-local installation
       path.join(appData, 'Programs', 'glab', `glab${ext}`)
     );

@@ -10,14 +10,14 @@ import type { IPCResult } from '../../../shared/types';
 import { getAugmentedEnv, findExecutable } from '../../env-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { openTerminalWithCommand } from '../claude-code-handlers';
-import { isMacOS, isWindows } from '../../platform';
+import { isMacOS, isWindows, getEnvVar } from '../../platform';
 import type { GitLabAuthStartResult } from './types';
 
 const DEFAULT_GITLAB_URL = 'https://gitlab.com';
 
 // Debug logging helper - requires BOTH development mode AND DEBUG flag for OAuth handlers
 // This is intentionally more restrictive than other handlers to prevent accidental token logging
-const DEBUG = process.env.NODE_ENV === 'development' && process.env.DEBUG === 'true';
+const DEBUG = getEnvVar('NODE_ENV') === 'development' && getEnvVar('DEBUG') === 'true';
 
 /**
  * Redact sensitive information from data before logging

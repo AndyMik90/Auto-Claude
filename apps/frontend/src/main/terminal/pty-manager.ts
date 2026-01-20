@@ -7,7 +7,7 @@ import * as pty from '@lydell/node-pty';
 import * as os from 'os';
 import { existsSync } from 'fs';
 import type { TerminalProcess, WindowGetter, WindowsShellType } from './types';
-import { isWindows, getWindowsShellPaths, getEnvVar } from '../platform';
+import { isWindows, getWindowsShellPaths, getEnvVar, getCmdExecutablePath } from '../platform';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { readSettingsFile } from '../settings-utils';
@@ -91,9 +91,9 @@ function detectShellType(shellPath: string): WindowsShellType {
  * Get the Windows shell executable based on preferred terminal setting
  */
 function getWindowsShell(preferredTerminal: SupportedTerminal | undefined): WindowsShellResult {
-  // If no preference or 'system', use COMSPEC (usually cmd.exe)
+  // If no preference or 'system', use getCmdExecutablePath() from platform module
   if (!preferredTerminal || preferredTerminal === 'system') {
-    const shell = getEnvVar('COMSPEC') || 'cmd.exe';
+    const shell = getCmdExecutablePath();
     return { shell, shellType: detectShellType(shell) };
   }
 
@@ -109,8 +109,8 @@ function getWindowsShell(preferredTerminal: SupportedTerminal | undefined): Wind
     }
   }
 
-  // Fallback to COMSPEC for unrecognized terminals
-  const shell = getEnvVar('COMSPEC') || 'cmd.exe';
+  // Fallback to getCmdExecutablePath() for unrecognized terminals
+  const shell = getCmdExecutablePath();
   return { shell, shellType: detectShellType(shell) };
 }
 

@@ -10,6 +10,8 @@ import os
 import shutil
 import subprocess
 
+from core.platform import is_windows
+
 _cached_gh_path: str | None = None
 
 
@@ -112,7 +114,7 @@ def _find_gh_executable() -> str | None:
         return gh_path
 
     # 3. macOS-specific: check Homebrew paths
-    if os.name != "nt":  # Unix-like systems (macOS, Linux)
+    if not is_windows():  # Unix-like systems (macOS, Linux)
         homebrew_paths = [
             "/opt/homebrew/bin/gh",  # Apple Silicon
             "/usr/local/bin/gh",  # Intel Mac
@@ -123,7 +125,7 @@ def _find_gh_executable() -> str | None:
                 return path
 
     # 4. Windows-specific: check Program Files paths
-    if os.name == "nt":
+    if is_windows():
         windows_paths = [
             os.path.expandvars(r"%PROGRAMFILES%\GitHub CLI\gh.exe"),
             os.path.expandvars(r"%PROGRAMFILES(X86)%\GitHub CLI\gh.exe"),

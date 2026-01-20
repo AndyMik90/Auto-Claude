@@ -27,7 +27,9 @@ function sendDeviceCodeToRenderer(deviceCode: string, authUrl: string, browserOp
 }
 
 // Debug logging helper
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+import { getEnvVar } from '../../platform';
+
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 function debugLog(message: string, data?: unknown): void {
   if (DEBUG) {

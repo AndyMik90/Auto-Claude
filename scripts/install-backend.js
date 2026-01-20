@@ -7,9 +7,8 @@
 const { execSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const { isWindows, isMacOS } = require('../apps/frontend/src/shared/platform.cjs');
 
-const isWindows = os.platform() === 'win32';
 const backendDir = path.join(__dirname, '..', 'apps', 'backend');
 const venvDir = path.join(backendDir, '.venv');
 
@@ -72,9 +71,9 @@ async function main() {
   if (!python) {
     console.error('\nError: Python 3.12+ is required but not found.');
     console.error('Please install Python 3.12 or higher:');
-    if (isWindows) {
+    if (isWindows()) {
       console.error('  winget install Python.Python.3.12');
-    } else if (os.platform() === 'darwin') {
+    } else if (isMacOS()) {
       console.error('  brew install python@3.12');
     } else {
       console.error('  sudo apt install python3.12 python3.12-venv');

@@ -10,7 +10,7 @@ import { spawn, execFileSync } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
-import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths, getHomeDir, getBinaryDirectories } from '../platform';
+import { isWindows, isMacOS, getCurrentOS, getWhichCommand, expandWindowsEnvVars, joinPaths, normalizeExecutablePath, getHomebrewBinPaths, getHomeDir, getBinaryDirectories, getEnvVar } from '../platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -300,7 +300,7 @@ async function executeOllamaDetector(
   }
 
   if (!scriptPath) {
-    if (process.env.DEBUG) {
+    if (getEnvVar('DEBUG')) {
       console.error(
         '[OllamaDetector] Python script not found. Searched paths:',
         possiblePaths
@@ -309,7 +309,7 @@ async function executeOllamaDetector(
     return { success: false, error: 'ollama_model_detector.py script not found' };
   }
 
-  if (process.env.DEBUG) {
+  if (getEnvVar('DEBUG')) {
     console.log('[OllamaDetector] Using script at:', scriptPath);
   }
 

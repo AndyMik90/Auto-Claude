@@ -164,7 +164,7 @@ export function runPythonSubprocess<T = unknown>(
       const exitCode = code ?? 0;
 
       // Debug logging only in development mode
-      if (process.env.NODE_ENV === 'development') {
+      if (getEnvVar('NODE_ENV') === 'development') {
         console.log('[DEBUG] Process exited with code:', exitCode);
         console.log('[DEBUG] Raw stdout length:', stdout.length);
         console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));

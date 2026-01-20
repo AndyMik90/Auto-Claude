@@ -12,6 +12,8 @@ import io
 import os
 import sys
 
+from core.platform import is_windows
+
 
 def enable_windows_ansi_support() -> bool:
     """
@@ -23,7 +25,7 @@ def enable_windows_ansi_support() -> bool:
     Returns:
         True if ANSI support was enabled, False otherwise
     """
-    if sys.platform != "win32":
+    if not is_windows():
         return True  # Non-Windows always has ANSI support
 
     try:

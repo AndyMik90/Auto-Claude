@@ -20,7 +20,7 @@ import type { BrowserWindow } from 'electron';
 import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
-import { getCurrentOS, isMacOS, isWindows, findExecutable } from '../platform';
+import { getCurrentOS, isMacOS, isWindows, findExecutable, getEnvVar } from '../platform';
 import { parseEnvFile } from './utils';
 
 const settingsPath = getSettingsPath();
@@ -58,8 +58,8 @@ const detectAutoBuildSourcePath = (): string | null => {
   // Add process.cwd() as last resort on all platforms
   possiblePaths.push(path.resolve(process.cwd(), 'apps', 'backend'));
 
-  // Enable debug logging with DEBUG=1
-  const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
+  // Enable debug logging with DEBUG=1 (use getEnvVar for case-insensitive Windows support)
+  const debug = getEnvVar('DEBUG') === '1' || getEnvVar('DEBUG') === 'true';
 
   if (debug) {
     console.warn('[detectAutoBuildSourcePath] Platform:', getCurrentOS());

@@ -31,7 +31,9 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 
-_IS_WINDOWS = os.name == "nt"
+from core.platform import is_windows
+
+_IS_WINDOWS = is_windows()
 _WINDOWS_LOCK_SIZE = 1024 * 1024
 
 try:

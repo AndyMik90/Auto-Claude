@@ -47,7 +47,11 @@ import sys
 from pathlib import Path
 
 # Fix Windows console encoding for Unicode output (emojis, special chars)
-if sys.platform == "win32":
+# Note: Must do this before importing platform module which may trigger
+# platform-specific imports that could fail without encoding fix
+from core.platform import is_windows
+
+if is_windows():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if hasattr(sys.stderr, "reconfigure"):

@@ -15,6 +15,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from core.platform import is_windows
+
 # Git environment variables that can interfere with worktree operations
 # when set by pre-commit hooks or other git configurations.
 # These must be cleared to prevent cross-worktree contamination.
@@ -108,7 +110,7 @@ def _find_git_executable() -> str:
         return git_path
 
     # 3. Windows-specific: check common installation locations
-    if os.name == "nt":
+    if is_windows():
         common_paths = [
             os.path.expandvars(r"%PROGRAMFILES%\Git\cmd\git.exe"),
             os.path.expandvars(r"%PROGRAMFILES%\Git\bin\git.exe"),

@@ -645,6 +645,20 @@ export function getVenvPythonPath(venvRoot: string): string {
 }
 
 /**
+ * Get the path to a binary in a virtual environment.
+ * Cross-platform: uses Scripts/ on Windows, bin/ on Unix.
+ *
+ * @param venvRoot - Root directory of the virtual environment
+ * @param binaryName - Name of the binary (e.g., 'pytest', 'pip', 'node')
+ * @returns Path to the binary with appropriate extension
+ */
+export function getVenvBinaryPath(venvRoot: string, binaryName: string): string {
+  const binDir = isWindows() ? 'Scripts' : 'bin';
+  const ext = getExecutableExtension();
+  return joinPaths(venvRoot, binDir, `${binaryName}${ext}`);
+}
+
+/**
  * Get the PTY (pseudo-terminal) socket path for the current platform.
  * Uses named pipes on Windows, Unix domain sockets on macOS/Linux.
  *

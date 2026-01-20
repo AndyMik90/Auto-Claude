@@ -2,7 +2,9 @@
  * Shared debug logging utilities for GitHub handlers
  */
 
-const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+import { getEnvVar } from '../../../platform';
+
+const DEBUG = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
 
 /**
  * Create a context-specific logger

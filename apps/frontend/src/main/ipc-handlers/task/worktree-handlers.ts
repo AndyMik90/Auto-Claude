@@ -19,7 +19,7 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
-import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable, getHomeDir, joinPaths, getBinaryDirectories } from '../../platform';
+import { killProcessGracefully, getCurrentOS, isMacOS, isWindows, getWhichCommand, isSecurePath, findExecutable, getHomeDir, joinPaths, getBinaryDirectories, getEnvVar } from '../../platform';
 import { expandWindowsEnvVars } from '../../platform/paths';
 
 // Regex pattern for validating git branch names
@@ -1847,7 +1847,7 @@ export function registerWorktreeHandlers(
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_MERGE,
     async (_, taskId: string, options?: { noCommit?: boolean }): Promise<IPCResult<WorktreeMergeResult>> => {
-      const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+      const isDebugMode = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
           console.warn('[MERGE DEBUG]', ...args);
@@ -2915,7 +2915,7 @@ export function registerWorktreeHandlers(
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_CREATE_PR,
     async (_, taskId: string, options?: WorktreeCreatePROptions): Promise<IPCResult<WorktreeCreatePRResult>> => {
-      const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+      const isDebugMode = getEnvVar('DEBUG') === 'true' || getEnvVar('NODE_ENV') === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
           console.warn('[CREATE_PR DEBUG]', ...args);
