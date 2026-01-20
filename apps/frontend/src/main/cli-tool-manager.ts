@@ -180,7 +180,8 @@ interface ClaudeDetectionPaths {
 export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
   // Use centralized Homebrew paths from platform module
   const homebrewBinDirs = getHomebrewBinPaths();
-  const homebrewPaths = homebrewBinDirs.map(dir => path.join(dir, 'claude'));
+  // Use joinPaths() for platform-agnostic path joining (important for tests)
+  const homebrewPaths = homebrewBinDirs.map(dir => joinPaths(dir, 'claude'));
 
   const platformPaths = isWindows()
     ? [

@@ -8,7 +8,7 @@
 
 import { existsSync } from 'fs';
 import path from 'path';
-import { getHomebrewBinPaths } from '../platform';
+import { getHomebrewBinPaths, joinPaths } from '../platform';
 
 /**
  * Validation result for a Python installation.
@@ -51,7 +51,8 @@ export function findHomebrewPython(
 
   for (const dir of homebrewDirs) {
     for (const name of pythonNames) {
-      const pythonPath = path.join(dir, name);
+      // Use joinPaths() for platform-agnostic path joining (important for tests)
+      const pythonPath = joinPaths(dir, name);
       if (existsSync(pythonPath)) {
         try {
           // Validate that this Python meets version requirements

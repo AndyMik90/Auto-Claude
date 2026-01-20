@@ -48,7 +48,8 @@ describe('config-paths', () => {
 
     it('defaults to ~/.config when not set', () => {
       delete process.env.XDG_CONFIG_HOME;
-      const expected = path.join(os.homedir(), '.config');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.config`;
       expect(getXdgConfigHome()).toBe(expected);
     });
   });
@@ -61,7 +62,8 @@ describe('config-paths', () => {
 
     it('defaults to ~/.local/share when not set', () => {
       delete process.env.XDG_DATA_HOME;
-      const expected = path.join(os.homedir(), '.local', 'share');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.local/share`;
       expect(getXdgDataHome()).toBe(expected);
     });
   });
@@ -74,7 +76,8 @@ describe('config-paths', () => {
 
     it('defaults to ~/.cache when not set', () => {
       delete process.env.XDG_CACHE_HOME;
-      const expected = path.join(os.homedir(), '.cache');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.cache`;
       expect(getXdgCacheHome()).toBe(expected);
     });
   });
@@ -87,7 +90,8 @@ describe('config-paths', () => {
 
     it('uses default ~/.config/auto-claude when XDG not set', () => {
       delete process.env.XDG_CONFIG_HOME;
-      const expected = path.join(os.homedir(), '.config', 'auto-claude');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.config/auto-claude`;
       expect(getAppConfigDir()).toBe(expected);
     });
   });
@@ -100,7 +104,8 @@ describe('config-paths', () => {
 
     it('uses default ~/.local/share/auto-claude when XDG not set', () => {
       delete process.env.XDG_DATA_HOME;
-      const expected = path.join(os.homedir(), '.local', 'share', 'auto-claude');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.local/share/auto-claude`;
       expect(getAppDataDir()).toBe(expected);
     });
   });
@@ -113,7 +118,8 @@ describe('config-paths', () => {
 
     it('uses default ~/.cache/auto-claude when XDG not set', () => {
       delete process.env.XDG_CACHE_HOME;
-      const expected = path.join(os.homedir(), '.cache', 'auto-claude');
+      // XDG paths use forward slashes even on Windows (XDG standard)
+      const expected = `${os.homedir().replace(/\\/g, '/')}/.cache/auto-claude`;
       expect(getAppCacheDir()).toBe(expected);
     });
   });
