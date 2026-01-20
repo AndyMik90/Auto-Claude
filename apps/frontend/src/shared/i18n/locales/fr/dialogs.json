@@ -159,5 +159,23 @@
     "downloadError": "Échec du téléchargement de la mise à jour",
     "claudeCodeChangelog": "Voir le journal des modifications Claude Code",
     "claudeCodeChangelogAriaLabel": "Voir le journal des modifications Claude Code (s'ouvre dans une nouvelle fenêtre)"
+  },
+  "promptInspection": {
+    "buttonLabel": "Inspecter les prompts",
+    "tooltipContent": "Voir les prompts des agents utilisés dans ce contexte",
+    "titleRoadmap": "Prompts de l'agent Roadmap",
+    "titleKanban": "Prompts de l'agent Pipeline de tâches",
+    "description": "Voir les prompts utilisés par les agents dans ce contexte",
+    "selectPrompt": "Sélectionner un prompt",
+    "selectPromptHint": "Sélectionnez un prompt pour voir son contenu",
+    "noPrompts": "Aucun prompt disponible",
+    "loadError": "Échec du chargement des prompts",
+    "contentError": "Échec du chargement du contenu du prompt",
+    "retry": "Réessayer",
+    "copyToClipboard": "Copier",
+    "copied": "Copié !",
+    "copiedDescription": "Contenu du prompt copié dans le presse-papiers",
+    "copyError": "Échec de la copie",
+    "copyErrorDescription": "Échec de la copie dans le presse-papiers"
   }
 }
