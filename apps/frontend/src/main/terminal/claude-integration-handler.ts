@@ -177,12 +177,12 @@ function buildPathPrefix(pathEnv: string): string {
 /**
  * Escape a command for safe use in shell commands.
  *
- * On Windows, wraps in double quotes for cmd.exe. Since the value is inside
+ * On Windows cmd.exe, wraps in double quotes. Since the value is inside
  * double quotes, we use escapeForWindowsDoubleQuote() (only escapes embedded
  * double quotes as ""). Caret escaping is NOT used inside double quotes.
  *
- * For PowerShell, adds the call operator (&) before the command to prevent
- * PowerShell from interpreting -- flags as the pre-decrement operator.
+ * For PowerShell, uses single quotes to prevent variable expansion and backtick
+ * interpretation, with the call operator (&) to handle -- flags correctly.
  *
  * On Unix/macOS, wraps in single quotes for bash.
  *
@@ -192,17 +192,19 @@ function buildPathPrefix(pathEnv: string): string {
  */
 export function escapeShellCommand(cmd: string, shellType?: WindowsShellType): string {
   if (isWindows()) {
-    // Windows: Wrap in double quotes and escape only embedded double quotes
-    // Inside double quotes, caret is literal, so use escapeForWindowsDoubleQuote()
-    const escapedCmd = escapeForWindowsDoubleQuote(cmd);
-
     if (shellType === 'powershell') {
-      // PowerShell: Use call operator (&) to execute the command
-      // Without &, PowerShell interprets "--flag" as pre-decrement operator
-      return `& "${escapedCmd}"`;
+      // PowerShell: Use single quotes to prevent variable expansion ($var) and
+      // backtick interpretation. Escape embedded single quotes by doubling them.
+      // Use call operator (&) so PowerShell doesn't interpret -- as decrement.
+      const escapedCmd = cmd
+        .replace(/\r/g, '')
+        .replace(/\n/g, '')
+        .replace(/'/g, "''");
+      return `& '${escapedCmd}'`;
     }
 
-    // cmd.exe: Just wrap in double quotes
+    // cmd.exe: Wrap in double quotes and escape embedded double quotes/percents
+    const escapedCmd = escapeForWindowsDoubleQuote(cmd);
     return `"${escapedCmd}"`;
   }
   // Unix/macOS: Wrap in single quotes for bash

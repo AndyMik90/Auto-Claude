@@ -46,10 +46,23 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
+    // Calculate optimal font size based on device pixel ratio (Windows DPI scaling)
+    // devicePixelRatio > 1 indicates high-DPI displays (125%, 150%, 200% scaling)
+    // Base size: 13px for 100% scaling (devicePixelRatio = 1)
+    const baseFontSize = 13;
+    const scaleFactor = window.devicePixelRatio || 1;
+    // Adjust font size using square root of scale factor for smoother scaling
+    // This makes the reduction less aggressive on high-DPI displays
+    // For 150% scaling (1.5x), use 13 * (1 / sqrt(1.5)) ≈ 10.6 logical pixels
+    // Minimum of 11px to maintain readability
+    const adjustedFontSize = scaleFactor > 1
+      ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
+      : baseFontSize;
+
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: 13,
+      fontSize: Math.round(adjustedFontSize),
       fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
@@ -345,7 +358,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     }
   }, [onDimensionsReady]);
 
-  // Listen for terminal refit events (triggered after drag-drop reorder)
+// Listen for terminal refit events (triggered after drag-drop reorder)
   useEffect(() => {
     const handleRefitAll = () => {
       if (fitAddonRef.current && xtermRef.current && terminalRef.current) {
@@ -361,6 +374,86 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
     window.addEventListener('terminal-refit-all', handleRefitAll);
     return () => window.removeEventListener('terminal-refit-all', handleRefitAll);
+  }, []);
+
+  // Handle DPI/scale changes (Windows display scaling, moving between monitors)
+  // Uses matchMedia to detect changes - re-registers listener after each change
+  // to track the new devicePixelRatio value (MDN recommended pattern)
+  useEffect(() => {
+    // Guard for JSDOM/test environments where matchMedia is not available
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      // In test environment, fall back to resize listener for basic DPI handling
+      const handleResize = debounce(() => {
+        if (xtermRef.current && fitAddonRef.current && terminalRef.current) {
+          const rect = terminalRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            fitAddonRef.current.fit();
+          }
+        }
+      }, 200);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+
+    // Track current media query for cleanup
+    let currentMediaQuery: MediaQueryList | null = null;
+
+    const handleDPIChange = debounce(() => {
+      if (xtermRef.current) {
+        const baseFontSize = 13;
+        const scaleFactor = window.devicePixelRatio || 1;
+        // Adjust font size using square root for smoother scaling on high-DPI displays
+        const adjustedFontSize = scaleFactor > 1
+          ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
+          : baseFontSize;
+
+        // Update font size dynamically
+        xtermRef.current.options.fontSize = Math.round(adjustedFontSize);
+
+        // Trigger a fit to recalculate terminal dimensions with new font size
+        if (fitAddonRef.current && terminalRef.current) {
+          const rect = terminalRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            fitAddonRef.current.fit();
+          }
+        }
+      }
+
+      // Re-register listener with new devicePixelRatio to detect subsequent changes
+      // This is necessary because resolution-based media queries only match exact values
+      registerDPIListener();
+    }, 200); // Debounce DPI changes to avoid excessive recalculations
+
+    const registerDPIListener = () => {
+      // Remove listener from previous media query if exists
+      if (currentMediaQuery) {
+        currentMediaQuery.removeEventListener?.('change', handleDPIChange);
+        // Fallback for older browsers
+        currentMediaQuery.removeListener?.(handleDPIChange);
+      }
+
+      // Create new media query with current devicePixelRatio
+      currentMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+
+      // Modern API: addEventListener
+      if (currentMediaQuery.addEventListener) {
+        currentMediaQuery.addEventListener('change', handleDPIChange);
+      } else if (currentMediaQuery.addListener) {
+        // Fallback for older browsers: addListener (deprecated)
+        currentMediaQuery.addListener(handleDPIChange);
+      }
+    };
+
+    // Initial registration
+    registerDPIListener();
+
+    // Cleanup on unmount
+    return () => {
+      if (currentMediaQuery) {
+        currentMediaQuery.removeEventListener?.('change', handleDPIChange);
+        currentMediaQuery.removeListener?.(handleDPIChange);
+      }
+    };
   }, []);
 
   const fit = useCallback(() => {

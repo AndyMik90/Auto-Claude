@@ -7,7 +7,7 @@
  * LadybugDB stores data in Kuzu format at ~/.auto-claude/memories/<database>/
  */
 
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
@@ -776,7 +776,6 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
     const [cmd, args] = parsePythonCommand(pythonCmd);
     const checkArgs = [...args, '-c', 'import real_ladybug; print("OK")'];
 
-    const { spawnSync } = require('child_process');
     const result = spawnSync(cmd, checkArgs, {
       encoding: 'utf-8',
       timeout: 10000,
