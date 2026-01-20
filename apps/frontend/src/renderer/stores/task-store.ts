@@ -298,10 +298,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           const isInTerminalPhase = Boolean(t.executionProgress?.phase && isTerminalPhase(t.executionProgress.phase));
 
           // FIX (Subtask 2-1): Terminal task statuses should NEVER be recalculated from plan data
-          // pr_created and done are finalized workflow states set by explicit user/system actions
+          // pr_created, done, and error are finalized workflow states set by explicit user/system actions
           // Once a task reaches these statuses, they should only change via explicit user actions (like drag-drop)
           // This prevents stale plan file reads from incorrectly downgrading completed tasks
-          const TERMINAL_TASK_STATUSES: TaskStatus[] = ['pr_created', 'done'];
+          // NOTE: Keep this in sync with TERMINAL_STATUSES in project-store.ts
+          const TERMINAL_TASK_STATUSES: TaskStatus[] = ['pr_created', 'done', 'error'];
           const isInTerminalStatus = TERMINAL_TASK_STATUSES.includes(t.status);
 
           // FIX (Flip-Flop Bug): Respect explicit human_review status from plan file
