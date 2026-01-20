@@ -5,7 +5,7 @@
  * with progress tracking, error handling, and result parsing.
  */
 
-import { spawn, exec } from 'child_process';
+import { spawn, exec, execFile } from 'child_process';
 import type { ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -16,7 +16,11 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import type { Project } from '../../../../shared/types';
+import type { AuthFailureInfo } from '../../../../shared/types/terminal';
 import { parsePythonCommand } from '../../../python-detector';
+import { detectAuthFailure } from '../../../rate-limit-detector';
+import { getClaudeProfileManager } from '../../../claude-profile-manager';
+import { isWindows } from '../../../platform';
 
 const execAsync = promisify(exec);
 
@@ -62,6 +66,8 @@ export interface SubprocessOptions {
   onStderr?: (line: string) => void;
   onComplete?: (stdout: string, stderr: string) => unknown;
   onError?: (error: string) => void;
+  /** Callback when auth failure (401) is detected in output */
+  onAuthFailure?: (authFailureInfo: AuthFailureInfo) => void;
   progressPattern?: RegExp;
   /** Additional environment variables to pass to the subprocess */
   env?: Record<string, string>;
@@ -113,15 +119,73 @@ export function runPythonSubprocess<T = unknown>(
   const child = spawn(pythonCommand, [...pythonBaseArgs, ...options.args], {
     cwd: options.cwd,
     env: subprocessEnv,
+    // On Unix, detached: true creates a new process group so we can kill all children
+    // On Windows, this is not needed (taskkill /T handles it)
+    detached: !isWindows(),
   });
 
   const promise = new Promise<SubprocessResult<T>>((resolve) => {
 
     let stdout = '';
     let stderr = '';
+    let authFailureEmitted = false; // Track if we've already emitted an auth failure
 
     // Default progress pattern: [ 30%] message OR [30%] message
     const progressPattern = options.progressPattern ?? /\[\s*(\d+)%\]\s*(.+)/;
+
+    // Helper to check for auth failures in output and emit once
+    const checkAuthFailure = (line: string) => {
+      if (authFailureEmitted || !options.onAuthFailure) return;
+
+      const authResult = detectAuthFailure(line);
+      if (authResult.isAuthFailure) {
+        authFailureEmitted = true;
+        console.log('[SubprocessRunner] Auth failure detected in real-time:', authResult);
+
+        // Get profile info for display
+        const profileManager = getClaudeProfileManager();
+        const profile = authResult.profileId
+          ? profileManager.getProfile(authResult.profileId)
+          : profileManager.getActiveProfile();
+
+        const authFailureInfo: AuthFailureInfo = {
+          profileId: authResult.profileId || profile?.id || 'unknown',
+          profileName: profile?.name,
+          failureType: authResult.failureType || 'unknown',
+          message: authResult.message || 'Authentication failed. Please re-authenticate.',
+          originalError: authResult.originalError,
+          detectedAt: new Date(),
+        };
+
+        options.onAuthFailure(authFailureInfo);
+
+        // Kill the subprocess to stop the auth failure spam
+        // The process is stuck in a loop of 401 errors - no point continuing
+        console.log('[SubprocessRunner] Killing subprocess due to auth failure, pid:', child.pid);
+
+        // Use process.kill with negative PID to kill the entire process group on Unix
+        // This ensures child processes (like the Claude SDK subprocess) are also killed
+        if (child.pid) {
+          try {
+            // On Unix, negative PID kills the process group
+            if (!isWindows()) {
+              process.kill(-child.pid, 'SIGKILL');
+            } else {
+              // On Windows, use taskkill to kill the process tree
+              execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], (err: Error | null) => {
+                if (err) console.log('[SubprocessRunner] taskkill error (process may have already exited):', err.message);
+              });
+            }
+          } catch (err) {
+            // Fallback to regular kill if process group kill fails
+            console.log('[SubprocessRunner] Process group kill failed, using regular kill:', err);
+            child.kill('SIGKILL');
+          }
+        } else {
+          child.kill('SIGKILL');
+        }
+      }
+    };
 
     child.stdout.on('data', (data: Buffer) => {
       const text = data.toString();
@@ -132,6 +196,9 @@ export function runPythonSubprocess<T = unknown>(
         if (line.trim()) {
           // Call custom stdout handler
           options.onStdout?.(line);
+
+          // Check for auth failures in real-time (only emit once)
+          checkAuthFailure(line);
 
           // Parse progress updates
           const match = line.match(progressPattern);
@@ -152,6 +219,9 @@ export function runPythonSubprocess<T = unknown>(
       for (const line of lines) {
         if (line.trim()) {
           options.onStderr?.(line);
+
+          // Also check stderr for auth failures
+          checkAuthFailure(line);
         }
       }
     });
@@ -166,6 +236,10 @@ export function runPythonSubprocess<T = unknown>(
         console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
         console.log('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
       }
+
+      // Note: Auth failure detection now happens in real-time during stdout/stderr processing
+      // (see checkAuthFailure helper above). This ensures the modal appears immediately,
+      // not just when the process exits.
 
       if (exitCode === 0) {
         try {
