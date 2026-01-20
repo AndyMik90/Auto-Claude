@@ -300,10 +300,12 @@ describe('Platform Paths Module', () => {
       });
     });
 
-    describeUnix('returns empty array on Linux', () => {
-      it('returns empty array for Linux', () => {
+    describeUnix('returns Linux Python paths', () => {
+      it('returns common Linux Python installation directories', () => {
         const paths = getPythonPaths();
-        expect(paths).toEqual([]);
+        expect(paths.length).toBeGreaterThan(0);
+        // Should include /usr/bin and /usr/local/bin
+        expect(paths.some(p => p.includes('/usr/bin') || p.includes('usr/local/bin'))).toBe(true);
       });
     });
   });

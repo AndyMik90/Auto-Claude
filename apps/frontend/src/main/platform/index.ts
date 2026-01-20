@@ -24,7 +24,8 @@ export {
   getHomebrewBinPaths,
   getBashExecutablePaths,
   getCmdExecutablePath,
-  getTerminalLauncherPaths
+  getTerminalLauncherPaths,
+  getGitLabCliPaths
 } from './paths';
 
 /**

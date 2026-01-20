@@ -117,6 +117,13 @@ export function getPythonPaths(): string[] {
     if (brewPath) {
       paths.push(brewPath);
     }
+  } else {
+    // Linux: Add common Python installation directories
+    paths.push(
+      '/usr/bin',
+      '/usr/local/bin',
+      path.join(homeDir, '.local', 'bin')
+    );
   }
 
   return paths;
@@ -406,4 +413,54 @@ export function getTerminalLauncherPaths(): string[] {
     path.join('C:\\msys64', 'mingw64.exe'),
     path.join('C:\\msys64', 'usr', 'bin', 'mintty.exe'),
   ];
+}
+
+/**
+ * Get GitLab CLI (glab) executable paths for the current platform
+ *
+ * Returns paths to glab executables in their standard installation locations.
+ * glab is the official CLI tool for GitLab.
+ *
+ * @returns Array of possible glab executable paths
+ */
+export function getGitLabCliPaths(): string[] {
+  const paths: string[] = [];
+  const homeDir = os.homedir();
+  const ext = getExecutableExtension();
+
+  if (isWindows()) {
+    // Windows installation locations
+    const programFiles = getEnvVar('ProgramFiles') || 'C:\\Program Files';
+    const programFilesX86 = getEnvVar('ProgramFiles(x86)') || 'C:\\Program Files (x86)';
+    const appData = getEnvVar('LOCALAPPDATA') || path.join(homeDir, 'AppData', 'Local');
+    const roamingAppData = getEnvVar('APPDATA') || path.join(homeDir, 'AppData', 'Roaming');
+
+    paths.push(
+      // GitLab default installation
+      path.join(programFiles, 'GitLab', 'glab', `glab${ext}`),
+      path.join(programFilesX86, 'GitLab', 'glab', `glab${ext}`),
+      // Scoop
+      path.join(homeDir, 'scoop', 'apps', 'glab', 'current', `glab${ext}`),
+      // npm global
+      path.join(roamingAppData, 'npm', `glab${ext.replace('.', 'cmd')}`),
+      // User-local installation
+      path.join(appData, 'Programs', 'glab', `glab${ext}`)
+    );
+  } else {
+    // Unix (macOS/Linux) installation locations
+    paths.push(
+      // Standard system locations
+      '/usr/bin/glab',
+      '/usr/local/bin/glab',
+      // Snap (Linux)
+      '/snap/bin/glab',
+      // Homebrew (macOS)
+      '/opt/homebrew/bin/glab',
+      '/usr/local/bin/glab',
+      // User local bin
+      path.join(homeDir, '.local', 'bin', 'glab')
+    );
+  }
+
+  return paths;
 }
