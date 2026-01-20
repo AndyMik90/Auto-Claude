@@ -138,20 +138,28 @@ export class AgentProcessManager {
    * @param toolName - Name of the CLI tool (e.g., 'claude', 'gh')
    * @returns Record with env var set if tool was detected
    */
-  private detectAndSetCliPath(toolName: CliTool): Record<string, string> {
+  public detectAndSetCliPath(toolName: CliTool): Record<string, string> {
     const env: Record<string, string> = {};
     const envVarName = CLI_TOOL_ENV_MAP[toolName];
-    if (!getEnvVar(envVarName)) {
-      try {
-        const toolInfo = getToolInfo(toolName as 'claude' | 'gh' | 'glab');  // Supported tools
-        if (toolInfo.found && toolInfo.path) {
-          env[envVarName] = toolInfo.path;
-          console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);
-        }
-      } catch (error) {
-        console.warn(`[AgentProcess] Failed to detect ${toolName} CLI path:`, error instanceof Error ? error.message : String(error));
-      }
+
+    // Only set if not already in environment (existing env var takes precedence)
+    if (getEnvVar(envVarName)) {
+      console.log(`[AgentProcess] Using existing ${envVarName}:`, getEnvVar(envVarName));
+      return env;
     }
+
+    try {
+      const toolInfo = getToolInfo(toolName as 'claude' | 'gh' | 'glab');  // Supported tools
+      if (toolInfo.found && toolInfo.path) {
+        env[envVarName] = toolInfo.path;
+        console.log(`[AgentProcess] Setting ${envVarName}:`, toolInfo.path, `(source: ${toolInfo.source})`);
+      } else {
+        console.warn(`[AgentProcess] ${toolName} CLI not found:`, toolInfo.message);
+      }
+    } catch (error) {
+      console.warn(`[AgentProcess] Failed to detect ${toolName} CLI path:`, error instanceof Error ? error.message : String(error));
+    }
+
     return env;
   }
 

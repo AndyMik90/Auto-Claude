@@ -290,7 +290,9 @@ export class AgentQueueManager {
     // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
     // 5. profileEnv (Electron app OAuth token)
     // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. Our specific overrides
+    // 7. CLI tool paths (CLAUDE_CLI_PATH, GITHUB_CLI_PATH) - ensure Python can find tools
+    // 8. Our specific overrides
+    const cliToolEnv = this.processManager.detectAndSetCliPath('claude');
     const finalEnv = {
       ...process.env,
       ...pythonEnv,
@@ -298,6 +300,7 @@ export class AgentQueueManager {
       ...oauthModeClearVars,
       ...profileEnv,
       ...apiProfileEnv,
+      ...cliToolEnv,
       PYTHONPATH: combinedPythonPath,
       PYTHONUNBUFFERED: '1',
       PYTHONUTF8: '1'
@@ -619,7 +622,9 @@ export class AgentQueueManager {
     // 4. oauthModeClearVars (clear stale ANTHROPIC_* vars when in OAuth mode)
     // 5. profileEnv (Electron app OAuth token)
     // 6. apiProfileEnv (Active API profile config - highest priority for ANTHROPIC_* vars)
-    // 7. Our specific overrides
+    // 7. CLI tool paths (CLAUDE_CLI_PATH, GITHUB_CLI_PATH) - ensure Python can find tools
+    // 8. Our specific overrides
+    const cliToolEnv = this.processManager.detectAndSetCliPath('claude');
     const finalEnv = {
       ...process.env,
       ...pythonEnv,
@@ -627,6 +632,7 @@ export class AgentQueueManager {
       ...oauthModeClearVars,
       ...profileEnv,
       ...apiProfileEnv,
+      ...cliToolEnv,
       PYTHONPATH: combinedPythonPath,
       PYTHONUNBUFFERED: '1',
       PYTHONUTF8: '1'

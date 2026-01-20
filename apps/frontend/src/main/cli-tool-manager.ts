@@ -956,16 +956,9 @@ class CLIToolManager {
       }
     }
 
-    // 3. System PATH (augmented)
-    const systemClaudePath = findExecutable('claude');
-    if (systemClaudePath) {
-      const validation = this.validateClaude(systemClaudePath);
-      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
-      if (result) return result;
-    }
-
-    // 4. Windows where.exe detection (Windows only - most reliable for custom installs)
+    // 3. Windows where.exe detection (Windows only - most reliable, do FIRST on Windows)
     // Note: nvm-windows installations are found via where.exe since they add Node.js to PATH
+    // This must run before findExecutable because where.exe finds .cmd files (npm) better
     if (isWindows()) {
       const whereClaudePath = findWindowsExecutableViaWhere('claude', '[Claude CLI]');
       if (whereClaudePath) {
@@ -973,6 +966,14 @@ class CLIToolManager {
         const result = buildClaudeDetectionResult(whereClaudePath, validation, 'system-path', 'Using Windows Claude CLI');
         if (result) return result;
       }
+    }
+
+    // 4. System PATH (augmented) - fallback after where.exe on Windows
+    const systemClaudePath = findExecutable('claude');
+    if (systemClaudePath) {
+      const validation = this.validateClaude(systemClaudePath);
+      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
+      if (result) return result;
     }
 
     // 5. NVM paths (Unix only) - check before platform paths for better Node.js integration
@@ -1657,15 +1658,8 @@ class CLIToolManager {
       }
     }
 
-    // 3. System PATH (augmented) - using async findExecutable
-    const systemClaudePath = await findExecutableAsync('claude');
-    if (systemClaudePath) {
-      const validation = await this.validateClaudeAsync(systemClaudePath);
-      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
-      if (result) return result;
-    }
-
-    // 4. Windows where.exe detection (async, non-blocking)
+    // 3. Windows where.exe detection (async, Windows only - most reliable, do FIRST)
+    // This must run before findExecutable because where.exe finds .cmd files (npm) better
     if (isWindows()) {
       const whereClaudePath = await findWindowsExecutableViaWhereAsync('claude', '[Claude CLI]');
       if (whereClaudePath) {
@@ -1673,6 +1667,14 @@ class CLIToolManager {
         const result = buildClaudeDetectionResult(whereClaudePath, validation, 'system-path', 'Using Windows Claude CLI');
         if (result) return result;
       }
+    }
+
+    // 4. System PATH (augmented) - fallback after where.exe on Windows
+    const systemClaudePath = await findExecutableAsync('claude');
+    if (systemClaudePath) {
+      const validation = await this.validateClaudeAsync(systemClaudePath);
+      const result = buildClaudeDetectionResult(systemClaudePath, validation, 'system-path', 'Using system Claude CLI');
+      if (result) return result;
     }
 
     // 5. NVM paths (Unix only) - check before platform paths for better Node.js integration
