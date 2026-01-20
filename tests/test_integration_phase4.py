@@ -473,7 +473,9 @@ class TestImportDetection:
         imports = gatherer._find_imports(test_content, source_path)
 
         # Should detect relative require
-        assert "src/utils.ts" in imports
+        # Normalize paths for cross-platform comparison (Windows uses backslashes)
+        normalized_imports = {p.replace("\\", "/") for p in imports}
+        assert "src/utils.ts" in normalized_imports
 
     def test_reexport_detection(self, temp_project):
         """Re-exports (export * from './module') should be detected."""
@@ -484,8 +486,10 @@ class TestImportDetection:
         imports = gatherer._find_imports(test_content, source_path)
 
         # Should detect re-export targets
-        assert "src/utils.ts" in imports
-        assert "src/config.ts" in imports
+        # Normalize paths for cross-platform comparison (Windows uses backslashes)
+        normalized_imports = {p.replace("\\", "/") for p in imports}
+        assert "src/utils.ts" in normalized_imports
+        assert "src/config.ts" in normalized_imports
 
     def test_python_relative_import(self, temp_project):
         """Python relative imports (from .utils import) should be detected via AST."""
@@ -496,7 +500,9 @@ class TestImportDetection:
         imports = gatherer._find_imports(test_content, source_path)
 
         # Should resolve relative Python import
-        assert "src/helpers.py" in imports
+        # Normalize paths for cross-platform comparison (Windows uses backslashes)
+        normalized_imports = {p.replace("\\", "/") for p in imports}
+        assert "src/helpers.py" in normalized_imports
 
     def test_python_absolute_import(self, temp_project):
         """Python absolute imports should be checked for project-internal modules."""
@@ -512,7 +518,9 @@ class TestImportDetection:
         imports = gatherer._find_imports(test_content, source_path)
 
         # Should resolve absolute import to project module
-        assert any("myapp" in i for i in imports)
+        # Normalize paths for cross-platform comparison (Windows uses backslashes)
+        normalized_imports = {p.replace("\\", "/") for p in imports}
+        assert any("myapp" in i for i in normalized_imports)
 
 
 class TestReverseDepDetection:
