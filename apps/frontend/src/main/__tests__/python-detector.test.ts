@@ -396,6 +396,36 @@ describe('python-detector', () => {
         expect(result.valid).toBe(true);
       });
     });
+
+    describe('Bundled Python in packaged app', () => {
+      it('accepts bundled Python on Linux', () => {
+        mockIsWindows.mockReturnValue(false);
+        mockExistsSync.mockReturnValue(true);
+        mockAccessSync.mockReturnValue(undefined);
+
+        const result = validatePythonPath('/opt/Auto-Claude/resources/python/bin/python3');
+        expect(result.valid).toBe(true);
+        expect(normalizePathForTest(result.sanitizedPath)).toBe('/opt/Auto-Claude/resources/python/bin/python3');
+      });
+
+      it('accepts bundled Python on macOS', () => {
+        mockIsWindows.mockReturnValue(false);
+        mockExistsSync.mockReturnValue(true);
+        mockAccessSync.mockReturnValue(undefined);
+
+        const result = validatePythonPath('/Applications/Auto-Claude.app/Contents/Resources/python/bin/python3');
+        expect(result.valid).toBe(true);
+        expect(normalizePathForTest(result.sanitizedPath)).toBe('/Applications/Auto-Claude.app/Contents/Resources/python/bin/python3');
+      });
+
+      it('accepts bundled Python on Windows', () => {
+        mockIsWindows.mockReturnValue(true);
+        mockExistsSync.mockReturnValue(true);
+
+        const result = validatePythonPath('C:\\Program Files\\Auto-Claude\\resources\\python\\python.exe');
+        expect(result.valid).toBe(true);
+      });
+    });
   });
 
   describe('getValidatedPythonPath', () => {

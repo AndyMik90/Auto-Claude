@@ -289,6 +289,14 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^[A-Za-z]:\\Program Files\\Python\d+\\python\.exe$/i,
   /^[A-Za-z]:\\Program Files \(x86\)\\Python\d+\\python\.exe$/i,
   /^[A-Za-z]:\\Users\\[^\\]+\\AppData\\Local\\Programs\\Python\\Python\d+\\python\.exe$/i,
+  // Bundled Python in packaged app (Unix/macOS)
+  // Matches paths like: /opt/Auto-Claude/resources/python/bin/python3
+  //                   /Applications/Auto-Claude.app/Contents/Resources/python/bin/python3
+  // Case-insensitive for macOS Resources directory
+  /^.*\/[Rr]esources\/python\/bin\/python\d*(\.\d+)?$/,
+  // Bundled Python in packaged app (Windows)
+  // Matches paths like: C:\Program Files\Auto-Claude\resources\python\python.exe
+  /^.*\\[Rr]esources\\python\\python\.exe$/i,
   // Conda environments
   /^.*\/anaconda\d*\/bin\/python\d*(\.\d+)?$/,
   /^.*\/miniconda\d*\/bin\/python\d*(\.\d+)?$/,
