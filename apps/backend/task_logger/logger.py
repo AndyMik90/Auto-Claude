@@ -241,6 +241,10 @@ class TaskLogger:
             phase: Optional phase override (uses current_phase if not specified)
             print_to_console: Whether to also print to stdout (default True)
         """
+        # Sanitize content to remove ANSI escape codes before storage
+        if content:
+            content = strip_ansi_codes(content)
+
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
         entry = LogEntry(

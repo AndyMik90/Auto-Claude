@@ -14,12 +14,12 @@
  * ANSI CSI (Control Sequence Introducer) escape sequence pattern.
  * Matches:
  * - \x1b[ or \e[ or \033[ - Escape sequence start
- * - [0-9;]* - Parameter bytes (numbers and semicolons)
+ * - [?><=0-9;]* - Optional private mode chars (?<>=), then parameter bytes
  * - [A-Za-z] - Final byte (command)
  * - m - Specifically for SGR (Select Graphic Rendition) color codes
  */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes require control characters
-const ANSI_CSI_PATTERN = /\x1b\[[0-9;]*[A-Za-z]/g;
+const ANSI_CSI_PATTERN = /\x1b\[[?><=0-9;]*[A-Za-z]/g;
 
 /**
  * OSC (Operating System Command) escape sequences.
