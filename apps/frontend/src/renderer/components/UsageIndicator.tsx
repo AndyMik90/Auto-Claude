@@ -212,7 +212,7 @@ export function UsageIndicator() {
                 </div>
               </div>
               {/* Raw usage value with better styling */}
-              {usage.sessionUsageValue !== undefined && usage.sessionUsageLimit !== undefined && (
+              {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-muted-foreground">{t('common:usage.used')}</span>
                   <span className="font-medium tabular-nums">
@@ -260,7 +260,7 @@ export function UsageIndicator() {
                 </div>
               </div>
               {/* Raw usage value with better styling */}
-              {usage.weeklyUsageValue !== undefined && usage.weeklyUsageLimit !== undefined && (
+              {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-muted-foreground">{t('common:usage.used')}</span>
                   <span className="font-medium tabular-nums">
