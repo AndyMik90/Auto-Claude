@@ -55,6 +55,9 @@ runs:
       # With npm workspaces, packages are hoisted to root. Create a link so electron-builder
       # can find the modules during packaging and code signing.
       # Uses symlink on Unix, directory junction on Windows (works without admin privileges).
+      #
+      # IMPORTANT: npm workspaces may create a partial node_modules in apps/frontend for
+      # packages that couldn't be hoisted. We must remove it and create a proper link to root.
       run: |
         # Verify npm ci succeeded
         if [ ! -d "node_modules" ]; then
@@ -62,8 +65,14 @@ runs:
           exit 1
         fi
 
-        # Create link if needed
-        if [ ! -d "apps/frontend/node_modules" ] && [ ! -L "apps/frontend/node_modules" ]; then
+        # Remove any existing node_modules in apps/frontend (npm workspaces may create partial one)
+        if [ -d "apps/frontend/node_modules" ] && [ ! -L "apps/frontend/node_modules" ]; then
+          echo "Removing partial node_modules created by npm workspaces..."
+          rm -rf "apps/frontend/node_modules"
+        fi
+
+        # Create link if it doesn't exist
+        if [ ! -L "apps/frontend/node_modules" ]; then
           if [ "$RUNNER_OS" == "Windows" ]; then
             # Use directory junction on Windows (works without admin privileges)
             cmd //c "mklink /J apps\\frontend\\node_modules ..\\..\\node_modules"
@@ -83,5 +92,18 @@ runs:
             fi
           fi
         else
-          echo "apps/frontend/node_modules already exists, skipping"
+          echo "apps/frontend/node_modules symlink already exists"
+        fi
+
+        # Verify the link works
+        if [ -L "apps/frontend/node_modules" ]; then
+          target=$(readlink apps/frontend/node_modules 2>/dev/null || echo "junction")
+          echo "Verified: apps/frontend/node_modules -> $target"
+          # Check that the target resolves correctly
+          if [ -d "apps/frontend/node_modules" ]; then
+            count=$(ls apps/frontend/node_modules 2>/dev/null | wc -l)
+            echo "Link resolves to directory with $count entries"
+          else
+            echo "::warning::Link exists but does not resolve to a valid directory"
+          fi
         fi
