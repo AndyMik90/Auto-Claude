@@ -27,6 +27,34 @@ function formatElapsedTime(seconds: number): string {
 }
 
 /**
+ * Formats a timestamp into a human-readable relative time string.
+ * Examples: "just now", "5s ago", "2m ago", "1h ago"
+ *
+ * @param timestamp - The Date object or timestamp to format
+ * @returns Formatted relative time string
+ */
+function formatTimeAgo(timestamp: Date | string | undefined): string {
+  if (!timestamp) return '';
+
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+
+  if (diffSecs < 5) return 'just now';
+  if (diffSecs < 60) return `${diffSecs}s ago`;
+
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `${diffMins}m ago`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+/**
  * Hook to detect user's reduced motion preference.
  * Listens for changes to the prefers-reduced-motion media query.
  */
@@ -215,10 +243,11 @@ export function RoadmapGenerationProgress({
   className,
   onStop
 }: RoadmapGenerationProgressProps) {
-  const { phase, progress, message, error, startedAt } = generationStatus;
+  const { phase, progress, message, error, startedAt, lastActivityAt } = generationStatus;
   const reducedMotion = useReducedMotion();
   const [isStopping, setIsStopping] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [lastActivityDisplay, setLastActivityDisplay] = useState('');
 
   /**
    * Calculate elapsed time from startedAt timestamp
@@ -257,6 +286,31 @@ export function RoadmapGenerationProgress({
       clearInterval(intervalId);
     };
   }, [phase, startedAt, calculateElapsedTime]);
+
+  /**
+   * Update last activity display periodically for relative time
+   */
+  useEffect(() => {
+    // Only track last activity for active phases
+    const isActivePhase = phase !== 'idle' && phase !== 'complete' && phase !== 'error';
+
+    if (!isActivePhase || !lastActivityAt) {
+      setLastActivityDisplay('');
+      return;
+    }
+
+    // Calculate initial display
+    setLastActivityDisplay(formatTimeAgo(lastActivityAt));
+
+    // Update every 5 seconds to keep relative time current
+    const intervalId = setInterval(() => {
+      setLastActivityDisplay(formatTimeAgo(lastActivityAt));
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [phase, lastActivityAt]);
 
   /**
    * Handle stop button click with error handling and double-click prevention
@@ -400,6 +454,19 @@ export function RoadmapGenerationProgress({
                   <Clock className="h-3 w-3" />
                   <span className="tabular-nums">{formatElapsedTime(elapsedTime)}</span>
                 </div>
+              )}
+              {/* Last activity display */}
+              {lastActivityDisplay && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs text-muted-foreground/70 cursor-help">
+                      · last activity {lastActivityDisplay}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Last progress update received
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
             <span className="text-xs font-medium">{progress}%</span>
