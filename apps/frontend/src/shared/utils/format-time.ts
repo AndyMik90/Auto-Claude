@@ -6,6 +6,62 @@
  */
 
 /**
+ * Translation key mapping for backend usage window labels
+ * Maps backend-provided English strings to i18n translation keys
+ */
+const USAGE_WINDOW_LABEL_MAP: Readonly<Record<string, string>> = {
+  '5-hour window': 'window5Hour',
+  '7-day window': 'window7Day',
+  '5 Hours Quota': 'window5HoursQuota',
+  'Monthly Tools Quota': 'windowMonthlyToolsQuota'
+} as const;
+
+/**
+ * Map backend-provided usage window labels to localized translation keys
+ *
+ * The backend provides English strings like "5-hour window", "7-day window", etc.
+ * This function maps those labels to translation keys for proper localization.
+ *
+ * @param backendLabel - The English label from the backend API
+ * @param t - i18next translation function
+ * @param defaultKey - Optional default translation key (default: 'common:usage.sessionDefault')
+ * @returns Localized label string
+ *
+ * @example
+ * localizeUsageWindowLabel('5-hour window', t)
+ * // Returns: t('common:usage.window5Hour') → "5-hour window" (en) or localized equivalent
+ *
+ * @example
+ * localizeUsageWindowLabel('Unknown Label', t)
+ * // Returns: "Unknown Label" (fallback to backend label)
+ */
+export function localizeUsageWindowLabel(
+  backendLabel: string | undefined,
+  t: (key: string, params?: Record<string, unknown>) => string,
+  defaultKey: string = 'common:usage.sessionDefault'
+): string {
+  if (!backendLabel) return t(defaultKey);
+
+  // Map known backend labels to translation keys
+  const translationKey = USAGE_WINDOW_LABEL_MAP[backendLabel];
+  if (translationKey) {
+    const translated = t(`common:usage.${translationKey}`);
+    // If translation returns the key itself (not found), use backend label as fallback
+    return translated === `common:usage.${translationKey}` ? backendLabel : translated;
+  }
+
+  // Unknown label - use as-is (should be rare)
+  return backendLabel;
+}
+
+export interface FormatTimeRemainingOptions {
+  /** Translation key for hours/minutes format (default: 'common:usage.resetsInHours') */
+  hoursKey?: string;
+  /** Translation key for days/hours format (default: 'common:usage.resetsInDays') */
+  daysKey?: string;
+}
+
+/**
  * Format a timestamp as a human-readable "time remaining" string
  *
  * Calculates the time difference between the given timestamp and now,
@@ -26,13 +82,6 @@
  *   daysKey: 'common:usage.resetsInDays'
  * })
  */
-export interface FormatTimeRemainingOptions {
-  /** Translation key for hours/minutes format (default: 'common:usage.resetsInHours') */
-  hoursKey?: string;
-  /** Translation key for days/hours format (default: 'common:usage.resetsInDays') */
-  daysKey?: string;
-}
-
 export function formatTimeRemaining(
   timestamp: string | undefined,
   t: (key: string, params?: Record<string, unknown>) => string,

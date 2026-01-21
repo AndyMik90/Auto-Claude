@@ -24,7 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
 import { detectProvider, getProviderLabel, getProviderBadgeColor, type ApiProvider } from '../../shared/utils/provider-detection';
-import { formatTimeRemaining } from '../../shared/utils/format-time';
+import { formatTimeRemaining, localizeUsageWindowLabel } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 /**
@@ -94,12 +94,10 @@ export function AuthStatusIndicator() {
     : 0;
 
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Note: We don't fall back to sessionResetTime when formatTimeRemaining returns
-  // undefined because it may contain stale "Resets in ..." placeholders from the
-  // backend that are incorrect after the window has reset.
+  // Only fall back to sessionResetTime if it doesn't contain placeholder text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? formatTimeRemaining(usage.sessionResetTimestamp, t)
-    : usage?.sessionResetTime;
+    : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
   const authStatus = useMemo(() => {
@@ -148,31 +146,6 @@ export function AuthStatusIndicator() {
 
     // Fallback to getProviderLabel for providers without translation keys
     return getProviderLabel(provider);
-  };
-
-  // Map backend-provided usage window labels to translation keys
-  // Backend provides English strings like "5-hour window", "7-day window", etc.
-  // These need to be localized for the user interface
-  const localizeUsageWindowLabel = (backendLabel?: string): string => {
-    if (!backendLabel) return t('common:usage.sessionQuota');
-
-    // Map known backend labels to translation keys
-    const labelMap: Record<string, string> = {
-      '5-hour window': 'window5Hour',
-      '7-day window': 'window7Day',
-      '5 Hours Quota': 'window5HoursQuota',
-      'Monthly Tools Quota': 'windowMonthlyToolsQuota'
-    };
-
-    const translationKey = labelMap[backendLabel];
-    if (translationKey) {
-      const translated = t(`common:usage.${translationKey}`);
-      // If translation returns the key itself (not found), use backend label as fallback
-      return translated === `common:usage.${translationKey}` ? backendLabel : translated;
-    }
-
-    // Unknown label - use as-is (should be rare)
-    return backendLabel;
   };
 
   const isOAuth = authStatus.type === 'oauth';
@@ -270,7 +243,7 @@ export function AuthStatusIndicator() {
             <TooltipContent side="bottom" className="text-xs max-w-xs">
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground font-medium">{localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel)}</span>
+                  <span className="text-muted-foreground font-medium">{localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel, t)}</span>
                   <span className="font-semibold text-red-500">{Math.round(usage.sessionPercent)}%</span>
                 </div>
                 {sessionResetTime && (

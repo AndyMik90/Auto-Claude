@@ -150,12 +150,24 @@ export function detectProvider(baseUrl: string): ApiProvider {
   return provider;
 }
 
+/**
+ * Result of determining the active profile type
+ */
+interface ActiveProfileResult {
+  profileId: string;
+  profileName: string;
+  isAPIProfile: boolean;
+}
+
 export class UsageMonitor extends EventEmitter {
   private static instance: UsageMonitor;
   private intervalId: NodeJS.Timeout | null = null;
   private currentUsage: ClaudeUsageSnapshot | null = null;
   private isChecking = false;
-  private useApiMethod = true; // Try API first, fall back to CLI if it fails
+
+  // Per-profile API method tracking to allow retry after transient failures
+  // Map<profileId, boolean> - true = use API, false = use CLI
+  private useApiMethodForProfile: Map<string, boolean> = new Map();
 
   // Swap loop protection: track profiles that recently failed auth
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
@@ -275,6 +287,11 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Check usage and trigger swap if thresholds exceeded
+   *
+   * Refactored to use helper methods for better maintainability:
+   * - determineActiveProfile(): Detects API vs OAuth profile
+   * - checkThresholdsExceeded(): Evaluates usage against thresholds
+   * - handleAuthFailure(): Manages auth failure recovery
    */
   private async checkUsageAndSwap(): Promise<void> {
     if (this.isChecking) {
@@ -282,87 +299,20 @@ export class UsageMonitor extends EventEmitter {
     }
 
     this.isChecking = true;
-
-    // Declare variables outside try block so they're accessible in catch block
     let profileId: string | undefined;
-    let profileName: string | undefined;
     let isAPIProfile = false;
 
     try {
-      // Step 1: Determine which auth type is active (API profile vs OAuth)
-      // API profiles take priority over OAuth profiles
-
-      // First, check if an API profile is active
-      try {
-        const profilesFile = await loadProfilesFile();
-        if (profilesFile.activeProfileId) {
-          const activeAPIProfile = profilesFile.profiles.find(
-            (p) => p.id === profilesFile.activeProfileId
-          );
-          if (activeAPIProfile?.apiKey) {
-            // API profile is active and has an apiKey
-            profileId = activeAPIProfile.id;
-            profileName = activeAPIProfile.name;
-            isAPIProfile = true;
-
-            if (this.isDebug) {
-              console.warn('[UsageMonitor:TRACE] Active auth type: API Profile', {
-                profileId,
-                profileName,
-                baseUrl: activeAPIProfile.baseUrl
-              });
-            }
-          } else if (activeAPIProfile) {
-            // API profile exists but missing apiKey - fall back to OAuth
-            if (this.isDebug) {
-              console.warn('[UsageMonitor:TRACE] Active API profile missing apiKey, falling back to OAuth', {
-                profileId: activeAPIProfile.id,
-                profileName: activeAPIProfile.name
-              });
-            }
-          } else {
-            // activeProfileId is set but profile not found - fall through to OAuth
-            if (this.isDebug) {
-              console.warn('[UsageMonitor:TRACE] Active API profile ID set but profile not found, falling back to OAuth');
-            }
-          }
-        }
-      } catch (error) {
-        // Failed to load API profiles - fall through to OAuth
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
-        }
+      // Step 1: Determine active profile (API vs OAuth)
+      const activeProfile = await this.determineActiveProfile();
+      if (!activeProfile) {
+        return; // No active profile
       }
 
-      // If no API profile is active, check OAuth profiles
-      if (!isAPIProfile) {
-        const profileManager = getClaudeProfileManager();
-        const activeOAuthProfile = profileManager.getActiveProfile();
+      profileId = activeProfile.profileId;
+      isAPIProfile = activeProfile.isAPIProfile;
 
-        if (!activeOAuthProfile) {
-          console.warn('[UsageMonitor] No active profile (neither API nor OAuth)');
-          return;
-        }
-
-        profileId = activeOAuthProfile.id;
-        profileName = activeOAuthProfile.name;
-
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:TRACE] Active auth type: OAuth Profile', {
-            profileId,
-            profileName
-          });
-        }
-      }
-
-      // Ensure we have a profile ID before proceeding
-      if (!profileId || !profileName) {
-        console.warn('[UsageMonitor] Profile ID or name is missing, skipping usage check');
-        return;
-      }
-
-      // Fetch current usage (hybrid approach)
-      // Get appropriate credential (OAuth token or API key)
+      // Step 2: Fetch current usage
       const credential = await this.getCredential();
       const usage = await this.fetchUsage(profileId, credential);
       if (!usage) {
@@ -372,14 +322,14 @@ export class UsageMonitor extends EventEmitter {
 
       this.currentUsage = usage;
 
-      // Emit usage update for UI (always emit, regardless of proactive swap settings)
+      // Step 3: Emit usage update for UI (always emit, regardless of proactive swap settings)
       this.emit('usage-updated', usage);
 
-      // Check if proactive swap is enabled before checking thresholds
-      // Note: Proactive swap only works with OAuth profiles, not API profiles
+      // Step 4: Check thresholds and perform proactive swap (OAuth profiles only)
       if (!isAPIProfile) {
         const profileManager = getClaudeProfileManager();
         const settings = profileManager.getAutoSwitchSettings();
+
         if (!settings.enabled || !settings.proactiveSwapEnabled) {
           if (this.isDebug) {
             console.warn('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
@@ -387,10 +337,9 @@ export class UsageMonitor extends EventEmitter {
           return;
         }
 
-        const sessionExceeded = usage.sessionPercent >= settings.sessionThreshold;
-        const weeklyExceeded = usage.weeklyPercent >= settings.weeklyThreshold;
+        const thresholds = this.checkThresholdsExceeded(usage, settings);
 
-        if (sessionExceeded || weeklyExceeded) {
+        if (thresholds.anyExceeded) {
           if (this.isDebug) {
             console.warn('[UsageMonitor:TRACE] Threshold exceeded', {
               sessionPercent: usage.sessionPercent,
@@ -402,15 +351,15 @@ export class UsageMonitor extends EventEmitter {
 
           console.warn('[UsageMonitor] Threshold exceeded:', {
             sessionPercent: usage.sessionPercent,
-            sessionThreshold: settings.sessionThreshold,
+            sessionThreshold: settings.sessionThreshold ?? 95,
             weeklyPercent: usage.weeklyPercent,
-            weeklyThreshold: settings.weeklyThreshold
+            weeklyThreshold: settings.weeklyThreshold ?? 99
           });
 
           // Attempt proactive swap
           await this.performProactiveSwap(
             profileId,
-            sessionExceeded ? 'session' : 'weekly'
+            thresholds.sessionExceeded ? 'session' : 'weekly'
           );
         } else {
           if (this.isDebug) {
@@ -426,47 +375,164 @@ export class UsageMonitor extends EventEmitter {
         }
       }
     } catch (error) {
-      // Check for auth failure (401/403) from fetchUsageViaAPI
-      // Only attempt proactive swap if enabled and using OAuth profile
+      // Step 5: Handle auth failures
       if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
-        // Proactive swap is only supported for OAuth profiles, not API profiles
-        if (!isAPIProfile && profileId) {
-          const profileManager = getClaudeProfileManager();
-          const settings = profileManager.getAutoSwitchSettings();
-          if (settings.enabled && settings.proactiveSwapEnabled) {
-            // Mark this profile as auth-failed to prevent swap loops
-            this.authFailedProfiles.set(profileId, Date.now());
-            console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', profileId);
-
-            // Clean up expired entries from the failed profiles map
-            const now = Date.now();
-            this.authFailedProfiles.forEach((timestamp, profileId) => {
-              if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
-                this.authFailedProfiles.delete(profileId);
-              }
-            });
-
-            try {
-              const excludeProfiles = Array.from(this.authFailedProfiles.keys());
-              console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
-              await this.performProactiveSwap(
-                profileId,
-                'session', // Treat auth failure as session limit for immediate swap
-                excludeProfiles
-              );
-              return;
-            } catch (swapError) {
-              console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
-            }
-          }
-        } else {
-          console.warn('[UsageMonitor] Auth failure detected but proactive swap is disabled or using API profile, skipping swap');
+        if (profileId) {
+          await this.handleAuthFailure(profileId, isAPIProfile);
+          return; // handleAuthFailure manages its own logging
         }
       }
 
       console.error('[UsageMonitor] Check failed:', error);
     } finally {
       this.isChecking = false;
+    }
+  }
+
+  /**
+   * Check if API method should be used for a specific profile
+   * Returns true by default (try API first), false if API previously failed for this profile
+   *
+   * @param profileId - Profile identifier
+   * @returns true if API should be tried, false if CLI should be used
+   */
+  private shouldUseApiMethod(profileId: string): boolean {
+    // Default to true if profile not in map (try API first)
+    return this.useApiMethodForProfile.get(profileId) ?? true;
+  }
+
+  /**
+   * Determine which profile is active (API profile vs OAuth profile)
+   * API profiles take priority over OAuth profiles
+   *
+   * @returns Active profile info or null if no profile is active
+   */
+  private async determineActiveProfile(): Promise<ActiveProfileResult | null> {
+    // First, check if an API profile is active
+    try {
+      const profilesFile = await loadProfilesFile();
+      if (profilesFile.activeProfileId) {
+        const activeAPIProfile = profilesFile.profiles.find(
+          (p) => p.id === profilesFile.activeProfileId
+        );
+        if (activeAPIProfile?.apiKey) {
+          // API profile is active and has an apiKey
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Active auth type: API Profile', {
+              profileId: activeAPIProfile.id,
+              profileName: activeAPIProfile.name,
+              baseUrl: activeAPIProfile.baseUrl
+            });
+          }
+          return {
+            profileId: activeAPIProfile.id,
+            profileName: activeAPIProfile.name,
+            isAPIProfile: true
+          };
+        } else if (activeAPIProfile) {
+          // API profile exists but missing apiKey - fall back to OAuth
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Active API profile missing apiKey, falling back to OAuth', {
+              profileId: activeAPIProfile.id,
+              profileName: activeAPIProfile.name
+            });
+          }
+        } else {
+          // activeProfileId is set but profile not found - fall through to OAuth
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:TRACE] Active API profile ID set but profile not found, falling back to OAuth');
+          }
+        }
+      }
+    } catch (error) {
+      // Failed to load API profiles - fall through to OAuth
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
+      }
+    }
+
+    // If no API profile is active, check OAuth profiles
+    const profileManager = getClaudeProfileManager();
+    const activeOAuthProfile = profileManager.getActiveProfile();
+
+    if (!activeOAuthProfile) {
+      console.warn('[UsageMonitor] No active profile (neither API nor OAuth)');
+      return null;
+    }
+
+    if (this.isDebug) {
+      console.warn('[UsageMonitor:TRACE] Active auth type: OAuth Profile', {
+        profileId: activeOAuthProfile.id,
+        profileName: activeOAuthProfile.name
+      });
+    }
+
+    return {
+      profileId: activeOAuthProfile.id,
+      profileName: activeOAuthProfile.name,
+      isAPIProfile: false
+    };
+  }
+
+  /**
+   * Check if thresholds are exceeded for proactive swapping
+   *
+   * @param usage - Current usage snapshot
+   * @param settings - Auto-switch settings
+   * @returns Object indicating which thresholds are exceeded
+   */
+  private checkThresholdsExceeded(
+    usage: ClaudeUsageSnapshot,
+    settings: { sessionThreshold?: number; weeklyThreshold?: number }
+  ): { sessionExceeded: boolean; weeklyExceeded: boolean; anyExceeded: boolean } {
+    const sessionExceeded = usage.sessionPercent >= (settings.sessionThreshold ?? 95);
+    const weeklyExceeded = usage.weeklyPercent >= (settings.weeklyThreshold ?? 99);
+
+    return {
+      sessionExceeded,
+      weeklyExceeded,
+      anyExceeded: sessionExceeded || weeklyExceeded
+    };
+  }
+
+  /**
+   * Handle auth failure by marking profile as failed and attempting proactive swap
+   *
+   * @param profileId - Profile that failed auth
+   * @param isAPIProfile - Whether this is an API profile (proactive swap only for OAuth)
+   */
+  private async handleAuthFailure(profileId: string, isAPIProfile: boolean): Promise<void> {
+    const profileManager = getClaudeProfileManager();
+    const settings = profileManager.getAutoSwitchSettings();
+
+    // Proactive swap is only supported for OAuth profiles, not API profiles
+    if (isAPIProfile || !settings.enabled || !settings.proactiveSwapEnabled) {
+      console.warn('[UsageMonitor] Auth failure detected but proactive swap is disabled or using API profile, skipping swap');
+      return;
+    }
+
+    // Mark this profile as auth-failed to prevent swap loops
+    this.authFailedProfiles.set(profileId, Date.now());
+    console.warn('[UsageMonitor] Auth failure detected, marked profile as failed:', profileId);
+
+    // Clean up expired entries from the failed profiles map
+    const now = Date.now();
+    this.authFailedProfiles.forEach((timestamp, failedProfileId) => {
+      if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
+        this.authFailedProfiles.delete(failedProfileId);
+      }
+    });
+
+    try {
+      const excludeProfiles = Array.from(this.authFailedProfiles.keys());
+      console.warn('[UsageMonitor] Attempting proactive swap (excluding failed profiles):', excludeProfiles);
+      await this.performProactiveSwap(
+        profileId,
+        'session', // Treat auth failure as session limit for immediate swap
+        excludeProfiles
+      );
+    } catch (swapError) {
+      console.error('[UsageMonitor] Failed to perform auth-failure swap:', swapError);
     }
   }
 
@@ -531,12 +597,13 @@ export class UsageMonitor extends EventEmitter {
         profileId,
         profileName,
         hasCredential: !!credential,
-        useApiMethod: this.useApiMethod
+        useApiMethod: this.shouldUseApiMethod(profileId)
       });
     }
 
     // Attempt 1: Direct API call (preferred)
-    if (this.useApiMethod && credential) {
+    // Per-profile tracking: if API fails for one profile, it only affects that profile
+    if (this.shouldUseApiMethod(profileId) && credential) {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] Attempting API fetch method');
       }
@@ -552,12 +619,12 @@ export class UsageMonitor extends EventEmitter {
         return apiUsage;
       }
 
-      // API failed - switch to CLI method for future calls
-      console.warn('[UsageMonitor] API method failed, falling back to CLI');
+      // API failed - switch to CLI method for this profile
+      console.warn('[UsageMonitor] API method failed, falling back to CLI for this profile');
       if (this.isDebug) {
-        console.warn('[UsageMonitor:FETCH] API fetch failed, switching to CLI method for future calls');
+        console.warn('[UsageMonitor:FETCH] API fetch failed, switching to CLI method for this profile');
       }
-      this.useApiMethod = false;
+      this.useApiMethodForProfile.set(profileId, false);
     } else if (!credential) {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] No credential available, skipping API method');

@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import { formatTimeRemaining } from '../../shared/utils/format-time';
+import { formatTimeRemaining, localizeUsageWindowLabel } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
@@ -43,41 +43,14 @@ export function UsageIndicator() {
     return value.toString();
   };
 
-  // Map backend-provided usage window labels to translation keys
-  // Backend provides English strings like "5-hour window", "7-day window", etc.
-  // These need to be localized for the user interface
-  const localizeUsageWindowLabel = (backendLabel?: string): string => {
-    if (!backendLabel) return t('common:usage.sessionDefault');
-
-    // Map known backend labels to translation keys
-    const labelMap: Record<string, string> = {
-      '5-hour window': 'window5Hour',
-      '7-day window': 'window7Day',
-      '5 Hours Quota': 'window5HoursQuota',
-      'Monthly Tools Quota': 'windowMonthlyToolsQuota'
-    };
-
-    const translationKey = labelMap[backendLabel];
-    if (translationKey) {
-      const translated = t(`common:usage.${translationKey}`);
-      // If translation returns the key itself (not found), use backend label as fallback
-      return translated === `common:usage.${translationKey}` ? backendLabel : translated;
-    }
-
-    // Unknown label - use as-is (should be rare)
-    return backendLabel;
-  };
-
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Note: We don't fall back to sessionResetTime/weeklyResetTime when formatTimeRemaining
-  // returns undefined because those may contain stale "Resets in ..." placeholders from the
-  // backend that are incorrect after the window has reset.
+  // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? formatTimeRemaining(usage.sessionResetTimestamp, t)
-    : usage?.sessionResetTime;
+    : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
   const weeklyResetTime = usage?.weeklyResetTimestamp
     ? formatTimeRemaining(usage.weeklyResetTimestamp, t)
-    : usage?.weeklyResetTime;
+    : (usage?.weeklyResetTime?.includes('...') ? undefined : usage?.weeklyResetTime);
 
   useEffect(() => {
     // Listen for usage updates from main process
@@ -97,8 +70,9 @@ export function UsageIndicator() {
         // No usage data available (endpoint not supported or error)
         setIsAvailable(false);
       }
-    }).catch(() => {
+    }).catch((error) => {
       // Handle errors (IPC failure, network issues, etc.)
+      console.warn('[UsageIndicator] Failed to fetch initial usage:', error);
       setIsLoading(false);
       setIsAvailable(false);
     });
@@ -154,8 +128,8 @@ export function UsageIndicator() {
 
   // Get window labels for display
   // Map backend-provided labels to localized versions
-  const sessionLabel = localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel);
-  const weeklyLabel = localizeUsageWindowLabel(usage?.usageWindows?.weeklyWindowLabel);
+  const sessionLabel = localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel, t);
+  const weeklyLabel = localizeUsageWindowLabel(usage?.usageWindows?.weeklyWindowLabel, t);
 
   // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
