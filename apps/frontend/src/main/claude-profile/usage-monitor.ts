@@ -312,9 +312,9 @@ export class UsageMonitor extends EventEmitter {
       profileId = activeProfile.profileId;
       isAPIProfile = activeProfile.isAPIProfile;
 
-      // Step 2: Fetch current usage
+      // Step 2: Fetch current usage (pass activeProfile for consistency)
       const credential = await this.getCredential();
-      const usage = await this.fetchUsage(profileId, credential);
+      const usage = await this.fetchUsage(profileId, credential, activeProfile);
       if (!usage) {
         console.warn('[UsageMonitor] Failed to fetch usage');
         return;
@@ -545,10 +545,15 @@ export class UsageMonitor extends EventEmitter {
    *
    * Enhanced to support multiple providers (Anthropic, z.ai, ZHIPU)
    * Detects provider from active profile's baseUrl and routes to appropriate endpoint
+   *
+   * @param profileId - Profile identifier
+   * @param credential - OAuth token or API key
+   * @param activeProfile - Optional active profile info to avoid race conditions
    */
   private async fetchUsage(
     profileId: string,
-    credential?: string
+    credential?: string,
+    activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
     // Get profile name - check both API profiles and OAuth profiles
     let profileName: string | undefined;
@@ -610,7 +615,7 @@ export class UsageMonitor extends EventEmitter {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] Attempting API fetch method');
       }
-      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName);
+      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName, activeProfile);
       if (apiUsage) {
         console.warn('[UsageMonitor] Successfully fetched via API');
         if (this.isDebug) {
@@ -655,24 +660,34 @@ export class UsageMonitor extends EventEmitter {
    * @param credential - OAuth token or API key
    * @param profileId - Profile identifier
    * @param profileName - Profile display name
+   * @param activeProfile - Optional pre-determined active profile info to avoid race conditions
    * @returns Normalized usage snapshot or null on failure
    */
   private async fetchUsageViaAPI(
     credential: string,
     profileId: string,
-    profileName: string
+    profileName: string,
+    activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
     if (this.isDebug) {
       console.warn('[UsageMonitor:API_FETCH] Starting API fetch for usage:', {
         profileId,
         profileName,
-        hasCredential: !!credential
+        hasCredential: !!credential,
+        hasActiveProfile: !!activeProfile
       });
     }
 
     try {
       // Step 1: Determine if we're using an API profile or OAuth profile
-      const apiProfile = await this.getAPIProfile();
+      // Use passed activeProfile if available, otherwise detect to maintain backward compatibility
+      let apiProfile: APIProfile | undefined;
+      if (activeProfile && activeProfile.isAPIProfile) {
+        // Use the pre-determined profile to avoid race conditions
+        const profilesFile = await loadProfilesFile();
+        apiProfile = profilesFile.profiles.find(p => p.id === activeProfile.profileId);
+      }
+
       const isAPIProfile = !!apiProfile;
 
       // Step 2: Detect provider from baseUrl
