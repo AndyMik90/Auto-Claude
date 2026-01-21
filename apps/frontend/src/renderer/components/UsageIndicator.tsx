@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -162,78 +162,120 @@ export function UsageIndicator() {
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs w-64">
-          <div className="space-y-2">
+        <TooltipContent side="bottom" className="text-xs w-72 p-0">
+          <div className="p-3 space-y-3">
+            {/* Header with overall status */}
+            <div className="flex items-center pb-2 border-b">
+              <Icon className="h-3.5 w-3.5" />
+              <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+            </div>
+
             {/* Session/5-hour usage */}
-            <div>
-              <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">{sessionLabel}</span>
-                <span className="font-semibold tabular-nums">{Math.round(usage.sessionPercent)}%</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-medium text-[11px] flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {sessionLabel}
+                </span>
+                <span className={`font-semibold tabular-nums text-xs ${
+                  usage.sessionPercent >= 95 ? 'text-red-500' :
+                  usage.sessionPercent >= 91 ? 'text-orange-500' :
+                  usage.sessionPercent >= 71 ? 'text-yellow-600' :
+                  'text-green-600'
+                }`}>
+                  {Math.round(usage.sessionPercent)}%
+                </span>
               </div>
               {sessionResetTime && (
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground pl-4 flex items-center gap-1">
+                  <Info className="h-2.5 w-2.5" />
                   {sessionResetTime}
                 </div>
               )}
-              {/* Progress bar */}
-              <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+              {/* Enhanced progress bar with gradient */}
+              <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
                 <div
-                  className={`h-full transition-all ${
-                    usage.sessionPercent >= 95 ? 'bg-red-500' :
-                    usage.sessionPercent >= 91 ? 'bg-orange-500' :
-                    usage.sessionPercent >= 71 ? 'bg-yellow-500' :
-                    'bg-green-500'
+                  className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
+                    usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                    usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
+                    usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
+                    'bg-gradient-to-r from-green-600 to-green-500'
                   }`}
                   style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
-                />
+                >
+                  {/* Subtle shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                </div>
               </div>
-              {/* Raw usage value below the bar */}
+              {/* Raw usage value with better styling */}
               {usage.sessionUsageValue !== undefined && usage.sessionUsageLimit !== undefined && (
-                <div className="mt-1 text-[10px] text-muted-foreground tabular-nums">
-                  {formatUsageValue(usage.sessionUsageValue)} / {formatUsageValue(usage.sessionUsageLimit)}
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">{t('common:usage.used')}</span>
+                  <span className="font-medium tabular-nums">
+                    {formatUsageValue(usage.sessionUsageValue)} <span className="text-muted-foreground mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
+                  </span>
                 </div>
               )}
             </div>
 
-            <div className="h-px bg-border" />
-
             {/* Weekly/Monthly usage */}
-            <div>
-              <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-muted-foreground font-medium">{weeklyLabel}</span>
-                <span className="font-semibold tabular-nums">{Math.round(usage.weeklyPercent)}%</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-medium text-[11px] flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  {weeklyLabel}
+                </span>
+                <span className={`font-semibold tabular-nums text-xs ${
+                  usage.weeklyPercent >= 99 ? 'text-red-500' :
+                  usage.weeklyPercent >= 91 ? 'text-orange-500' :
+                  usage.weeklyPercent >= 71 ? 'text-yellow-600' :
+                  'text-green-600'
+                }`}>
+                  {Math.round(usage.weeklyPercent)}%
+                </span>
               </div>
               {weeklyResetTime && (
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground pl-4 flex items-center gap-1">
+                  <Info className="h-2.5 w-2.5" />
                   {weeklyResetTime}
                 </div>
               )}
-              {/* Progress bar */}
-              <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+              {/* Enhanced progress bar with gradient */}
+              <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
                 <div
-                  className={`h-full transition-all ${
-                    usage.weeklyPercent >= 99 ? 'bg-red-500' :
-                    usage.weeklyPercent >= 91 ? 'bg-orange-500' :
-                    usage.weeklyPercent >= 71 ? 'bg-yellow-500' :
-                    'bg-green-500'
+                  className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
+                    usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                    usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
+                    usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
+                    'bg-gradient-to-r from-green-600 to-green-500'
                   }`}
                   style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
-                />
+                >
+                  {/* Subtle shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                </div>
               </div>
-              {/* Raw usage value below the bar */}
+              {/* Raw usage value with better styling */}
               {usage.weeklyUsageValue !== undefined && usage.weeklyUsageLimit !== undefined && (
-                <div className="mt-1 text-[10px] text-muted-foreground tabular-nums">
-                  {formatUsageValue(usage.weeklyUsageValue)} / {formatUsageValue(usage.weeklyUsageLimit)}
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">{t('common:usage.used')}</span>
+                  <span className="font-medium tabular-nums">
+                    {formatUsageValue(usage.weeklyUsageValue)} <span className="text-muted-foreground mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
+                  </span>
                 </div>
               )}
             </div>
 
-            <div className="h-px bg-border" />
-
-            {/* Active profile */}
-            <div className="flex items-center justify-between gap-4 pt-1">
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('common:usage.activeAccount')}</span>
-              <span className="font-semibold text-primary">{usage.profileName}</span>
+            {/* Active account footer */}
+            <div className="pt-2 border-t flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span>{t('common:usage.activeAccount')}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                <span>{usage.profileName}</span>
+                <ChevronRight className="h-3 w-3" />
+              </div>
             </div>
           </div>
         </TooltipContent>

@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { AlertTriangle, Key, Lock } from 'lucide-react';
+import { AlertTriangle, Key, Lock, Shield, Server, Fingerprint, ExternalLink } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -196,32 +196,66 @@ export function AuthStatusIndicator() {
               </span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs max-w-xs">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">{t('common:usage.authentication')}</span>
-                <span className="font-semibold">{isOAuth ? t('common:usage.oauth') : t('common:usage.apiProfile')}</span>
+          <TooltipContent side="bottom" className="text-xs max-w-xs p-0">
+            <div className="p-3 space-y-3">
+              {/* Header section */}
+              <div className="flex items-center justify-between pb-2 border-b">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="font-semibold text-xs">{t('common:usage.authenticationDetails')}</span>
+                </div>
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  isOAuth
+                    ? 'bg-orange-500/15 text-orange-500'
+                    : 'bg-primary/15 text-primary'
+                }`}>
+                  {isOAuth ? t('common:usage.oauth') : t('common:usage.apiProfile')}
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground font-medium">{t('common:usage.provider')}</span>
-                <span className="font-semibold">{localizedProviderLabel}</span>
+
+              {/* Provider info */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Server className="h-3.5 w-3.5" />
+                  <span className="font-medium text-[11px]">{t('common:usage.provider')}</span>
+                </div>
+                <span className="font-semibold text-xs">{localizedProviderLabel}</span>
               </div>
+
+              {/* Profile details for API profiles */}
               {!isOAuth && (
                 <>
-                  <div className="h-px bg-border" />
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">{t('common:usage.profile')}</span>
+                  <div className="pt-2 border-t space-y-2">
+                    {/* Profile name with icon */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Key className="h-3 w-3" />
+                        <span className="text-[10px]">{t('common:usage.profile')}</span>
+                      </div>
                       <span className="font-medium text-[10px]">{authStatus.name}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-[10px]">{t('common:usage.id')}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{truncateId(authStatus.id)}</span>
+
+                    {/* Profile ID with icon */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Fingerprint className="h-3 w-3" />
+                        <span className="text-[10px]">{t('common:usage.id')}</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {truncateId(authStatus.id)}
+                      </span>
                     </div>
+
+                    {/* API Endpoint with better styling */}
                     {authStatus.baseUrl && (
                       <div className="pt-1">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">{t('common:usage.apiEndpoint')}</div>
-                        <div className="text-[10px] font-mono text-foreground break-all">{authStatus.baseUrl}</div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                          <ExternalLink className="h-3 w-3" />
+                          <span>{t('common:usage.apiEndpoint')}</span>
+                        </div>
+                        <div className="text-[10px] font-mono bg-muted px-2 py-1.5 rounded break-all border">
+                          {authStatus.baseUrl}
+                        </div>
                       </div>
                     )}
                   </div>
