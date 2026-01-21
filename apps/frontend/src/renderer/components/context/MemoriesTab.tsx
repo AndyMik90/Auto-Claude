@@ -189,7 +189,7 @@ export function MemoriesTab({
               </>
             ) : (
               <div className="text-sm text-muted-foreground">
-                <p>{memoryStatus?.reason || t('errors:graphiti_not_configured')}</p>
+                <p>{memoryStatus?.reason || t('errors:graphitiNotConfigured')}</p>
                 <p className="mt-2 text-xs">
                   To enable graph memory, set <code className="bg-muted px-1 py-0.5 rounded">GRAPHITI_ENABLED=true</code> in project settings.
                 </p>

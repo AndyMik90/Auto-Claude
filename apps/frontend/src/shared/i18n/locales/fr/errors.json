@@ -1,5 +1,5 @@
 {
-  "graphiti_not_configured": "La mémoire Graphiti n'est pas configurée",
+  "graphitiNotConfigured": "La mémoire Graphiti n'est pas configurée",
   "task": {
     "parseImplementationPlan": "Échec de l'analyse du fichier implementation_plan.json pour {{specId}} : {{error}}",
     "jsonError": {
@@ -17,6 +17,6 @@
     "connectionFailed": "Échec de la connexion à la base de données."
   },
   "memory": {
-    "getDirFailed": "Échec de l'obtention du répertoire des mémoires."
+    "getDirFailed": "Échec de l'obtention du répertoire de la mémoire."
   }
 }

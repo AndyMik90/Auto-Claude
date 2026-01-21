@@ -114,8 +114,6 @@
     "skip": "Skip",
     "saving": "Saving...",
     "saveAndContinue": "Save & Continue",
-    "storedIn": "Stored in {{path}}",
-    "defaultDir": "memories directory",
     "providers": {
       "ollama": "Ollama (Local - Free)",
       "openai": "OpenAI",
