@@ -548,7 +548,7 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
             current_skill = None
             # Check for inline array: paths: [a, b, c]
             if "[" in stripped:
-                match = re.search(r'\[(.*)\]', stripped)
+                match = re.search(r"\[(.*)\]", stripped)
                 if match:
                     paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
                 in_paths = False
@@ -559,7 +559,7 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
             current_skill = None
             # Check for inline array: require_skills: [/skill1, /skill2]
             if "[" in stripped:
-                match = re.search(r'\[(.*)\]', stripped)
+                match = re.search(r"\[(.*)\]", stripped)
                 if match:
                     # Simple inline format - convert to dicts with default 'when'
                     for s in match.group(1).split(","):
@@ -611,20 +611,30 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
             elif current_skill is not None and indent > skill_base_indent:
                 if stripped.startswith("when:"):
                     when_value = stripped[5:].strip().strip("'\"")
-                    if when_value in ("planning", "per_subtask", "end_of_coding", "qa_phase"):
+                    if when_value in (
+                        "planning",
+                        "per_subtask",
+                        "end_of_coding",
+                        "qa_phase",
+                    ):
                         current_skill["when"] = when_value
                 elif stripped.startswith("paths:"):
                     in_skill_paths = True
                     current_skill.setdefault("paths", [])
                     # Check for inline array: paths: [src/**, lib/**]
                     if "[" in stripped:
-                        match = re.search(r'\[(.*)\]', stripped)
+                        match = re.search(r"\[(.*)\]", stripped)
                         if match:
                             current_skill["paths"] = [
-                                p.strip().strip("'\"") for p in match.group(1).split(",")
+                                p.strip().strip("'\"")
+                                for p in match.group(1).split(",")
                             ]
                         in_skill_paths = False
-            elif stripped and not stripped.startswith("#") and indent <= skill_base_indent:
+            elif (
+                stripped
+                and not stripped.startswith("#")
+                and indent <= skill_base_indent
+            ):
                 # End of skills array (same or less indent, non-empty, non-comment line)
                 if current_skill and current_skill.get("skill"):
                     skills.append(current_skill)
@@ -636,9 +646,12 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                     in_paths = True
                     # Check for inline array: paths: [a, b, c]
                     if "[" in stripped:
-                        match = re.search(r'\[(.*)\]', stripped)
+                        match = re.search(r"\[(.*)\]", stripped)
                         if match:
-                            paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
+                            paths = [
+                                p.strip().strip("'\"")
+                                for p in match.group(1).split(",")
+                            ]
                         in_paths = False
 
     # Don't forget to save the last skill entry
@@ -646,7 +659,7 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
         skills.append(current_skill)
 
     # Return content without frontmatter
-    rule_content = "\n".join(lines[end_idx + 1:]).strip()
+    rule_content = "\n".join(lines[end_idx + 1 :]).strip()
     return paths, skills, rule_content
 
 
@@ -677,7 +690,7 @@ def _match_glob_pattern(pattern: str, filepath: str) -> bool:
         regex_pattern = ""
         i = 0
         while i < len(pattern):
-            if pattern[i:i+2] == "**":
+            if pattern[i : i + 2] == "**":
                 i += 2
                 # Check if ** is followed by /
                 if i < len(pattern) and pattern[i] == "/":
@@ -728,7 +741,9 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
     return None
 
 
-def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[dict], str]]:
+def _collect_all_rules(
+    rules_dir: Path,
+) -> list[tuple[Path, list[str], list[dict], str]]:
     """
     Recursively collect all rule files from the rules directory.
 
@@ -1229,7 +1244,9 @@ def create_client(
     if should_use_claude_rules():
         files_in_plan = _get_files_from_implementation_plan(spec_dir)
         if files_in_plan:
-            rules_content, matched_rules, required_skills = load_claude_rules(project_dir, files_in_plan)
+            rules_content, matched_rules, required_skills = load_claude_rules(
+                project_dir, files_in_plan
+            )
             if rules_content:
                 base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
                 print(f"   - .claude/rules/: {len(matched_rules)} rules matched")
@@ -1241,7 +1258,9 @@ def create_client(
                 print("   - .claude/rules/: no matching rules for files in plan")
         else:
             # No implementation plan yet (planning phase) - load all rules
-            rules_content, matched_rules, required_skills = load_claude_rules(project_dir, None)
+            rules_content, matched_rules, required_skills = load_claude_rules(
+                project_dir, None
+            )
             if rules_content:
                 base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
                 print(f"   - .claude/rules/: {len(matched_rules)} rules loaded (all)")
@@ -1261,15 +1280,22 @@ def create_client(
 
             # Filter skills relevant to this agent type
             relevant_skills = [
-                s for s in required_skills
+                s
+                for s in required_skills
                 if agent_type in WHEN_TO_AGENTS.get(s.get("when", "per_subtask"), [])
             ]
 
             if relevant_skills:
                 # Group skills by 'when' for appropriate instructions
-                planning_skills = [s for s in relevant_skills if s.get("when") == "planning"]
-                per_subtask_skills = [s for s in relevant_skills if s.get("when") == "per_subtask"]
-                end_of_coding_skills = [s for s in relevant_skills if s.get("when") == "end_of_coding"]
+                planning_skills = [
+                    s for s in relevant_skills if s.get("when") == "planning"
+                ]
+                per_subtask_skills = [
+                    s for s in relevant_skills if s.get("when") == "per_subtask"
+                ]
+                end_of_coding_skills = [
+                    s for s in relevant_skills if s.get("when") == "end_of_coding"
+                ]
                 qa_skills = [s for s in relevant_skills if s.get("when") == "qa_phase"]
 
                 skill_instructions = []
@@ -1285,11 +1311,15 @@ def create_client(
 
                 # Per-subtask instructions
                 if per_subtask_skills:
-                    skills_list = ", ".join(f"`{s['skill']}`" for s in per_subtask_skills)
+                    skills_list = ", ".join(
+                        f"`{s['skill']}`" for s in per_subtask_skills
+                    )
                     paths_info = []
                     for s in per_subtask_skills:
                         if s.get("paths"):
-                            paths_info.append(f"  - `{s['skill']}` on files matching: {', '.join(s['paths'])}")
+                            paths_info.append(
+                                f"  - `{s['skill']}` on files matching: {', '.join(s['paths'])}"
+                            )
                     paths_section = "\n".join(paths_info) if paths_info else ""
                     skill_instructions.append(
                         f"**Per-subtask skills** ({skills_list}):\n"
@@ -1299,7 +1329,9 @@ def create_client(
 
                 # End-of-coding instructions
                 if end_of_coding_skills:
-                    skills_list = ", ".join(f"`{s['skill']}`" for s in end_of_coding_skills)
+                    skills_list = ", ".join(
+                        f"`{s['skill']}`" for s in end_of_coding_skills
+                    )
                     skill_instructions.append(
                         f"**End-of-coding skills** ({skills_list}):\n"
                         f"Run these skills ONCE after ALL subtasks are complete, before signaling completion.\n"
@@ -1328,11 +1360,15 @@ def create_client(
 
                     # Print summary of relevant skills
                     skill_names = [s["skill"] for s in relevant_skills]
-                    print(f"   - Required skills ({agent_type}): {', '.join(skill_names)}")
+                    print(
+                        f"   - Required skills ({agent_type}): {', '.join(skill_names)}"
+                    )
             else:
                 # Skills exist but none for this agent type
                 all_skill_names = [s["skill"] for s in required_skills]
-                print(f"   - Required skills: {', '.join(all_skill_names)} (not for {agent_type})")
+                print(
+                    f"   - Required skills: {', '.join(all_skill_names)} (not for {agent_type})"
+                )
     else:
         print("   - .claude/rules/: disabled")
     print()
