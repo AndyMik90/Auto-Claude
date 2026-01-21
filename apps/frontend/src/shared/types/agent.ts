@@ -29,14 +29,29 @@ export interface ClaudeUsageData {
  * Returned from API or CLI usage check
  */
 export interface ClaudeUsageSnapshot {
-  /** Session usage percentage (0-100) */
+  /** Session usage percentage (0-100) - represents 5-hour window for most providers */
   sessionPercent: number;
-  /** Weekly usage percentage (0-100) */
+  /** Weekly usage percentage (0-100) - represents 7-day window for Anthropic, monthly for z.ai */
   weeklyPercent: number;
-  /** When the session limit resets (human-readable or ISO) */
+  /**
+   * When the session limit resets (human-readable or ISO)
+   *
+   * NOTE: This value may contain hardcoded English strings ('Unknown', 'Expired', 'Resets in ...')
+   * from the main process. Renderer components should use the sessionResetTimestamp field
+   * with formatTimeRemaining() to generate localized countdown text when available.
+   */
   sessionResetTime?: string;
-  /** When the weekly limit resets (human-readable or ISO) */
+  /**
+   * When the weekly limit resets (human-readable or ISO)
+   *
+   * NOTE: This value may contain hardcoded English strings ('Unknown', '1st of January', etc.)
+   * from the main process. Renderer components should localize these values before display.
+   */
   weeklyResetTime?: string;
+  /** ISO timestamp of when the session limit resets (for dynamic countdown calculation) */
+  sessionResetTimestamp?: string;
+  /** ISO timestamp of when the weekly limit resets (for dynamic countdown calculation) */
+  weeklyResetTimestamp?: string;
   /** Profile ID this snapshot belongs to */
   profileId: string;
   /** Profile name for display */
@@ -45,6 +60,21 @@ export interface ClaudeUsageSnapshot {
   fetchedAt: Date;
   /** Which limit is closest to threshold ('session' or 'weekly') */
   limitType?: 'session' | 'weekly';
+  /** Usage window types for this provider */
+  usageWindows?: {
+    /** Label for the session window (e.g., '5-hour', '5-hour window') */
+    sessionWindowLabel: string;
+    /** Label for the weekly window (e.g., '7-day', 'monthly', 'calendar month') */
+    weeklyWindowLabel: string;
+  };
+  /** Raw session usage value (e.g., tokens used) */
+  sessionUsageValue?: number;
+  /** Session usage limit (total quota) */
+  sessionUsageLimit?: number;
+  /** Raw weekly usage value (e.g., tools used) */
+  weeklyUsageValue?: number;
+  /** Weekly usage limit (total quota) */
+  weeklyUsageLimit?: number;
 }
 
 /**
@@ -95,6 +125,12 @@ export interface ClaudeProfile {
   usage?: ClaudeUsageData;
   /** Recent rate limit events for this profile */
   rateLimitEvents?: ClaudeRateLimitEvent[];
+  /**
+   * Whether this profile has valid authentication.
+   * Computed server-side by checking configDir for credential files.
+   * This is NOT persisted, it's computed dynamically on each getSettings() call.
+   */
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -137,4 +173,20 @@ export interface ClaudeAuthResult {
   success: boolean;
   authenticated: boolean;
   error?: string;
+}
+
+/**
+ * Payload for TERMINAL_PROFILE_CHANGED event.
+ * Sent when profile switches and terminals need to be refreshed.
+ */
+export interface TerminalProfileChangedEvent {
+  previousProfileId: string;
+  newProfileId: string;
+  terminals: Array<{
+    id: string;
+    /** Session ID if terminal had an active Claude session */
+    sessionId?: string;
+    /** Whether the session was successfully migrated to new profile */
+    sessionMigrated?: boolean;
+  }>;
 }

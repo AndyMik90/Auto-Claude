@@ -7,9 +7,11 @@ import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import { TerminalManager } from '../terminal-manager';
 import { projectStore } from '../project-store';
 import { terminalNameGenerator } from '../terminal-name-generator';
-import { escapeShellArg, escapeShellArgWindows } from '../../shared/utils/shell-escape';
-import { getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { readSettingsFileAsync } from '../settings-utils';
+import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { migrateSession } from '../claude-profile/session-utils';
+import { DEFAULT_CLAUDE_CONFIG_DIR } from '../claude-profile/profile-utils';
+import { isValidConfigDir } from '../utils/config-path-validator';
 
 
 /**
@@ -140,8 +142,17 @@ export function registerTerminalHandlers(
           profile.id = profileManager.generateProfileId(profile.name);
         }
 
-        // Ensure config directory exists for non-default profiles
+        // Security: Validate configDir path to prevent path traversal attacks
+        // Only validate non-default profiles with custom configDir
         if (!profile.isDefault && profile.configDir) {
+          if (!isValidConfigDir(profile.configDir)) {
+            return {
+              success: false,
+              error: `Invalid config directory path: ${profile.configDir}. Config directories must be within the user's home directory.`
+            };
+          }
+
+          // Ensure config directory exists for non-default profiles
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
             mkdirSync(profile.configDir, { recursive: true });
@@ -202,7 +213,8 @@ export function registerTerminalHandlers(
     async (_, profileId: string): Promise<IPCResult> => {
       try {
         const profileManager = getClaudeProfileManager();
-        const previousProfileId = profileManager.getActiveProfile().id;
+        const previousProfile = profileManager.getActiveProfile();
+        const previousProfileId = previousProfile.id;
 
         const success = profileManager.setActiveProfile(profileId);
 
@@ -210,27 +222,82 @@ export function registerTerminalHandlers(
           return { success: false, error: 'Profile not found' };
         }
 
+        const newProfile = profileManager.getProfile(profileId);
+
         // If the profile actually changed, restart Claude in active terminals
         // This ensures existing Claude sessions use the new profile's OAuth token
         const profileChanged = previousProfileId !== profileId;
 
         if (profileChanged) {
-          const activeTerminalIds = terminalManager.getActiveTerminalIds();
-          const switchPromises: Promise<void>[] = [];
+          // Get all terminal info for profile change
+          const terminals = terminalManager.getTerminalsForProfileChange();
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Terminals for profile change:', terminals.length);
 
-          for (const terminalId of activeTerminalIds) {
-            if (terminalManager.isClaudeMode(terminalId)) {
-              switchPromises.push(
-                terminalManager.switchClaudeProfile(terminalId, profileId)
-                  .then(() => undefined)
-                  .catch(() => undefined)
+          // Determine config directories for session migration
+          const sourceConfigDir = previousProfile.isDefault
+            ? DEFAULT_CLAUDE_CONFIG_DIR
+            : previousProfile.configDir;
+          const targetConfigDir = newProfile?.isDefault
+            ? DEFAULT_CLAUDE_CONFIG_DIR
+            : newProfile?.configDir;
+
+          // Build terminal refresh info for frontend
+          const terminalsNeedingRefresh: Array<{
+            id: string;
+            sessionId?: string;
+            sessionMigrated?: boolean;
+          }> = [];
+
+          // Process each terminal
+          for (const terminal of terminals) {
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Processing terminal:', {
+              id: terminal.id,
+              isClaudeMode: terminal.isClaudeMode,
+              claudeSessionId: terminal.claudeSessionId,
+              cwd: terminal.cwd
+            });
+
+            let sessionMigrated = false;
+
+            // If terminal has an active Claude session, migrate it to new profile
+            if (terminal.claudeSessionId && sourceConfigDir && targetConfigDir) {
+              debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Migrating session:', {
+                sessionId: terminal.claudeSessionId,
+                from: sourceConfigDir,
+                to: targetConfigDir
+              });
+
+              const migrationResult = migrateSession(
+                sourceConfigDir,
+                targetConfigDir,
+                terminal.cwd,
+                terminal.claudeSessionId
               );
+
+              sessionMigrated = migrationResult.success;
+              debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Session migration result:', migrationResult);
             }
+
+            // All terminals need refresh (PTY env vars can't be updated)
+            terminalsNeedingRefresh.push({
+              id: terminal.id,
+              sessionId: terminal.claudeSessionId,
+              sessionMigrated
+            });
           }
 
-          // Wait for all switches to complete (but don't fail the main operation if some fail)
-          if (switchPromises.length > 0) {
-            await Promise.allSettled(switchPromises);
+          debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Terminals needing refresh:', terminalsNeedingRefresh);
+
+          // Notify frontend that terminals need to be refreshed
+          // Frontend will destroy and recreate terminals with new profile env vars
+          const mainWindow = getMainWindow();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_PROFILE_CHANGED, {
+              previousProfileId,
+              newProfileId: profileId,
+              terminals: terminalsNeedingRefresh
+            });
+            debugLog('[terminal-handlers:CLAUDE_PROFILE_SET_ACTIVE] Sent TERMINAL_PROFILE_CHANGED event to frontend');
           }
         }
 
@@ -259,100 +326,10 @@ export function registerTerminalHandlers(
     }
   );
 
-  ipcMain.handle(
-    IPC_CHANNELS.CLAUDE_PROFILE_INITIALIZE,
-    async (_, profileId: string): Promise<IPCResult> => {
-      try {
-        const profileManager = getClaudeProfileManager();
-
-        const profile = profileManager.getProfile(profileId);
-        if (!profile) {
-          return { success: false, error: 'Profile not found' };
-        }
-
-        // Ensure the config directory exists for non-default profiles
-        if (!profile.isDefault && profile.configDir) {
-          const { mkdirSync, existsSync } = await import('fs');
-          if (!existsSync(profile.configDir)) {
-            mkdirSync(profile.configDir, { recursive: true });
-          }
-        }
-
-        // Create a terminal and run claude setup-token there
-        // This is needed because claude setup-token requires TTY/raw mode
-        const terminalId = `claude-login-${profileId}-${Date.now()}`;
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-
-        // Create a new terminal for the login process
-        const createResult = await terminalManager.create({ id: terminalId, cwd: homeDir });
-
-        // If terminal creation failed, return the error
-        if (!createResult.success) {
-          return {
-            success: false,
-            error: createResult.error || 'Failed to create terminal for authentication'
-          };
-        }
-
-        // Wait a moment for the terminal to initialize
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Build the login command with the profile's config dir
-        // Use full path to claude CLI - no need to modify PATH since we have the absolute path
-        let loginCommand: string;
-        const { command: claudeCmd } = await getClaudeCliInvocationAsync();
-
-        // Use the full path directly - escaping only needed for paths with spaces
-        const shellClaudeCmd = process.platform === 'win32'
-          ? `"${escapeShellArgWindows(claudeCmd)}"`
-          : escapeShellArg(claudeCmd);
-
-        if (!profile.isDefault && profile.configDir) {
-          if (process.platform === 'win32') {
-            // SECURITY: Use Windows-specific escaping for cmd.exe
-            const escapedConfigDir = escapeShellArgWindows(profile.configDir);
-            // Windows cmd.exe syntax: set "VAR=value" with %VAR% for expansion
-            loginCommand = `set "CLAUDE_CONFIG_DIR=${escapedConfigDir}" && echo Config dir: %CLAUDE_CONFIG_DIR% && ${shellClaudeCmd} setup-token`;
-          } else {
-            // SECURITY: Use POSIX escaping for bash/zsh
-            const escapedConfigDir = escapeShellArg(profile.configDir);
-            // Unix/Mac bash/zsh syntax: export VAR=value with $VAR for expansion
-            loginCommand = `export CLAUDE_CONFIG_DIR=${escapedConfigDir} && echo "Config dir: $CLAUDE_CONFIG_DIR" && ${shellClaudeCmd} setup-token`;
-          }
-        } else {
-          // Simple command for default profile - just run setup-token
-          loginCommand = `${shellClaudeCmd} setup-token`;
-        }
-
-        // Write the login command to the terminal
-        terminalManager.write(terminalId, `${loginCommand}\r`);
-
-        // Notify the renderer that an auth terminal was created
-        // This allows the UI to display the terminal so users can see the OAuth flow
-        const mainWindow = getMainWindow();
-        if (mainWindow) {
-          mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_AUTH_CREATED, {
-            terminalId,
-            profileId,
-            profileName: profile.name
-          });
-        }
-
-        return {
-          success: true,
-          data: {
-            terminalId,
-            message: `A terminal has been opened to authenticate "${profile.name}". Complete the OAuth flow in your browser, then copy the token shown in the terminal.`
-          }
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to initialize Claude profile'
-        };
-      }
-    }
-  );
+  // CLAUDE_PROFILE_INITIALIZE handler has been removed.
+  // Use CLAUDE_PROFILE_AUTHENTICATE (in claude-code-handlers.ts) instead,
+  // which opens a visible terminal for the user to run /login manually.
+  // Authentication status is checked via CLAUDE_PROFILE_VERIFY_AUTH with polling.
 
   // Set OAuth token for a profile (used when capturing from terminal or manual input)
   ipcMain.handle(
@@ -373,6 +350,10 @@ export function registerTerminalHandlers(
       }
     }
   );
+
+  // TERMINAL_OAUTH_CODE_SUBMIT handler has been removed.
+  // The new authentication flow (CLAUDE_PROFILE_AUTHENTICATE) doesn't require
+  // manual code submission - the user completes OAuth directly in the browser.
 
   // Get auto-switch settings
   ipcMain.handle(

@@ -391,6 +391,7 @@ export function registerTaskExecutionHandlers(
           return { success: false, error: 'Failed to write QA report file' };
         }
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -398,6 +399,20 @@ export function registerTaskExecutionHandlers(
             taskId,
             'done'
           );
+        }
+
+        // CRITICAL: Persist 'done' status to implementation_plan.json
+        // Without this, the old status would be shown after page refresh since
+        // getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'done', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted approved status (done) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist approved status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
         }
       } else {
         // Reset and discard all changes from worktree merge in main
@@ -519,6 +534,7 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Starting QA process with projectPath:', qaProjectPath);
         agentManager.startQAProcess(taskId, qaProjectPath, task.specId);
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -526,6 +542,20 @@ export function registerTaskExecutionHandlers(
             taskId,
             'in_progress'
           );
+        }
+
+        // CRITICAL: Persist 'in_progress' status to implementation_plan.json
+        // Without this, the old status (e.g., 'human_review') would be shown after page refresh
+        // since getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'in_progress', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted rejected status (in_progress) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist rejected status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
         }
       }
 
@@ -964,6 +994,10 @@ export function registerTaskExecutionHandlers(
               };
             }
 
+            // CRITICAL: Invalidate cache AFTER file writes complete
+            // This ensures getTasks() returns fresh data reflecting the recovery
+            projectStore.invalidateTasksCache(project.id);
+
             return {
               success: true,
               data: {
@@ -1025,6 +1059,10 @@ export function registerTaskExecutionHandlers(
               error: 'Failed to write plan file during recovery'
             };
           }
+
+          // CRITICAL: Invalidate cache AFTER file writes complete
+          // This ensures getTasks() returns fresh data reflecting the recovery
+          projectStore.invalidateTasksCache(project.id);
         }
 
         // Stop file watcher if it was watching this task
@@ -1032,7 +1070,7 @@ export function registerTaskExecutionHandlers(
 
         // Auto-restart the task if requested
         let autoRestarted = false;
-        if (autoRestart && project) {
+        if (autoRestart) {
           // Check git status before auto-restarting
           const gitStatusForRestart = checkGitStatus(project.path);
           if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
@@ -1101,6 +1139,10 @@ export function registerTaskExecutionHandlers(
                   // The plan status will be updated by the agent when it starts
                 }
               }
+
+              // CRITICAL: Invalidate cache AFTER file writes complete
+              // This ensures getTasks() returns fresh data reflecting the restart status
+              projectStore.invalidateTasksCache(project.id);
             }
 
             // Start the task execution

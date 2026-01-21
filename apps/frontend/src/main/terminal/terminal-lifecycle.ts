@@ -43,9 +43,9 @@ export async function createTerminal(
   getWindow: WindowGetter,
   dataHandler: DataHandlerFn
 ): Promise<TerminalOperationResult> {
-  const { id, cwd, cols = 80, rows = 24, projectPath } = options;
+  const { id, cwd, cols = 80, rows = 24, projectPath, skipOAuthToken, env: customEnv } = options;
 
-  debugLog('[TerminalLifecycle] Creating terminal:', { id, cwd, cols, rows, projectPath });
+  debugLog('[TerminalLifecycle] Creating terminal:', { id, cwd, cols, rows, projectPath, skipOAuthToken, hasCustomEnv: !!customEnv });
 
   if (terminals.has(id)) {
     debugLog('[TerminalLifecycle] Terminal already exists, returning success:', id);
@@ -53,10 +53,19 @@ export async function createTerminal(
   }
 
   try {
-    const profileEnv = PtyManager.getActiveProfileEnv();
+    // For auth terminals, don't inject existing OAuth token - we want a fresh login
+    const profileEnv = skipOAuthToken ? {} : PtyManager.getActiveProfileEnv();
 
-    if (profileEnv.CLAUDE_CODE_OAUTH_TOKEN) {
+    // Merge custom environment variables (e.g., CLAUDE_CONFIG_DIR for auth terminals)
+    const mergedEnv = customEnv ? { ...profileEnv, ...customEnv } : profileEnv;
+
+    if (mergedEnv.CLAUDE_CODE_OAUTH_TOKEN) {
       debugLog('[TerminalLifecycle] Injecting OAuth token from active profile');
+    } else if (skipOAuthToken) {
+      debugLog('[TerminalLifecycle] Skipping OAuth token injection (auth terminal)');
+    }
+    if (mergedEnv.CLAUDE_CONFIG_DIR) {
+      debugLog('[TerminalLifecycle] Setting CLAUDE_CONFIG_DIR:', mergedEnv.CLAUDE_CONFIG_DIR);
     }
 
     // Validate cwd exists - if the directory doesn't exist (e.g., worktree removed),
@@ -71,7 +80,7 @@ export async function createTerminal(
       effectiveCwd || os.homedir(),
       cols,
       rows,
-      profileEnv
+      mergedEnv
     );
 
     debugLog('[TerminalLifecycle] PTY process spawned, pid:', ptyProcess.pid, 'shellType:', shellType);

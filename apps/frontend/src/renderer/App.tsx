@@ -9,6 +9,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragStartEvent,
   type DragEndEvent
 } from '@dnd-kit/core';
 import {
@@ -47,13 +48,15 @@ import { AgentTools } from './components/AgentTools';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
+import { AuthFailureModal } from './components/AuthFailureModal';
+import { VersionWarningModal } from './components/VersionWarningModal';
 import { OnboardingWizard } from './components/onboarding';
 import { AppUpdateNotification } from './components/AppUpdateNotification';
 import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { GitHubSetupModal } from './components/GitHubSetupModal';
 import { useProjectStore, loadProjects, addProject, initializeProject, removeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
-import { useSettingsStore, loadSettings, loadProfiles } from './stores/settings-store';
+import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
 import { initializeGitHubListeners } from './stores/github';
@@ -61,11 +64,15 @@ import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
 import { useIpcListeners } from './hooks/useIpc';
 import { useGlobalTerminalListeners } from './hooks/useGlobalTerminalListeners';
+import { useTerminalProfileChange } from './hooks/useTerminalProfileChange';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
 import { ViewStateProvider } from './contexts/ViewStateContext';
+
+// Version constant for version-specific warnings (e.g., reauthentication notices)
+const VERSION_WARNING_275 = '2.7.5';
 
 // Wrapper component for ProjectTabBar
 interface ProjectTabBarWithContextProps {
@@ -105,6 +112,9 @@ export function App() {
   // This ensures terminal output is captured even when the terminal component is not rendered
   useGlobalTerminalListeners();
 
+  // Handle terminal profile change events (recreate terminals on profile switch)
+  useTerminalProfileChange();
+
   // Stores
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -120,7 +130,6 @@ export function App() {
 
   // API Profile state
   const profiles = useSettingsStore((state) => state.profiles);
-  const activeProfileId = useSettingsStore((state) => state.activeProfileId);
 
   // Claude Profile state (OAuth)
   const claudeProfiles = useClaudeProfileStore((state) => state.profiles);
@@ -133,6 +142,7 @@ export function App() {
   const [settingsInitialProjectSection, setSettingsInitialProjectSection] = useState<ProjectSettingsSection | undefined>(undefined);
   const [activeView, setActiveView] = useState<SidebarView>('kanban');
   const [isOnboardingWizardOpen, setIsOnboardingWizardOpen] = useState(false);
+  const [isVersionWarningModalOpen, setIsVersionWarningModalOpen] = useState(false);
   const [isRefreshingTasks, setIsRefreshingTasks] = useState(false);
 
   // Initialize dialog state
@@ -186,7 +196,7 @@ export function App() {
 
   // Restore tab state and open tabs for loaded projects
   useEffect(() => {
-    console.log('[App] Tab restore useEffect triggered:', {
+    console.warn('[App] Tab restore useEffect triggered:', {
       projectsCount: projects.length,
       openProjectIds,
       activeProjectId,
@@ -201,36 +211,37 @@ export function App() {
       if (openProjectIds.length === 0) {
         // No tabs persisted at all, open the first available project
         const projectToOpen = activeProjectId || selectedProjectId || projects[0].id;
-        console.log('[App] No tabs persisted, opening project:', projectToOpen);
+        console.warn('[App] No tabs persisted, opening project:', projectToOpen);
         // Verify the project exists before opening
         if (projects.some(p => p.id === projectToOpen)) {
           openProjectTab(projectToOpen);
           setActiveProject(projectToOpen);
         } else {
           // Fallback to first project if stored IDs are invalid
-          console.log('[App] Project not found, falling back to first project:', projects[0].id);
+          console.warn('[App] Project not found, falling back to first project:', projects[0].id);
           openProjectTab(projects[0].id);
           setActiveProject(projects[0].id);
         }
         return;
       }
-      console.log('[App] Tabs already persisted, checking active project');
+      console.warn('[App] Tabs already persisted, checking active project');
       // If there's an active project but no tabs open for it, open a tab
       // Note: Use openProjectIds instead of projectTabs to avoid re-render loop
       // (projectTabs creates a new array on every render)
       if (activeProjectId && !openProjectIds.includes(activeProjectId)) {
-        console.log('[App] Active project has no tab, opening:', activeProjectId);
+        console.warn('[App] Active project has no tab, opening:', activeProjectId);
         openProjectTab(activeProjectId);
       }
       // If there's a selected project but no active project, make it active
       else if (selectedProjectId && !activeProjectId) {
-        console.log('[App] No active project, using selected:', selectedProjectId);
+        console.warn('[App] No active project, using selected:', selectedProjectId);
         setActiveProject(selectedProjectId);
         openProjectTab(selectedProjectId);
       } else {
-        console.log('[App] Tab state is valid, no action needed');
+        console.warn('[App] Tab state is valid, no action needed');
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- projectTabs is intentionally omitted to avoid infinite re-render (computed array creates new reference each render)
   }, [projects, activeProjectId, selectedProjectId, openProjectIds, openProjectTab, setActiveProject]);
 
   // Track if settings have been loaded at least once
@@ -261,6 +272,39 @@ export function App() {
       setIsOnboardingWizardOpen(true);
     }
   }, [settingsHaveLoaded, settings.onboardingCompleted, profiles, claudeProfiles]);
+
+  // Version 2.7.5 warning - show once to notify users about reauthentication requirement
+  useEffect(() => {
+    const checkVersionWarning = async () => {
+      if (!settingsHaveLoaded) return;
+
+      try {
+        const version = await window.electronAPI.getAppVersion();
+        const seenWarnings = settings.seenVersionWarnings || [];
+
+        // Show warning for 2.7.5 if not already seen
+        if (version === VERSION_WARNING_275 && !seenWarnings.includes(VERSION_WARNING_275)) {
+          setIsVersionWarningModalOpen(true);
+        }
+      } catch (error) {
+        console.error('Failed to check version warning:', error);
+      }
+    };
+
+    checkVersionWarning();
+  }, [settingsHaveLoaded, settings.seenVersionWarnings]);
+
+  // Handle version warning dismissal
+  const handleVersionWarningClose = () => {
+    setIsVersionWarningModalOpen(false);
+    // Persist that user has seen this warning (to disk, not just in-memory)
+    const seenWarnings = settings.seenVersionWarnings || [];
+    if (!seenWarnings.includes(VERSION_WARNING_275)) {
+      saveSettings({
+        seenVersionWarnings: [...seenWarnings, VERSION_WARNING_275]
+      });
+    }
+  };
 
   // Sync i18n language with settings
   const { t, i18n } = useTranslation('dialogs');
@@ -536,7 +580,9 @@ export function App() {
     if (!currentProjectId) return;
     setIsRefreshingTasks(true);
     try {
-      await loadTasks(currentProjectId);
+      // Pass forceRefresh: true to invalidate cache and get fresh data from disk
+      // This ensures the refresh button always shows the latest task state
+      await loadTasks(currentProjectId, { forceRefresh: true });
     } finally {
       setIsRefreshingTasks(false);
     }
@@ -549,7 +595,7 @@ export function App() {
   const handleOpenInbuiltTerminal = (_id: string, cwd: string) => {
     // Note: _id parameter is intentionally unused - terminal ID is auto-generated by addTerminal()
     // Parameter kept for callback signature consistency with callers
-    console.log('[App] Opening inbuilt terminal:', { cwd });
+    console.warn('[App] Opening inbuilt terminal:', { cwd });
 
     // Switch to terminals view
     setActiveView('terminals');
@@ -565,7 +611,7 @@ export function App() {
     if (!terminal) {
       console.error('[App] Failed to add terminal to store (max terminals reached?)');
     } else {
-      console.log('[App] Terminal added to store:', terminal.id);
+      console.warn('[App] Terminal added to store:', terminal.id);
     }
   };
 
@@ -624,7 +670,7 @@ export function App() {
   };
 
   // Handle drag start - set the active dragged project
-  const handleDragStart = (event: any) => {
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const draggedProject = projectTabs.find(p => p.id === active.id);
     if (draggedProject) {
@@ -651,19 +697,19 @@ export function App() {
     if (!pendingProject) return;
 
     const projectId = pendingProject.id;
-    console.log('[InitDialog] Starting initialization for project:', projectId);
+    console.warn('[InitDialog] Starting initialization for project:', projectId);
     setIsInitializing(true);
     setInitSuccess(false);
     setInitError(null); // Clear any previous errors
     try {
       const result = await initializeProject(projectId);
-      console.log('[InitDialog] Initialization result:', result);
+      console.warn('[InitDialog] Initialization result:', result);
 
       if (result?.success) {
-        console.log('[InitDialog] Initialization successful, closing dialog');
+        console.warn('[InitDialog] Initialization successful, closing dialog');
         // Get the updated project from store
         const updatedProject = useProjectStore.getState().projects.find(p => p.id === projectId);
-        console.log('[InitDialog] Updated project:', updatedProject);
+        console.warn('[InitDialog] Updated project:', updatedProject);
 
         // Mark as successful to prevent onOpenChange from treating this as a skip
         setInitSuccess(true);
@@ -680,7 +726,7 @@ export function App() {
         }
       } else {
         // Initialization failed - show error but keep dialog open
-        console.log('[InitDialog] Initialization failed, showing error');
+        console.warn('[InitDialog] Initialization failed, showing error');
         const errorMessage = result?.error || 'Failed to initialize Auto Claude. Please try again.';
         setInitError(errorMessage);
         setIsInitializing(false);
@@ -738,7 +784,7 @@ export function App() {
   };
 
   const handleSkipInit = () => {
-    console.log('[InitDialog] User skipped initialization');
+    console.warn('[InitDialog] User skipped initialization');
     if (pendingProject) {
       setSkippedInitProjectId(pendingProject.id);
     }
@@ -948,7 +994,7 @@ export function App() {
 
         {/* Initialize Auto Claude Dialog */}
         <Dialog open={showInitDialog} onOpenChange={(open) => {
-          console.log('[InitDialog] onOpenChange called', { open, pendingProject: !!pendingProject, isInitializing, initSuccess });
+          console.warn('[InitDialog] onOpenChange called', { open, pendingProject: !!pendingProject, isInitializing, initSuccess });
           // Only trigger skip if user manually closed the dialog
           // Don't trigger if: successful init, no pending project, or currently initializing
           if (!open && pendingProject && !isInitializing && !initSuccess) {
@@ -1069,6 +1115,23 @@ export function App() {
 
         {/* SDK Rate Limit Modal - shows when SDK/CLI operations hit limits (changelog, tasks, etc.) */}
         <SDKRateLimitModal />
+
+        {/* Auth Failure Modal - shows when Claude CLI encounters 401/auth errors */}
+        <AuthFailureModal onOpenSettings={() => {
+          setSettingsInitialSection('integrations');
+          setIsSettingsDialogOpen(true);
+        }} />
+
+        {/* Version Warning Modal - one-time notice for 2.7.5 re-authentication */}
+        <VersionWarningModal
+          isOpen={isVersionWarningModalOpen}
+          onClose={handleVersionWarningClose}
+          onOpenSettings={() => {
+            handleVersionWarningClose();
+            setSettingsInitialSection('integrations');
+            setIsSettingsDialogOpen(true);
+          }}
+        />
 
         {/* Onboarding Wizard - shows on first launch when onboardingCompleted is false */}
         <OnboardingWizard

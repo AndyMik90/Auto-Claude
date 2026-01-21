@@ -262,6 +262,10 @@
     "notInstalled": "Not installed",
     "detectedSummary": "Detected on your system:",
     "noToolsDetected": "No additional tools detected (VS Code and system terminal will be used)",
+    "autoNameClaude": {
+      "label": "Auto-name Claude terminals",
+      "description": "Use AI to generate a descriptive name for Claude terminals based on your first message"
+    },
     "yoloMode": {
       "label": "YOLO Mode",
       "description": "Start Claude with --dangerously-skip-permissions flag, bypassing all safety prompts. Use with extreme caution.",
@@ -414,9 +418,10 @@
     "authenticated": "Authenticated",
     "needsAuth": "Needs Auth",
     "authenticate": "Authenticate",
+    "authenticating": "Authenticating...",
     "setActive": "Set Active",
     "manualTokenEntry": "Manual Token Entry",
-    "runSetupToken": "Run claude setup-token to get your token",
+    "runSetupToken": "Run claude and type /login to authenticate",
     "tokenPlaceholder": "sk-ant-oat01-...",
     "emailPlaceholder": "Email (optional, for display)",
     "saveToken": "Save Token",
@@ -467,6 +472,11 @@
       "terminalErrorDescription": "Failed to create terminal: {{error}}",
       "authProcessFailed": "Authentication process failed to start",
       "authProcessFailedDescription": "The authentication terminal could not be created. Please try again or check the logs for more details."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Profile created but failed to prepare authentication: {{error}}",
+      "authPrepareFailed": "Failed to prepare authentication: {{error}}",
+      "authStartFailedMessage": "Failed to start authentication. Please try again."
     }
   },
   "debug": {

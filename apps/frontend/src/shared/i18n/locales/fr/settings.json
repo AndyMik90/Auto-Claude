@@ -262,6 +262,10 @@
     "notInstalled": "Non installé",
     "detectedSummary": "Détecté sur votre système :",
     "noToolsDetected": "Aucun outil supplémentaire détecté (VS Code et le terminal système seront utilisés)",
+    "autoNameClaude": {
+      "label": "Nommer automatiquement les terminaux Claude",
+      "description": "Utiliser l'IA pour générer un nom descriptif pour les terminaux Claude basé sur votre premier message"
+    },
     "yoloMode": {
       "label": "Mode YOLO",
       "description": "Démarrer Claude avec le flag --dangerously-skip-permissions, contournant toutes les invites de sécurité. À utiliser avec une extrême prudence.",
@@ -414,9 +418,10 @@
     "authenticated": "Authentifié",
     "needsAuth": "Auth requise",
     "authenticate": "Authentifier",
+    "authenticating": "Authentification...",
     "setActive": "Définir actif",
     "manualTokenEntry": "Saisie manuelle du token",
-    "runSetupToken": "Exécutez claude setup-token pour obtenir votre token",
+    "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
     "tokenPlaceholder": "sk-ant-oat01-...",
     "emailPlaceholder": "Email (optionnel, pour l'affichage)",
     "saveToken": "Enregistrer le token",
@@ -467,6 +472,11 @@
       "terminalErrorDescription": "Échec de la création du terminal : {{error}}",
       "authProcessFailed": "Le processus d'authentification n'a pas pu démarrer",
       "authProcessFailedDescription": "Le terminal d'authentification n'a pas pu être créé. Veuillez réessayer ou consulter les logs pour plus de détails."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
+      "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
+      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
     }
   },
   "debug": {

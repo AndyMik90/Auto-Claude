@@ -52,9 +52,21 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 // Mock claude-profile-manager to bypass auth checks in tests
+// Profile shape must match ClaudeProfile interface (id, name, isDefault, etc.)
+const mockProfile = {
+  id: 'default',
+  name: 'Default',
+  isDefault: true,
+  oauthToken: 'mock-encrypted-token'
+};
+
 const mockProfileManager = {
   hasValidAuth: () => true,
-  getActiveProfile: () => ({ profileId: 'default', profileName: 'Default' })
+  getActiveProfile: () => mockProfile,
+  getProfile: (_profileId: string) => mockProfile,
+  // Token decryption methods - return mock token for tests
+  getActiveProfileToken: () => 'mock-decrypted-token-for-testing',
+  getProfileToken: (_profileId: string) => 'mock-decrypted-token-for-testing'
 };
 
 vi.mock('../../main/claude-profile-manager', () => ({

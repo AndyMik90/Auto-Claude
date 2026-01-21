@@ -20,14 +20,39 @@ const CLAUDE_SESSION_PATTERNS = [
 const RATE_LIMIT_PATTERN = /Limit reached\s*[·•]\s*resets\s+(.+?)$/m;
 
 /**
- * Regex pattern to capture OAuth token from `claude setup-token` output
+ * Regex pattern to capture OAuth token from Claude CLI output
+ * Token is displayed when authentication completes via /login or setup-token
  */
 const OAUTH_TOKEN_PATTERN = /(sk-ant-oat01-[A-Za-z0-9_-]+)/;
 
 /**
- * Pattern to detect email in Claude output
+ * Regex pattern to capture OAuth authorization URL from Claude CLI /login output
+ * The URL is displayed when /login is run and needs to be opened in browser
+ * Uses \x1b to exclude ANSI escape sequences from URL matching
  */
-const EMAIL_PATTERN = /(?:Authenticated as|Logged in as|email[:\s]+)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
+// eslint-disable-next-line no-control-regex -- Intentionally matches ANSI escape sequences to exclude them from URLs
+const OAUTH_URL_PATTERN = /https:\/\/claude\.ai\/oauth\/authorize\?[^\s\x1b\]]+/;
+
+/**
+ * Patterns to detect email in Claude output
+ * Multiple patterns to handle different output formats:
+ * - "Authenticated as user@example.com" or "Logged in as user@example.com"
+ * - "email: user@example.com"
+ * - "user@example.com's Organization" (Claude Code welcome screen)
+ * - Fallback: any email-like pattern in the context of Claude Max/Pro/Team
+ */
+const EMAIL_PATTERNS = [
+  /(?:Authenticated as |Logged in as |email[:\s]+)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,  // Note: space after "as"
+  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s\s*Organization/i,  // "user@example.com's Organization" (ASCII and curly apostrophes)
+  /Claude\s+(?:Max|Pro|Team|Enterprise)\s*[·•]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,  // "Claude Max · user@example.com"
+  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s/i,  // Just "user@example.com's" (broader match)
+];
+
+/**
+ * Pattern to detect successful login in Claude CLI output
+ * Matches: "Login successful" or "Logged in as X"
+ */
+const LOGIN_SUCCESS_PATTERN = /(?:Login successful|Successfully logged in|Logged in as\s+\S+@\S+)/i;
 
 /**
  * Extract Claude session ID from output
@@ -59,11 +84,33 @@ export function extractOAuthToken(data: string): string | null {
 }
 
 /**
+ * Extract OAuth authorization URL from output
+ * Returns the URL that needs to be opened in browser for /login flow
+ */
+export function extractOAuthUrl(data: string): string | null {
+  const match = data.match(OAUTH_URL_PATTERN);
+  return match ? match[0] : null;
+}
+
+/**
+ * Check if output contains an OAuth authorization URL
+ */
+export function hasOAuthUrl(data: string): boolean {
+  return OAUTH_URL_PATTERN.test(data);
+}
+
+/**
  * Extract email from output
+ * Tries multiple patterns to handle different output formats
  */
 export function extractEmail(data: string): string | null {
-  const match = data.match(EMAIL_PATTERN);
-  return match ? match[1] : null;
+  for (const pattern of EMAIL_PATTERNS) {
+    const match = data.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return null;
 }
 
 /**
@@ -78,6 +125,14 @@ export function hasRateLimitMessage(data: string): boolean {
  */
 export function hasOAuthToken(data: string): boolean {
   return OAUTH_TOKEN_PATTERN.test(data);
+}
+
+/**
+ * Check if output indicates successful login
+ * This catches the localhost callback flow where no token is displayed
+ */
+export function hasLoginSuccess(data: string): boolean {
+  return LOGIN_SUCCESS_PATTERN.test(data);
 }
 
 /**
@@ -128,6 +183,16 @@ const CLAUDE_IDLE_PATTERNS = [
 ];
 
 /**
+ * Patterns indicating Claude Code onboarding/login is complete
+ * These patterns detect the welcome screen that appears after successful login
+ */
+const ONBOARDING_COMPLETE_PATTERNS = [
+  /Welcome back\s+\w+/i,            // "Welcome back André!" or similar
+  /Claude Code v\d+\.\d+/i,         // "Claude Code v2.1.12" version header
+  /Claude\s+(Max|Pro|Team|Enterprise)/i,  // Subscription tier indicator
+];
+
+/**
  * Check if output indicates Claude is busy (processing)
  */
 export function isClaudeBusyOutput(data: string): boolean {
@@ -139,6 +204,14 @@ export function isClaudeBusyOutput(data: string): boolean {
  */
 export function isClaudeIdleOutput(data: string): boolean {
   return CLAUDE_IDLE_PATTERNS.some(pattern => pattern.test(data));
+}
+
+/**
+ * Check if output indicates Claude Code onboarding is complete
+ * This detects the welcome screen that appears after successful login/onboarding
+ */
+export function isOnboardingCompleteOutput(data: string): boolean {
+  return ONBOARDING_COMPLETE_PATTERNS.some(pattern => pattern.test(data));
 }
 
 /**

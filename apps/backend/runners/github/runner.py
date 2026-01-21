@@ -613,9 +613,9 @@ async def cmd_approve_batches(args) -> int:
 
     # Load approved batches from file
     try:
-        with open(args.batch_file) as f:
+        with open(args.batch_file, encoding="utf-8") as f:
             approved_batches = json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError) as e:
+    except (json.JSONDecodeError, FileNotFoundError, UnicodeDecodeError) as e:
         safe_print(f"Error loading batch file: {e}")
         return 1
 

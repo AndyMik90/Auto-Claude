@@ -18,6 +18,7 @@ import {
   DEFAULT_FEATURE_MODELS,
   DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
+import type { AuthFailureInfo } from "../../../shared/types/terminal";
 import { getGitHubConfig, githubFetch } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
 import { getAugmentedEnv } from "../../env-utils";
@@ -1177,6 +1178,11 @@ async function runPRReview(
       logCollector.processLine(line);
     },
     onStderr: (line) => debugLog("STDERR:", line),
+    onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
+      // Send auth failure to renderer to show modal
+      debugLog("Auth failure detected in PR review", authFailureInfo);
+      mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+    },
     onComplete: () => {
       // Load the result from disk
       const reviewResult = getReviewResult(project, prNumber);
@@ -2544,6 +2550,11 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
               logCollector.processLine(line);
             },
             onStderr: (line) => debugLog("STDERR:", line),
+            onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
+              // Send auth failure to renderer to show modal
+              debugLog("Auth failure detected in follow-up PR review", authFailureInfo);
+              mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+            },
             onComplete: () => {
               // Load the result from disk
               const reviewResult = getReviewResult(project, prNumber);
