@@ -423,7 +423,7 @@ export function registerMemoryHandlers(): void {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get memories directory',
+          error: error instanceof Error ? error.message : 'errors:memory.getDirFailed',
         };
       }
     }

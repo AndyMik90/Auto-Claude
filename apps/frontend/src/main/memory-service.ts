@@ -596,7 +596,7 @@ export class MemoryService {
     if (!result.success) {
       return {
         success: false,
-        message: result.error || 'Failed to check database status',
+        message: result.error || LADYBUG_ERROR_KEYS.statusCheckFailed,
       };
     }
 
@@ -605,21 +605,22 @@ export class MemoryService {
     if (!data.available) {
       return {
         success: false,
-        message: 'LadybugDB (real_ladybug) not installed. Requires Python 3.12+',
+        message: LADYBUG_ERROR_KEYS.notInstalled,
       };
     }
 
     if (!data.databaseExists) {
       return {
         success: false,
-        message: `Database not found at ${path.join(data.databasePath, data.database)}`,
+        message: LADYBUG_ERROR_KEYS.databaseNotFound,
+        // Path info available via data.databasePath for logging if needed
       };
     }
 
     if (!data.connected) {
       return {
         success: false,
-        message: data.error || 'Failed to connect to database',
+        message: data.error || LADYBUG_ERROR_KEYS.connectionFailed,
       };
     }
 
@@ -768,6 +769,9 @@ export const LADYBUG_ERROR_KEYS = {
   notInstalled: 'errors:ladybug.notInstalled',
   buildTools: 'errors:ladybug.buildTools',
   checkFailed: 'errors:ladybug.checkFailed',
+  databaseNotFound: 'errors:ladybug.databaseNotFound',
+  statusCheckFailed: 'errors:ladybug.statusCheckFailed',
+  connectionFailed: 'errors:ladybug.connectionFailed',
 } as const;
 
 /**
@@ -873,13 +877,13 @@ export async function checkLadybugInstalledAsync(): Promise<LadybugInstallStatus
       clearTimeout(timeoutId);
       ladybugCheckInProgress = null;
 
-      // Handle spawn failures (ENOENT for missing Python)
+      // Handle spawn failures (ENOENT/EACCES for missing/inaccessible Python)
       const errorCode = (err as NodeJS.ErrnoException).code;
-      const pythonMissing = errorCode === 'ENOENT';
+      const pythonNotAvailable = errorCode === 'ENOENT' || errorCode === 'EACCES';
       ladybugInstallCache = {
         installed: false,
-        pythonAvailable: !pythonMissing,
-        error: pythonMissing ? LADYBUG_ERROR_KEYS.pythonNotFound : LADYBUG_ERROR_KEYS.checkFailed,
+        pythonAvailable: !pythonNotAvailable,
+        error: pythonNotAvailable ? LADYBUG_ERROR_KEYS.pythonNotFound : LADYBUG_ERROR_KEYS.checkFailed,
       };
       resolve(ladybugInstallCache);
     });
