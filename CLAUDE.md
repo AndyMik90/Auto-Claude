@@ -11,7 +11,7 @@ Auto Claude is a multi-agent autonomous coding framework that builds software th
 ## Project Structure
 
 ```
-autonomous-coding/
+auto-claude/
 ├── apps/
 │   ├── backend/           # Python backend/CLI - ALL agent logic lives here
 │   │   ├── core/          # Client, auth, security
