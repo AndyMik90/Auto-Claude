@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { detectProvider, getUsageEndpoint, UsageMonitor, getUsageMonitor } from './usage-monitor';
 import type { ApiProvider } from './usage-monitor';
+import { hasHardcodedText } from '../../shared/utils/format-time';
 
 // Mock getClaudeProfileManager
 vi.mock('../claude-profile-manager', () => ({
@@ -1664,39 +1665,32 @@ describe('usage-monitor', () => {
 
   describe('Shared utility - hasHardcodedText', () => {
     it('should return true for empty string', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText('')).toBe(true);
     });
 
     it('should return true for null', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText(null)).toBe(true);
     });
 
     it('should return true for undefined', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText(undefined)).toBe(true);
     });
 
     it('should return true for "Unknown"', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText('Unknown')).toBe(true);
     });
 
     it('should return true for "Expired"', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText('Expired')).toBe(true);
     });
 
     it('should return false for valid time strings', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       expect(hasHardcodedText('2 hours remaining')).toBe(false);
       expect(hasHardcodedText('1 day left')).toBe(false);
       expect(hasHardcodedText('30 minutes')).toBe(false);
     });
 
     it('should be case-sensitive for "Unknown" and "Expired"', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       // Lowercase versions should not trigger the filter
       expect(hasHardcodedText('unknown')).toBe(false);
       expect(hasHardcodedText('expired')).toBe(false);
@@ -1705,7 +1699,6 @@ describe('usage-monitor', () => {
     });
 
     it('should handle strings with only whitespace', () => {
-      const { hasHardcodedText } = require('../../shared/utils/format-time');
       // Whitespace-only strings are falsy when trimmed
       expect(hasHardcodedText('   ')).toBe(true);
     });
