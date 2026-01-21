@@ -1,10 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Users, Sparkles, CheckCircle2, AlertCircle, Square } from 'lucide-react';
+import { Search, Users, Sparkles, CheckCircle2, AlertCircle, Square, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn } from '../lib/utils';
 import type { RoadmapGenerationStatus } from '../../shared/types/roadmap';
+
+/**
+ * Formats elapsed time in seconds into a human-readable string.
+ * Examples: "0:05", "1:23", "12:05", "1:00:05"
+ *
+ * @param seconds - The elapsed time in seconds
+ * @returns Formatted time string (MM:SS or H:MM:SS for >= 1 hour)
+ */
+function formatElapsedTime(seconds: number): string {
+  if (seconds < 0) return '0:00';
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
 
 /**
  * Hook to detect user's reduced motion preference.
@@ -195,9 +215,48 @@ export function RoadmapGenerationProgress({
   className,
   onStop
 }: RoadmapGenerationProgressProps) {
-  const { phase, progress, message, error } = generationStatus;
+  const { phase, progress, message, error, startedAt } = generationStatus;
   const reducedMotion = useReducedMotion();
   const [isStopping, setIsStopping] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  /**
+   * Calculate elapsed time from startedAt timestamp
+   */
+  const calculateElapsedTime = useCallback(() => {
+    if (!startedAt) return 0;
+    const startDate = startedAt instanceof Date ? startedAt : new Date(startedAt);
+    const now = new Date();
+    return Math.floor((now.getTime() - startDate.getTime()) / 1000);
+  }, [startedAt]);
+
+  /**
+   * Update elapsed time every second while generation is active
+   */
+  useEffect(() => {
+    // Only track time for active phases (not idle, complete, or error)
+    const isActivePhase = phase !== 'idle' && phase !== 'complete' && phase !== 'error';
+
+    if (!isActivePhase || !startedAt) {
+      // Reset elapsed time when not active or no start time
+      if (phase === 'idle') {
+        setElapsedTime(0);
+      }
+      return;
+    }
+
+    // Calculate initial elapsed time
+    setElapsedTime(calculateElapsedTime());
+
+    // Set up interval to update every second
+    const intervalId = setInterval(() => {
+      setElapsedTime(calculateElapsedTime());
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [phase, startedAt, calculateElapsedTime]);
 
   /**
    * Handle stop button click with error handling and double-click prevention
@@ -333,7 +392,16 @@ export function RoadmapGenerationProgress({
       {isActivePhase && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Progress</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Progress</span>
+              {/* Elapsed time display */}
+              {startedAt && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span className="tabular-nums">{formatElapsedTime(elapsedTime)}</span>
+                </div>
+              )}
+            </div>
             <span className="text-xs font-medium">{progress}%</span>
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full bg-border">
