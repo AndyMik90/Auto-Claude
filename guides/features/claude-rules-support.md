@@ -127,7 +127,7 @@ When no implementation plan exists yet (planning phase), **all rules are loaded*
 
 When an implementation plan exists, rules are **selectively loaded** based on `files_to_modify` and `files_to_create` in the plan:
 
-```
+```text
 Implementation Plan:
   - files_to_modify: ["src/app/api/films/route.ts"]
   - files_to_create: ["src/components/FilmModal.tsx"]
@@ -142,7 +142,7 @@ Matched Rules:
 
 When Auto-Claude starts, you'll see which rules were loaded:
 
-```
+```text
 Security settings: .claude_settings.json
    - Sandbox enabled (OS-level bash isolation)
    - Filesystem restricted to: /path/to/project
@@ -158,7 +158,7 @@ Security settings: .claude_settings.json
 
 ## Example Rules Structure
 
-```
+```text
 .claude/rules/
 ├── core/
 │   └── working-principles.md      # General coding principles
@@ -194,34 +194,40 @@ Security settings: .claude_settings.json
 ### Rules Not Being Applied
 
 1. **Check USE_CLAUDE_MD is set:**
+
    ```bash
    cat .auto-claude/.env | grep USE_CLAUDE_MD
    # Should show: USE_CLAUDE_MD=true
    ```
 
 2. **Check console output for "rules matched":**
-   ```
+
+   ```text
    - .claude/rules/: 3 rules matched
    ```
+
    If you see `0 rules matched`, check your path patterns in frontmatter.
 
 3. **Verify frontmatter format:**
+
    ```yaml
    ---
    paths:
      - src/app/api/**/*.ts
    ---
    ```
+
    The `paths:` key must be a YAML list, not a comma-separated string.
 
 ### Rules Loaded But Not Followed
 
 Check `context.json` in the spec folder - it should contain distilled patterns from your rules:
+
 ```json
 {
   "patterns": {
     "api_route_pattern": "Use withCsrfProtection wrapper...",
-    ...
+    "..."
   }
 }
 ```

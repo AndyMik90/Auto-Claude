@@ -2,7 +2,7 @@
 # Pre-build script for macOS to work around EPERM copyfile issues
 # Uses ditto to copy site-packages before electron-builder runs
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"

@@ -13,9 +13,11 @@ single source of truth for phase-aware tool and MCP server configuration.
 """
 
 import copy
+import fnmatch
 import json
 import logging
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -531,6 +533,7 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
     in_paths = False
     in_skills = False
     current_skill: dict | None = None  # Track structured skill entry
+    skill_base_indent: int = 0  # Track base indent of current skill list item
 
     for line in frontmatter_lines:
         stripped = line.strip()
@@ -544,7 +547,6 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
             current_skill = None
             # Check for inline array: paths: [a, b, c]
             if "[" in stripped:
-                import re
                 match = re.search(r'\[(.*)\]', stripped)
                 if match:
                     paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
@@ -556,7 +558,6 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
             current_skill = None
             # Check for inline array: require_skills: [/skill1, /skill2]
             if "[" in stripped:
-                import re
                 match = re.search(r'\[(.*)\]', stripped)
                 if match:
                     # Simple inline format - convert to dicts with default 'when'
@@ -580,6 +581,8 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                     current_skill = None
 
                 item_content = stripped[2:].strip()
+                # Track the indent of this list item for nested property detection
+                skill_base_indent = indent
 
                 # Check if it's structured format: "- skill: /review"
                 if item_content.startswith("skill:"):
@@ -590,8 +593,8 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                     skill_name = item_content.strip("'\"")
                     if skill_name:
                         skills.append({"skill": skill_name, "when": "per_subtask"})
-            # Check for nested properties of current skill (indented)
-            elif current_skill is not None and indent >= 4:
+            # Check for nested properties of current skill (indented more than list item)
+            elif current_skill is not None and indent > skill_base_indent:
                 if stripped.startswith("when:"):
                     when_value = stripped[5:].strip().strip("'\"")
                     if when_value in ("planning", "per_subtask", "end_of_coding", "qa_phase"):
@@ -599,14 +602,13 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                 elif stripped.startswith("paths:"):
                     # Check for inline array: paths: [src/**, lib/**]
                     if "[" in stripped:
-                        import re
                         match = re.search(r'\[(.*)\]', stripped)
                         if match:
                             current_skill["paths"] = [
                                 p.strip().strip("'\"") for p in match.group(1).split(",")
                             ]
-            elif stripped and not stripped.startswith("#") and indent < 4:
-                # End of skills array (non-indented, non-empty, non-comment line)
+            elif stripped and not stripped.startswith("#") and indent <= skill_base_indent:
+                # End of skills array (same or less indent, non-empty, non-comment line)
                 if current_skill and current_skill.get("skill"):
                     skills.append(current_skill)
                     current_skill = None
@@ -626,7 +628,7 @@ def _match_glob_pattern(pattern: str, filepath: str) -> bool:
     Match a glob pattern against a file path.
 
     Supports:
-    - ** for any directory depth
+    - ** for any directory depth (including multiple ** in a pattern)
     - * for any characters within a path segment
     - Direct path matching
 
@@ -637,50 +639,45 @@ def _match_glob_pattern(pattern: str, filepath: str) -> bool:
     Returns:
         True if the pattern matches the filepath
     """
-    import fnmatch
-
     # Normalize paths
     pattern = pattern.replace("\\", "/").strip("/")
     filepath = filepath.replace("\\", "/").strip("/")
 
-    # Handle ** patterns by converting to regex-compatible fnmatch
+    # Handle ** patterns by converting to regex
     if "**" in pattern:
-        # Split pattern into parts
-        parts = pattern.split("**")
-        if len(parts) == 2:
-            prefix, suffix = parts
-            prefix = prefix.rstrip("/")
-            suffix = suffix.lstrip("/")
+        # Convert glob pattern to regex
+        # Escape regex special characters except * and ?
+        regex_pattern = ""
+        i = 0
+        while i < len(pattern):
+            if pattern[i:i+2] == "**":
+                # ** matches any path depth (zero or more directories)
+                regex_pattern += ".*"
+                i += 2
+                # Skip trailing slash after **
+                if i < len(pattern) and pattern[i] == "/":
+                    i += 1
+            elif pattern[i] == "*":
+                # * matches any characters except /
+                regex_pattern += "[^/]*"
+                i += 1
+            elif pattern[i] == "?":
+                # ? matches any single character except /
+                regex_pattern += "[^/]"
+                i += 1
+            elif pattern[i] in ".^$+{}[]|()":
+                # Escape regex special characters
+                regex_pattern += "\\" + pattern[i]
+                i += 1
+            else:
+                regex_pattern += pattern[i]
+                i += 1
 
-            # Check if filepath starts with prefix
-            if prefix and not filepath.startswith(prefix):
-                return False
+        # Match the full path
+        regex_pattern = "^" + regex_pattern + "$"
+        return bool(re.match(regex_pattern, filepath))
 
-            # Check if filepath ends with suffix pattern
-            if suffix:
-                # Get the part after the prefix
-                if prefix:
-                    remaining = filepath[len(prefix):].lstrip("/")
-                else:
-                    remaining = filepath
-
-                # The suffix might contain wildcards
-                if "*" in suffix:
-                    # Match the suffix pattern against the end of remaining
-                    # Try matching against each possible suffix of remaining
-                    remaining_parts = remaining.split("/")
-                    suffix_parts = suffix.split("/")
-
-                    for i in range(len(remaining_parts) - len(suffix_parts) + 1):
-                        candidate = "/".join(remaining_parts[i:])
-                        if fnmatch.fnmatch(candidate, suffix):
-                            return True
-                    return False
-                else:
-                    return remaining.endswith(suffix) or fnmatch.fnmatch(remaining, f"*/{suffix}")
-            return True
-
-    # Simple glob matching
+    # Simple glob matching for patterns without **
     return fnmatch.fnmatch(filepath, pattern)
 
 
@@ -1285,7 +1282,8 @@ def create_client(
                         f"\n\n# Required Skills\n\n"
                         f"The following skills are required based on project rules:\n\n"
                         f"{combined_instructions}\n\n"
-                        f"Use the Skill tool to invoke skills. Example: `/review`, `/security-audit`\n\n"
+                        f"Skills are invoked automatically when relevant based on context. "
+                        f"Ensure the required skills run during your workflow phase.\n\n"
                         f"Do NOT mark your work as complete until all required skills for your phase have been run."
                     )
                     base_prompt = f"{base_prompt}{skill_instruction}"
