@@ -985,6 +985,18 @@ describe('usage-monitor', () => {
     });
 
     it('should handle unknown provider gracefully', async () => {
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create an active profile object with unknown provider
+      const unknownProviderProfile = {
+        isAPIProfile: true,
+        profileId: 'unknown-profile-1',
+        profileName: 'Unknown Provider Profile',
+        baseUrl: 'https://unknown-provider.com/api',
+        credential: 'unknown-api-key'
+      };
+
       // Mock API profile with unknown provider baseUrl
       mockLoadProfilesFile.mockResolvedValueOnce({
         profiles: [{
@@ -997,14 +1009,18 @@ describe('usage-monitor', () => {
         version: 1
       });
 
-      const monitor = getUsageMonitor();
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const usage = await monitor['fetchUsageViaAPI']('unknown-api-key', 'unknown-profile-1', 'Unknown Profile');
+      const usage = await monitor['fetchUsageViaAPI'](
+        'unknown-api-key',
+        'unknown-profile-1',
+        'Unknown Profile',
+        unknownProviderProfile
+      );
 
       // Unknown provider should return null
       expect(usage).toBeNull();
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown provider')
+      );
 
       consoleSpy.mockRestore();
     });
@@ -1396,6 +1412,302 @@ describe('usage-monitor', () => {
         const provider = detectProvider('https://unknown-api-provider.com/v1');
         expect(provider).toBe('unknown');
       });
+    });
+  });
+
+  describe('Cooldown-based API retry mechanism', () => {
+    beforeEach(() => {
+      // Clear any existing failure timestamps before each test
+      const monitor = getUsageMonitor();
+      monitor['apiFailureTimestamps'].clear();
+    });
+
+    it('should record API failure timestamp on error', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({ error: 'Server error' })
+      } as unknown as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const profileId = 'test-profile-cooldown';
+
+      // Call fetchUsageViaAPI which should fail and record timestamp
+      await monitor['fetchUsageViaAPI']('valid-token', profileId, 'Test Profile');
+
+      // Verify failure timestamp was recorded
+      const failureTimestamp = monitor['apiFailureTimestamps'].get(profileId);
+      expect(failureTimestamp).toBeDefined();
+      expect(typeof failureTimestamp).toBe('number');
+      // Should be recent (within last second)
+      expect(Date.now() - failureTimestamp!).toBeLessThan(1000);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should allow API retry after cooldown expires', async () => {
+      const monitor = getUsageMonitor();
+      const profileId = 'test-profile-retry';
+      const now = Date.now();
+
+      // Set a failure timestamp that's just before the cooldown period
+      const expiredFailureTime = now - UsageMonitor['API_FAILURE_COOLDOWN_MS'] - 1000; // 1 second past cooldown
+      monitor['apiFailureTimestamps'].set(profileId, expiredFailureTime);
+
+      // shouldUseApiMethod should return true (cooldown expired)
+      const shouldUseApi = monitor['shouldUseApiMethod'](profileId);
+      expect(shouldUseApi).toBe(true);
+    });
+
+    it('should prevent API retry during cooldown period', async () => {
+      const monitor = getUsageMonitor();
+      const profileId = 'test-profile-cooldown-active';
+      const now = Date.now();
+
+      // Set a recent failure timestamp (well within cooldown period)
+      const recentFailureTime = now - 1000; // 1 second ago
+      monitor['apiFailureTimestamps'].set(profileId, recentFailureTime);
+
+      // shouldUseApiMethod should return false (still in cooldown)
+      const shouldUseApi = monitor['shouldUseApiMethod'](profileId);
+      expect(shouldUseApi).toBe(false);
+    });
+
+    it('should allow API call when no previous failure recorded', async () => {
+      const monitor = getUsageMonitor();
+      const profileId = 'test-profile-no-failure';
+
+      // No failure timestamp recorded for this profile
+      expect(monitor['apiFailureTimestamps'].has(profileId)).toBe(false);
+
+      // shouldUseApiMethod should return true (no previous failure)
+      const shouldUseApi = monitor['shouldUseApiMethod'](profileId);
+      expect(shouldUseApi).toBe(true);
+    });
+
+    it('should handle edge case exactly at cooldown boundary', async () => {
+      const monitor = getUsageMonitor();
+      const profileId = 'test-profile-boundary';
+      const now = Date.now();
+
+      // Set failure timestamp exactly at cooldown boundary
+      const boundaryTime = now - UsageMonitor['API_FAILURE_COOLDOWN_MS'];
+      monitor['apiFailureTimestamps'].set(profileId, boundaryTime);
+
+      // At exact boundary, should allow retry (cooldown period has passed)
+      const shouldUseApi = monitor['shouldUseApiMethod'](profileId);
+      expect(shouldUseApi).toBe(true);
+    });
+
+    it('should track failures independently for different profiles', async () => {
+      const monitor = getUsageMonitor();
+      const profile1 = 'profile-1';
+      const profile2 = 'profile-2';
+      const now = Date.now();
+
+      // Set recent failure for profile1
+      monitor['apiFailureTimestamps'].set(profile1, now - 1000);
+      // Set expired failure for profile2
+      monitor['apiFailureTimestamps'].set(profile2, now - UsageMonitor['API_FAILURE_COOLDOWN_MS'] - 1000);
+
+      // Profile 1 should be in cooldown
+      expect(monitor['shouldUseApiMethod'](profile1)).toBe(false);
+      // Profile 2 should be allowed
+      expect(monitor['shouldUseApiMethod'](profile2)).toBe(true);
+    });
+  });
+
+  describe('Race condition prevention via activeProfile parameter', () => {
+    it('should use passed activeProfile instead of re-detecting', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          five_hour_utilization: 0.5,
+          seven_day_utilization: 0.3,
+          five_hour_reset_at: '2025-01-17T15:00:00Z',
+          seven_day_reset_at: '2025-01-20T12:00:00Z'
+        })
+      } as unknown as Response);
+
+      // Mock API profile
+      mockLoadProfilesFile.mockResolvedValueOnce({
+        profiles: [{
+          id: 'api-profile-1',
+          name: 'API Profile',
+          baseUrl: 'https://api.anthropic.com',
+          apiKey: 'sk-ant-api-key'
+        }],
+        activeProfileId: 'api-profile-1',
+        version: 1
+      });
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Pre-determined active profile (simulating profile at time of checkUsageAndSwap)
+      const predeterminedProfile = {
+        isAPIProfile: true,
+        profileId: 'api-profile-1',
+        profileName: 'API Profile',
+        baseUrl: 'https://api.anthropic.com',
+        credential: 'sk-ant-api-key'
+      };
+
+      // Call fetchUsageViaAPI with predetermined profile
+      const usage = await monitor['fetchUsageViaAPI'](
+        'sk-ant-api-key',
+        'api-profile-1',
+        'API Profile',
+        predeterminedProfile
+      );
+
+      // Should successfully fetch usage using the passed profile
+      expect(usage).not.toBeNull();
+      expect(usage?.profileId).toBe('api-profile-1');
+      expect(usage?.sessionPercent).toBe(50);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should fall back to profile detection when activeProfile not provided', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          five_hour_utilization: 0.5,
+          seven_day_utilization: 0.3,
+          five_hour_reset_at: '2025-01-17T15:00:00Z',
+          seven_day_reset_at: '2025-01-20T12:00:00Z'
+        })
+      } as unknown as Response);
+
+      // Mock API profile
+      mockLoadProfilesFile.mockResolvedValueOnce({
+        profiles: [{
+          id: 'api-profile-1',
+          name: 'API Profile',
+          baseUrl: 'https://api.anthropic.com',
+          apiKey: 'sk-ant-api-key'
+        }],
+        activeProfileId: 'api-profile-1',
+        version: 1
+      });
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Call fetchUsageViaAPI WITHOUT predetermined profile
+      // Should fall back to detecting profile from activeProfileId
+      const usage = await monitor['fetchUsageViaAPI'](
+        'sk-ant-api-key',
+        'api-profile-1',
+        'API Profile',
+        undefined // No activeProfile passed
+      );
+
+      // Should still work by detecting the profile
+      expect(usage).not.toBeNull();
+      expect(usage?.profileId).toBe('api-profile-1');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle OAuth profile in activeProfile parameter', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          five_hour_utilization: 0.5,
+          seven_day_utilization: 0.3,
+          five_hour_reset_at: '2025-01-17T15:00:00Z',
+          seven_day_reset_at: '2025-01-20T12:00:00Z'
+        })
+      } as unknown as Response);
+
+      const monitor = getUsageMonitor();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Pre-determined OAuth profile
+      const oauthProfile = {
+        isAPIProfile: false,
+        profileId: 'oauth-profile',
+        profileName: 'OAuth Profile',
+        baseUrl: 'https://api.anthropic.com',
+        credential: 'oauth-token'
+      };
+
+      // Call fetchUsageViaAPI with OAuth profile
+      const usage = await monitor['fetchUsageViaAPI'](
+        'oauth-token',
+        'oauth-profile',
+        'OAuth Profile',
+        oauthProfile
+      );
+
+      // Should successfully fetch usage for OAuth profile
+      expect(usage).not.toBeNull();
+      expect(usage?.profileId).toBe('oauth-profile');
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Shared utility - hasHardcodedText', () => {
+    it('should return true for empty string', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText('')).toBe(true);
+    });
+
+    it('should return true for null', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText(null)).toBe(true);
+    });
+
+    it('should return true for undefined', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText(undefined)).toBe(true);
+    });
+
+    it('should return true for "Unknown"', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText('Unknown')).toBe(true);
+    });
+
+    it('should return true for "Expired"', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText('Expired')).toBe(true);
+    });
+
+    it('should return false for valid time strings', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      expect(hasHardcodedText('2 hours remaining')).toBe(false);
+      expect(hasHardcodedText('1 day left')).toBe(false);
+      expect(hasHardcodedText('30 minutes')).toBe(false);
+    });
+
+    it('should be case-sensitive for "Unknown" and "Expired"', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      // Lowercase versions should not trigger the filter
+      expect(hasHardcodedText('unknown')).toBe(false);
+      expect(hasHardcodedText('expired')).toBe(false);
+      expect(hasHardcodedText('UNKNOWN')).toBe(false);
+      expect(hasHardcodedText('EXPIRED')).toBe(false);
+    });
+
+    it('should handle strings with only whitespace', () => {
+      const { hasHardcodedText } = require('../../shared/utils/format-time');
+      // Whitespace-only strings are falsy when trimmed
+      expect(hasHardcodedText('   ')).toBe(true);
     });
   });
 });
