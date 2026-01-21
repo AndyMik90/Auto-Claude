@@ -164,6 +164,11 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
           step={SCROLLBACK_STEP}
           value={settings.scrollback}
           onChange={(e) => handleScrollbackChange(parseInt(e.target.value, 10))}
+          aria-label={t('terminalFonts.performanceConfig.scrollback', { defaultValue: 'Scrollback Limit' })}
+          aria-valuemin={SCROLLBACK_MIN}
+          aria-valuemax={SCROLLBACK_MAX}
+          aria-valuenow={settings.scrollback}
+          aria-valuetext={`${formatScrollback(settings.scrollback)} lines`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

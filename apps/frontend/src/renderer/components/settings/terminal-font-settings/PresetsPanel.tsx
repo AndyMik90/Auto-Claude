@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Monitor, RotateCcw, Save, Trash2, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../../hooks/use-toast';
 import { cn } from '../../../lib/utils';
 import { Label } from '../../ui/label';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
@@ -62,6 +63,7 @@ interface CustomPreset {
  */
 export function PresetsPanel({ currentSettings, onPresetApply, onReset }: PresetsPanelProps) {
   const { t } = useTranslation(['settings', 'common']);
+  const { toast } = useToast();
 
   // Get store actions for applying custom presets
   const applySettings = useTerminalFontSettingsStore((state) => state.applySettings);
@@ -117,7 +119,10 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
     // Check for duplicate names
     const isDuplicate = customPresets.some((preset) => preset.name === trimmedName);
     if (isDuplicate) {
-      // TODO: Show error toast (will be implemented in parent component)
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.presets.duplicateName', { defaultValue: 'A preset with this name already exists' }),
+      });
       return;
     }
 
@@ -130,6 +135,10 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
 
     setCustomPresets((prev) => [...prev, newPreset]);
     setNewPresetName('');
+
+    toast({
+      title: t('terminalFonts.presets.saved', { defaultValue: 'Preset "{{name}}" saved successfully', name: trimmedName }),
+    });
   };
 
   // Handle applying a custom preset
@@ -140,7 +149,14 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
 
   // Handle deleting a custom preset
   const handleDeleteCustomPreset = (presetId: string) => {
+    const preset = customPresets.find((p) => p.id === presetId);
     setCustomPresets((prev) => prev.filter((preset) => preset.id !== presetId));
+
+    if (preset) {
+      toast({
+        title: t('terminalFonts.presets.deleted', { defaultValue: 'Preset "{{name}}" deleted', name: preset.name }),
+      });
+    }
   };
 
   // Get current OS name for reset button label

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Type, Minus, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../../lib/utils';
@@ -47,7 +47,15 @@ const LETTER_SPACING_STEP = 0.5;
  * All changes apply immediately and persist via the parent store
  */
 export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelProps) {
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
+
+  // Locale-aware number formatter for decimals
+  const numberFormatter = useMemo(() => {
+    return new Intl.NumberFormat(i18n.language, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
+  }, [i18n.language]);
 
   // State for available fonts (will be populated from font-discovery)
   const [availableFonts, setAvailableFonts] = useState<ComboboxOption[]>([]);
@@ -208,6 +216,11 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
           step={FONT_SIZE_STEP}
           value={settings.fontSize}
           onChange={(e) => handleFontSizeChange(parseInt(e.target.value, 10))}
+          aria-label={t('terminalFonts.fontConfig.fontSize', { defaultValue: 'Font Size' })}
+          aria-valuemin={FONT_SIZE_MIN}
+          aria-valuemax={FONT_SIZE_MAX}
+          aria-valuenow={settings.fontSize}
+          aria-valuetext={`${settings.fontSize} pixels`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -309,7 +322,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
             {t('terminalFonts.fontConfig.lineHeight', { defaultValue: 'Line Height' })}
           </Label>
           <span className="text-sm font-mono text-muted-foreground">
-            {settings.lineHeight.toFixed(1)}
+            {numberFormatter.format(settings.lineHeight)}
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -324,6 +337,11 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
           step={LINE_HEIGHT_STEP}
           value={settings.lineHeight}
           onChange={(e) => handleLineHeightChange(parseFloat(e.target.value))}
+          aria-label={t('terminalFonts.fontConfig.lineHeight', { defaultValue: 'Line Height' })}
+          aria-valuemin={LINE_HEIGHT_MIN}
+          aria-valuemax={LINE_HEIGHT_MAX}
+          aria-valuenow={settings.lineHeight}
+          aria-valuetext={numberFormatter.format(settings.lineHeight)}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -360,7 +378,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
             {t('terminalFonts.fontConfig.letterSpacing', { defaultValue: 'Letter Spacing' })}
           </Label>
           <span className="text-sm font-mono text-muted-foreground">
-            {settings.letterSpacing > 0 ? `+${settings.letterSpacing.toFixed(1)}` : settings.letterSpacing.toFixed(1)}px
+            {settings.letterSpacing > 0 ? `+${numberFormatter.format(settings.letterSpacing)}` : numberFormatter.format(settings.letterSpacing)}px
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -375,6 +393,11 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
           step={LETTER_SPACING_STEP}
           value={settings.letterSpacing}
           onChange={(e) => handleLetterSpacingChange(parseFloat(e.target.value))}
+          aria-label={t('terminalFonts.fontConfig.letterSpacing', { defaultValue: 'Letter Spacing' })}
+          aria-valuemin={LETTER_SPACING_MIN}
+          aria-valuemax={LETTER_SPACING_MAX}
+          aria-valuenow={settings.letterSpacing}
+          aria-valuetext={`${settings.letterSpacing > 0 ? '+' : ''}${numberFormatter.format(settings.letterSpacing)} pixels`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

@@ -1,8 +1,10 @@
 import { Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../../hooks/use-toast';
 import { SettingsSection } from '../SettingsSection';
 import { useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
+import { MAX_IMPORT_FILE_SIZE } from '../../../lib/terminal-font-constants';
 
 // Child components
 import { FontConfigPanel } from './FontConfigPanel';
@@ -25,6 +27,7 @@ import { LivePreviewTerminal } from './LivePreviewTerminal';
  */
 export function TerminalFontSettings() {
   const { t } = useTranslation('settings');
+  const { toast } = useToast();
 
   // Get current settings from store (triggers re-render on changes)
   const settings = useTerminalFontSettingsStore();
@@ -76,8 +79,16 @@ export function TerminalFontSettings() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      toast({
+        title: t('terminalFonts.importExport.exportSuccess', { defaultValue: 'Settings exported successfully' }),
+      });
     } catch (error) {
       console.error('Failed to export settings:', error);
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.importExport.exportFailed', { defaultValue: 'Failed to export settings' }),
+      });
     }
   };
 
@@ -85,18 +96,48 @@ export function TerminalFontSettings() {
    * Handle import configuration from JSON file
    */
   const handleImport = (file: File) => {
+    // Check file size
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.importExport.fileTooLarge', { defaultValue: 'Import file too large (max 10KB)' }),
+      });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const json = e.target?.result as string;
         const success = importSettings(json);
-        if (!success) {
-          console.error('Failed to import settings: Invalid JSON format');
+
+        if (success) {
+          toast({
+            title: t('terminalFonts.importExport.importSuccess', { defaultValue: 'Settings imported successfully' }),
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: t('terminalFonts.importExport.importFailed', { defaultValue: 'Failed to import settings: Invalid JSON format' }),
+            description: t('terminalFonts.importExport.importFailedRange', { defaultValue: 'Values must be within valid ranges' }),
+          });
         }
       } catch (error) {
         console.error('Failed to import settings:', error);
+        toast({
+          variant: 'destructive',
+          title: t('terminalFonts.importExport.readError', { defaultValue: 'Failed to read file' }),
+        });
       }
     };
+
+    reader.onerror = () => {
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.importExport.readError', { defaultValue: 'Failed to read file' }),
+      });
+    };
+
     reader.readAsText(file);
   };
 
@@ -107,8 +148,16 @@ export function TerminalFontSettings() {
     try {
       const json = exportSettings();
       await navigator.clipboard.writeText(json);
+
+      toast({
+        title: t('terminalFonts.importExport.copySuccess', { defaultValue: 'Settings copied to clipboard' }),
+      });
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.importExport.copyFailed', { defaultValue: 'Failed to copy to clipboard' }),
+      });
     }
   };
 

@@ -135,7 +135,7 @@ export function CursorConfigPanel({ settings, onSettingChange }: CursorConfigPan
         <Label className="text-sm font-medium text-foreground">
           {t('terminalFonts.cursorConfig.cursorAccentColor', { defaultValue: 'Cursor Accent Color' })}
         </Label>
-        <p className="text-sm text-muted-foreground">
+        <p id="cursor-color-description" className="text-sm text-muted-foreground">
           {t('terminalFonts.cursorConfig.cursorAccentColorDescription', {
             defaultValue: 'Color of the cursor when visible (affects contrast and visibility)',
           })}
@@ -148,6 +148,8 @@ export function CursorConfigPanel({ settings, onSettingChange }: CursorConfigPan
               id="cursor-accent-color"
               value={settings.cursorAccentColor}
               onChange={handleCursorAccentColorChange}
+              aria-label={t('terminalFonts.cursorConfig.cursorAccentColor', { defaultValue: 'Cursor Accent Color' })}
+              aria-describedby="cursor-color-description"
               className={cn(
                 'h-10 w-10 rounded-lg cursor-pointer border-2 border-border',
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary',
