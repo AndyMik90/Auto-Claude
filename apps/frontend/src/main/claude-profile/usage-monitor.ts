@@ -702,7 +702,7 @@ export class UsageMonitor extends EventEmitter {
       } else {
         // No activeProfile passed - need to detect from profiles file
         const profilesFile = await loadProfilesFile();
-        apiProfile = profilesFile.profiles.find(p => p.id === activeProfile?.profileId);
+        apiProfile = profilesFile.profiles.find(p => p.id === profileId);
 
         if (apiProfile && apiProfile.apiKey) {
           // API profile found
