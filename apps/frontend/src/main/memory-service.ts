@@ -903,6 +903,9 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
     return ladybugInstallCache;
   }
 
+  // Quick sync check for Python availability (doesn't block, just checks PATH)
+  const pythonAvailable = findPythonCommand() !== null;
+
   // Return "checking" status and kick off async check
   // This prevents blocking the main process
   checkLadybugInstalledAsync().catch(() => {
@@ -912,7 +915,7 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
   // Return a temporary status indicating check is in progress
   return {
     installed: false,
-    pythonAvailable: true,
+    pythonAvailable,
     // No error - check is still in progress
   };
 }
