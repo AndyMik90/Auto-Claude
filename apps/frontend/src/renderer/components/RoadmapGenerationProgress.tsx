@@ -148,6 +148,55 @@ const STEP_PHASES: { key: GenerationPhase; label: string }[] = [
 ];
 
 /**
+ * Internal component for heartbeat animation indicator.
+ * Shows a subtle pulsing animation to indicate the process is alive.
+ * Respects user's reduced motion preference.
+ */
+function HeartbeatIndicator({
+  isActive,
+  reducedMotion,
+  color,
+}: {
+  isActive: boolean;
+  reducedMotion: boolean;
+  color: string;
+}) {
+  if (!isActive) return null;
+
+  // Heartbeat animation: subtle scale pulse to show process is alive
+  const heartbeatAnimation = reducedMotion
+    ? { scale: 1, opacity: 1 }
+    : {
+        scale: [1, 1.05, 1],
+        opacity: [0.7, 1, 0.7],
+      };
+
+  const heartbeatTransition = reducedMotion
+    ? { duration: 0 }
+    : {
+        duration: 2,
+        repeat: Infinity,
+        ease: 'easeInOut' as const,
+      };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.div
+          className="flex items-center gap-1.5 cursor-help"
+          animate={heartbeatAnimation}
+          transition={heartbeatTransition}
+        >
+          <div className={cn('h-2 w-2 rounded-full', color)} />
+          <span className="text-xs text-muted-foreground">Processing</span>
+        </motion.div>
+      </TooltipTrigger>
+      <TooltipContent>Process is actively running</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
  * Internal component for showing phase steps indicator
  */
 function PhaseStepsIndicator({
@@ -469,7 +518,15 @@ export function RoadmapGenerationProgress({
                 </Tooltip>
               )}
             </div>
-            <span className="text-xs font-medium">{progress}%</span>
+            <div className="flex items-center gap-3">
+              {/* Heartbeat indicator to show process is alive */}
+              <HeartbeatIndicator
+                isActive={isActivePhase}
+                reducedMotion={reducedMotion}
+                color={config.color}
+              />
+              <span className="text-xs font-medium">{progress}%</span>
+            </div>
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full bg-border">
             {progress > 0 ? (
