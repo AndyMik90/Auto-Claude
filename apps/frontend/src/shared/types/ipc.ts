@@ -53,6 +53,7 @@ import type {
   SessionDateRestoreResult,
   RateLimitInfo,
   SDKRateLimitInfo,
+  AuthFailureInfo,
   RetryWithProfileRequest,
   CreateTerminalWorktreeRequest,
   TerminalWorktreeConfig,
@@ -297,6 +298,8 @@ export interface ElectronAPI {
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<ClaudeProfile | null>>;
   /** Listen for SDK/CLI rate limit events (non-terminal) */
   onSDKRateLimit: (callback: (info: SDKRateLimitInfo) => void) => () => void;
+  /** Listen for auth failure events (401 errors requiring re-authentication) */
+  onAuthFailure: (callback: (info: AuthFailureInfo) => void) => () => void;
   /** Retry a rate-limited operation with a different profile */
   retryWithProfile: (request: RetryWithProfileRequest) => Promise<IPCResult>;
 

@@ -479,5 +479,20 @@
     "step2": "Trouvez le profil dans la section Comptes Claude",
     "step3": "Cliquez sur « Authentifier » pour terminer la connexion",
     "footer": "Le compte sera disponible une fois l'authentification terminée."
+  },
+  "auth": {
+    "failure": {
+      "title": "Authentification requise",
+      "profileLabel": "Profil",
+      "unknownProfile": "Profil inconnu",
+      "tokenExpired": "Votre jeton d'authentification a expiré.",
+      "tokenInvalid": "Votre jeton d'authentification est invalide.",
+      "tokenMissing": "Aucun jeton d'authentification trouvé.",
+      "authFailed": "Échec de l'authentification.",
+      "description": "Veuillez vous ré-authentifier pour continuer à utiliser Auto Claude.",
+      "taskAffected": "Tâche affectée",
+      "technicalDetails": "Détails techniques",
+      "goToSettings": "Aller aux paramètres"
+    }
   }
 }
