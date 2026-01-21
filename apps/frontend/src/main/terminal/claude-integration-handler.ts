@@ -326,9 +326,13 @@ export function buildClaudeShellCommand(
         if (isPowerShell) {
           // PowerShell: Use dot sourcing (.) to run the .ps1 file in current scope,
           // then Remove-Item to delete it. Use single quotes for paths.
-          // PowerShell uses ; as command separator.
+          //
+          // SECURITY: Use -ErrorAction Stop to ensure that if Remove-Item fails
+          // (due to file lock, permissions, etc.), execution stops and the sensitive
+          // token file is not silently left on disk. This matches the safer behavior
+          // of cmd.exe which uses && to abort on failure.
           const escapedTempFile = escapePowerShellPath(config.tempFile);
-          return `cls; ${cwdCommand}${pathPrefix}. '${escapedTempFile}'; Remove-Item -Path '${escapedTempFile}' -Force; ${fullCmd}\r`;
+          return `cls; ${cwdCommand}${pathPrefix}. '${escapedTempFile}'; Remove-Item -Path '${escapedTempFile}' -Force -ErrorAction Stop; ${fullCmd}\r`;
         }
         // Windows cmd.exe: Use batch file approach with 'call' command
         // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
