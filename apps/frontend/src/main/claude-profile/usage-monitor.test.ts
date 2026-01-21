@@ -1018,8 +1018,14 @@ describe('usage-monitor', () => {
 
       // Unknown provider should return null
       expect(usage).toBeNull();
+      // Verify console.warn was called with "Unknown provider - no usage endpoint configured:" message
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown provider')
+        '[UsageMonitor] Unknown provider - no usage endpoint configured:',
+        expect.objectContaining({
+          provider: 'unknown',
+          baseUrl: 'https://unknown-provider.com/api',
+          profileId: 'unknown-profile-1'
+        })
       );
 
       consoleSpy.mockRestore();
