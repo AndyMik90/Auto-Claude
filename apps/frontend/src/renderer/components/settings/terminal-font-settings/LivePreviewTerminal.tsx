@@ -231,8 +231,9 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
         ref={terminalRef}
         className="rounded-lg overflow-hidden border-2 border-border bg-[#0B0B0F]"
         style={{
-          height: '300px',
+          height: '500px',
           width: '100%',
+          minWidth: '500px',
         }}
         aria-label={t('terminalFonts.preview.ariaLabel', {
           defaultValue: 'Terminal preview showing sample output with current font settings',

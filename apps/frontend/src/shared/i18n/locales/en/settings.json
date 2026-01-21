@@ -245,9 +245,11 @@
   },
   "devtools": {
     "title": "Developer Tools",
-    "description": "Configure your preferred IDE and terminal for working with worktrees",
+    "description": "Configure your preferred IDE, terminal, and terminal font settings",
     "detecting": "Detecting installed tools...",
     "detectAgain": "Detect Again",
+    "tabTools": "Tools",
+    "tabTerminalFonts": "Terminal Fonts",
     "ide": {
       "label": "Preferred IDE",
       "description": "Auto Claude will open worktrees in this editor",

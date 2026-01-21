@@ -19,8 +19,7 @@ import {
   Globe,
   Code,
   Bug,
-  Server,
-  Terminal
+  Server
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -53,7 +52,6 @@ import { IntegrationSettings } from './IntegrationSettings';
 import { AdvancedSettings } from './AdvancedSettings';
 import { DevToolsSettings } from './DevToolsSettings';
 import { DebugSettings } from './DebugSettings';
-import { TerminalFontSettings } from './terminal-font-settings/TerminalFontSettings';
 import { ProfileList } from './ProfileList';
 import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
@@ -69,7 +67,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'updates' | 'notifications' | 'debug' | 'terminal-fonts';
+export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'updates' | 'notifications' | 'debug';
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -87,8 +85,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'api-profiles', icon: Server },
   { id: 'updates', icon: Package },
   { id: 'notifications', icon: Bell },
-  { id: 'debug', icon: Bug },
-  { id: 'terminal-fonts', icon: Terminal }
+  { id: 'debug', icon: Bug }
 ];
 
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
@@ -205,8 +202,6 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="notifications" version={version} />;
       case 'debug':
         return <DebugSettings />;
-      case 'terminal-fonts':
-        return <TerminalFontSettings />;
       default:
         return null;
     }
