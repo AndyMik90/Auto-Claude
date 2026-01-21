@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Eye,
   EyeOff,
@@ -41,7 +41,7 @@ interface OAuthStepProps {
  * reusing patterns from IntegrationSettings.tsx.
  */
 export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
-  const { t } = useTranslation('onboarding');
+  const { t } = useTranslation(['onboarding', 'common']);
   const { toast } = useToast();
 
   // Claude Profiles state
@@ -539,7 +539,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               size="icon"
                               onClick={() => toggleTokenEntry(profile.id)}
                               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              title={expandedTokenProfileId === profile.id ? "Hide token entry" : "Enter token manually"}
+                              title={expandedTokenProfileId === profile.id ? t('common:accessibility.hideTokenEntryAriaLabel') : t('common:accessibility.enterTokenManuallyAriaLabel')}
                             >
                               {expandedTokenProfileId === profile.id ? (
                                 <ChevronDown className="h-3 w-3" />
@@ -552,7 +552,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               size="icon"
                               onClick={() => startEditingProfile(profile)}
                               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              title="Rename profile"
+                              title={t('common:accessibility.renameProfileAriaLabel')}
                             >
                               <Pencil className="h-3 w-3" />
                             </Button>
@@ -563,7 +563,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 onClick={() => handleDeleteProfile(profile.id)}
                                 disabled={deletingProfileId === profile.id}
                                 className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title="Delete profile"
+                                title={t('common:accessibility.deleteProfileAriaLabel')}
                               >
                                 {deletingProfileId === profile.id ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -582,10 +582,13 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                           <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className="text-xs font-medium text-muted-foreground">
-                                Manual Token Entry
+                                {t('common:oauth.manualTokenEntry')}
                               </Label>
                               <span className="text-xs text-muted-foreground">
-                                Run <code className="px-1 py-0.5 bg-muted rounded font-mono text-xs">claude setup-token</code> to get your token
+                                <Trans
+                                  i18nKey="common:oauth.tokenCommandHint"
+                                  components={{ code: <code className="font-mono bg-muted px-1 rounded" /> }}
+                                />
                               </span>
                             </div>
 
@@ -609,7 +612,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
 
                               <Input
                                 type="email"
-                                placeholder="Email (optional, for display)"
+                                placeholder={t('common:oauth.emailOptionalPlaceholder')}
                                 value={manualTokenEmail}
                                 onChange={(e) => setManualTokenEmail(e.target.value)}
                                 className="text-xs h-8"
@@ -623,7 +626,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 onClick={() => toggleTokenEntry(profile.id)}
                                 className="h-7 text-xs"
                               >
-                                Cancel
+                                {t('common:buttons.cancel')}
                               </Button>
                               <Button
                                 size="sm"
@@ -636,7 +639,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                                 ) : (
                                   <Check className="h-3 w-3" />
                                 )}
-                                Save Token
+                                {t('common:oauth.saveToken')}
                               </Button>
                             </div>
                           </div>
@@ -666,7 +669,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
               {/* Add new account input */}
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Account name (e.g., Work, Personal)"
+                  placeholder={t('common:oauth.accountNamePlaceholder')}
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
                   className="flex-1 h-8 text-sm"
@@ -687,7 +690,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                   ) : (
                     <Plus className="h-3 w-3" />
                   )}
-                  Add
+                  {t('common:buttons.add')}
                 </Button>
               </div>
             </div>
@@ -699,7 +702,7 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     <p className="text-sm text-success">
-                      You have at least one authenticated Claude account. You can continue to the next step.
+                      {t('common:oauth.hasAuthenticatedAccount')}
                     </p>
                   </div>
                 </CardContent>

@@ -544,6 +544,57 @@ Please authenticate and try again.`;
       expect(result.isAuthFailure).toBe(true);
     });
 
+    it('should detect Claude API "OAuth token has expired" pattern', async () => {
+      const { detectAuthFailure } = await import('../rate-limit-detector');
+
+      const output = 'API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired. Please obtain a new token or refresh your existing token."}}';
+      const result = detectAuthFailure(output);
+
+      expect(result.isAuthFailure).toBe(true);
+      expect(result.failureType).toBe('expired');
+    });
+
+    it('should detect Claude API authentication_error type in JSON', async () => {
+      const { detectAuthFailure } = await import('../rate-limit-detector');
+
+      const output = '{"type":"authentication_error","message":"Invalid token"}';
+      const result = detectAuthFailure(output);
+
+      expect(result.isAuthFailure).toBe(true);
+      expect(result.failureType).toBe('invalid');
+    });
+
+    it('should detect plain "API Error: 401" pattern', async () => {
+      const { detectAuthFailure } = await import('../rate-limit-detector');
+
+      const output = 'API Error: 401 - Request failed';
+      const result = detectAuthFailure(output);
+
+      expect(result.isAuthFailure).toBe(true);
+      expect(result.failureType).toBe('invalid');
+    });
+
+    it('should detect "Please obtain a new token" pattern', async () => {
+      const { detectAuthFailure } = await import('../rate-limit-detector');
+
+      const output = 'Please obtain a new token or refresh your existing token.';
+      const result = detectAuthFailure(output);
+
+      expect(result.isAuthFailure).toBe(true);
+      expect(result.failureType).toBe('expired');
+    });
+
+    it('should detect "please obtain a new token" pattern with surrounding JSON context', async () => {
+      const { detectAuthFailure } = await import('../rate-limit-detector');
+
+      // Test the pattern embedded in a larger error message with JSON context
+      const output = 'Error: {"error":{"message":"Your session has ended. Please obtain a new token to continue."}}';
+      const result = detectAuthFailure(output);
+
+      expect(result.isAuthFailure).toBe(true);
+      expect(result.failureType).toBe('expired');
+    });
+
     it('should handle error stack traces with auth failure', async () => {
       const { detectAuthFailure } = await import('../rate-limit-detector');
 

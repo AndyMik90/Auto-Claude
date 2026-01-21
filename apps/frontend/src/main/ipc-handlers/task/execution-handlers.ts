@@ -1070,7 +1070,7 @@ export function registerTaskExecutionHandlers(
 
         // Auto-restart the task if requested
         let autoRestarted = false;
-        if (autoRestart && project) {
+        if (autoRestart) {
           // Check git status before auto-restarting
           const gitStatusForRestart = checkGitStatus(project.path);
           if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
