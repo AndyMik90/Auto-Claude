@@ -24,8 +24,8 @@ export function UsageIndicator() {
   const [isAvailable, setIsAvailable] = useState(false);
 
   // Helper function to format large numbers with locale-aware compact notation
-  const formatUsageValue = (value?: number): string | undefined => {
-    if (value === undefined) return undefined;
+  const formatUsageValue = (value?: number | null): string | undefined => {
+    if (value == null) return undefined;
 
     // Use Intl.NumberFormat for locale-aware compact number formatting
     // Fallback to toString() if Intl is not available
