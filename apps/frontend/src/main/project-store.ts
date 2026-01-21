@@ -8,7 +8,7 @@ import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
 import { debugLog } from '../shared/utils/debug-logger';
 import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
-import { WORKTREE_SPEC_DIR_PATTERN } from '../shared/constants/worktree-patterns';
+import { WORKTREE_SPEC_DIR_PATTERN, WORKTREE_ROOT_PATTERN } from '../shared/constants/worktree-patterns';
 
 interface TabState {
   openProjectIds: string[];
@@ -271,11 +271,11 @@ export class ProjectStore {
 
     // WORKTREE ISOLATION: If running from a worktree, override project path to use worktree root
     const cwd = process.cwd();
-    const worktreeMatch = cwd.match(WORKTREE_SPEC_DIR_PATTERN);
+    const worktreeMatch = cwd.match(WORKTREE_ROOT_PATTERN);
     if (worktreeMatch) {
-      const worktreeFullName = worktreeMatch[1];
-      const worktreeSpecNumber = worktreeFullName.match(/^(\d{3})/)?.[1];
-      const worktreeRoot = cwd.substring(0, cwd.indexOf(worktreeMatch[0]) + worktreeMatch[0].length);
+      const worktreeRoot = worktreeMatch[1];
+      const worktreeFullName = worktreeRoot.match(/(\d{3}-[^/\\]+)$/)?.[1];
+      const worktreeSpecNumber = worktreeFullName?.match(/^(\d{3})/)?.[1];
 
       debugLog(`[ProjectStore] Worktree mode detected (${worktreeSpecNumber}), overriding project path from "${project.path}" to "${worktreeRoot}"`);
       project.path = worktreeRoot;

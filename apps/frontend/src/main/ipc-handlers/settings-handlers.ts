@@ -29,21 +29,22 @@ const settingsPath = getSettingsPath();
  * Auto-detect the auto-claude source path relative to the app location.
  * Works across platforms (macOS, Windows, Linux) in both dev and production modes.
  *
- * Priority order:
+ * Priority order (4-priority system):
  * 1. AUTO_CLAUDE_BACKEND_PATH environment variable (manual override)
  * 2. Local apps/backend in worktree (if running from worktree)
- * 3. Standard auto-detection logic (production/dev paths)
+ * 3. User settings (saved autoBuildPath)
+ * 4. Standard auto-detection logic (production/dev paths)
  */
 const detectAutoBuildSourcePath = (): string | null => {
   // Enable debug logging with DEBUG=1
   const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
   if (debug) {
-    console.warn('[detectAutoBuildSourcePath] Platform:', process.platform);
-    console.warn('[detectAutoBuildSourcePath] Is dev:', is.dev);
-    console.warn('[detectAutoBuildSourcePath] __dirname:', __dirname);
-    console.warn('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
-    console.warn('[detectAutoBuildSourcePath] process.cwd():', process.cwd());
+    console.debug('[detectAutoBuildSourcePath] Platform:', process.platform);
+    console.debug('[detectAutoBuildSourcePath] Is dev:', is.dev);
+    console.debug('[detectAutoBuildSourcePath] __dirname:', __dirname);
+    console.debug('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
+    console.debug('[detectAutoBuildSourcePath] process.cwd():', process.cwd());
   }
 
   // PRIORITY 1: Check environment variable override
@@ -53,14 +54,14 @@ const detectAutoBuildSourcePath = (): string | null => {
     const exists = existsSync(envBackendPath) && existsSync(markerPath);
 
     if (debug) {
-      console.warn(`[detectAutoBuildSourcePath] ENV override path: ${envBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+      console.debug(`[detectAutoBuildSourcePath] ENV override path: ${envBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
     }
 
     if (exists) {
       console.warn(`[detectAutoBuildSourcePath] Using AUTO_CLAUDE_BACKEND_PATH: ${envBackendPath}`);
       return envBackendPath;
     } else {
-      console.warn(`[detectAutoBuildSourcePath] AUTO_CLAUDE_BACKEND_PATH set but invalid: ${envBackendPath}`);
+      console.warn(`[detectAutoBuildSourcePath] AUTO_CLAUDE_BACKEND_PATH set but invalid (marker file not found): ${envBackendPath}`);
     }
   }
 
@@ -80,15 +81,15 @@ const detectAutoBuildSourcePath = (): string | null => {
       const exists = existsSync(localBackendPath) && existsSync(markerPath);
 
       if (debug) {
-        console.warn(`[detectAutoBuildSourcePath] Detected worktree: ${worktreeRoot}`);
-        console.warn(`[detectAutoBuildSourcePath] Local backend path: ${localBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+        console.debug(`[detectAutoBuildSourcePath] Detected worktree: ${worktreeRoot}`);
+        console.debug(`[detectAutoBuildSourcePath] Local backend path: ${localBackendPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
       }
 
       if (exists) {
         console.warn(`[detectAutoBuildSourcePath] Using worktree local backend: ${localBackendPath}`);
         return localBackendPath;
       } else {
-        console.warn(`[detectAutoBuildSourcePath] Worktree detected but no local backend found, falling back to standard detection`);
+        console.warn(`[detectAutoBuildSourcePath] Worktree detected but no local backend found at ${localBackendPath}, falling back to standard detection`);
       }
     }
   }
@@ -102,14 +103,14 @@ const detectAutoBuildSourcePath = (): string | null => {
     const exists = existsSync(settings.autoBuildPath) && existsSync(markerPath);
 
     if (debug) {
-      console.warn(`[detectAutoBuildSourcePath] Saved settings path: ${settings.autoBuildPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
+      console.debug(`[detectAutoBuildSourcePath] Saved settings path: ${settings.autoBuildPath}: ${exists ? '✓ FOUND' : '✗ not found'}`);
     }
 
     if (exists) {
       console.warn(`[detectAutoBuildSourcePath] Using saved settings backend path: ${settings.autoBuildPath}`);
       return settings.autoBuildPath;
     } else {
-      console.warn(`[detectAutoBuildSourcePath] Saved settings path is invalid, falling back to standard detection`);
+      console.warn(`[detectAutoBuildSourcePath] Saved settings path '${settings.autoBuildPath}' is invalid, falling back to standard detection`);
     }
   }
 
@@ -143,7 +144,7 @@ const detectAutoBuildSourcePath = (): string | null => {
   possiblePaths.push(path.resolve(process.cwd(), 'apps', 'backend'));
 
   if (debug) {
-    console.warn('[detectAutoBuildSourcePath] Checking standard paths:', possiblePaths);
+    console.debug('[detectAutoBuildSourcePath] Checking standard paths:', possiblePaths);
   }
 
   for (const p of possiblePaths) {

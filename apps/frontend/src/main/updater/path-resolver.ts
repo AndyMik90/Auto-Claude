@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { app } from 'electron';
-import { WORKTREE_SPEC_PATTERN } from '../../shared/constants/worktree-patterns';
+import { WORKTREE_SPEC_PATTERN, WORKTREE_ROOT_PATTERN } from '../../shared/constants/worktree-patterns';
 
 /**
  * Get the path to the bundled backend source
@@ -58,19 +58,20 @@ export function getUpdateCachePath(): string {
 export function getEffectiveSourcePath(): string {
   // PRIORITY 1: Check if running from a worktree
   const cwd = process.cwd();
-  const worktreeMatch = cwd.match(WORKTREE_SPEC_PATTERN);
+  const worktreeMatch = cwd.match(WORKTREE_ROOT_PATTERN);
 
   if (worktreeMatch) {
-    const specNumber = worktreeMatch[1];
-    const worktreeRoot = cwd.substring(0, cwd.indexOf(worktreeMatch[0]) + worktreeMatch[0].length);
+    const worktreeRoot = worktreeMatch[1];
+    const specNumberMatch = worktreeRoot.match(WORKTREE_SPEC_PATTERN);
+    const specNumber = specNumberMatch ? specNumberMatch[1] : 'unknown';
     const worktreeBackendPath = path.join(worktreeRoot, 'apps', 'backend');
     const worktreeMarkerPath = path.join(worktreeBackendPath, 'runners', 'spec_runner.py');
 
     if (existsSync(worktreeMarkerPath)) {
-      console.warn(`[path-resolver] Worktree mode detected (${specNumber}), using: ${worktreeBackendPath}`);
+      console.debug(`[path-resolver] Worktree mode detected (${specNumber}), using: ${worktreeBackendPath}`);
       return worktreeBackendPath;
     }
-    console.warn(`[path-resolver] Worktree mode detected (${specNumber}), but backend not found at: ${worktreeBackendPath}`);
+    console.debug(`[path-resolver] Worktree mode detected (${specNumber}), but backend not found at: ${worktreeBackendPath}`);
   }
 
   // PRIORITY 2: Check user settings for configured autoBuildPath

@@ -360,9 +360,9 @@ app.whenReady().then(() => {
       // Get the effective path that will actually be used (includes worktree detection)
       const effectivePath = validAutoBuildPath ? getEffectiveSourcePath() : undefined;
 
-      console.warn('[main] Configuring AgentManager with settings:', {
+      console.debug('[main] Configuring AgentManager with settings:', {
         pythonPath: settings.pythonPath,
-        autoBuildPath: effectivePath || validAutoBuildPath
+        autoBuildPath: effectivePath
       });
       agentManager.configure(settings.pythonPath, validAutoBuildPath);
     }

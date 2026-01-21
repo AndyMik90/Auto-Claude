@@ -222,10 +222,6 @@ export function Sidebar({
     loadWorktreeInfo();
   }, []);
 
-  const handleAddProject = () => {
-    setShowAddProjectModal(true);
-  };
-
   const handleProjectAdded = (project: Project, needsInit: boolean) => {
     if (needsInit) {
       setPendingProject(project);
