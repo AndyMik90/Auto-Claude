@@ -80,9 +80,12 @@ runs:
           echo "Installed yq version:"
           yq --version
 
-          # Merge the files arrays from both manifests using eval-all
-          # Use single line to avoid shell/YAML parsing issues
-          yq eval-all 'select(fileIndex == 0) * {"files": ([.[].files] | add)}' "$intel_manifest" "$arm64_manifest" > "${{ inputs.output-path }}/latest-mac.yml"
+          # Merge the files arrays from both manifests
+          # Write yq expression to file to avoid shell escaping issues
+          cat > /tmp/yq-merge.txt << 'YQEXPR'
+        select(fileIndex == 0) * {"files": ([.[].files] | add)}
+        YQEXPR
+          yq eval-all "$(cat /tmp/yq-merge.txt)" "$intel_manifest" "$arm64_manifest" > "${{ inputs.output-path }}/latest-mac.yml"
 
           echo "Merged manifest contents:"
           cat "${{ inputs.output-path }}/latest-mac.yml"
