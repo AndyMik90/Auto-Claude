@@ -85,7 +85,8 @@
   "actions": {
     "save": "Enregistrer",
     "apply": "Appliquer",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "settings": "Paramètres"
   },
   "labels": {
     "loading": "Chargement...",

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Group,
   Panel,
@@ -45,6 +46,7 @@ interface TerminalGridProps {
 }
 
 export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: TerminalGridProps) {
+  const { t } = useTranslation('common');
   const allTerminals = useTerminalStore((state) => state.terminals);
   // Filter terminals to show only those belonging to the current project
   // Also include legacy terminals without projectPath (created before this change)
@@ -460,7 +462,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
               }}
             >
               <Settings className="h-3 w-3" />
-              Settings
+              {t('actions.settings')}
             </Button>
             {terminals.some((t) => t.status === 'running' && !t.isClaudeMode) && (
               <Button

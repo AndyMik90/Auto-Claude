@@ -204,6 +204,7 @@ export function TerminalFontSettings() {
                 const file = e.target.files?.[0];
                 if (file) {
                   handleImport(file);
+                  e.target.value = ''; // Reset to allow re-importing same file
                 }
               }}
             />

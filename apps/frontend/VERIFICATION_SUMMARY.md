@@ -38,6 +38,7 @@
 ### Integration Points Verified: ✅ ALL PASSED
 
 #### 1. Settings Button in TerminalGrid
+
 ```tsx
 // Location: src/renderer/components/TerminalGrid.tsx (lines 428-434)
 <Button
@@ -52,11 +53,13 @@
   Settings
 </Button>
 ```
+
 ✅ Button positioned left of "Invoke Claude All" button
 ✅ Dispatches custom event with 'terminal-fonts' detail
 ✅ Uses consistent styling with other toolbar buttons
 
 #### 2. Event Listener in App.tsx
+
 ```tsx
 // Location: src/renderer/App.tsx (lines 273-286)
 const handleOpenAppSettings = useCallback((event: CustomEvent<string>) => {
@@ -70,11 +73,13 @@ useEffect(() => {
   return () => window.removeEventListener('open-app-settings', handleOpenAppSettings as EventListener);
 }, [handleOpenAppSettings]);
 ```
+
 ✅ Listens for 'open-app-settings' events
 ✅ Extracts section from event detail
 ✅ Navigates to settings with correct section
 
 #### 3. Navigation Item in AppSettings
+
 ```tsx
 // Location: src/renderer/components/settings/AppSettings.tsx (lines 72-92)
 export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'updates' | 'notifications' | 'debug' | 'terminal-fonts';
@@ -84,11 +89,13 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'terminal-fonts', icon: Terminal }
 ];
 ```
+
 ✅ 'terminal-fonts' added to AppSection type
 ✅ Navigation item configured with Terminal icon
 ✅ Switch case renders TerminalFontSettings component
 
 #### 4. Translation Keys
+
 ```json
 // Location: src/shared/i18n/locales/en/settings.json
 "terminal-fonts": {
@@ -96,11 +103,13 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   "description": "Customize terminal font appearance, cursor style, and performance settings"
 }
 ```
+
 ✅ Complete English translations
 ✅ Complete French translations
 ✅ All UI text uses i18n keys (no hardcoded strings)
 
 #### 5. Store Subscription in useXterm
+
 ```tsx
 // Location: src/renderer/components/terminal/useXterm.ts (lines 298-336)
 useEffect(() => {
@@ -119,6 +128,7 @@ useEffect(() => {
   return unsubscribe;
 }, [terminal]);
 ```
+
 ✅ Reactive subscription to settings store
 ✅ Updates all xterm.js options dynamically
 ✅ Calls terminal.refresh() to apply changes

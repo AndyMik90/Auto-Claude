@@ -2,6 +2,7 @@
  * Font discovery utility using the FontFaceSet API (document.fonts).
  * Provides functions to detect available monospace fonts and check font availability.
  */
+import { getOS } from './os-detection';
 
 /**
  * Common monospace font families organized by platform.
@@ -229,16 +230,11 @@ export function buildFontFamilyString(...fontFamilies: string[]): string {
 export async function suggestOptimalFontChain(
   platform?: 'windows' | 'macos' | 'linux'
 ): Promise<string> {
-  // Detect platform if not provided
+  // Detect platform if not provided using centralized OS detection
   if (!platform) {
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (userAgent.includes('win')) {
-      platform = 'windows';
-    } else if (userAgent.includes('mac')) {
-      platform = 'macos';
-    } else {
-      platform = 'linux';
-    }
+    const detectedOS = getOS();
+    // Fall back to 'linux' for unknown platforms
+    platform = detectedOS === 'unknown' ? 'linux' : detectedOS;
   }
 
   // Get available fonts for this platform

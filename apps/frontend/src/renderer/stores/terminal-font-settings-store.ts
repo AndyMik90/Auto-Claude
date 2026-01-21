@@ -151,9 +151,9 @@ interface TerminalFontSettingsStore extends TerminalFontSettings {
   setScrollback: (scrollback: number) => void;
 
   // Bulk actions
-  applyPreset: (presetName: string) => void;
+  applyPreset: (presetName: string) => boolean;
   resetToDefaults: () => void;
-  applySettings: (settings: Partial<TerminalFontSettings>) => void;
+  applySettings: (settings: Partial<TerminalFontSettings>) => boolean;
 
   // Import/Export
   exportSettings: () => string;
@@ -169,42 +169,108 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
       // Initial state with OS-specific defaults
       ...getOSDefaults(),
 
-      // Font setters
-      setFontFamily: (fontFamily) => set({ fontFamily }),
+      // Font setters with validation
+      setFontFamily: (fontFamily) => {
+        if (isValidFontFamily(fontFamily)) {
+          set({ fontFamily });
+        }
+      },
 
-      setFontSize: (fontSize) => set({ fontSize }),
+      setFontSize: (fontSize) => {
+        if (isValidFontSize(fontSize)) {
+          set({ fontSize });
+        }
+      },
 
-      setFontWeight: (fontWeight) => set({ fontWeight }),
+      setFontWeight: (fontWeight) => {
+        if (isValidFontWeight(fontWeight)) {
+          set({ fontWeight });
+        }
+      },
 
-      setLineHeight: (lineHeight) => set({ lineHeight }),
+      setLineHeight: (lineHeight) => {
+        if (isValidLineHeight(lineHeight)) {
+          set({ lineHeight });
+        }
+      },
 
-      setLetterSpacing: (letterSpacing) => set({ letterSpacing }),
+      setLetterSpacing: (letterSpacing) => {
+        if (isValidLetterSpacing(letterSpacing)) {
+          set({ letterSpacing });
+        }
+      },
 
-      // Cursor setters
-      setCursorStyle: (cursorStyle) => set({ cursorStyle }),
+      // Cursor setters with validation
+      setCursorStyle: (cursorStyle) => {
+        if (isValidCursorStyle(cursorStyle)) {
+          set({ cursorStyle });
+        }
+      },
 
       setCursorBlink: (cursorBlink) => set({ cursorBlink }),
 
-      setCursorAccentColor: (cursorAccentColor) => set({ cursorAccentColor }),
+      setCursorAccentColor: (cursorAccentColor) => {
+        if (isValidHexColor(cursorAccentColor)) {
+          set({ cursorAccentColor });
+        }
+      },
 
-      // Performance setter
-      setScrollback: (scrollback) => set({ scrollback }),
+      // Performance setter with validation
+      setScrollback: (scrollback) => {
+        if (isValidScrollback(scrollback)) {
+          set({ scrollback });
+        }
+      },
 
-      // Bulk actions
-      applyPreset: (presetName: string) => {
+      // Bulk actions with validation
+      applyPreset: (presetName: string): boolean => {
         const preset = TERMINAL_PRESETS[presetName];
         if (preset) {
           set(preset);
+          return true;
         }
+        return false;
       },
 
       resetToDefaults: () => set(getOSDefaults()),
 
-      applySettings: (settings: Partial<TerminalFontSettings>) =>
+      applySettings: (settings: Partial<TerminalFontSettings>): boolean => {
+        // Validate all provided settings before applying
+        if (settings.fontFamily !== undefined && !isValidFontFamily(settings.fontFamily)) {
+          return false;
+        }
+        if (settings.fontSize !== undefined && !isValidFontSize(settings.fontSize)) {
+          return false;
+        }
+        if (settings.fontWeight !== undefined && !isValidFontWeight(settings.fontWeight)) {
+          return false;
+        }
+        if (settings.lineHeight !== undefined && !isValidLineHeight(settings.lineHeight)) {
+          return false;
+        }
+        if (settings.letterSpacing !== undefined && !isValidLetterSpacing(settings.letterSpacing)) {
+          return false;
+        }
+        if (settings.scrollback !== undefined && !isValidScrollback(settings.scrollback)) {
+          return false;
+        }
+        if (settings.cursorStyle !== undefined && !isValidCursorStyle(settings.cursorStyle)) {
+          return false;
+        }
+        if (settings.cursorAccentColor !== undefined && !isValidHexColor(settings.cursorAccentColor)) {
+          return false;
+        }
+        if (settings.cursorBlink !== undefined && typeof settings.cursorBlink !== 'boolean') {
+          return false;
+        }
+
+        // All validations passed, apply the settings
         set((state) => ({
           ...state,
           ...settings,
-        })),
+        }));
+        return true;
+      },
 
       // Import/Export
       exportSettings: (): string => {
@@ -231,49 +297,79 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
             return false;
           }
 
+          // Build a validated settings object
+          const validatedSettings: Partial<TerminalFontSettings> = {};
+
           // Validate fontFamily array
-          if (!isValidFontFamily(parsed.fontFamily)) {
-            return false;
+          if (parsed.fontFamily !== undefined) {
+            if (!isValidFontFamily(parsed.fontFamily)) {
+              return false;
+            }
+            validatedSettings.fontFamily = parsed.fontFamily;
           }
 
           // Validate numeric ranges
-          if (typeof parsed.fontSize !== 'number' || !isValidFontSize(parsed.fontSize)) {
-            return false;
+          if (parsed.fontSize !== undefined) {
+            if (typeof parsed.fontSize !== 'number' || !isValidFontSize(parsed.fontSize)) {
+              return false;
+            }
+            validatedSettings.fontSize = parsed.fontSize;
           }
 
-          if (typeof parsed.fontWeight !== 'number' || !isValidFontWeight(parsed.fontWeight)) {
-            return false;
+          if (parsed.fontWeight !== undefined) {
+            if (typeof parsed.fontWeight !== 'number' || !isValidFontWeight(parsed.fontWeight)) {
+              return false;
+            }
+            validatedSettings.fontWeight = parsed.fontWeight;
           }
 
-          if (typeof parsed.lineHeight !== 'number' || !isValidLineHeight(parsed.lineHeight)) {
-            return false;
+          if (parsed.lineHeight !== undefined) {
+            if (typeof parsed.lineHeight !== 'number' || !isValidLineHeight(parsed.lineHeight)) {
+              return false;
+            }
+            validatedSettings.lineHeight = parsed.lineHeight;
           }
 
-          if (typeof parsed.letterSpacing !== 'number' || !isValidLetterSpacing(parsed.letterSpacing)) {
-            return false;
+          if (parsed.letterSpacing !== undefined) {
+            if (typeof parsed.letterSpacing !== 'number' || !isValidLetterSpacing(parsed.letterSpacing)) {
+              return false;
+            }
+            validatedSettings.letterSpacing = parsed.letterSpacing;
           }
 
-          if (typeof parsed.scrollback !== 'number' || !isValidScrollback(parsed.scrollback)) {
-            return false;
+          if (parsed.scrollback !== undefined) {
+            if (typeof parsed.scrollback !== 'number' || !isValidScrollback(parsed.scrollback)) {
+              return false;
+            }
+            validatedSettings.scrollback = parsed.scrollback;
           }
 
           // Validate cursor style enum
-          if (!isValidCursorStyle(parsed.cursorStyle)) {
-            return false;
+          if (parsed.cursorStyle !== undefined) {
+            if (!isValidCursorStyle(parsed.cursorStyle)) {
+              return false;
+            }
+            validatedSettings.cursorStyle = parsed.cursorStyle;
           }
 
           // Validate boolean
-          if (typeof parsed.cursorBlink !== 'boolean') {
-            return false;
+          if (parsed.cursorBlink !== undefined) {
+            if (typeof parsed.cursorBlink !== 'boolean') {
+              return false;
+            }
+            validatedSettings.cursorBlink = parsed.cursorBlink;
           }
 
           // Validate hex color
-          if (typeof parsed.cursorAccentColor !== 'string' || !isValidHexColor(parsed.cursorAccentColor)) {
-            return false;
+          if (parsed.cursorAccentColor !== undefined) {
+            if (typeof parsed.cursorAccentColor !== 'string' || !isValidHexColor(parsed.cursorAccentColor)) {
+              return false;
+            }
+            validatedSettings.cursorAccentColor = parsed.cursorAccentColor;
           }
 
-          // Apply imported settings
-          set(parsed as Partial<TerminalFontSettings>);
+          // Apply imported settings (now properly typed)
+          set(validatedSettings);
           return true;
         } catch {
           return false;
@@ -282,6 +378,55 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
     }),
     {
       name: 'terminal-font-settings',
+      onRehydrateStorage: () => (state) => {
+        // Validate state after rehydration from localStorage
+        if (!state) return;
+
+        // Reset to OS defaults if any critical validation fails
+        let needsReset = false;
+
+        if (!isValidFontFamily(state.fontFamily)) {
+          needsReset = true;
+        }
+        if (!isValidFontSize(state.fontSize)) {
+          needsReset = true;
+        }
+        if (!isValidFontWeight(state.fontWeight)) {
+          needsReset = true;
+        }
+        if (!isValidLineHeight(state.lineHeight)) {
+          needsReset = true;
+        }
+        if (!isValidLetterSpacing(state.letterSpacing)) {
+          needsReset = true;
+        }
+        if (!isValidScrollback(state.scrollback)) {
+          needsReset = true;
+        }
+        if (!isValidCursorStyle(state.cursorStyle)) {
+          needsReset = true;
+        }
+        if (!isValidHexColor(state.cursorAccentColor)) {
+          needsReset = true;
+        }
+        if (typeof state.cursorBlink !== 'boolean') {
+          needsReset = true;
+        }
+
+        // If any validation failed, reset to OS defaults
+        if (needsReset) {
+          const defaults = getOSDefaults();
+          state.fontFamily = defaults.fontFamily;
+          state.fontSize = defaults.fontSize;
+          state.fontWeight = defaults.fontWeight;
+          state.lineHeight = defaults.lineHeight;
+          state.letterSpacing = defaults.letterSpacing;
+          state.cursorStyle = defaults.cursorStyle;
+          state.cursorBlink = defaults.cursorBlink;
+          state.cursorAccentColor = defaults.cursorAccentColor;
+          state.scrollback = defaults.scrollback;
+        }
+      },
     }
   )
 );

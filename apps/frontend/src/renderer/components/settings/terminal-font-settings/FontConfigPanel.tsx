@@ -6,6 +6,20 @@ import { Label } from '../../ui/label';
 import { Combobox, ComboboxOption } from '../../ui/combobox';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
 import { COMMON_MONOSPACE_FONTS } from '../../../lib/font-discovery';
+import {
+  FONT_SIZE_MIN,
+  FONT_SIZE_MAX,
+  FONT_SIZE_STEP,
+  FONT_WEIGHT_MIN,
+  FONT_WEIGHT_MAX,
+  FONT_WEIGHT_STEP,
+  LINE_HEIGHT_MIN,
+  LINE_HEIGHT_MAX,
+  LINE_HEIGHT_STEP,
+  LETTER_SPACING_MIN,
+  LETTER_SPACING_MAX,
+  LETTER_SPACING_STEP,
+} from '../../../lib/terminal-font-constants';
 
 interface FontConfigPanelProps {
   settings: TerminalFontSettings;
@@ -14,26 +28,6 @@ interface FontConfigPanelProps {
     value: TerminalFontSettings[K]
   ) => void;
 }
-
-// Font size constraints
-const FONT_SIZE_MIN = 10;
-const FONT_SIZE_MAX = 24;
-const FONT_SIZE_STEP = 1;
-
-// Font weight constraints
-const FONT_WEIGHT_MIN = 100;
-const FONT_WEIGHT_MAX = 900;
-const FONT_WEIGHT_STEP = 100;
-
-// Line height constraints
-const LINE_HEIGHT_MIN = 1.0;
-const LINE_HEIGHT_MAX = 2.0;
-const LINE_HEIGHT_STEP = 0.1;
-
-// Letter spacing constraints
-const LETTER_SPACING_MIN = -2;
-const LETTER_SPACING_MAX = 5;
-const LETTER_SPACING_STEP = 0.5;
 
 /**
  * Font configuration panel for terminal font customization.
@@ -183,7 +177,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
-                title={`Decrease font size by ${FONT_SIZE_STEP}px`}
+                title={t('terminalFonts.fontConfig.decreaseFontSize', { step: FONT_SIZE_STEP })}
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -197,7 +191,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
-                title={`Increase font size by ${FONT_SIZE_STEP}px`}
+                title={t('terminalFonts.fontConfig.increaseFontSize', { step: FONT_SIZE_STEP })}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -220,7 +214,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
           aria-valuemin={FONT_SIZE_MIN}
           aria-valuemax={FONT_SIZE_MAX}
           aria-valuenow={settings.fontSize}
-          aria-valuetext={`${settings.fontSize} pixels`}
+          aria-valuetext={`${settings.fontSize} ${t('terminalFonts.fontConfig.pixels', { defaultValue: 'pixels' })}`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -288,7 +282,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
               )}
-              title={`Decrease font weight by ${FONT_WEIGHT_STEP}`}
+              title={t('terminalFonts.fontConfig.decreaseFontWeight', { step: FONT_WEIGHT_STEP })}
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
@@ -302,7 +296,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
               )}
-              title={`Increase font weight by ${FONT_WEIGHT_STEP}`}
+              title={t('terminalFonts.fontConfig.increaseFontWeight', { step: FONT_WEIGHT_STEP })}
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -397,7 +391,7 @@ export function FontConfigPanel({ settings, onSettingChange }: FontConfigPanelPr
           aria-valuemin={LETTER_SPACING_MIN}
           aria-valuemax={LETTER_SPACING_MAX}
           aria-valuenow={settings.letterSpacing}
-          aria-valuetext={`${settings.letterSpacing > 0 ? '+' : ''}${numberFormatter.format(settings.letterSpacing)} pixels`}
+          aria-valuetext={`${settings.letterSpacing > 0 ? '+' : ''}${numberFormatter.format(settings.letterSpacing)} ${t('terminalFonts.fontConfig.pixels', { defaultValue: 'pixels' })}`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

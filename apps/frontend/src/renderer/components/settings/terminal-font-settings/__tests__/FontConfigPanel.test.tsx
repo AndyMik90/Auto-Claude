@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
 import { FontConfigPanel } from '../FontConfigPanel';
 import type { TerminalFontSettings } from '../../../../stores/terminal-font-settings-store';
 import i18n from '../../../../../shared/i18n';
@@ -25,7 +26,7 @@ vi.mock('../../../../lib/font-discovery', () => ({
 }));
 
 function renderWithI18n(ui: React.ReactElement) {
-  return render(ui);
+  return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }
 
 describe('FontConfigPanel', () => {
@@ -56,11 +57,11 @@ describe('FontConfigPanel', () => {
         />
       );
 
-      expect(screen.getByText(/font family/i)).toBeInTheDocument();
-      expect(screen.getByText(/font size/i)).toBeInTheDocument();
-      expect(screen.getByText(/font weight/i)).toBeInTheDocument();
-      expect(screen.getByText(/line height/i)).toBeInTheDocument();
-      expect(screen.getByText(/letter spacing/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/font family/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/font size/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/font weight/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/line height/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/letter spacing/i).length).toBeGreaterThan(0);
     });
 
     it('should display current settings values', () => {
@@ -252,8 +253,8 @@ describe('FontConfigPanel', () => {
         />
       );
 
-      expect(screen.getByText('1')).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText('1.0')).toBeInTheDocument();
+      expect(screen.getByText('2.0')).toBeInTheDocument();
     });
   });
 

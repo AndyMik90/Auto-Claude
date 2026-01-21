@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { useTerminalFontSettingsStore, type TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
+import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
 import { useTranslation } from 'react-i18next';
 
 interface LivePreviewTerminalProps {
@@ -45,6 +45,9 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const isInitializedRef = useRef<boolean>(false);
+
+  // Create persistent debounced update function
+  const debouncedUpdateRef = useRef<ReturnType<typeof debounce<() => void>> | null>(null);
 
   /**
    * Sample terminal output to demonstrate font rendering
@@ -162,44 +165,49 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
   }, []); // Empty deps - only run on mount
 
   /**
+   * Initialize the debounced update function once
+   */
+  useEffect(() => {
+    if (!debouncedUpdateRef.current) {
+      debouncedUpdateRef.current = debounce(() => {
+        const xterm = xtermRef.current;
+        if (!xterm) return;
+
+        // Update terminal options with current settings
+        xterm.options.cursorBlink = settings.cursorBlink;
+        xterm.options.cursorStyle = settings.cursorStyle;
+        xterm.options.fontSize = settings.fontSize;
+        xterm.options.fontFamily = settings.fontFamily.join(', ');
+        xterm.options.fontWeight = settings.fontWeight;
+        xterm.options.lineHeight = settings.lineHeight;
+        xterm.options.letterSpacing = settings.letterSpacing;
+        xterm.options.theme = {
+          ...xterm.options.theme,
+          cursorAccent: settings.cursorAccentColor,
+        };
+
+        // Refresh terminal to apply visual changes
+        xterm.refresh(0, xterm.rows - 1);
+
+        // Fit terminal after options update
+        if (fitAddonRef.current && terminalRef.current) {
+          const rect = terminalRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            fitAddonRef.current.fit();
+          }
+        }
+      }, 300); // 300ms debounce
+    }
+  }, []);
+
+  /**
    * Update terminal options when settings change
    * Debounced to 300ms to prevent excessive updates during slider drag
    */
   useEffect(() => {
-    const xterm = xtermRef.current;
-    if (!xterm) return;
-
-    // Debounced update function
-    const debouncedUpdate = debounce(() => {
-      if (!xtermRef.current) return;
-
-      // Update terminal options with new settings
-      xtermRef.current.options.cursorBlink = settings.cursorBlink;
-      xtermRef.current.options.cursorStyle = settings.cursorStyle;
-      xtermRef.current.options.fontSize = settings.fontSize;
-      xtermRef.current.options.fontFamily = settings.fontFamily.join(', ');
-      xtermRef.current.options.fontWeight = settings.fontWeight;
-      xtermRef.current.options.lineHeight = settings.lineHeight;
-      xtermRef.current.options.letterSpacing = settings.letterSpacing;
-      xtermRef.current.options.theme = {
-        ...xtermRef.current.options.theme,
-        cursorAccent: settings.cursorAccentColor,
-      };
-
-      // Refresh terminal to apply visual changes
-      xtermRef.current.refresh(0, xtermRef.current.rows - 1);
-
-      // Fit terminal after options update
-      if (fitAddonRef.current && terminalRef.current) {
-        const rect = terminalRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          fitAddonRef.current.fit();
-        }
-      }
-    }, 300); // 300ms debounce
-
-    // Trigger debounced update
-    debouncedUpdate();
+    if (xtermRef.current && debouncedUpdateRef.current) {
+      debouncedUpdateRef.current();
+    }
   }, [settings]); // Re-run when settings change
 
   /**
@@ -238,7 +246,7 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
         aria-label={t('terminalFonts.preview.ariaLabel', {
           defaultValue: 'Terminal preview showing sample output with current font settings',
         })}
-        role="img"
+        role="region"
       />
 
       {/* Info text */}

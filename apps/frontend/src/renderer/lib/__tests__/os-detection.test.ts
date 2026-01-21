@@ -14,7 +14,8 @@ describe('os-detection', () => {
   let isMacOS: typeof import('../os-detection').isMacOS;
   let isLinux: typeof import('../os-detection').isLinux;
 
-  const originalPlatform = process.platform;
+  const originalPlatform = navigator.platform;
+  const originalUserAgentData = (navigator as any).userAgentData;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -28,67 +29,80 @@ describe('os-detection', () => {
   });
 
   afterEach(() => {
-    // Restore original process.platform
-    Object.defineProperty(process, 'platform', {
+    // Restore original navigator.platform
+    Object.defineProperty(navigator, 'platform', {
       value: originalPlatform,
+      configurable: true,
     });
+
+    // Restore original navigator.userAgentData
+    if (originalUserAgentData) {
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: originalUserAgentData,
+        configurable: true,
+      });
+    } else {
+      delete (navigator as any).userAgentData;
+    }
   });
+
+  const mockPlatform = (platform: string) => {
+    // Mock navigator.userAgentData.platform (modern API)
+    Object.defineProperty(navigator, 'userAgentData', {
+      value: { platform },
+      configurable: true,
+      writable: true,
+    });
+
+    // Also mock navigator.platform (fallback API)
+    Object.defineProperty(navigator, 'platform', {
+      value: platform,
+      configurable: true,
+      writable: true,
+    });
+  };
 
   describe('getOS', () => {
     it('should return "windows" on Windows platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
-      });
+      mockPlatform('Win32');
 
       expect(getOS()).toBe('windows');
     });
 
     it('should return "macos" on macOS platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'darwin',
-      });
+      mockPlatform('MacIntel');
 
       expect(getOS()).toBe('macos');
     });
 
     it('should return "linux" on Linux platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-      });
+      mockPlatform('Linux x86_64');
 
       expect(getOS()).toBe('linux');
     });
 
-    it('should return "linux" as fallback for unknown platforms', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'freebsd',
-      });
+    it('should return "unknown" for unknown platforms', () => {
+      mockPlatform('FreeBSD amd64');
 
-      expect(getOS()).toBe('linux');
+      expect(getOS()).toBe('unknown');
     });
   });
 
   describe('isWindows', () => {
     it('should return true on Windows platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
-      });
+      mockPlatform('Win32');
 
       expect(isWindows()).toBe(true);
     });
 
     it('should return false on macOS platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'darwin',
-      });
+      mockPlatform('MacIntel');
 
       expect(isWindows()).toBe(false);
     });
 
     it('should return false on Linux platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-      });
+      mockPlatform('Linux x86_64');
 
       expect(isWindows()).toBe(false);
     });
@@ -96,25 +110,19 @@ describe('os-detection', () => {
 
   describe('isMacOS', () => {
     it('should return false on Windows platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
-      });
+      mockPlatform('Win32');
 
       expect(isMacOS()).toBe(false);
     });
 
     it('should return true on macOS platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'darwin',
-      });
+      mockPlatform('MacIntel');
 
       expect(isMacOS()).toBe(true);
     });
 
     it('should return false on Linux platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-      });
+      mockPlatform('Linux x86_64');
 
       expect(isMacOS()).toBe(false);
     });
@@ -122,25 +130,19 @@ describe('os-detection', () => {
 
   describe('isLinux', () => {
     it('should return false on Windows platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
-      });
+      mockPlatform('Win32');
 
       expect(isLinux()).toBe(false);
     });
 
     it('should return false on macOS platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'darwin',
-      });
+      mockPlatform('MacIntel');
 
       expect(isLinux()).toBe(false);
     });
 
     it('should return true on Linux platform', () => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-      });
+      mockPlatform('Linux x86_64');
 
       expect(isLinux()).toBe(true);
     });
@@ -148,12 +150,10 @@ describe('os-detection', () => {
 
   describe('OS detection consistency', () => {
     it('should only return true for one OS function at a time', () => {
-      const platforms = ['win32', 'darwin', 'linux'] as const;
+      const platforms = ['Win32', 'MacIntel', 'Linux x86_64'] as const;
 
       for (const platform of platforms) {
-        Object.defineProperty(process, 'platform', {
-          value: platform,
-        });
+        mockPlatform(platform);
 
         const results = [isWindows(), isMacOS(), isLinux()].filter(Boolean);
         expect(results.length).toBe(1);

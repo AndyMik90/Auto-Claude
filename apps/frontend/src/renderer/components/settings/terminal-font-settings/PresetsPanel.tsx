@@ -21,25 +21,25 @@ const CUSTOM_PRESETS_STORAGE_KEY = 'terminal-font-custom-presets';
 const BUILTIN_PRESETS = [
   {
     id: 'vscode',
-    name: 'VS Code',
+    nameKey: 'settings:terminalFonts.presets.vscodeName',
     description: 'settings:terminalFonts.presets.vscode',
     icon: Monitor,
   },
   {
     id: 'intellij',
-    name: 'IntelliJ IDEA',
+    nameKey: 'settings:terminalFonts.presets.intellijName',
     description: 'settings:terminalFonts.presets.intellij',
     icon: Monitor,
   },
   {
     id: 'macos',
-    name: 'macOS Terminal',
+    nameKey: 'settings:terminalFonts.presets.macosName',
     description: 'settings:terminalFonts.presets.macos',
     icon: Monitor,
   },
   {
     id: 'ubuntu',
-    name: 'Ubuntu Terminal',
+    nameKey: 'settings:terminalFonts.presets.ubuntuName',
     description: 'settings:terminalFonts.presets.ubuntu',
     icon: Monitor,
   },
@@ -48,6 +48,7 @@ const BUILTIN_PRESETS = [
 interface CustomPreset {
   id: string;
   name: string;
+  nameKey?: string; // Optional i18n key for built-in presets
   settings: TerminalFontSettings;
   createdAt: number;
 }
@@ -150,7 +151,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
   // Handle deleting a custom preset
   const handleDeleteCustomPreset = (presetId: string) => {
     const preset = customPresets.find((p) => p.id === presetId);
-    setCustomPresets((prev) => prev.filter((preset) => preset.id !== presetId));
+    setCustomPresets((prev) => prev.filter((p) => p.id !== presetId));
 
     if (preset) {
       toast({
@@ -191,7 +192,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                 >
                   <Icon className="h-5 w-5" />
                   <div className="text-center">
-                    <div className="text-sm font-medium">{preset.name}</div>
+                    <div className="text-sm font-medium">{t(preset.nameKey)}</div>
                     <div className="text-xs text-muted-foreground">{t(preset.description)}</div>
                   </div>
                 </button>
@@ -284,7 +285,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
             >
               <Save className="h-4 w-4" />
               <span>
-                {t('common:actions.save', { defaultValue: 'Save' })}
+                {t('common:buttons.save', { defaultValue: 'Save' })}
               </span>
             </button>
           </div>
@@ -305,7 +306,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">{preset.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {preset.settings.fontFamily[0]}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
+                      {preset.settings.fontFamily[0] ?? 'Unknown'}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -323,7 +324,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                       })}
                     >
                       <FolderOpen className="h-3 w-3" />
-                      <span>{t('common:actions.apply', { defaultValue: 'Apply' })}</span>
+                      <span>{t('common:buttons.apply', { defaultValue: 'Apply' })}</span>
                     </button>
                     <button
                       type="button"
@@ -339,7 +340,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                       })}
                     >
                       <Trash2 className="h-3 w-3" />
-                      <span>{t('common:actions.delete', { defaultValue: 'Delete' })}</span>
+                      <span>{t('common:buttons.delete', { defaultValue: 'Delete' })}</span>
                     </button>
                   </div>
                 </div>

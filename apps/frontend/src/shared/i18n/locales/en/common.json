@@ -85,7 +85,8 @@
   "actions": {
     "save": "Save",
     "apply": "Apply",
-    "delete": "Delete"
+    "delete": "Delete",
+    "settings": "Settings"
   },
   "labels": {
     "loading": "Loading...",

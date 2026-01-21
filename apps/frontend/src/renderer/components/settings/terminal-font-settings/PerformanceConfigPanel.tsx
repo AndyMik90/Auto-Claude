@@ -131,7 +131,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
-                title={`Decrease scrollback by ${formatScrollback(SCROLLBACK_STEP)}`}
+                title={t('terminalFonts.performanceConfig.decreaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -145,7 +145,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
-                title={`Increase scrollback by ${formatScrollback(SCROLLBACK_STEP)}`}
+                title={t('terminalFonts.performanceConfig.increaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -168,7 +168,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
           aria-valuemin={SCROLLBACK_MIN}
           aria-valuemax={SCROLLBACK_MAX}
           aria-valuenow={settings.scrollback}
-          aria-valuetext={`${formatScrollback(settings.scrollback)} lines`}
+          aria-valuetext={`${formatScrollback(settings.scrollback)} ${t('terminalFonts.performanceConfig.lines', { defaultValue: 'lines' })}`}
           className={cn(
             'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

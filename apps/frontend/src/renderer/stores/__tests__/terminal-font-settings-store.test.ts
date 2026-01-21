@@ -31,11 +31,15 @@ vi.mock('../../lib/terminal-font-constants', () => ({
   SCROLLBACK_MAX: 100000,
   SCROLLBACK_STEP: 1000,
   MAX_IMPORT_FILE_SIZE: 10 * 1024,
+  VALID_CURSOR_STYLES: ['block', 'underline', 'bar'],
+  HEX_COLOR_REGEX: /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/,
   isValidFontSize: vi.fn((value: number) => value >= 10 && value <= 24),
   isValidFontWeight: vi.fn((value: number) => value >= 100 && value <= 900 && value % 100 === 0),
   isValidLineHeight: vi.fn((value: number) => value >= 1.0 && value <= 2.0),
   isValidLetterSpacing: vi.fn((value: number) => value >= -2 && value <= 5),
   isValidScrollback: vi.fn((value: number) => value >= 1000 && value <= 100000),
+  isValidCursorStyle: vi.fn((value: string) => ['block', 'underline', 'bar'].includes(value)),
+  isValidHexColor: vi.fn((value: string) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)),
   isValidFontFamily: vi.fn((value: string[]) => Array.isArray(value) && value.length > 0),
 }));
 
@@ -70,11 +74,15 @@ describe('terminal-font-settings-store', () => {
       SCROLLBACK_MAX: 100000,
       SCROLLBACK_STEP: 1000,
       MAX_IMPORT_FILE_SIZE: 10 * 1024,
+      VALID_CURSOR_STYLES: ['block', 'underline', 'bar'],
+      HEX_COLOR_REGEX: /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/,
       isValidFontSize: vi.fn((value: number) => value >= 10 && value <= 24),
       isValidFontWeight: vi.fn((value: number) => value >= 100 && value <= 900 && value % 100 === 0),
       isValidLineHeight: vi.fn((value: number) => value >= 1.0 && value <= 2.0),
       isValidLetterSpacing: vi.fn((value: number) => value >= -2 && value <= 5),
       isValidScrollback: vi.fn((value: number) => value >= 1000 && value <= 100000),
+      isValidCursorStyle: vi.fn((value: string) => ['block', 'underline', 'bar'].includes(value)),
+      isValidHexColor: vi.fn((value: string) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)),
       isValidFontFamily: vi.fn((value: string[]) => Array.isArray(value) && value.length > 0),
     }));
 
@@ -94,7 +102,7 @@ describe('terminal-font-settings-store', () => {
       const state = useTerminalFontSettingsStore.getState();
 
       expect(state).toBeDefined();
-      expect(state.fontFamily).toEqual(['Ubuntu Mono', 'monospace']);
+      expect(state.fontFamily).toEqual(['Ubuntu Mono', 'Source Code Pro', 'Liberation Mono', 'DejaVu Sans Mono', 'monospace']);
       expect(state.fontSize).toBe(13);
       expect(state.fontWeight).toBe(400);
       expect(state.lineHeight).toBe(1.2);
@@ -117,6 +125,100 @@ describe('terminal-font-settings-store', () => {
       expect(state.cursorBlink).toBeDefined();
       expect(state.cursorAccentColor).toBeDefined();
       expect(state.scrollback).toBeDefined();
+    });
+  });
+
+  describe('OS-specific defaults', () => {
+    it('should initialize with Windows defaults', async () => {
+      // Create a separate test context that mocks Windows
+      vi.resetModules();
+      vi.doMock('../../lib/os-detection', () => ({
+        getOS: vi.fn(() => 'windows'),
+        isWindows: vi.fn(() => true),
+        isMacOS: vi.fn(() => false),
+        isLinux: vi.fn(() => false),
+      }));
+      vi.doMock('../../lib/terminal-font-constants', () => ({
+        FONT_SIZE_MIN: 10,
+        FONT_SIZE_MAX: 24,
+        FONT_WEIGHT_MIN: 100,
+        FONT_WEIGHT_MAX: 900,
+        LINE_HEIGHT_MIN: 1.0,
+        LINE_HEIGHT_MAX: 2.0,
+        LETTER_SPACING_MIN: -2,
+        LETTER_SPACING_MAX: 5,
+        SCROLLBACK_MIN: 1000,
+        SCROLLBACK_MAX: 100000,
+        SCROLLBACK_STEP: 1000,
+        MAX_IMPORT_FILE_SIZE: 10 * 1024,
+        VALID_CURSOR_STYLES: ['block', 'underline', 'bar'],
+        HEX_COLOR_REGEX: /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/,
+        isValidFontSize: vi.fn((value: number) => value >= 10 && value <= 24),
+        isValidFontWeight: vi.fn((value: number) => value >= 100 && value <= 900 && value % 100 === 0),
+        isValidLineHeight: vi.fn((value: number) => value >= 1.0 && value <= 2.0),
+        isValidLetterSpacing: vi.fn((value: number) => value >= -2 && value <= 5),
+        isValidScrollback: vi.fn((value: number) => value >= 1000 && value <= 100000),
+        isValidCursorStyle: vi.fn((value: string) => ['block', 'underline', 'bar'].includes(value)),
+        isValidHexColor: vi.fn((value: string) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)),
+        isValidFontFamily: vi.fn((value: string[]) => Array.isArray(value) && value.length > 0),
+      }));
+
+      const windowsStoreModule = await import('../terminal-font-settings-store');
+      const windowsStore = windowsStoreModule.useTerminalFontSettingsStore.getState();
+
+      expect(windowsStore.fontFamily).toEqual(['Cascadia Code', 'Consolas', 'Courier New', 'monospace']);
+      expect(windowsStore.fontSize).toBe(14);
+      expect(windowsStore.fontWeight).toBe(400);
+    });
+
+    it('should initialize with macOS defaults', async () => {
+      // Create a separate test context that mocks macOS
+      vi.resetModules();
+      vi.doMock('../../lib/os-detection', () => ({
+        getOS: vi.fn(() => 'macos'),
+        isWindows: vi.fn(() => false),
+        isMacOS: vi.fn(() => true),
+        isLinux: vi.fn(() => false),
+      }));
+      vi.doMock('../../lib/terminal-font-constants', () => ({
+        FONT_SIZE_MIN: 10,
+        FONT_SIZE_MAX: 24,
+        FONT_WEIGHT_MIN: 100,
+        FONT_WEIGHT_MAX: 900,
+        LINE_HEIGHT_MIN: 1.0,
+        LINE_HEIGHT_MAX: 2.0,
+        LETTER_SPACING_MIN: -2,
+        LETTER_SPACING_MAX: 5,
+        SCROLLBACK_MIN: 1000,
+        SCROLLBACK_MAX: 100000,
+        SCROLLBACK_STEP: 1000,
+        MAX_IMPORT_FILE_SIZE: 10 * 1024,
+        VALID_CURSOR_STYLES: ['block', 'underline', 'bar'],
+        HEX_COLOR_REGEX: /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/,
+        isValidFontSize: vi.fn((value: number) => value >= 10 && value <= 24),
+        isValidFontWeight: vi.fn((value: number) => value >= 100 && value <= 900 && value % 100 === 0),
+        isValidLineHeight: vi.fn((value: number) => value >= 1.0 && value <= 2.0),
+        isValidLetterSpacing: vi.fn((value: number) => value >= -2 && value <= 5),
+        isValidScrollback: vi.fn((value: number) => value >= 1000 && value <= 100000),
+        isValidCursorStyle: vi.fn((value: string) => ['block', 'underline', 'bar'].includes(value)),
+        isValidHexColor: vi.fn((value: string) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)),
+        isValidFontFamily: vi.fn((value: string[]) => Array.isArray(value) && value.length > 0),
+      }));
+
+      const macStoreModule = await import('../terminal-font-settings-store');
+      const macStore = macStoreModule.useTerminalFontSettingsStore.getState();
+
+      expect(macStore.fontFamily).toEqual(['SF Mono', 'Menlo', 'Monaco', 'monospace']);
+      expect(macStore.fontSize).toBe(13);
+      expect(macStore.fontWeight).toBe(400);
+    });
+
+    it('should initialize with Linux defaults', () => {
+      const state = useTerminalFontSettingsStore.getState();
+
+      expect(state.fontFamily).toEqual(['Ubuntu Mono', 'Source Code Pro', 'Liberation Mono', 'DejaVu Sans Mono', 'monospace']);
+      expect(state.fontSize).toBe(13);
+      expect(state.fontWeight).toBe(400);
     });
   });
 
@@ -161,7 +263,7 @@ describe('terminal-font-settings-store', () => {
       store.applyPreset('vscode');
 
       const state = useTerminalFontSettingsStore.getState();
-      expect(state.fontFamily).toEqual(['Consolas', 'monospace']);
+      expect(state.fontFamily).toEqual(['Consolas', 'Courier New', 'monospace']);
       expect(state.fontSize).toBe(14);
       expect(state.cursorStyle).toBe('block');
     });
@@ -172,7 +274,7 @@ describe('terminal-font-settings-store', () => {
       store.applyPreset('intellij');
 
       const state = useTerminalFontSettingsStore.getState();
-      expect(state.fontFamily).toEqual(['JetBrains Mono', 'monospace']);
+      expect(state.fontFamily).toEqual(['JetBrains Mono', 'Consolas', 'monospace']);
       expect(state.fontSize).toBe(13);
       expect(state.cursorStyle).toBe('block');
     });
@@ -183,7 +285,7 @@ describe('terminal-font-settings-store', () => {
       store.applyPreset('macos');
 
       const state = useTerminalFontSettingsStore.getState();
-      expect(state.fontFamily).toEqual(['SF Mono', 'monospace']);
+      expect(state.fontFamily).toEqual(['SF Mono', 'Menlo', 'Monaco', 'monospace']);
       expect(state.fontSize).toBe(13);
       expect(state.cursorStyle).toBe('block');
     });

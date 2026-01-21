@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
 import { PresetsPanel } from '../PresetsPanel';
 import type { TerminalFontSettings } from '../../../../stores/terminal-font-settings-store';
 import i18n from '../../../../../shared/i18n';
@@ -54,7 +55,7 @@ vi.mock('../../../../hooks/use-toast', () => ({
 }));
 
 function renderWithI18n(ui: React.ReactElement) {
-  return render(ui);
+  return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }
 
 describe('PresetsPanel', () => {
@@ -91,7 +92,8 @@ describe('PresetsPanel', () => {
 
       expect(screen.getByText(/built-in presets/i)).toBeInTheDocument();
       expect(screen.getByText(/reset to defaults/i)).toBeInTheDocument();
-      expect(screen.getByText(/custom presets/i)).toBeInTheDocument();
+      // Use getAllByText since "custom presets" appears in both label and description
+      expect(screen.getAllByText(/custom presets/i).length).toBeGreaterThan(0);
     });
 
     it('should render all built-in preset buttons', () => {
@@ -118,6 +120,7 @@ describe('PresetsPanel', () => {
         />
       );
 
+      // Check for the empty state message
       expect(screen.getByText(/no custom presets yet/i)).toBeInTheDocument();
     });
   });
@@ -214,8 +217,11 @@ describe('PresetsPanel', () => {
       const input = screen.getByPlaceholderText(/preset name/i);
       fireEvent.change(input, { target: { value: 'My Custom Preset' } });
 
-      const saveButton = screen.getByText(/save/i);
-      fireEvent.click(saveButton);
+      // Use getAllByText and find the button element since "Save" appears in multiple places
+      const saveButtons = screen.getAllByText(/save/i);
+      const saveButton = saveButtons.find(btn => btn.tagName === 'SPAN' && btn.parentElement?.tagName === 'BUTTON');
+      expect(saveButton).toBeDefined();
+      fireEvent.click(saveButton!.closest('button')!);
 
       await waitFor(() => {
         expect(screen.getByText('My Custom Preset')).toBeInTheDocument();
@@ -342,8 +348,10 @@ describe('PresetsPanel', () => {
         />
       );
 
-      const saveButton = screen.getByText(/save/i).closest('button');
-      expect(saveButton).toBeDisabled();
+      // Use getAllByText and find the button element since "Save" appears in multiple places
+      const saveButtons = screen.getAllByText(/save/i);
+      const saveButton = saveButtons.find(btn => btn.tagName === 'SPAN' && btn.parentElement?.tagName === 'BUTTON');
+      expect(saveButton?.closest('button')).toBeDisabled();
     });
 
     it('should enable save button when input has text', () => {
@@ -358,8 +366,10 @@ describe('PresetsPanel', () => {
       const input = screen.getByPlaceholderText(/preset name/i);
       fireEvent.change(input, { target: { value: 'Test' } });
 
-      const saveButton = screen.getByText(/save/i).closest('button');
-      expect(saveButton).not.toBeDisabled();
+      // Use getAllByText and find the button element since "Save" appears in multiple places
+      const saveButtons = screen.getAllByText(/save/i);
+      const saveButton = saveButtons.find(btn => btn.tagName === 'SPAN' && btn.parentElement?.tagName === 'BUTTON');
+      expect(saveButton?.closest('button')).not.toBeDisabled();
     });
   });
 

@@ -48,10 +48,10 @@ import { useTerminalFontSettingsStore } from '../stores/terminal-font-settings-s
  * This is for automated testing in a test environment
  */
 export async function verifyTerminalSubscription(): Promise<boolean> {
-  try {
-    // Get initial settings
-    const initialSettings = useTerminalFontSettingsStore.getState();
+  // Get initial settings
+  const initialSettings = useTerminalFontSettingsStore.getState();
 
+  try {
     // Change font size
     useTerminalFontSettingsStore.getState().setFontSize(20);
 
@@ -65,14 +65,18 @@ export async function verifyTerminalSubscription(): Promise<boolean> {
       return false;
     }
 
-    // Reset to original
-    useTerminalFontSettingsStore.getState().setFontSize(initialSettings.fontSize);
-
     console.log('✅ Terminal font settings subscription verified');
     return true;
   } catch (error) {
     console.error('❌ Terminal font settings subscription verification failed:', error);
     return false;
+  } finally {
+    // Always reset to original, even if an error occurred
+    try {
+      useTerminalFontSettingsStore.getState().setFontSize(initialSettings.fontSize);
+    } catch (resetError) {
+      console.error('Failed to reset font size:', resetError);
+    }
   }
 }
 
