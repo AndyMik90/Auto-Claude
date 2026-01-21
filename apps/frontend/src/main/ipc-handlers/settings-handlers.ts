@@ -21,6 +21,7 @@ import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-upd
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
+import { WORKTREE_PATTERN, WORKTREE_ROOT_PATTERN, WORKTREE_SPEC_PATTERN } from '../../shared/constants/worktree-patterns';
 
 const settingsPath = getSettingsPath();
 
@@ -65,13 +66,12 @@ const detectAutoBuildSourcePath = (): string | null => {
 
   // PRIORITY 2: Check if running in worktree and use local backend
   const cwd = process.cwd();
-  const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
 
-  if (worktreePattern.test(cwd)) {
+  if (WORKTREE_PATTERN.test(cwd)) {
     // We're in a worktree - extract worktree root and check for local backend
     // Pattern: .../worktrees/tasks/XXX-name/...
     // We want to find the worktree root (XXX-name directory)
-    const match = cwd.match(/(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/);
+    const match = cwd.match(WORKTREE_ROOT_PATTERN);
 
     if (match) {
       const worktreeRoot = match[1];
@@ -843,12 +843,11 @@ export function registerSettingsHandlers(
     async (): Promise<{ isWorktree: boolean; specNumber: string | null; worktreePath: string | null }> => {
       try {
         const cwd = process.cwd();
-        const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\]([0-9]{3})-[^/\\]+/;
-        const match = cwd.match(worktreePattern);
+        const match = cwd.match(WORKTREE_SPEC_PATTERN);
 
         if (match) {
           // Extract worktree root path
-          const worktreeRootMatch = cwd.match(/(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/);
+          const worktreeRootMatch = cwd.match(WORKTREE_ROOT_PATTERN);
           const worktreeRoot = worktreeRootMatch ? worktreeRootMatch[1] : null;
 
           return {

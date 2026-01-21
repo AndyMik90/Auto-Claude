@@ -8,6 +8,7 @@ import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
 import { debugLog } from '../shared/utils/debug-logger';
 import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
+import { WORKTREE_SPEC_DIR_PATTERN } from '../shared/constants/worktree-patterns';
 
 interface TabState {
   openProjectIds: string[];
@@ -270,7 +271,7 @@ export class ProjectStore {
 
     // WORKTREE ISOLATION: If running from a worktree, override project path to use worktree root
     const cwd = process.cwd();
-    const worktreeMatch = cwd.match(/\.auto-claude\/worktrees\/tasks\/(\d{3}-[^\/]+)/);
+    const worktreeMatch = cwd.match(WORKTREE_SPEC_DIR_PATTERN);
     if (worktreeMatch) {
       const worktreeFullName = worktreeMatch[1];
       const worktreeSpecNumber = worktreeFullName.match(/^(\d{3})/)?.[1];

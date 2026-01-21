@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { app } from 'electron';
+import { WORKTREE_SPEC_PATTERN } from '../../shared/constants/worktree-patterns';
 
 /**
  * Get the path to the bundled backend source
@@ -57,7 +58,7 @@ export function getUpdateCachePath(): string {
 export function getEffectiveSourcePath(): string {
   // PRIORITY 1: Check if running from a worktree
   const cwd = process.cwd();
-  const worktreeMatch = cwd.match(/\.auto-claude\/worktrees\/tasks\/(\d{3})-[^/]+/);
+  const worktreeMatch = cwd.match(WORKTREE_SPEC_PATTERN);
 
   if (worktreeMatch) {
     const specNumber = worktreeMatch[1];

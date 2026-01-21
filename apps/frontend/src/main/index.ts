@@ -46,6 +46,7 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
+import { getEffectiveSourcePath } from './updater/path-resolver';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
@@ -356,9 +357,12 @@ app.whenReady().then(() => {
     }
 
     if (settings.pythonPath || validAutoBuildPath) {
+      // Get the effective path that will actually be used (includes worktree detection)
+      const effectivePath = validAutoBuildPath ? getEffectiveSourcePath() : undefined;
+
       console.warn('[main] Configuring AgentManager with settings:', {
         pythonPath: settings.pythonPath,
-        autoBuildPath: validAutoBuildPath
+        autoBuildPath: effectivePath || validAutoBuildPath
       });
       agentManager.configure(settings.pythonPath, validAutoBuildPath);
     }

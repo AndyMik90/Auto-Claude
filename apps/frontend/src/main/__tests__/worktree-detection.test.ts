@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
+import { WORKTREE_PATTERN, WORKTREE_ROOT_PATTERN, WORKTREE_SPEC_PATTERN } from "../../shared/constants/worktree-patterns";
 
 // Test data directory
 const TEST_DIR = mkdtempSync(path.join(tmpdir(), "worktree-test-"));
@@ -59,8 +60,6 @@ describe("Worktree Detection", () => {
   });
 
   describe("Regex Pattern", () => {
-    const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
-
     it("should detect valid 3-digit spec numbers", () => {
       const validPaths = [
         "/project/.auto-claude/worktrees/tasks/001-feature",
@@ -70,7 +69,7 @@ describe("Worktree Detection", () => {
       ];
 
       for (const testPath of validPaths) {
-        expect(worktreePattern.test(testPath)).toBe(true);
+        expect(WORKTREE_PATTERN.test(testPath)).toBe(true);
       }
     });
 
@@ -83,7 +82,7 @@ describe("Worktree Detection", () => {
       ];
 
       for (const testPath of invalidPaths) {
-        expect(worktreePattern.test(testPath)).toBe(false);
+        expect(WORKTREE_PATTERN.test(testPath)).toBe(false);
       }
     });
 
@@ -91,11 +90,12 @@ describe("Worktree Detection", () => {
       const unixPath = "/project/.auto-claude/worktrees/tasks/009-feature";
       const windowsPath = "C:\\project\\.auto-claude\\worktrees\\tasks\\009-feature";
 
-      expect(worktreePattern.test(unixPath)).toBe(true);
-      expect(worktreePattern.test(windowsPath)).toBe(true);
+      expect(WORKTREE_PATTERN.test(unixPath)).toBe(true);
+      expect(WORKTREE_PATTERN.test(windowsPath)).toBe(true);
     });
 
     it("should extract correct spec number", () => {
+      // Custom pattern that captures both root path AND spec number (for dual extraction test)
       const extractPattern = /(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\]([0-9]{3})-[^/\\]+)/;
       const testPath = "/project/.auto-claude/worktrees/tasks/009-add-feature/apps/backend";
 
@@ -105,10 +105,9 @@ describe("Worktree Detection", () => {
     });
 
     it("should extract worktree root path", () => {
-      const extractPattern = /(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/;
       const testPath = "/project/.auto-claude/worktrees/tasks/009-add-feature/apps/backend";
 
-      const match = testPath.match(extractPattern);
+      const match = testPath.match(WORKTREE_ROOT_PATTERN);
       expect(match).not.toBeNull();
       expect(match![1]).toBe("/project/.auto-claude/worktrees/tasks/009-add-feature");
     });
@@ -123,7 +122,7 @@ describe("Worktree Detection", () => {
       ];
 
       for (const testPath of malformedPaths) {
-        expect(worktreePattern.test(testPath)).toBe(false);
+        expect(WORKTREE_PATTERN.test(testPath)).toBe(false);
       }
     });
   });
@@ -167,8 +166,7 @@ describe("Worktree Detection", () => {
       // Import detectAutoBuildSourcePath function
       // Note: This would require refactoring settings-handlers.ts to export the function
       // For now, we test the logic pattern
-      const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
-      const inWorktree = worktreePattern.test(process.cwd());
+      const inWorktree = WORKTREE_PATTERN.test(process.cwd());
       const hasEnvVar = !!process.env.AUTO_CLAUDE_BACKEND_PATH;
 
       // ENV var should take precedence
@@ -185,12 +183,11 @@ describe("Worktree Detection", () => {
       process.chdir(testWorktreeDir);
 
       const cwd = process.cwd();
-      const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
 
-      expect(worktreePattern.test(cwd)).toBe(true);
+      expect(WORKTREE_PATTERN.test(cwd)).toBe(true);
 
       // Extract worktree root
-      const match = cwd.match(/(.*\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-[^/\\]+)/);
+      const match = cwd.match(WORKTREE_ROOT_PATTERN);
       expect(match).not.toBeNull();
 
       const worktreeRoot = match![1];
@@ -211,8 +208,7 @@ describe("Worktree Detection", () => {
       delete process.env.AUTO_CLAUDE_BACKEND_PATH;
 
       const cwd = process.cwd();
-      const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
-      const inWorktree = worktreePattern.test(cwd);
+      const inWorktree = WORKTREE_PATTERN.test(cwd);
       const hasEnvVar = !!process.env.AUTO_CLAUDE_BACKEND_PATH;
 
       expect(inWorktree).toBe(false);
@@ -229,8 +225,7 @@ describe("Worktree Detection", () => {
       delete process.env.AUTO_CLAUDE_BACKEND_PATH;
 
       const cwd = process.cwd();
-      const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
-      const inWorktree = worktreePattern.test(cwd);
+      const inWorktree = WORKTREE_PATTERN.test(cwd);
       const hasEnvVar = !!process.env.AUTO_CLAUDE_BACKEND_PATH;
 
       expect(inWorktree).toBe(false);
@@ -280,10 +275,8 @@ describe("Worktree Detection", () => {
         { path: ".auto-claude/worktrees/tasks/999-test", expected: "999" },
       ];
 
-      const extractPattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\]([0-9]{3})-/;
-
       for (const testCase of testCases) {
-        const match = testCase.path.match(extractPattern);
+        const match = testCase.path.match(WORKTREE_SPEC_PATTERN);
         expect(match).not.toBeNull();
         expect(match![1]).toBe(testCase.expected);
       }
@@ -291,9 +284,8 @@ describe("Worktree Detection", () => {
 
     it("should handle paths with subdirectories", () => {
       const fullPath = "/project/.auto-claude/worktrees/tasks/009-feature/apps/backend/runners";
-      const extractPattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\]([0-9]{3})-/;
 
-      const match = fullPath.match(extractPattern);
+      const match = fullPath.match(WORKTREE_SPEC_PATTERN);
       expect(match).not.toBeNull();
       expect(match![1]).toBe("009");
     });
@@ -305,10 +297,9 @@ describe("Worktree Detection", () => {
         "/Users/user/projects/my-app",
       ];
 
-      const worktreePattern = /\.auto-claude[/\\]worktrees[/\\]tasks[/\\][0-9]{3}-/;
 
       for (const testPath of nonWorktreePaths) {
-        expect(worktreePattern.test(testPath)).toBe(false);
+        expect(WORKTREE_PATTERN.test(testPath)).toBe(false);
       }
     });
   });
