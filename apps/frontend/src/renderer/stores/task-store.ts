@@ -124,7 +124,8 @@ function createEmptyTaskOrder(): TaskOrderState {
     ai_review: [],
     human_review: [],
     pr_created: [],
-    done: []
+    done: [],
+    error: []
   };
 }
 
@@ -568,7 +569,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           ai_review: isValidColumnArray(parsed.ai_review) ? parsed.ai_review : emptyOrder.ai_review,
           human_review: isValidColumnArray(parsed.human_review) ? parsed.human_review : emptyOrder.human_review,
           pr_created: isValidColumnArray(parsed.pr_created) ? parsed.pr_created : emptyOrder.pr_created,
-          done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done
+          done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done,
+          error: isValidColumnArray(parsed.error) ? parsed.error : emptyOrder.error
         };
 
         set({ taskOrder: validatedOrder });

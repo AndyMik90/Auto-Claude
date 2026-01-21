@@ -2,66 +2,12 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, Task, TaskMetadata } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
-import { getTaskWorktreeDir } from '../../worktree-paths';
-
-/**
- * Validate taskId to prevent path traversal attacks
- * Returns true if taskId is safe to use in path operations
- */
-function isValidTaskId(taskId: string): boolean {
-  // Reject empty, null/undefined, or strings with path traversal characters
-  if (!taskId || typeof taskId !== 'string') return false;
-  if (taskId.includes('/') || taskId.includes('\\')) return false;
-  if (taskId === '.' || taskId === '..') return false;
-  if (taskId.includes('\0')) return false; // Null byte injection
-  return true;
-}
-
-/**
- * Find ALL spec paths for a task, checking main directory and worktrees
- * A task can exist in multiple locations (main + worktree), so return all paths
- *
- * Follows the pattern from ProjectStore.findAllSpecPaths()
- */
-function findAllSpecPaths(projectPath: string, specsBaseDir: string, taskId: string): string[] {
-  // Validate taskId to prevent path traversal
-  if (!isValidTaskId(taskId)) {
-    console.error(`[TASK_DELETE] findAllSpecPaths: Invalid taskId rejected: ${taskId}`);
-    return [];
-  }
-
-  const paths: string[] = [];
-
-  // 1. Check main specs directory
-  const mainSpecPath = path.join(projectPath, specsBaseDir, taskId);
-  if (existsSync(mainSpecPath)) {
-    paths.push(mainSpecPath);
-  }
-
-  // 2. Check worktrees
-  const worktreesDir = getTaskWorktreeDir(projectPath);
-  if (existsSync(worktreesDir)) {
-    try {
-      const worktrees = readdirSync(worktreesDir, { withFileTypes: true });
-      for (const worktree of worktrees) {
-        if (!worktree.isDirectory()) continue;
-        const worktreeSpecPath = path.join(worktreesDir, worktree.name, specsBaseDir, taskId);
-        if (existsSync(worktreeSpecPath)) {
-          paths.push(worktreeSpecPath);
-        }
-      }
-    } catch {
-      // Ignore errors reading worktrees
-    }
-  }
-
-  return paths;
-}
+import { findAllSpecPaths } from '../../utils/spec-path-helpers';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -139,16 +85,16 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       let specNumber = 1;
       if (existsSync(specsDir)) {
         const existingDirs = readdirSync(specsDir, { withFileTypes: true })
-          .filter(d => d.isDirectory())
-          .map(d => d.name);
+          .filter((d: Dirent) => d.isDirectory())
+          .map((d: Dirent) => d.name);
 
         // Extract numbers from spec directory names (e.g., "001-feature" -> 1)
         const existingNumbers = existingDirs
-          .map(name => {
+          .map((name: string) => {
             const match = name.match(/^(\d+)/);
             return match ? parseInt(match[1], 10) : 0;
           })
-          .filter(n => n > 0);
+          .filter((n: number) => n > 0);
 
         if (existingNumbers.length > 0) {
           specNumber = Math.max(...existingNumbers) + 1;

@@ -7,6 +7,7 @@ import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PRE
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
 import { debugLog } from '../shared/utils/debug-logger';
+import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
 
 interface TabState {
   openProjectIds: string[];
@@ -256,17 +257,17 @@ export class ProjectStore {
       return cached.tasks;
     }
 
-    console.warn('[ProjectStore] getTasks called - will load from disk', {
+    debugLog('[ProjectStore] getTasks called - will load from disk', {
       projectId,
       reason: cached ? 'cache expired' : 'cache miss',
       cacheAge: cached ? now - cached.timestamp : 'N/A'
     });
     const project = this.getProject(projectId);
     if (!project) {
-      console.warn('[ProjectStore] Project not found for id:', projectId);
+      debugLog('[ProjectStore] Project not found for id:', projectId);
       return [];
     }
-    console.warn('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
+    debugLog('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
 
     const allTasks: Task[] = [];
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
@@ -736,58 +737,6 @@ export class ProjectStore {
   }
 
   /**
-   * Validate taskId to prevent path traversal attacks
-   * Returns true if taskId is safe to use in path operations
-   */
-  private isValidTaskId(taskId: string): boolean {
-    // Reject empty, null/undefined, or strings with path traversal characters
-    if (!taskId || typeof taskId !== 'string') return false;
-    if (taskId.includes('/') || taskId.includes('\\')) return false;
-    if (taskId === '.' || taskId === '..') return false;
-    if (taskId.includes('\0')) return false; // Null byte injection
-    return true;
-  }
-
-  /**
-   * Find ALL spec paths for a task, checking main directory and worktrees
-   * A task can exist in multiple locations (main + worktree), so return all paths
-   */
-  private findAllSpecPaths(projectPath: string, specsBaseDir: string, taskId: string): string[] {
-    // Validate taskId to prevent path traversal
-    if (!this.isValidTaskId(taskId)) {
-      console.error(`[ProjectStore] findAllSpecPaths: Invalid taskId rejected: ${taskId}`);
-      return [];
-    }
-
-    const paths: string[] = [];
-
-    // 1. Check main specs directory
-    const mainSpecPath = path.join(projectPath, specsBaseDir, taskId);
-    if (existsSync(mainSpecPath)) {
-      paths.push(mainSpecPath);
-    }
-
-    // 2. Check worktrees
-    const worktreesDir = getTaskWorktreeDir(projectPath);
-    if (existsSync(worktreesDir)) {
-      try {
-        const worktrees = readdirSync(worktreesDir, { withFileTypes: true });
-        for (const worktree of worktrees) {
-          if (!worktree.isDirectory()) continue;
-          const worktreeSpecPath = path.join(worktreesDir, worktree.name, specsBaseDir, taskId);
-          if (existsSync(worktreeSpecPath)) {
-            paths.push(worktreeSpecPath);
-          }
-        }
-      } catch {
-        // Ignore errors reading worktrees
-      }
-    }
-
-    return paths;
-  }
-
-  /**
    * Archive tasks by writing archivedAt to their metadata
    * @param projectId - Project ID
    * @param taskIds - IDs of tasks to archive
@@ -806,7 +755,7 @@ export class ProjectStore {
 
     for (const taskId of taskIds) {
       // Find ALL locations where this task exists (main + worktrees)
-      const specPaths = this.findAllSpecPaths(project.path, specsBaseDir, taskId);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, taskId);
 
       // If spec directory doesn't exist anywhere, skip gracefully
       if (specPaths.length === 0) {
@@ -869,7 +818,7 @@ export class ProjectStore {
 
     for (const taskId of taskIds) {
       // Find ALL locations where this task exists (main + worktrees)
-      const specPaths = this.findAllSpecPaths(project.path, specsBaseDir, taskId);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, taskId);
 
       if (specPaths.length === 0) {
         console.warn(`[ProjectStore] unarchiveTasks: Spec directory not found for task ${taskId}`);

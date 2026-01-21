@@ -32,6 +32,7 @@ function createTestTaskOrder(overrides: Partial<TaskOrderState> = {}): TaskOrder
     human_review: [],
     pr_created: [],
     done: [],
+    error: [],
     ...overrides
   };
 }
@@ -495,7 +496,8 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       } as TaskOrderState;
       useTaskStore.setState({ taskOrder: order });
 
