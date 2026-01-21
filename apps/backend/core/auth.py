@@ -58,6 +58,8 @@ SDK_ENV_VARS = [
     "API_TIMEOUT_MS",
     # Windows-specific: Git Bash path for Claude Code CLI
     "CLAUDE_CODE_GIT_BASH_PATH",
+    # Claude CLI path override (allows frontend to pass detected CLI path to SDK)
+    "CLAUDE_CLI_PATH",
 ]
 
 
