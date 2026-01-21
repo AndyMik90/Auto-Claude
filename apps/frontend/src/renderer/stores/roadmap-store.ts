@@ -253,13 +253,28 @@ export async function loadRoadmap(projectId: string): Promise<void> {
   // This restores the generation status when switching back to a project
   const statusResult = await window.electronAPI.getRoadmapStatus(projectId);
   if (statusResult.success && statusResult.data?.isRunning) {
-    // Generation is running - restore the UI state to show progress
-    // The actual progress will be updated by incoming events
-    store.setGenerationStatus({
-      phase: 'analyzing',
-      progress: 0,
-      message: 'Roadmap generation in progress...'
-    });
+    // Generation is running - try to load persisted progress for more accurate state
+    const progressResult = await window.electronAPI.loadRoadmapProgress(projectId);
+    if (progressResult.success && progressResult.data) {
+      // Restore full progress state including timestamps
+      const persistedProgress = progressResult.data;
+      store.setGenerationStatus({
+        phase: persistedProgress.phase !== 'idle' ? persistedProgress.phase : 'analyzing',
+        progress: persistedProgress.progress,
+        message: persistedProgress.message || 'Roadmap generation in progress...',
+        startedAt: persistedProgress.startedAt ? new Date(persistedProgress.startedAt) : new Date(),
+        lastActivityAt: persistedProgress.lastActivityAt ? new Date(persistedProgress.lastActivityAt) : new Date()
+      });
+    } else {
+      // Fallback: generation is running but no persisted progress found
+      store.setGenerationStatus({
+        phase: 'analyzing',
+        progress: 0,
+        message: 'Roadmap generation in progress...',
+        startedAt: new Date(),
+        lastActivityAt: new Date()
+      });
+    }
   } else {
     // Generation is not running - reset to idle
     store.setGenerationStatus({

@@ -376,6 +376,11 @@ export interface ElectronAPI {
     featureId: string
   ) => Promise<IPCResult<Task>>;
 
+  // Roadmap progress persistence
+  saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus) => Promise<IPCResult>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<RoadmapGenerationStatus | null>>;
+  clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
+
   // Roadmap event listeners
   onRoadmapProgress: (
     callback: (projectId: string, status: RoadmapGenerationStatus) => void
