@@ -139,6 +139,7 @@
     "removeImageAriaLabel": "Supprimer l'image {{filename}}",
     "pasteHint": "Astuce : Collez des captures d'écran directement avec {{shortcut}} pour ajouter des images de référence.",
     "viewFullSizeAriaLabel": "Voir l'image en taille réelle : {{filename}}",
+    "thumbnailAlt": "Pièce jointe : {{filename}}",
     "countIndicator": "{{count}} image jointe ({{remaining}} restante)",
     "countIndicator_plural": "{{count}} images jointes ({{remaining}} restantes)",
     "largeFileWarning": "\"{{name}}\" fait {{size}}Mo. Les images volumineuses peuvent causer des problèmes de performance."
@@ -184,6 +185,15 @@
     "removeImage": "Supprimer l'image",
     "processingError": "Échec du traitement de l'image",
     "inputHint": "Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne. Collez des captures d'écran directement (Ctrl+V) ou glissez-déposez des images."
+  },
+  "insights": {
+    "emptyStateTitle": "Lancer une conversation",
+    "emptyStateDescription": "Posez des questions sur votre codebase, obtenez des suggestions d'améliorations, ou discutez de fonctionnalités que vous souhaiteriez implémenter. Vous pouvez également coller des captures d'écran (Ctrl+V / Cmd+V) ou glisser-déposer des images pour inclure un contexte visuel.",
+    "suggestionArchitecture": "Quelle est l'architecture de ce projet ?",
+    "suggestionImprovements": "Suggérer des améliorations pour la qualité du code",
+    "suggestionFeatures": "Quelles fonctionnalités puis-je ajouter ensuite ?",
+    "suggestionSecurity": "Y a-t-il des préoccupations de sécurité ?",
+    "sessionImageLimitError": "Limite d'images de session atteinte. Vous pouvez uniquement ajouter {{remaining}} image{{plural}} supplémentaire{{plural}}. Commencez une nouvelle conversation pour en ajouter plus."
   },
   "review": {
     "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."

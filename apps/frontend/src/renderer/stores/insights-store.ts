@@ -319,6 +319,31 @@ async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttac
   return attachments;
 }
 
+/**
+ * Ensure ImageAttachment[] is compressed (re-compresses if needed)
+ * This handles cases where ImageAttachments might come from external sources
+ * or are being re-used without going through the initial compression.
+ */
+async function ensureImageAttachmentsCompressed(attachments: ImageAttachment[]): Promise<ImageAttachment[]> {
+  const result: ImageAttachment[] = [];
+
+  for (const attachment of attachments) {
+    // Reconstruct data URL from attachment
+    const dataUrl = `data:${attachment.mimeType};base64,${attachment.data}`;
+
+    // Compress to ensure consistent sizing and format
+    const compressed = await compressImage(dataUrl);
+
+    result.push({
+      ...attachment,
+      mimeType: compressed.mimeType,
+      data: getBase64FromDataUrl(compressed.dataUrl)
+    });
+  }
+
+  return result;
+}
+
 export async function loadInsightsSessions(projectId: string): Promise<void> {
   const store = useInsightsStore.getState();
   store.setLoadingSessions(true);
@@ -382,8 +407,8 @@ export async function sendMessage(
       // Convert File[] to ImageAttachment[]
       imageAttachments = await convertFilesToImageAttachments(images as File[]);
     } else {
-      // Already ImageAttachment[]
-      imageAttachments = images as ImageAttachment[];
+      // Already ImageAttachment[] - ensure they are compressed
+      imageAttachments = await ensureImageAttachmentsCompressed(images as ImageAttachment[]);
     }
   }
 

@@ -175,14 +175,29 @@ export function Insights({ projectId }: InsightsProps) {
     setTaskCreated(new Set());
   }, [session?.id]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = inputValue.trim();
     if ((!message && images.length === 0) || status.phase === 'thinking' || status.phase === 'streaming') return;
+
+    // Store current values in case of error
+    const currentMessage = message;
+    const currentImages = images;
 
     setInputValue('');
     setImages([]);
     setImageError(null);
-    sendMessage(projectId, message, undefined, images);
+
+    try {
+      await sendMessage(projectId, currentMessage, undefined, currentImages);
+    } catch (error) {
+      // Restore user input on error
+      setInputValue(currentMessage);
+      setImages(currentImages);
+      setImageError(error instanceof Error ? error.message : t('tasks:insights.sessionImageLimitError', {
+        remaining: 0,
+        plural: ''
+      }));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -515,19 +530,17 @@ export function Insights({ projectId }: InsightsProps) {
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mb-2 text-lg font-medium text-foreground">
-              Start a Conversation
+              {t('tasks:insights.emptyStateTitle')}
             </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement. You can also paste screenshots
-              (Ctrl+V / Cmd+V) or drag & drop images to include visual context.
+              {t('tasks:insights.emptyStateDescription')}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
-                'What is the architecture of this project?',
-                'Suggest improvements for code quality',
-                'What features could I add next?',
-                'Are there any security concerns?'
+                t('tasks:insights.suggestionArchitecture'),
+                t('tasks:insights.suggestionImprovements'),
+                t('tasks:insights.suggestionFeatures'),
+                t('tasks:insights.suggestionSecurity')
               ].map((suggestion) => (
                 <Button
                   key={suggestion}
@@ -790,7 +803,7 @@ function MessageBubble({
                 {image.thumbnail ? (
                   <img
                     src={image.thumbnail}
-                    alt={`Message attachment: ${image.filename}`}
+                    alt={t('tasks:images.thumbnailAlt', { filename: image.filename })}
                     className="w-full h-full object-cover"
                   />
                 ) : (
