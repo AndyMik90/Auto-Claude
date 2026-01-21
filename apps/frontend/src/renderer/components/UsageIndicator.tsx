@@ -90,7 +90,7 @@ export function UsageIndicator() {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground">
         <Activity className="h-3.5 w-3.5 animate-pulse" />
-        <span className="text-xs font-semibold">...</span>
+        <span className="text-xs font-semibold">{t('common:usage.loading')}</span>
       </div>
     );
   }

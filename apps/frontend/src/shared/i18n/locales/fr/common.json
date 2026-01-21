@@ -433,6 +433,7 @@
     "usageStatusAriaLabel": "Statut d'utilisation",
     "usageBreakdown": "Répartition de l'utilisation",
     "used": "utilisé",
+    "loading": "Chargement...",
     "sessionDefault": "Session",
     "weeklyDefault": "Hebdomadaire",
     "resetsInHours": "Réinitialisation dans {{hours}}h {{minutes}}m",
