@@ -984,7 +984,9 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                         disabled={isSaving || isValidating}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Stored in {memoriesDir || 'memories directory'}
+                        {t('onboarding:memory.storedIn', {
+                          path: memoriesDir || t('onboarding:memory.defaultDir'),
+                        })}
                       </p>
                     </div>
 

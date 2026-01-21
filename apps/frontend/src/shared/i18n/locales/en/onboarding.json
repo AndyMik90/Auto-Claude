@@ -108,6 +108,8 @@
     "azureEmbeddingDeployment": "Embedding Deployment Name",
     "memoryInfo": "Memory stores discoveries, patterns, and insights about your codebase so future sessions start with context already loaded. No Docker required - uses an embedded database.",
     "learnMore": "Learn more about Memory",
+    "storedIn": "Stored in {{path}}",
+    "defaultDir": "memories directory",
     "back": "Back",
     "skip": "Skip",
     "saving": "Saving...",

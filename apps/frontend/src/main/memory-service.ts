@@ -797,6 +797,19 @@ export function checkLadybugInstalled(): LadybugInstallStatus {
       env: pythonEnv,
     });
 
+    // Handle spawn failures (ENOENT for missing Python, ETIMEDOUT for timeouts)
+    // before checking result.status
+    if (result.error) {
+      const errorCode = (result.error as NodeJS.ErrnoException).code;
+      const pythonMissing = errorCode === 'ENOENT';
+      ladybugInstallCache = {
+        installed: false,
+        pythonAvailable: !pythonMissing,
+        error: pythonMissing ? LADYBUG_ERROR_KEYS.pythonNotFound : LADYBUG_ERROR_KEYS.checkFailed,
+      };
+      return ladybugInstallCache;
+    }
+
     if (result.status === 0 && result.stdout?.includes('OK')) {
       ladybugInstallCache = {
         installed: true,

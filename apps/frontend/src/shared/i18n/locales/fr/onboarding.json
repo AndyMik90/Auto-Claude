@@ -108,6 +108,8 @@
     "azureEmbeddingDeployment": "Nom du déploiement d'embedding",
     "memoryInfo": "La mémoire stocke les découvertes, motifs et informations sur votre codebase pour que les futures sessions démarrent avec le contexte déjà chargé. Pas de Docker requis - utilise une base de données intégrée.",
     "learnMore": "En savoir plus sur la mémoire",
+    "storedIn": "Stocké dans {{path}}",
+    "defaultDir": "répertoire de mémoires",
     "back": "Retour",
     "skip": "Passer",
     "saving": "Enregistrement...",
