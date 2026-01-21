@@ -762,6 +762,10 @@ def _collect_all_rules(
             paths, skills, rule_content = _parse_rule_frontmatter(content)
             if paths and rule_content:
                 rules.append((rule_path, paths, skills, rule_content))
+            elif rule_content and not paths:
+                logger.debug(
+                    f"Skipping rule {rule_path}: no paths defined in frontmatter"
+                )
         except Exception as e:
             logger.debug(f"Failed to read rule file {rule_path}: {e}")
 
