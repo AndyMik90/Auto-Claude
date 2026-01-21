@@ -250,7 +250,8 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       });
     });
 
@@ -282,7 +283,8 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       });
       expect(consoleSpy).toHaveBeenCalledWith('Failed to load task order:', expect.any(Error));
 
@@ -308,7 +310,8 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       });
 
       localStorage.getItem = originalGetItem;
@@ -594,7 +597,8 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       });
 
       consoleSpy.mockRestore();
