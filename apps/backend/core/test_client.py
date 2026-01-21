@@ -34,3 +34,37 @@ class TestMatchGlobPattern:
     def test_double_star_does_not_match_partial_names(self):
         """Test ** does not incorrectly match partial directory names (contest vs test)."""
         assert _match_glob_pattern("src/**/test/*.ts", "src/contest.ts") is False
+
+    # Edge cases requested by CodeRabbit review
+    def test_standalone_double_star_matches_any_path(self):
+        """Test ** alone matches any non-empty filepath."""
+        assert _match_glob_pattern("**", "any/path/file.ts") is True
+        assert _match_glob_pattern("**", "file.ts") is True
+        assert _match_glob_pattern("**", "deep/nested/path/to/file.tsx") is True
+
+    def test_standalone_double_star_matches_empty_path(self):
+        """Test ** matches empty filepath (edge case)."""
+        assert _match_glob_pattern("**", "") is True
+
+    def test_double_star_no_slash_suffix(self):
+        """Test **.ts (no slash after **) matches files ending in .ts."""
+        # Should match .ts files at any depth
+        assert _match_glob_pattern("**.ts", "file.ts") is True
+        assert _match_glob_pattern("**.ts", "src/file.ts") is True
+        assert _match_glob_pattern("**.ts", "deep/nested/file.ts") is True
+
+    def test_double_star_no_slash_negative_cases(self):
+        """Test **.ts does not match non-.ts files."""
+        assert _match_glob_pattern("**.ts", "file.tsx") is False
+        assert _match_glob_pattern("**.ts", "file.js") is False
+        assert _match_glob_pattern("**.ts", "src/file.tsx") is False
+
+    def test_empty_filepath_with_specific_pattern(self):
+        """Test empty filepath does not match specific patterns."""
+        assert _match_glob_pattern("src/**/*.ts", "") is False
+        assert _match_glob_pattern("*.ts", "") is False
+
+    def test_empty_pattern_edge_case(self):
+        """Test empty pattern behavior."""
+        assert _match_glob_pattern("", "") is True
+        assert _match_glob_pattern("", "file.ts") is False
