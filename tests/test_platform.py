@@ -200,8 +200,10 @@ class TestClaudeDetectionPaths:
         """macOS Claude detection should include Homebrew paths."""
         paths = get_claude_detection_paths()
 
-        assert any('/opt/homebrew/bin/claude' in p for p in paths)
-        assert any('.local' in p for p in paths)
+        # Normalize paths for cross-platform comparison (Windows uses backslashes even for mocked Unix paths)
+        normalized_paths = [p.replace('\\', '/') for p in paths]
+        assert any('/opt/homebrew/bin/claude' in p for p in normalized_paths)
+        assert any('.local' in p for p in normalized_paths)
         assert not any(p.endswith('.exe') for p in paths)
 
     @patch('core.platform.is_macos', return_value=False)
@@ -211,10 +213,12 @@ class TestClaudeDetectionPaths:
         """Linux Claude detection should use standard Unix paths."""
         paths = get_claude_detection_paths()
 
-        assert any('.local/bin/claude' in p for p in paths)
-        assert any('/home/linuxuser/bin/claude' in p for p in paths)
+        # Normalize paths for cross-platform comparison (Windows uses backslashes even for mocked Unix paths)
+        normalized_paths = [p.replace('\\', '/') for p in paths]
+        assert any('.local/bin/claude' in p for p in normalized_paths)
+        assert any('/home/linuxuser/bin/claude' in p for p in normalized_paths)
         # Homebrew path should NOT be in Linux paths (only macOS)
-        assert not any('/opt/homebrew' in p for p in paths)
+        assert not any('/opt/homebrew' in p for p in normalized_paths)
 
 
 class TestPythonCommands:
