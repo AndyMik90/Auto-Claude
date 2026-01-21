@@ -484,10 +484,22 @@ class TaskLogger:
         if display_result and len(display_result) > 300:
             display_result = display_result[:297] + "..."
 
+        # Sanitize display_result before using it in content
+        if display_result:
+            from .utils import strip_ansi_codes
+
+            display_result = strip_ansi_codes(display_result)
+
         status = "Done" if success else "Error"
         content = f"[{tool_name}] {status}"
         if display_result:
             content += f": {display_result}"
+
+        # Sanitize content before storage
+        if content:
+            from .utils import strip_ansi_codes
+
+            content = strip_ansi_codes(content)
 
         # Truncate detail for storage (max 10KB to avoid bloating JSON)
         stored_detail = detail

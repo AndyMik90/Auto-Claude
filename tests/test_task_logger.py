@@ -230,6 +230,29 @@ class TestTaskLoggerAnsiIntegration:
         assert tool_end_entries[0]["detail"] == "$ npm test\nPASS All tests passed"
         assert "\x1b" not in tool_end_entries[0]["detail"]
 
+    def test_tool_end_sanitizes_result_and_content(self, tmp_path):
+        """tool_end() should sanitize result and content parameters."""
+        logger = TaskLogger(tmp_path, emit_markers=False)
+
+        logger.tool_start("Bash", "npm test")
+        logger.tool_end(
+            "Bash",
+            success=True,
+            result="\x1b[32mTests passed\x1b[0m",
+            detail="Some output"
+        )
+
+        log_file = tmp_path / "task_logs.json"
+        with open(log_file) as f:
+            logs = json.load(f)
+
+        coding_entries = logs["phases"]["coding"]["entries"]
+        tool_end_entries = [e for e in coding_entries if e["type"] == "tool_end"]
+        assert len(tool_end_entries) == 1
+        # Content should be "[Bash] Done: Tests passed" without ANSI codes
+        assert tool_end_entries[0]["content"] == "[Bash] Done: Tests passed"
+        assert "\x1b" not in tool_end_entries[0]["content"]
+
 
 # ============================================================================
 # Integration Tests for StreamingLogCapture
