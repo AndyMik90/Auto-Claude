@@ -552,8 +552,9 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                 if match:
                     paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
                 in_paths = False
+            continue
         # Parse require_skills: array
-        elif stripped.startswith("require_skills:"):
+        if stripped.startswith("require_skills:"):
             in_skills = True
             in_paths = False
             current_skill = None
@@ -567,13 +568,15 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                         if skill_name:
                             skills.append({"skill": skill_name, "when": "per_subtask"})
                 in_skills = False
-        elif in_paths:
+            continue
+        if in_paths:
             if stripped.startswith("- "):
                 paths.append(stripped[2:].strip().strip("'\""))
+                continue
             elif stripped and not stripped.startswith("#"):
-                # End of paths array
+                # End of paths array - fall through to check for other keys
                 in_paths = False
-        elif in_skills:
+        if in_skills:
             # Collect nested paths list items for current skill
             if (
                 current_skill is not None
