@@ -79,7 +79,9 @@
     "add": "Ajouter",
     "gotIt": "Compris",
     "continue": "Continuer",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "yes": "Oui",
+    "no": "Non"
   },
   "labels": {
     "loading": "Chargement...",

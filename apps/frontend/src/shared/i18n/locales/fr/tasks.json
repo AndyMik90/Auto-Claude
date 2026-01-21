@@ -240,5 +240,14 @@
   },
   "subtasks": {
     "untitled": "Sous-tâche sans titre"
+  },
+  "humanInput": {
+    "title": "Question de l'Agent",
+    "recommended": "Recommandé",
+    "textPlaceholder": "Entrez votre réponse...",
+    "submit": "Soumettre",
+    "skip": "Ignorer (utiliser par défaut)",
+    "timeout": "Temps restant",
+    "expired": "Question expirée"
   }
 }

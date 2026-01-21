@@ -79,7 +79,9 @@
     "add": "Add",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "yes": "Yes",
+    "no": "No"
   },
   "labels": {
     "loading": "Loading...",

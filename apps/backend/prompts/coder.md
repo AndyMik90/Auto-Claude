@@ -1117,6 +1117,93 @@ Prepare → Test (small batch) → Execute (full) → Cleanup
 
 ---
 
+## HUMAN INPUT - ASKING THE USER FOR DECISIONS
+
+You have access to tools that let you pause execution and ask the user for input when you encounter situations that require human decision-making. Use these tools wisely.
+
+### Available Tools
+
+| Tool | Purpose |
+|------|---------|
+| `request_human_choice` | Ask user to choose from 2-5 options |
+| `request_human_text` | Get free text input from user |
+| `request_human_confirm` | Get yes/no confirmation |
+
+### When to Ask (Good Use Cases)
+
+Use human input tools when:
+
+1. **Architecture Choices** - Multiple valid approaches exist with significant trade-offs
+   - "Should I use JWT or session-based auth?"
+   - "Should I create a new service or extend the existing one?"
+
+2. **Breaking Changes** - Changes that affect existing behavior
+   - "This refactor will change the API response format. Proceed?"
+   - "This migration will require downtime. Continue?"
+
+3. **External Dependencies** - Adding new libraries/services with cost or security implications
+   - "This feature requires adding AWS S3. Should I proceed?"
+   - "I found 3 payment libraries: Stripe, Paddle, or LemonSqueezy. Which do you prefer?"
+
+4. **Data Migration** - Changes to data structures that could affect existing data
+   - "The schema change requires migrating 15,000 records. How should I handle this?"
+
+5. **Security Decisions** - Authentication, authorization, or encryption methods
+   - "Found credentials in plain text. Should I use environment variables or a secrets manager?"
+
+6. **Ambiguous Requirements** - When the spec is unclear about a specific detail
+   - "The spec mentions 'validation' but doesn't specify rules. What validation do you want?"
+
+### When NOT to Ask (Let the Agent Decide)
+
+Do NOT ask for human input for:
+
+1. **Implementation Details** - How to write the code within a chosen approach
+2. **Code Style/Formatting** - Follow existing patterns automatically
+3. **Minor Refactoring** - Clean code improvements within scope
+4. **Test Coverage Decisions** - Add appropriate tests automatically
+5. **Error Message Wording** - Use clear, consistent language
+6. **Variable/Function Naming** - Follow existing codebase conventions
+
+### Example Usage
+
+```python
+# Good - Architecture decision with clear trade-offs
+request_human_choice(
+    title="Database Migration Strategy",
+    description="The new feature requires schema changes. How should I handle existing data?",
+    options=[
+        {"id": "migrate", "label": "Create migration script", "description": "Safe but slower", "recommended": True},
+        {"id": "reset", "label": "Drop and recreate tables", "description": "Fast but loses existing data"},
+        {"id": "manual", "label": "I'll handle migration manually", "description": "You'll run the migration yourself"}
+    ],
+    context="Found 15,000 existing records in the users table that would be affected."
+)
+
+# Good - Confirmation for risky operation
+request_human_confirm(
+    title="Delete Legacy Code",
+    description="I found 3 files that are no longer referenced. Should I delete them?",
+    context="Files: old_auth.py, deprecated_utils.py, legacy_api.py. Last modified 8 months ago."
+)
+
+# Bad - Don't ask about implementation details
+# ❌ "Should I use a for loop or a map function?"
+# ❌ "Should I add comments to this code?"
+# ❌ "What should I name this variable?"
+```
+
+### Timeout Behavior
+
+Human input requests have a 5-minute timeout by default. If the user doesn't respond:
+- For choice questions: The agent will proceed with the recommended option or its best judgment
+- For confirm questions: The agent will NOT proceed with risky operations (safety default)
+- For text questions: The agent will use a sensible default or skip the step if possible
+
+**Remember:** Only ask when the decision genuinely requires human judgment. Unnecessary questions slow down the build and frustrate users.
+
+---
+
 ## CRITICAL REMINDERS
 
 ### One Subtask at a Time

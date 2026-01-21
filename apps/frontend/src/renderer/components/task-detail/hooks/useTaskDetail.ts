@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore, loadTasks } from '../../../stores/task-store';
-import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, ImageAttachment } from '../../../../shared/types';
+import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, ImageAttachment, HumanInputRequest } from '../../../../shared/types';
 
 /**
  * Validates task subtasks structure to prevent infinite loops during resume.
@@ -92,6 +92,10 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const [showPRDialog, setShowPRDialog] = useState(false);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
 
+  // Human input state (for agent questions during execution)
+  const [humanInputRequest, setHumanInputRequest] = useState<HumanInputRequest | null>(null);
+  const [showHumanInputDialog, setShowHumanInputDialog] = useState(false);
+
   const selectedProject = useProjectStore((state) => state.getSelectedProject());
   const isRunning = task.status === 'in_progress';
   // isActiveTask includes ai_review for stuck detection (CHANGELOG documents this feature)
@@ -161,6 +165,41 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       setIsUserScrolledUp(false);
     }
   }, [activeTab]);
+
+  // Watch for human input requests when task is running
+  useEffect(() => {
+    if (!isRunning || !task.specsPath) {
+      setHumanInputRequest(null);
+      setShowHumanInputDialog(false);
+      return;
+    }
+
+    // Start watching for human input
+    window.electronAPI.humanInputWatch(task.specsPath).catch(console.error);
+
+    // Listen for human input change events
+    const unsubscribe = window.electronAPI.onHumanInputChanged((data) => {
+      if (data.specPath === task.specsPath && data.request.status === 'pending') {
+        setHumanInputRequest(data.request);
+        setShowHumanInputDialog(true);
+      }
+    });
+
+    // Check for existing pending request on mount
+    window.electronAPI.humanInputCheck(task.specsPath).then((result) => {
+      if (result.success && result.data) {
+        setHumanInputRequest(result.data);
+        setShowHumanInputDialog(true);
+      }
+    }).catch(console.error);
+
+    return () => {
+      unsubscribe();
+      if (task.specsPath) {
+        window.electronAPI.humanInputUnwatch(task.specsPath).catch(console.error);
+      }
+    };
+  }, [isRunning, task.specsPath]);
 
   // Reset feedback images when task changes to prevent image leakage between tasks
   useEffect(() => {
@@ -469,6 +508,32 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     }
   }, [selectedProject, task, isIncomplete]);
 
+  // Handle human input answer
+  const handleHumanInputAnswer = useCallback(async (answer: string | string[] | boolean) => {
+    if (!task.specsPath) return;
+
+    try {
+      await window.electronAPI.humanInputAnswer(task.specsPath, answer);
+      setHumanInputRequest(null);
+      setShowHumanInputDialog(false);
+    } catch (err) {
+      console.error('Failed to submit human input answer:', err);
+    }
+  }, [task.specsPath]);
+
+  // Handle human input skip
+  const handleHumanInputSkip = useCallback(async () => {
+    if (!task.specsPath) return;
+
+    try {
+      await window.electronAPI.humanInputSkip(task.specsPath);
+      setHumanInputRequest(null);
+      setShowHumanInputDialog(false);
+    } catch (err) {
+      console.error('Failed to skip human input:', err);
+    }
+  }, [task.specsPath]);
+
   return {
     // State
     feedback,
@@ -513,6 +578,8 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     showPRDialog,
     isCreatingPR,
     isLoadingPlan,
+    humanInputRequest,
+    showHumanInputDialog,
 
     // Setters
     setFeedback,
@@ -558,5 +625,7 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
     clearFeedbackImages,
     handleReviewAgain,
     reloadPlanForIncompleteTask,
+    handleHumanInputAnswer,
+    handleHumanInputSkip,
   };
 }

@@ -306,5 +306,14 @@
     "streaming": "Receiving logs...",
     "viewFull": "View Full Logs",
     "providerBadge": "{{provider}} / {{model}}"
+  },
+  "humanInput": {
+    "title": "Agent Question",
+    "recommended": "Recommended",
+    "textPlaceholder": "Enter your answer...",
+    "submit": "Submit Answer",
+    "skip": "Skip (use default)",
+    "timeout": "Time remaining",
+    "expired": "Question timed out"
   }
 }

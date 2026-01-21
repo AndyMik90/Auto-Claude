@@ -33,6 +33,7 @@ import { registerClaudeCodeHandlers } from './claude-code-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerIFlowHandlers } from './iflow-handlers';
+import { registerHumanInputHandlers } from './human-input-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { notificationService } from '../notification-service';
 
@@ -122,6 +123,9 @@ export function setupIpcHandlers(
   // iFlow integration handlers
   registerIFlowHandlers(getMainWindow);
 
+  // Human input handlers (for agent questions during execution)
+  registerHumanInputHandlers(getMainWindow);
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -149,5 +153,6 @@ export {
   registerClaudeCodeHandlers,
   registerMcpHandlers,
   registerProfileHandlers,
-  registerIFlowHandlers
+  registerIFlowHandlers,
+  registerHumanInputHandlers
 };

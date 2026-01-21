@@ -42,6 +42,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
+import { HumanInputDialog } from './HumanInputDialog';
 import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -649,6 +650,16 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Human Input Dialog (for agent questions during execution) */}
+      {state.humanInputRequest && (
+        <HumanInputDialog
+          request={state.humanInputRequest}
+          open={state.showHumanInputDialog}
+          onAnswer={state.handleHumanInputAnswer}
+          onSkip={state.handleHumanInputSkip}
+        />
+      )}
     </TooltipProvider>
   );
 }

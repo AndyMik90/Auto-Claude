@@ -51,6 +51,15 @@ export const IPC_CHANNELS = {
   TASK_STATUS_CHANGE: 'task:statusChange',
   TASK_EXECUTION_PROGRESS: 'task:executionProgress',
 
+  // Human input operations (agent asking user for input)
+  HUMAN_INPUT_CHECK: 'human-input:check',
+  HUMAN_INPUT_ANSWER: 'human-input:answer',
+  HUMAN_INPUT_SKIP: 'human-input:skip',
+  HUMAN_INPUT_WATCH: 'human-input:watch',
+  HUMAN_INPUT_UNWATCH: 'human-input:unwatch',
+  // Human input events (main -> renderer)
+  HUMAN_INPUT_CHANGED: 'human-input:changed',
+
   // Task phase logs (persistent, collapsible logs by phase)
   TASK_LOGS_GET: 'task:logsGet',           // Load logs from spec dir
   TASK_LOGS_WATCH: 'task:logsWatch',       // Start watching for log changes
