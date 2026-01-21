@@ -105,15 +105,19 @@ runs:
           fi
         fi
 
-        # Final verification - the symlink must exist and resolve correctly
-        if [ ! -L "apps/frontend/node_modules" ]; then
+        # Final verification - the link must exist and resolve correctly
+        # Note: On Windows, junctions don't show as symlinks (-L), so we check if the directory exists
+        # and can be listed. On Unix, we also verify it's a symlink.
+        if [ "$RUNNER_OS" != "Windows" ] && [ ! -L "apps/frontend/node_modules" ]; then
           echo "::error::apps/frontend/node_modules symlink was not created"
           exit 1
         fi
-        if [ ! -d "apps/frontend/node_modules" ]; then
-          echo "::error::apps/frontend/node_modules symlink does not resolve to a valid directory"
+        # Verify the link resolves to a valid directory with content
+        if ! ls apps/frontend/node_modules/electron >/dev/null 2>&1; then
+          echo "::error::apps/frontend/node_modules does not resolve correctly (electron not found)"
           ls -la apps/frontend/ || true
+          ls apps/frontend/node_modules 2>&1 | head -5 || true
           exit 1
         fi
         count=$(ls apps/frontend/node_modules 2>/dev/null | wc -l)
-        echo "Verified: apps/frontend/node_modules -> ../../node_modules ($count entries)"
+        echo "Verified: apps/frontend/node_modules resolves correctly ($count entries)"
