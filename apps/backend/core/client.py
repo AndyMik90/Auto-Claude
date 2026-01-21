@@ -631,6 +631,15 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                     current_skill = None
                 in_skills = False
                 in_skill_paths = False
+                # Reprocess this line - it might be a top-level paths: that follows require_skills:
+                if stripped.startswith("paths:") and not in_paths:
+                    in_paths = True
+                    # Check for inline array: paths: [a, b, c]
+                    if "[" in stripped:
+                        match = re.search(r'\[(.*)\]', stripped)
+                        if match:
+                            paths = [p.strip().strip("'\"") for p in match.group(1).split(",")]
+                        in_paths = False
 
     # Don't forget to save the last skill entry
     if current_skill and current_skill.get("skill"):
@@ -669,12 +678,16 @@ def _match_glob_pattern(pattern: str, filepath: str) -> bool:
         i = 0
         while i < len(pattern):
             if pattern[i:i+2] == "**":
-                # ** matches any path depth (zero or more directories)
-                regex_pattern += ".*"
                 i += 2
-                # Skip trailing slash after **
+                # Check if ** is followed by /
                 if i < len(pattern) and pattern[i] == "/":
-                    i += 1
+                    # **/ matches zero or more directory segments (segment-aware)
+                    # Use (?:.*/)? to match zero or more path segments including slashes
+                    regex_pattern += "(?:.*/)?"
+                    i += 1  # Skip the /
+                else:
+                    # ** at end or before non-/ matches remaining path
+                    regex_pattern += ".*"
             elif pattern[i] == "*":
                 # * matches any characters except /
                 regex_pattern += "[^/]*"
