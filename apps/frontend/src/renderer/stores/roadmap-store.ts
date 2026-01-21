@@ -87,7 +87,27 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 
   setCompetitorAnalysis: (analysis) => set({ competitorAnalysis: analysis }),
 
-  setGenerationStatus: (status) => set({ generationStatus: status }),
+  setGenerationStatus: (status) =>
+    set((state) => {
+      const now = new Date();
+      const isStartingGeneration =
+        state.generationStatus.phase === 'idle' && status.phase !== 'idle';
+      const isStoppingGeneration = status.phase === 'idle' || status.phase === 'complete' || status.phase === 'error';
+
+      return {
+        generationStatus: {
+          ...status,
+          // Set startedAt when transitioning from idle to active, preserve existing otherwise
+          startedAt: isStartingGeneration
+            ? now
+            : isStoppingGeneration
+              ? undefined
+              : status.startedAt ?? state.generationStatus.startedAt,
+          // Always update lastActivityAt on any status change (unless going idle)
+          lastActivityAt: isStoppingGeneration ? undefined : now
+        }
+      };
+    }),
 
   setCurrentProjectId: (projectId) => set({ currentProjectId: projectId }),
 
