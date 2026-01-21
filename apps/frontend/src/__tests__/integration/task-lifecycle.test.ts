@@ -148,8 +148,8 @@ describe('Task Lifecycle Integration', () => {
       const getTasks = electronAPI['getTasks'] as (projectId: string) => Promise<unknown>;
       const result = await getTasks('project-id');
 
-      // Verify IPC invocation
-      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('task:list', 'project-id');
+      // Verify IPC invocation - second argument is optional options (undefined when not provided)
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('task:list', 'project-id', undefined);
 
       // Verify task data includes plan with subtasks
       expect(result).toMatchObject({
