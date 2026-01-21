@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Eye,
   EyeOff,
@@ -584,7 +584,12 @@ export function OAuthStep({ onNext, onBack, onSkip }: OAuthStepProps) {
                               <Label className="text-xs font-medium text-muted-foreground">
                                 {t('common:oauth.manualTokenEntry')}
                               </Label>
-                              <span className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('common:oauth.tokenCommandHint') }} />
+                              <span className="text-xs text-muted-foreground">
+                                <Trans
+                                  i18nKey="common:oauth.tokenCommandHint"
+                                  components={{ code: <code className="font-mono bg-muted px-1 rounded" /> }}
+                                />
+                              </span>
                             </div>
 
                             <div className="space-y-2">

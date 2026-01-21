@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Key,
   Loader2,
@@ -171,10 +171,20 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p className="font-medium">{t('oauth.completeStepsTitle')}</p>
                     <ol className="list-decimal list-inside space-y-1 ml-2">
-                      <li dangerouslySetInnerHTML={{ __html: t('oauth.stepTypeLogin') }} />
+                      <li>
+                        <Trans
+                          i18nKey="oauth.stepTypeLogin"
+                          components={{ code: <code className="font-mono bg-muted px-1 rounded" /> }}
+                        />
+                      </li>
                       <li>{t('oauth.stepBrowserOpen')}</li>
                       <li>{t('oauth.stepCompleteOAuth')}</li>
-                      <li dangerouslySetInnerHTML={{ __html: t('oauth.stepReturnAndVerify') }} />
+                      <li>
+                        <Trans
+                          i18nKey="oauth.stepReturnAndVerify"
+                          components={{ strong: <strong className="font-semibold" /> }}
+                        />
+                      </li>
                     </ol>
                   </div>
                 </div>

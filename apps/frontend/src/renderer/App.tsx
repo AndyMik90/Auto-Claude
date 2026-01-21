@@ -56,7 +56,7 @@ import { ProactiveSwapListener } from './components/ProactiveSwapListener';
 import { GitHubSetupModal } from './components/GitHubSetupModal';
 import { useProjectStore, loadProjects, addProject, initializeProject, removeProject } from './stores/project-store';
 import { useTaskStore, loadTasks } from './stores/task-store';
-import { useSettingsStore, loadSettings, loadProfiles } from './stores/settings-store';
+import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
 import { initializeGitHubListeners } from './stores/github';
@@ -297,10 +297,10 @@ export function App() {
   // Handle version warning dismissal
   const handleVersionWarningClose = () => {
     setIsVersionWarningModalOpen(false);
-    // Persist that user has seen this warning
+    // Persist that user has seen this warning (to disk, not just in-memory)
     const seenWarnings = settings.seenVersionWarnings || [];
     if (!seenWarnings.includes(VERSION_WARNING_275)) {
-      useSettingsStore.getState().updateSettings({
+      saveSettings({
         seenVersionWarnings: [...seenWarnings, VERSION_WARNING_275]
       });
     }
