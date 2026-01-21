@@ -18,7 +18,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { OS, ShellType, PathConfig, ShellConfig, BinaryDirectories } from './types';
 
 // Re-export from paths.ts for backward compatibility
-export { getWindowsShellPaths } from './paths';
+export { getWindowsShellPaths, getOllamaExecutablePaths, getOllamaInstallCommand, getWhichCommand } from './paths';
 
 /**
  * Get the current operating system
