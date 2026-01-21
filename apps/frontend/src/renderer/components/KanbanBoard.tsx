@@ -17,7 +17,8 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy
+  verticalListSortingStrategy,
+  arrayMove
 } from '@dnd-kit/sortable';
 import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, GitPullRequest, X } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
@@ -701,7 +702,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   };
 
   // Get task order actions from store
-  const reorderTasksInColumn = useTaskStore((state) => state.reorderTasksInColumn);
   const moveTaskToColumnTop = useTaskStore((state) => state.moveTaskToColumnTop);
   const saveTaskOrderToStorage = useTaskStore((state) => state.saveTaskOrder);
   const loadTaskOrder = useTaskStore((state) => state.loadTaskOrder);
@@ -812,27 +812,49 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
       // Same visual column: reorder within column
       if (taskVisualColumn === overTaskVisualColumn) {
-        // Ensure both tasks are in the order array before reordering
-        // This handles tasks that existed before ordering was enabled
+        // Get the current column order, falling back to visual order if not set
         const currentColumnOrder = taskOrder?.[taskVisualColumn] ?? [];
         const activeInOrder = currentColumnOrder.includes(activeTaskId);
         const overInOrder = currentColumnOrder.includes(overId);
 
+        // Determine the base order to work with
+        let baseOrder: string[];
         if (!activeInOrder || !overInOrder) {
           // Sync the current visual order to the stored order
           // This ensures existing tasks can be reordered
-          const visualOrder = tasksByStatus[taskVisualColumn].map(t => t.id);
-          setTaskOrder({
-            ...taskOrder,
-            [taskVisualColumn]: visualOrder
-          } as TaskOrderState);
+          baseOrder = tasksByStatus[taskVisualColumn].map(t => t.id);
+        } else {
+          baseOrder = currentColumnOrder;
         }
 
-        // Reorder tasks within the same column using the visual column key
-        reorderTasksInColumn(taskVisualColumn, activeTaskId, overId);
+        // Compute the reordered array in one step
+        const oldIndex = baseOrder.indexOf(activeTaskId);
+        const newIndex = baseOrder.indexOf(overId);
 
-        if (projectId) {
-          saveTaskOrder(projectId);
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          // Compute the new order using arrayMove
+          const reorderedArray = arrayMove(baseOrder, oldIndex, newIndex);
+
+          // Build the complete order state, preserving other columns
+          // If taskOrder is null (before loadTaskOrder runs), create a minimal state
+          const newTaskOrder: TaskOrderState = taskOrder
+            ? { ...taskOrder, [taskVisualColumn]: reorderedArray }
+            : {
+                backlog: [],
+                in_progress: [],
+                ai_review: [],
+                human_review: [],
+                pr_created: [],
+                done: [],
+                [taskVisualColumn]: reorderedArray
+              };
+
+          // Set the complete reordered state in one update
+          setTaskOrder(newTaskOrder);
+
+          if (projectId) {
+            saveTaskOrder(projectId);
+          }
         }
         return;
       }
