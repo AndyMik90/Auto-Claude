@@ -7,7 +7,6 @@ Tests for the task_logger module including ANSI code stripping functionality.
 import json
 import os
 import sys
-from pathlib import Path
 
 # Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'apps', 'backend'))
@@ -188,6 +187,25 @@ class TestTaskLoggerAnsiIntegration:
         assert len(coding_entries) == 1
         assert coding_entries[0]["detail"] == "ERROR: File not found"
         assert "\x1b" not in coding_entries[0]["detail"]
+
+    def test_log_with_detail_sanitizes_content(self, tmp_path):
+        """log_with_detail() should sanitize content parameter."""
+        logger = TaskLogger(tmp_path, emit_markers=False)
+
+        logger.log_with_detail(
+            content="\x1b[33mWarning:\x1b[0m Check this",
+            detail="Some detail text",
+            print_to_console=False
+        )
+
+        log_file = tmp_path / "task_logs.json"
+        with open(log_file) as f:
+            logs = json.load(f)
+
+        coding_entries = logs["phases"]["coding"]["entries"]
+        assert len(coding_entries) == 1
+        assert coding_entries[0]["content"] == "Warning: Check this"
+        assert "\x1b" not in coding_entries[0]["content"]
 
     def test_tool_end_sanitizes_detail(self, tmp_path):
         """tool_end() should sanitize detail parameter."""

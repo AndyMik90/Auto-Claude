@@ -313,7 +313,12 @@ class TaskLogger:
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
-        # Sanitize detail content before storage
+        # Sanitize content and detail before storage
+        if content:
+            from .utils import strip_ansi_codes
+
+            content = strip_ansi_codes(content)
+
         if detail:
             from .utils import strip_ansi_codes
 
