@@ -164,9 +164,10 @@ export class UsageMonitor extends EventEmitter {
   private currentUsage: ClaudeUsageSnapshot | null = null;
   private isChecking = false;
 
-  // Per-profile API method tracking to allow retry after transient failures
-  // Map<profileId, boolean> - true = use API, false = use CLI
-  private useApiMethodForProfile: Map<string, boolean> = new Map();
+  // Per-profile API failure tracking with cooldown-based retry
+  // Map<profileId, lastFailureTimestamp> - stores when API last failed for this profile
+  private apiFailureTimestamps: Map<string, number> = new Map();
+  private static API_FAILURE_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes cooldown before API retry
 
   // Swap loop protection: track profiles that recently failed auth
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
@@ -390,14 +391,17 @@ export class UsageMonitor extends EventEmitter {
 
   /**
    * Check if API method should be used for a specific profile
-   * Returns true by default (try API first), false if API previously failed for this profile
+   *
+   * Uses cooldown-based retry: API is retried after API_FAILURE_COOLDOWN_MS
    *
    * @param profileId - Profile identifier
    * @returns true if API should be tried, false if CLI should be used
    */
   private shouldUseApiMethod(profileId: string): boolean {
-    // Default to true if profile not in map (try API first)
-    return this.useApiMethodForProfile.get(profileId) ?? true;
+    const lastFailure = this.apiFailureTimestamps.get(profileId);
+    if (!lastFailure) return true; // No previous failure, try API
+    // Check if cooldown has expired
+    return Date.now() - lastFailure > UsageMonitor.API_FAILURE_COOLDOWN_MS;
   }
 
   /**
@@ -618,12 +622,12 @@ export class UsageMonitor extends EventEmitter {
         return apiUsage;
       }
 
-      // API failed - switch to CLI method for this profile
-      console.warn('[UsageMonitor] API method failed, falling back to CLI for this profile');
+      // API failed - record timestamp for cooldown-based retry
+      console.warn('[UsageMonitor] API method failed, recording failure timestamp for cooldown retry');
       if (this.isDebug) {
-        console.warn('[UsageMonitor:FETCH] API fetch failed, switching to CLI method for this profile');
+        console.warn('[UsageMonitor:FETCH] API fetch failed, will retry after cooldown');
       }
-      this.useApiMethodForProfile.set(profileId, false);
+      this.apiFailureTimestamps.set(profileId, Date.now());
     } else if (!credential) {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] No credential available, skipping API method');
