@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Globe
 } from 'lucide-react';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -54,26 +55,13 @@ export function SecuritySettings({
     azure: false
   });
 
-  // Platform-specific memories directory path
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   // Sync parent's showOpenAIKey prop to local state
   useEffect(() => {
     setShowApiKey(prev => ({ ...prev, openai: showOpenAIKey }));
   }, [showOpenAIKey]);
-
-  // Fetch platform-specific memories directory path
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
 
   const embeddingProvider = envConfig?.graphitiProviderConfig?.embeddingProvider || 'ollama';
 

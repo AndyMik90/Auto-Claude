@@ -9,6 +9,7 @@ import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import type { ProjectEnvConfig, ProjectSettings, InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
 
 interface OllamaEmbeddingModel {
@@ -48,8 +49,8 @@ export function MemoryBackendSection({
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
   const [ollamaError, setOllamaError] = useState<string | null>(null);
 
-  // Platform-specific memories directory path
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   const embeddingProvider = envConfig.graphitiProviderConfig?.embeddingProvider || 'openai';
   const ollamaBaseUrl = envConfig.graphitiProviderConfig?.ollamaBaseUrl || 'http://localhost:11434';
@@ -92,19 +93,6 @@ export function MemoryBackendSection({
       detectOllamaModels();
     }
   }, [embeddingProvider, envConfig.graphitiEnabled, detectOllamaModels]);
-
-  // Fetch platform-specific memories directory path
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
 
   const badge = (
     <span className={`px-2 py-0.5 text-xs rounded-full ${

@@ -58,6 +58,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const isDisposedRef = useRef<boolean>(false);
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
+  // Track device pixel ratio for DPI change detection
+  const [dpr, setDpr] = useState(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
 
   // Initialize xterm.js UI
   useEffect(() => {
@@ -381,29 +383,18 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   }, []);
 
   // Handle DPI/scale changes (Windows display scaling, moving between monitors)
-  // Uses matchMedia to detect changes - re-registers listener after each change
-  // to track the new devicePixelRatio value (MDN recommended pattern)
+  // Uses matchMedia with { once: true } pattern - state update triggers re-registration
+  // This fixes the bug where only the first DPI change was detected
   useEffect(() => {
     // Guard for JSDOM/test environments where matchMedia is not available
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      // In test environment, fall back to resize listener for basic DPI handling
-      const handleResize = debounce(() => {
-        if (xtermRef.current && fitAddonRef.current && terminalRef.current) {
-          const rect = terminalRef.current.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) {
-            fitAddonRef.current.fit();
-          }
-        }
-      }, 200);
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      return;
     }
-
-    // Track current media query for cleanup
-    let currentMediaQuery: MediaQueryList | null = null;
 
     const handleDPIChange = debounce(() => {
       if (xtermRef.current) {
+        const newScaleFactor = window.devicePixelRatio || 1;
+
         // Update font size dynamically using the helper
         xtermRef.current.options.fontSize = getAdjustedFontSize();
 
@@ -414,44 +405,19 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
             fitAddonRef.current.fit();
           }
         }
+
+        // Update state to trigger re-registration with new dpr
+        setDpr(newScaleFactor);
       }
+    }, 200);
 
-      // Re-register listener with new devicePixelRatio to detect subsequent changes
-      // This is necessary because resolution-based media queries only match exact values
-      registerDPIListener();
-    }, 200); // Debounce DPI changes to avoid excessive recalculations
+    const mediaQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    mediaQuery.addEventListener('change', handleDPIChange, { once: true });
 
-    const registerDPIListener = () => {
-      // Remove listener from previous media query if exists
-      if (currentMediaQuery) {
-        currentMediaQuery.removeEventListener?.('change', handleDPIChange);
-        // Fallback for older browsers
-        currentMediaQuery.removeListener?.(handleDPIChange);
-      }
-
-      // Create new media query with current devicePixelRatio
-      currentMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-
-      // Modern API: addEventListener
-      if (currentMediaQuery.addEventListener) {
-        currentMediaQuery.addEventListener('change', handleDPIChange);
-      } else if (currentMediaQuery.addListener) {
-        // Fallback for older browsers: addListener (deprecated)
-        currentMediaQuery.addListener(handleDPIChange);
-      }
-    };
-
-    // Initial registration
-    registerDPIListener();
-
-    // Cleanup on unmount
     return () => {
-      if (currentMediaQuery) {
-        currentMediaQuery.removeEventListener?.('change', handleDPIChange);
-        currentMediaQuery.removeListener?.(handleDPIChange);
-      }
+      mediaQuery.removeEventListener('change', handleDPIChange);
     };
-  }, []);
+  }, [dpr]); // Re-run when dpr changes
 
   const fit = useCallback(() => {
     if (fitAddonRef.current && xtermRef.current) {

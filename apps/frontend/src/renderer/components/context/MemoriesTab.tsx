@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
@@ -22,6 +22,7 @@ import { cn } from '../../lib/utils';
 import { MemoryCard } from './MemoryCard';
 import { InfoItem } from './InfoItem';
 import { memoryFilterCategories } from './constants';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import type { GraphitiMemoryStatus, GraphitiMemoryState, MemoryEpisode } from '../../../shared/types';
 
 type FilterCategory = keyof typeof memoryFilterCategories;
@@ -81,20 +82,9 @@ export function MemoriesTab({
   const { t } = useTranslation(['memory', 'errors']);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
-  const [memoriesDir, setMemoriesDir] = useState<string>('');
 
-  // Fetch platform-specific memories directory path for display
-  useEffect(() => {
-    window.electronAPI.getMemoriesDir()
-      .then((result) => {
-        if (result.success && result.data) {
-          setMemoriesDir(result.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get memories directory:', err);
-      });
-  }, []);
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   // Calculate memory counts by category
   const memoryCounts = useMemo(() => {
