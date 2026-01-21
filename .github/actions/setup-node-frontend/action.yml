@@ -65,13 +65,25 @@ runs:
           exit 1
         fi
 
-        # Remove any existing node_modules in apps/frontend (npm workspaces may create partial one)
-        if [ -d "apps/frontend/node_modules" ] && [ ! -L "apps/frontend/node_modules" ]; then
-          echo "Removing partial node_modules created by npm workspaces..."
-          rm -rf "apps/frontend/node_modules"
+        # Remove any existing node_modules in apps/frontend
+        # This handles: partial directories from npm workspaces, AND broken symlinks
+        if [ -e "apps/frontend/node_modules" ] || [ -L "apps/frontend/node_modules" ]; then
+          # Check if it's a valid symlink pointing to root node_modules
+          if [ -L "apps/frontend/node_modules" ]; then
+            target=$(readlink apps/frontend/node_modules 2>/dev/null || echo "")
+            if [ "$target" = "../../node_modules" ] && [ -d "apps/frontend/node_modules" ]; then
+              echo "Correct symlink already exists: apps/frontend/node_modules -> ../../node_modules"
+            else
+              echo "Removing incorrect/broken symlink (was: $target)..."
+              rm -f "apps/frontend/node_modules"
+            fi
+          else
+            echo "Removing partial node_modules directory created by npm workspaces..."
+            rm -rf "apps/frontend/node_modules"
+          fi
         fi
 
-        # Create link if it doesn't exist
+        # Create link if it doesn't exist or was removed
         if [ ! -L "apps/frontend/node_modules" ]; then
           if [ "$RUNNER_OS" == "Windows" ]; then
             # Use directory junction on Windows (works without admin privileges)
@@ -91,19 +103,17 @@ runs:
               exit 1
             fi
           fi
-        else
-          echo "apps/frontend/node_modules symlink already exists"
         fi
 
-        # Verify the link works
-        if [ -L "apps/frontend/node_modules" ]; then
-          target=$(readlink apps/frontend/node_modules 2>/dev/null || echo "junction")
-          echo "Verified: apps/frontend/node_modules -> $target"
-          # Check that the target resolves correctly
-          if [ -d "apps/frontend/node_modules" ]; then
-            count=$(ls apps/frontend/node_modules 2>/dev/null | wc -l)
-            echo "Link resolves to directory with $count entries"
-          else
-            echo "::warning::Link exists but does not resolve to a valid directory"
-          fi
+        # Final verification - the symlink must exist and resolve correctly
+        if [ ! -L "apps/frontend/node_modules" ]; then
+          echo "::error::apps/frontend/node_modules symlink was not created"
+          exit 1
         fi
+        if [ ! -d "apps/frontend/node_modules" ]; then
+          echo "::error::apps/frontend/node_modules symlink does not resolve to a valid directory"
+          ls -la apps/frontend/ || true
+          exit 1
+        fi
+        count=$(ls apps/frontend/node_modules 2>/dev/null | wc -l)
+        echo "Verified: apps/frontend/node_modules -> ../../node_modules ($count entries)"
