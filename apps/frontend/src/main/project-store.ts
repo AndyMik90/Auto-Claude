@@ -269,29 +269,30 @@ export class ProjectStore {
       return [];
     }
 
-    // WORKTREE ISOLATION: If running from a worktree, override project path to use worktree root
+    // WORKTREE ISOLATION: If running from a worktree, use worktree root instead of project path
     const cwd = process.cwd();
     const worktreeMatch = cwd.match(WORKTREE_ROOT_PATTERN);
+    let effectiveProjectPath = project.path;
     if (worktreeMatch) {
       const worktreeRoot = worktreeMatch[1];
       const worktreeFullName = worktreeRoot.match(/(\d{3}-[^/\\]+)$/)?.[1];
       const worktreeSpecNumber = worktreeFullName?.match(/^(\d{3})/)?.[1];
 
-      debugLog(`[ProjectStore] Worktree mode detected (${worktreeSpecNumber}), overriding project path from "${project.path}" to "${worktreeRoot}"`);
-      project.path = worktreeRoot;
+      debugLog(`[ProjectStore] Worktree mode detected (${worktreeSpecNumber}), using worktree path "${worktreeRoot}" instead of project path "${project.path}"`);
+      effectiveProjectPath = worktreeRoot;
     }
 
-    debugLog('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
+    debugLog('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'effectivePath:', effectiveProjectPath);
 
     const allTasks: Task[] = [];
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
 
     // 1. Scan main project specs directory (source of truth for task existence)
-    const mainSpecsDir = path.join(project.path, specsBaseDir);
+    const mainSpecsDir = path.join(effectiveProjectPath, specsBaseDir);
     const mainSpecIds = new Set<string>();
     console.warn('[ProjectStore] Main specsDir:', mainSpecsDir, 'exists:', existsSync(mainSpecsDir));
     if (existsSync(mainSpecsDir)) {
-      const mainTasks = this.loadTasksFromSpecsDir(mainSpecsDir, project.path, 'main', projectId, specsBaseDir);
+      const mainTasks = this.loadTasksFromSpecsDir(mainSpecsDir, effectiveProjectPath, 'main', projectId, specsBaseDir);
       allTasks.push(...mainTasks);
       // Track which specs exist in main project
       mainTasks.forEach(t => mainSpecIds.add(t.specId));
@@ -301,7 +302,7 @@ export class ProjectStore {
     // 2. Scan worktree specs directories
     // NOTE FOR MAINTAINERS: Worktree tasks are only included if the spec also exists in main.
     // This prevents deleted tasks from "coming back" when the worktree isn't cleaned up.
-    const worktreesDir = getTaskWorktreeDir(project.path);
+    const worktreesDir = getTaskWorktreeDir(effectiveProjectPath);
     if (existsSync(worktreesDir)) {
       try {
         const worktrees = readdirSync(worktreesDir, { withFileTypes: true });

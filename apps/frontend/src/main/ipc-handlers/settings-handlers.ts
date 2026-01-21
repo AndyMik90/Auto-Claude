@@ -20,6 +20,7 @@ import type { BrowserWindow } from 'electron';
 import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-updater';
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
+import { getPlatformDescription, isMacOS, isWindows } from '../platform';
 import { parseEnvFile } from './utils';
 import { WORKTREE_PATTERN, WORKTREE_ROOT_PATTERN, WORKTREE_SPEC_PATTERN } from '../../shared/constants/worktree-patterns';
 
@@ -35,12 +36,12 @@ const settingsPath = getSettingsPath();
  * 3. User settings (saved autoBuildPath)
  * 4. Standard auto-detection logic (production/dev paths)
  */
-const detectAutoBuildSourcePath = (): string | null => {
+export const detectAutoBuildSourcePath = (): string | null => {
   // Enable debug logging with DEBUG=1
   const debug = process.env.DEBUG === '1' || process.env.DEBUG === 'true';
 
   if (debug) {
-    console.debug('[detectAutoBuildSourcePath] Platform:', process.platform);
+    console.debug('[detectAutoBuildSourcePath] Platform:', getPlatformDescription());
     console.debug('[detectAutoBuildSourcePath] Is dev:', is.dev);
     console.debug('[detectAutoBuildSourcePath] __dirname:', __dirname);
     console.debug('[detectAutoBuildSourcePath] app.getAppPath():', app.getAppPath());
@@ -548,12 +549,10 @@ export function registerSettingsHandlers(
           };
         }
 
-        const platform = process.platform;
-
-        if (platform === 'darwin') {
+        if (isMacOS()) {
           // macOS: Use execFileSync with argument array to prevent injection
           execFileSync('open', ['-a', 'Terminal', resolvedPath], { stdio: 'ignore' });
-        } else if (platform === 'win32') {
+        } else if (isWindows()) {
           // Windows: Use cmd.exe directly with argument array
           // /C tells cmd to execute the command and terminate
           // /K keeps the window open after executing cd

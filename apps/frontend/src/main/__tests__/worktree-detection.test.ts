@@ -11,13 +11,41 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, realpathSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { WORKTREE_PATTERN, WORKTREE_ROOT_PATTERN, WORKTREE_SPEC_PATTERN } from "../../shared/constants/worktree-patterns";
+import { detectAutoBuildSourcePath } from "../ipc-handlers/settings-handlers";
 
 // Test data directory
 const TEST_DIR = mkdtempSync(path.join(tmpdir(), "worktree-test-"));
+
+/**
+ * Safely remove directory with retry logic for Windows
+ * Windows can have file locking issues that require retries
+ */
+function safeRemoveDir(dirPath: string, retries = 3): void {
+  for (let i = 0; i < retries; i++) {
+    try {
+      if (existsSync(dirPath)) {
+        rmSync(dirPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      }
+      return; // Success
+    } catch (error) {
+      if (i === retries - 1) {
+        // Last attempt failed - log but don't fail test
+        console.warn(`Warning: Failed to clean up test directory ${dirPath}:`, error);
+        return;
+      }
+      // Wait before retry (helps with Windows file locking)
+      const delay = 200 * (i + 1);
+      const start = Date.now();
+      while (Date.now() - start < delay) {
+        // Busy wait
+      }
+    }
+  }
+}
 
 // Mock @electron-toolkit/utils
 vi.mock("@electron-toolkit/utils", () => ({
@@ -32,10 +60,32 @@ vi.mock("@electron-toolkit/utils", () => ({
 // Mock electron
 vi.mock("electron", () => ({
   app: {
-    getAppPath: vi.fn(() => TEST_DIR),
+    getAppPath: vi.fn(() => tmpdir()),
+    getVersion: vi.fn(() => "2.7.5"),
+    getPath: vi.fn((name: string) => {
+      if (name === "userData") return path.join(tmpdir(), "userData");
+      return tmpdir();
+    }),
   },
   ipcMain: {
     handle: vi.fn(),
+    on: vi.fn(),
+  },
+  shell: {
+    openPath: vi.fn(),
+  },
+  dialog: {
+    showOpenDialog: vi.fn(),
+    showMessageBox: vi.fn(),
+  },
+}));
+
+// Mock electron-updater
+vi.mock("electron-updater", () => ({
+  autoUpdater: {
+    autoDownload: true,
+    autoInstallOnAppQuit: true,
+    checkForUpdates: vi.fn(),
     on: vi.fn(),
   },
 }));
@@ -145,10 +195,8 @@ describe("Worktree Detection", () => {
     });
 
     afterEach(() => {
-      // Clean up test files
-      if (existsSync(TEST_DIR)) {
-        rmSync(TEST_DIR, { recursive: true, force: true });
-      }
+      // Clean up test files (with retry logic for Windows)
+      safeRemoveDir(TEST_DIR);
     });
 
     it("should prioritize environment variable", async () => {
@@ -163,40 +211,31 @@ describe("Worktree Detection", () => {
       // Change to worktree directory (should be ignored due to ENV var priority)
       process.chdir(testWorktreeDir);
 
-      // Import detectAutoBuildSourcePath function
-      // Note: This would require refactoring settings-handlers.ts to export the function
-      // For now, we test the logic pattern
-      const inWorktree = WORKTREE_PATTERN.test(process.cwd());
-      const hasEnvVar = !!process.env.AUTO_CLAUDE_BACKEND_PATH;
+      // Call the actual resolver function
+      const detectedPath = detectAutoBuildSourcePath();
 
-      // ENV var should take precedence
-      expect(hasEnvVar).toBe(true);
-      expect(inWorktree).toBe(true);
-
-      // Verify ENV var path exists
-      expect(existsSync(customBackendPath)).toBe(true);
-      expect(existsSync(path.join(customBackendPath, "runners", "spec_runner.py"))).toBe(true);
+      // ENV var should take precedence over worktree
+      expect(detectedPath).toBe(customBackendPath);
+      expect(WORKTREE_PATTERN.test(process.cwd())).toBe(true); // Verify we're in worktree
+      expect(process.env.AUTO_CLAUDE_BACKEND_PATH).toBe(customBackendPath); // Verify ENV var is set
     });
 
     it("should prioritize worktree local backend", () => {
+      // Ensure no ENV override
+      delete process.env.AUTO_CLAUDE_BACKEND_PATH;
+
       // Change to worktree directory
       process.chdir(testWorktreeDir);
 
-      const cwd = process.cwd();
+      // Call the actual resolver function
+      const detectedPath = detectAutoBuildSourcePath();
 
-      expect(WORKTREE_PATTERN.test(cwd)).toBe(true);
-
-      // Extract worktree root
-      const match = cwd.match(WORKTREE_ROOT_PATTERN);
-      expect(match).not.toBeNull();
-
-      const worktreeRoot = match![1];
-      const localBackendPath = path.join(worktreeRoot, "apps", "backend");
-      const markerPath = path.join(localBackendPath, "runners", "spec_runner.py");
-
-      // Verify local backend exists
-      expect(existsSync(localBackendPath)).toBe(true);
-      expect(existsSync(markerPath)).toBe(true);
+      // Should return the worktree local backend path
+      // Use realpathSync to resolve symlinks (e.g., /var -> /private/var on macOS)
+      const expectedPath = realpathSync(path.join(testWorktreeDir, "apps", "backend"));
+      const normalizedDetectedPath = detectedPath ? realpathSync(detectedPath) : null;
+      expect(normalizedDetectedPath).toBe(expectedPath);
+      expect(existsSync(path.join(expectedPath, "runners", "spec_runner.py"))).toBe(true);
     });
 
     it("should use saved settings as priority 3", () => {

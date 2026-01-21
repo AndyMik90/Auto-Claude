@@ -364,7 +364,7 @@ app.whenReady().then(() => {
         pythonPath: settings.pythonPath,
         autoBuildPath: effectivePath
       });
-      agentManager.configure(settings.pythonPath, validAutoBuildPath);
+      agentManager.configure(settings.pythonPath, effectivePath);
     }
   } catch (error: unknown) {
     // ENOENT means no settings file yet - that's fine, use defaults
