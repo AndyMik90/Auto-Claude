@@ -313,13 +313,6 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
             )}
           </div>
         )}
-
-        {/* Fallback for expanded but no expandable content */}
-        {expanded && !hasExpandableContent && (
-          <pre className="mt-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono p-3 bg-background rounded-lg max-h-64 overflow-auto border border-border/50">
-            {memory.content}
-          </pre>
-        )}
       </CardContent>
     </Card>
   );
