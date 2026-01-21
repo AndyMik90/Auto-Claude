@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 interface DependencyDetailSidePanelProps {
   feature: RoadmapFeature | null;
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   onGoToFeature?: (featureId: string) => void;
   onConvertToSpec?: (featureId: string) => void;
@@ -17,7 +17,7 @@ interface DependencyDetailSidePanelProps {
 
 export function DependencyDetailSidePanel({
   feature,
-  isOpen,
+  isOpen = true,
   onClose,
   onGoToFeature,
   onConvertToSpec

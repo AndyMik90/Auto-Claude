@@ -24,6 +24,7 @@ export function RoadmapTabs({
   onConvertToSpec,
   onGoToTask,
   onSave,
+  onDependencyClick
 }: RoadmapTabsProps) {
   const handleDependencyClick = (depId: string) => {
     const depFeature = roadmap.features.find(f => f.id === depId);
@@ -50,6 +51,7 @@ export function RoadmapTabs({
           onConvertToSpec={onConvertToSpec}
           onGoToTask={onGoToTask}
           onSave={onSave}
+          onDependencyClick={onDependencyClick || handleDependencyClick}
         />
       </TabsContent>
 

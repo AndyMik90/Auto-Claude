@@ -69,6 +69,9 @@
     "importedFrom": "Importé de {{provider}}",
     "depsCount": "{{count}} dép.",
     "requiredByCount": "{{count}} requis par",
-    "circularDependency": "Dépendance circulaire détectée"
+    "circularDependency": "Dépendance circulaire détectée",
+    "dependenciesLabel": "Dépendances :",
+    "requiredByLabel": "Requis par :",
+    "andMore": "+{{count}} de plus"
   }
 }

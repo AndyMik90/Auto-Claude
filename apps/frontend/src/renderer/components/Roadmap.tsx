@@ -148,9 +148,11 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {dependencyDetailFeatureId && (
         <DependencyDetailSidePanel
           feature={roadmap.features.find(f => f.id === dependencyDetailFeatureId) || null}
-          isOpen={dependencyDetailFeatureId !== null}
           onClose={closeDependencyDetail}
           onGoToFeature={(featureId) => {
+            // Defensive null check to avoid crashes when roadmap is null
+            if (!roadmap) return;
+
             const feature = roadmap.features.find(f => f.id === featureId);
             if (feature) {
               setSelectedFeature(feature);

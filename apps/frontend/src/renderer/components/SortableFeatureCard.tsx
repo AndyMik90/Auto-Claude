@@ -26,6 +26,7 @@ interface SortableFeatureCardProps {
   onClick: () => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onDependencyClick?: (featureId: string) => void;
 }
 
 export function SortableFeatureCard({
@@ -33,7 +34,8 @@ export function SortableFeatureCard({
   roadmap,
   onClick,
   onConvertToSpec,
-  onGoToTask
+  onGoToTask,
+  onDependencyClick
 }: SortableFeatureCardProps) {
   const { t } = useTranslation(['roadmap', 'common']);
 
@@ -239,15 +241,27 @@ export function SortableFeatureCard({
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium">Dependencies:</p>
-                      {feature.dependencies.slice(0, 3).map(depId => {
+                      <p className="text-xs font-medium">{t('sortableFeatureCard.dependenciesLabel')}</p>
+                      {feature.dependencies.slice(0, 3).map((depId) => {
                         const dep = getFeatureById(depId);
                         return (
-                          <p key={depId} className="text-xs">{dep?.title || depId}</p>
+                          <button
+                            key={depId}
+                            type="button"
+                            className="text-xs text-left hover:text-foreground transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDependencyClick?.(depId);
+                            }}
+                          >
+                            {dep?.title || depId}
+                          </button>
                         );
                       })}
                       {feature.dependencies.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{feature.dependencies.length - 3} more</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('sortableFeatureCard.andMore', { count: feature.dependencies.length - 3 })}
+                        </p>
                       )}
                     </div>
                   </TooltipContent>
@@ -269,15 +283,27 @@ export function SortableFeatureCard({
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium">Required by:</p>
-                      {reverseDependencies.slice(0, 3).map(depId => {
+                      <p className="text-xs font-medium">{t('sortableFeatureCard.requiredByLabel')}</p>
+                      {reverseDependencies.slice(0, 3).map((depId) => {
                         const dep = getFeatureById(depId);
                         return (
-                          <p key={depId} className="text-xs">{dep?.title || depId}</p>
+                          <button
+                            key={depId}
+                            type="button"
+                            className="text-xs text-left hover:text-foreground transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDependencyClick?.(depId);
+                            }}
+                          >
+                            {dep?.title || depId}
+                          </button>
                         );
                       })}
                       {reverseDependencies.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{reverseDependencies.length - 3} more</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('sortableFeatureCard.andMore', { count: reverseDependencies.length - 3 })}
+                        </p>
                       )}
                     </div>
                   </TooltipContent>

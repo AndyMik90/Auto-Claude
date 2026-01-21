@@ -90,7 +90,27 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
   dependencyDetailFeatureId: null,
 
   // Actions
-  setRoadmap: (roadmap) => set({ roadmap }),
+  setRoadmap: (roadmap) =>
+    set((state) => {
+      // If roadmap is being set to null, clear the dependency detail feature ID
+      // to prevent stale state references to non-existent features
+      if (roadmap === null) {
+        return {
+          roadmap: null,
+          dependencyDetailFeatureId: null
+        };
+      }
+
+      // Only update dependencyDetailFeatureId if the feature no longer exists
+      const shouldClearDependencyId =
+        state.dependencyDetailFeatureId &&
+        !roadmap.features.find(f => f.id === state.dependencyDetailFeatureId);
+
+      return {
+        roadmap,
+        ...(shouldClearDependencyId && { dependencyDetailFeatureId: null })
+      };
+    }),
 
   setCompetitorAnalysis: (analysis) => set({ competitorAnalysis: analysis }),
 
