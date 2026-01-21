@@ -5,6 +5,7 @@ Tests for the task_logger module including ANSI code stripping functionality.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
