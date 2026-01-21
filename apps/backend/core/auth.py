@@ -895,7 +895,7 @@ interact
             print("After completing login in the browser, press Ctrl+C to exit.\n")
 
             # Run expect script
-            result = subprocess.run(
+            subprocess.run(
                 ["expect", script_path],
                 timeout=300,  # 5 minute timeout
             )
