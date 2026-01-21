@@ -43,10 +43,13 @@ function isValidDropColumn(id: string): id is typeof TASK_STATUS_COLUMNS[number]
 /**
  * Get the visual column for a task status.
  * pr_created tasks are displayed in the 'done' column, so we map them accordingly.
+ * error tasks are displayed in the 'human_review' column (errors need human attention).
  * This is used to compare visual positions during drag-and-drop operations.
  */
 function getVisualColumn(status: TaskStatus): typeof TASK_STATUS_COLUMNS[number] {
-  return status === 'pr_created' ? 'done' : status;
+  if (status === 'pr_created') return 'done';
+  if (status === 'error') return 'human_review';
+  return status;
 }
 
 interface KanbanBoardProps {
@@ -478,6 +481,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   const tasksByStatus = useMemo(() => {
     // Note: pr_created tasks are shown in the 'done' column since they're essentially complete
+    // Note: error tasks are shown in the 'human_review' column since they need human attention
     const grouped: Record<typeof TASK_STATUS_COLUMNS[number], Task[]> = {
       backlog: [],
       in_progress: [],
@@ -487,8 +491,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     };
 
     filteredTasks.forEach((task) => {
-      // Map pr_created tasks to the done column
-      const targetColumn = task.status === 'pr_created' ? 'done' : task.status;
+      // Map pr_created tasks to the done column, error tasks to human_review
+      const targetColumn = getVisualColumn(task.status);
       if (grouped[targetColumn]) {
         grouped[targetColumn].push(task);
       }
@@ -741,7 +745,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       ai_review: [],
       human_review: [],
       pr_created: [],
-      done: []
+      done: [],
+      error: []
     };
 
     for (const status of Object.keys(taskOrder) as Array<keyof typeof taskOrder>) {

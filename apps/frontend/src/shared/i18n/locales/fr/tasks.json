@@ -59,7 +59,8 @@
     "ai_review": "Révision IA",
     "human_review": "Révision humaine",
     "done": "Terminé",
-    "pr_created": "PR créée"
+    "pr_created": "PR créée",
+    "error": "Erreur"
   },
   "kanban": {
     "emptyBacklog": "Aucune tâche planifiée",
