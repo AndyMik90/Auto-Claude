@@ -73,12 +73,14 @@ class AgentExecutor:
         model: str,
         create_client_func,
         thinking_budget: int | None = None,
+        language: str = "en",
     ):
         self.project_dir = project_dir
         self.output_dir = output_dir
         self.model = model
         self.create_client = create_client_func
         self.thinking_budget = thinking_budget
+        self.language = language
         # Go up from roadmap/ -> runners/ -> auto-claude/prompts/
         self.prompts_dir = Path(__file__).parent.parent.parent / "prompts"
 
@@ -110,6 +112,20 @@ class AgentExecutor:
         # Add context
         prompt += f"\n\n---\n\n**Output Directory**: {self.output_dir}\n"
         prompt += f"**Project Directory**: {self.project_dir}\n"
+
+        # Add language instruction if not English
+        if self.language and self.language != "en":
+            language_names = {
+                "ru": "Russian",
+                "fr": "French",
+                "de": "German",
+                "es": "Spanish",
+                "zh": "Chinese",
+                "ja": "Japanese",
+                "ko": "Korean",
+            }
+            lang_name = language_names.get(self.language, self.language)
+            prompt += f"\n**IMPORTANT - Output Language**: Generate ALL text content (vision, descriptions, feature names, rationale, explanations) in {lang_name}. Keep only technical terms, file paths, and code in English.\n"
 
         if additional_context:
             prompt += f"\n{additional_context}\n"
