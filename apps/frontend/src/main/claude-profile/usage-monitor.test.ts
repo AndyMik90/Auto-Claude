@@ -418,8 +418,8 @@ describe('usage-monitor', () => {
       expect(usage?.weeklyUsageLimit).toBe(1000); // total tool limit
       expect(usage?.sessionResetTimestamp).toBeDefined();
       expect(usage?.limitType).toBe('weekly'); // 66 > 10
-      expect(usage?.usageWindows?.sessionWindowLabel).toBe('5 Hours Quota');
-      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('Monthly Tools Quota');
+      expect(usage?.usageWindows?.sessionWindowLabel).toBe('common:usage.window5HoursQuota');
+      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('common:usage.windowMonthlyToolsQuota');
     });
 
     it('should handle missing nextResetTime gracefully', () => {
@@ -589,8 +589,8 @@ describe('usage-monitor', () => {
       expect(usage?.weeklyUsageLimit).toBe(1000); // total tool limit
       expect(usage?.sessionResetTimestamp).toBeDefined();
       expect(usage?.limitType).toBe('weekly'); // 80 > 20
-      expect(usage?.usageWindows?.sessionWindowLabel).toBe('5 Hours Quota');
-      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('Monthly Tools Quota');
+      expect(usage?.usageWindows?.sessionWindowLabel).toBe('common:usage.window5HoursQuota');
+      expect(usage?.usageWindows?.weeklyWindowLabel).toBe('common:usage.windowMonthlyToolsQuota');
     });
 
     it('should handle ZHIPU quota/limit response without nextResetTime', () => {

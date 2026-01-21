@@ -37,15 +37,20 @@ const USAGE_WINDOW_LABEL_MAP: Readonly<Record<string, string>> = {
 /**
  * Map backend-provided usage window labels to localized translation keys
  *
- * The backend provides English strings like "5-hour window", "7-day window", etc.
- * This function maps those labels to translation keys for proper localization.
+ * The backend now provides i18n translation keys like "common:usage.window5Hour".
+ * For backward compatibility, also handles legacy English strings like "5-hour window".
  *
- * @param backendLabel - The English label from the backend API
+ * @param backendLabel - The translation key or legacy English label from the backend API
  * @param t - i18next translation function
  * @param defaultKey - Optional default translation key (default: 'common:usage.sessionDefault')
  * @returns Localized label string
  *
  * @example
+ * localizeUsageWindowLabel('common:usage.window5Hour', t)
+ * // Returns: t('common:usage.window5Hour') → "5-hour window" (en) or localized equivalent
+ *
+ * @example
+ * // Legacy backward compatibility
  * localizeUsageWindowLabel('5-hour window', t)
  * // Returns: t('common:usage.window5Hour') → "5-hour window" (en) or localized equivalent
  *
@@ -60,7 +65,15 @@ export function localizeUsageWindowLabel(
 ): string {
   if (!backendLabel) return t(defaultKey);
 
-  // Map known backend labels to translation keys
+  // Check if backendLabel is already a translation key (contains colon)
+  // New format: backend sends "common:usage.window5Hour" directly
+  if (backendLabel.includes(':')) {
+    const translated = t(backendLabel);
+    // If translation returns the key itself (not found), use default
+    return translated === backendLabel ? t(defaultKey) : translated;
+  }
+
+  // Legacy backward compatibility: map old hardcoded English strings to translation keys
   const translationKey = USAGE_WINDOW_LABEL_MAP[backendLabel];
   if (translationKey) {
     const translated = t(`common:usage.${translationKey}`);

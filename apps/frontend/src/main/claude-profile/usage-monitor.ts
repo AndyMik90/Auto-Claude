@@ -931,8 +931,8 @@ export class UsageMonitor extends EventEmitter {
       fetchedAt: new Date(),
       limitType: sevenDayUtil > fiveHourUtil ? 'weekly' : 'session',
       usageWindows: {
-        sessionWindowLabel: '5-hour window',
-        weeklyWindowLabel: '7-day window'
+        sessionWindowLabel: 'common:usage.window5Hour',
+        weeklyWindowLabel: 'common:usage.window7Day'
       }
     };
   }
@@ -1055,8 +1055,8 @@ export class UsageMonitor extends EventEmitter {
         fetchedAt: new Date(),
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
-          sessionWindowLabel: '5 Hours Quota',
-          weeklyWindowLabel: 'Monthly Tools Quota'
+          sessionWindowLabel: 'common:usage.window5HoursQuota',
+          weeklyWindowLabel: 'common:usage.windowMonthlyToolsQuota'
         },
         // Extract raw usage values for display in tooltip
         sessionUsageValue: tokensLimit?.currentValue,
@@ -1121,30 +1121,6 @@ export class UsageMonitor extends EventEmitter {
   ): ClaudeUsageSnapshot | null {
     // Delegate to shared quota/limit response normalization
     return this.normalizeQuotaLimitResponse(data, profileId, profileName, 'zhipu');
-  }
-
-  /**
-   * Get active API profile (if configured)
-   * Returns API profile with baseUrl and apiKey, or undefined if using OAuth
-   */
-  private async getAPIProfile(): Promise<APIProfile | undefined> {
-    try {
-      const profilesFile = await loadProfilesFile();
-      if (profilesFile.activeProfileId) {
-        const activeProfile = profilesFile.profiles.find(
-          (p) => p.id === profilesFile.activeProfileId
-        );
-        if (activeProfile && activeProfile.apiKey) {
-          return activeProfile;
-        }
-      }
-    } catch (error) {
-      // API profile loading failed
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:TRACE] Failed to load API profile:', error);
-      }
-    }
-    return undefined;
   }
 
   /**
