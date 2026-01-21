@@ -36,7 +36,8 @@ import {
   renameSession,
   updateModelConfig,
   createTaskFromSuggestion,
-  setupInsightsListeners
+  setupInsightsListeners,
+  getBase64FromDataUrl
 } from '../stores/insights-store';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
@@ -94,19 +95,6 @@ const createSafeLink = (opensInNewWindowText: string) => {
   };
 };
 
-/**
- * Safely extract base64 data from a data URL
- * @param dataUrl The data URL (e.g., "data:image/png;base64,abc123")
- * @returns The base64 string without the data URL prefix
- * @throws Error if the data URL format is invalid
- */
-function getBase64FromDataUrl(dataUrl: string): string {
-  const parts = dataUrl.split(',');
-  if (parts.length < 2) {
-    throw new Error('Invalid data URL format');
-  }
-  return parts[1];
-}
 
 interface InsightsProps {
   projectId: string;
@@ -248,7 +236,7 @@ export function Insights({ projectId }: InsightsProps) {
       if (file.size > MAX_SIZE) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
         setImageError(
-          `"${file.name}" is ${sizeMB}MB. Large images may cause performance issues.`
+          t('tasks:images.largeFileWarning', { name: file.name, size: sizeMB })
         );
         // Still allow the upload, just warn
       }
@@ -265,7 +253,6 @@ export function Insights({ projectId }: InsightsProps) {
 
         // Generate filename for pasted images (screenshot-timestamp.ext)
         const mimeToExtension: Record<string, string> = {
-          'image/svg+xml': 'svg',
           'image/jpeg': 'jpg',
           'image/png': 'png',
           'image/gif': 'gif',
@@ -669,7 +656,10 @@ export function Insights({ projectId }: InsightsProps) {
             </div>
             {/* Image count indicator */}
             <p className="text-xs text-muted-foreground mb-3">
-              {images.length} image{images.length !== 1 ? 's' : ''} attached ({MAX_IMAGES_PER_TASK - images.length} remaining)
+              {t('tasks:images.countIndicator', {
+                count: images.length,
+                remaining: MAX_IMAGES_PER_TASK - images.length
+              })}
             </p>
           </>
         )}
@@ -751,6 +741,7 @@ function MessageBubble({
   isCreatingTask,
   taskCreated
 }: MessageBubbleProps) {
+  const { t } = useTranslation(['tasks']);
   const isUser = message.role === 'user';
 
   return (
@@ -794,7 +785,7 @@ function MessageBubble({
                     window.open(fullSizeUrl, '_blank');
                   }
                 }}
-                aria-label={`View full-size image: ${image.filename}`}
+                aria-label={t('tasks:images.viewFullSizeAriaLabel', { filename: image.filename })}
               >
                 {image.thumbnail ? (
                   <img

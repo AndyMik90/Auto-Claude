@@ -223,7 +223,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
  * @returns The base64 string without the data URL prefix
  * @throws Error if the data URL format is invalid
  */
-function getBase64FromDataUrl(dataUrl: string): string {
+export function getBase64FromDataUrl(dataUrl: string): string {
   const parts = dataUrl.split(',');
   if (parts.length < 2) {
     throw new Error('Invalid data URL format');
@@ -232,13 +232,28 @@ function getBase64FromDataUrl(dataUrl: string): string {
 }
 
 /**
+ * Detect MIME type from a data URL
+ * @param dataUrl The data URL (e.g., "data:image/png;base64,abc123")
+ * @returns The MIME type (e.g., "image/png") or undefined if not found
+ */
+function detectMimeTypeFromDataUrl(dataUrl: string): string | undefined {
+  const match = dataUrl.match(/^data:([^;]+);/);
+  return match ? match[1] : undefined;
+}
+
+/**
  * Compress an image data URL to reduce memory usage
+ * Preserves transparency for PNG/WebP, uses JPEG for other formats
  * @param dataUrl The original data URL
  * @param maxWidth Maximum width in pixels (default 1920)
- * @param quality JPEG quality 0-1 (default 0.8)
- * @returns Compressed data URL as base64 string
+ * @param quality JPEG/quality 0-1 (default 0.8)
+ * @returns Object with compressed data URL and output MIME type
  */
-async function compressImage(dataUrl: string, maxWidth = 1920, quality = 0.8): Promise<string> {
+async function compressImage(
+  dataUrl: string,
+  maxWidth = 1920,
+  quality = 0.8
+): Promise<{ dataUrl: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -254,7 +269,21 @@ async function compressImage(dataUrl: string, maxWidth = 1920, quality = 0.8): P
       }
 
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+
+      // Detect input MIME type to preserve transparency
+      const inputMimeType = detectMimeTypeFromDataUrl(dataUrl);
+
+      // Use PNG or WebP for formats with transparency, JPEG for others
+      // JPEG doesn't support transparency and will turn transparent pixels black
+      let outputMimeType = 'image/jpeg';
+      if (inputMimeType === 'image/png' || inputMimeType === 'image/webp') {
+        outputMimeType = inputMimeType; // Preserve original format for transparency
+      }
+
+      resolve({
+        dataUrl: canvas.toDataURL(outputMimeType, quality),
+        mimeType: outputMimeType
+      });
     };
     img.onerror = reject;
     img.src = dataUrl;
@@ -276,14 +305,14 @@ async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttac
     });
 
     // Compress image before storing to reduce memory usage
-    const compressedDataUrl = await compressImage(dataUrl);
+    const compressed = await compressImage(dataUrl);
 
     attachments.push({
       id: crypto.randomUUID(),
       filename: file.name,
-      mimeType: file.type,
+      mimeType: compressed.mimeType, // Use the actual output MIME type from compression
       size: file.size,
-      data: getBase64FromDataUrl(compressedDataUrl) // Store compressed base64 without prefix
+      data: getBase64FromDataUrl(compressed.dataUrl) // Store compressed base64 without prefix
     });
   }
 
@@ -346,14 +375,15 @@ export async function sendMessage(
 
   // Convert images to ImageAttachment format if provided
   // Accepts both File[] and ImageAttachment[] for flexibility
-  let imageAttachments: ImageAttachment[] | undefined ;
+  let imageAttachments: ImageAttachment[] | undefined;
   if (images && images.length > 0) {
-    // Check if images are already ImageAttachment format
-    if (images.length > 0 && 'data' in images[0]) {
-      imageAttachments = images as ImageAttachment[];
-    } else {
+    // Check if images are File objects using instanceof File (robust type check)
+    if (images[0] instanceof File) {
       // Convert File[] to ImageAttachment[]
       imageAttachments = await convertFilesToImageAttachments(images as File[]);
+    } else {
+      // Already ImageAttachment[]
+      imageAttachments = images as ImageAttachment[];
     }
   }
 

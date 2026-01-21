@@ -150,7 +150,7 @@ All existing functionality has been preserved. The new features (images, newline
 4. ✅ `verification_subtask-4-4_regression_testing.md` - Detailed verification document
 
 ### Commit
-```
+```text
 commit 7393cf26
 auto-claude: subtask-4-4 - Verify no regressions in existing Insights functionality
 

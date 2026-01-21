@@ -137,7 +137,11 @@
   },
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
-    "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images."
+    "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images.",
+    "viewFullSizeAriaLabel": "View full-size image: {{filename}}",
+    "countIndicator": "{{count}} image attached ({{remaining}} remaining)",
+    "countIndicator_plural": "{{count}} images attached ({{remaining}} remaining)",
+    "largeFileWarning": "\"{{name}}\" is {{size}}MB. Large images may cause performance issues."
   },
   "notifications": {
     "backgroundTaskTitle": "Task continues in background",
