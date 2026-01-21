@@ -77,6 +77,9 @@ def get_task_logger(
         return _current_logger
 
     if _current_logger is None or _current_logger.spec_dir != spec_dir:
+        # Lazy import to avoid cyclic import
+        from .logger import TaskLogger
+
         _current_logger = TaskLogger(spec_dir, emit_markers)
 
     return _current_logger

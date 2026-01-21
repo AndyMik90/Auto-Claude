@@ -10,7 +10,6 @@ from core.debug import debug, debug_error, debug_info, debug_success, is_debug_e
 from .models import LogEntry, LogEntryType, LogPhase
 from .storage import LogStorage
 from .streaming import emit_marker
-from .utils import strip_ansi_codes
 
 
 class TaskLogger:
@@ -243,6 +242,8 @@ class TaskLogger:
         """
         # Sanitize content to remove ANSI escape codes before storage
         if content:
+            from .utils import strip_ansi_codes
+
             content = strip_ansi_codes(content)
 
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
@@ -314,6 +315,8 @@ class TaskLogger:
 
         # Sanitize detail content before storage
         if detail:
+            from .utils import strip_ansi_codes
+
             detail = strip_ansi_codes(detail)
 
         entry = LogEntry(
@@ -491,6 +494,8 @@ class TaskLogger:
 
         # Sanitize detail content before storage
         if stored_detail:
+            from .utils import strip_ansi_codes
+
             stored_detail = strip_ansi_codes(stored_detail)
 
         entry = LogEntry(
