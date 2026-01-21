@@ -87,9 +87,10 @@ runs:
         if [ ! -L "apps/frontend/node_modules" ]; then
           if [ "$RUNNER_OS" == "Windows" ]; then
             # Use directory junction on Windows (works without admin privileges)
-            # IMPORTANT: Junction targets must be absolute paths because mklink resolves
+            # IMPORTANT: Junction targets must be absolute Windows paths because mklink resolves
             # relative paths from CWD, not from the junction's location
-            abs_target=$(cd node_modules && pwd -W)
+            # Use cygpath to convert to proper Windows path format (backslashes)
+            abs_target=$(cygpath -w "$(pwd)/node_modules")
             cmd //c "mklink /J apps\\frontend\\node_modules \"$abs_target\""
             if [ $? -eq 0 ]; then
               echo "Created junction: apps/frontend/node_modules -> $abs_target"
