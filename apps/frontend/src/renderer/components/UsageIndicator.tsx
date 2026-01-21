@@ -43,16 +43,20 @@ export function UsageIndicator() {
     return value.toString();
   };
 
+  // Known hardcoded English patterns from main process to filter out
+  const hasHardcodedText = (text?: string): boolean =>
+    !text || text === 'Unknown' || text === 'Expired';
+
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder text
+  // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
-      (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime))
-    : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
+      (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime))
+    : (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime);
   const weeklyResetTime = usage?.weeklyResetTimestamp
     ? (formatTimeRemaining(usage.weeklyResetTimestamp, t) ??
-      (usage?.weeklyResetTime?.includes('...') ? undefined : usage?.weeklyResetTime))
-    : (usage?.weeklyResetTime?.includes('...') ? undefined : usage?.weeklyResetTime);
+      (hasHardcodedText(usage?.weeklyResetTime) ? undefined : usage?.weeklyResetTime))
+    : (hasHardcodedText(usage?.weeklyResetTime) ? undefined : usage?.weeklyResetTime);
 
   useEffect(() => {
     // Listen for usage updates from main process
@@ -204,7 +208,7 @@ export function UsageIndicator() {
                   style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
                 >
                   {/* Subtle shine effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
                 </div>
               </div>
               {/* Raw usage value with better styling */}
@@ -252,7 +256,7 @@ export function UsageIndicator() {
                   style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
                 >
                   {/* Subtle shine effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
                 </div>
               </div>
               {/* Raw usage value with better styling */}
