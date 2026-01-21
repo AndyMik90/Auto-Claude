@@ -94,6 +94,20 @@ const createSafeLink = (opensInNewWindowText: string) => {
   };
 };
 
+/**
+ * Safely extract base64 data from a data URL
+ * @param dataUrl The data URL (e.g., "data:image/png;base64,abc123")
+ * @returns The base64 string without the data URL prefix
+ * @throws Error if the data URL format is invalid
+ */
+function getBase64FromDataUrl(dataUrl: string): string {
+  const parts = dataUrl.split(',');
+  if (parts.length < 2) {
+    throw new Error('Invalid data URL format');
+  }
+  return parts[1];
+}
+
 interface InsightsProps {
   projectId: string;
 }
@@ -120,9 +134,36 @@ export function Insights({ projectId }: InsightsProps) {
   const [pasteSuccess, setPasteSuccess] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
+  const [throttledStreamingContent, setThrottledStreamingContent] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Throttle streaming content updates to reduce ReactMarkdown re-renders
+  useEffect(() => {
+    if (!streamingContent) {
+      setThrottledStreamingContent('');
+      return;
+    }
+
+    // Clear any pending timeout
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+    }
+
+    // Throttle updates to every 100ms during streaming
+    const THROTTLE_DELAY_MS = 100;
+    streamingTimeoutRef.current = setTimeout(() => {
+      setThrottledStreamingContent(streamingContent);
+    }, THROTTLE_DELAY_MS);
+
+    return () => {
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
+    };
+  }, [streamingContent]);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -202,6 +243,16 @@ export function Insights({ projectId }: InsightsProps) {
       const file = item.getAsFile();
       if (!file) continue;
 
+      // Check file size for large file warning
+      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+      if (file.size > MAX_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setImageError(
+          `"${file.name}" is ${sizeMB}MB. Large images may cause performance issues.`
+        );
+        // Still allow the upload, just warn
+      }
+
       // Validate image type
       if (!isValidImageMimeType(file.type)) {
         setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
@@ -232,7 +283,7 @@ export function Insights({ projectId }: InsightsProps) {
           filename: resolvedFilename,
           mimeType: file.type,
           size: file.size,
-          data: dataUrl.split(',')[1],
+          data: getBase64FromDataUrl(dataUrl),
           thumbnail
         });
       } catch (error) {
@@ -335,7 +386,7 @@ export function Insights({ projectId }: InsightsProps) {
             filename: resolvedFilename,
             mimeType: file.type,
             size: file.size,
-            data: dataUrl.split(',')[1],
+            data: getBase64FromDataUrl(dataUrl),
             thumbnail
           });
         } catch (error) {
@@ -362,6 +413,9 @@ export function Insights({ projectId }: InsightsProps) {
 
   const handleSelectSession = async (sessionId: string) => {
     if (sessionId !== session?.id) {
+      // Clear pending images before switching to prevent sending them to wrong session
+      setImages([]);
+      setImageError(null);
       await switchSession(projectId, sessionId);
     }
   };
@@ -468,7 +522,7 @@ export function Insights({ projectId }: InsightsProps) {
 
       {/* Messages */}
       <ScrollArea className="flex-1 px-6 py-4">
-        {messages.length === 0 && !streamingContent ? (
+        {messages.length === 0 && !throttledStreamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
@@ -478,7 +532,8 @@ export function Insights({ projectId }: InsightsProps) {
             </h3>
             <p className="max-w-md text-sm text-muted-foreground">
               Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement.
+              or discuss features you'd like to implement. You can also paste screenshots
+              (Ctrl+V / Cmd+V) or drag & drop images to include visual context.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
@@ -516,7 +571,7 @@ export function Insights({ projectId }: InsightsProps) {
             ))}
 
             {/* Streaming message */}
-            {(streamingContent || currentTool) && (
+            {(throttledStreamingContent || currentTool) && (
               <div className="flex gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Bot className="h-4 w-4 text-primary" />
@@ -525,10 +580,10 @@ export function Insights({ projectId }: InsightsProps) {
                   <div className="mb-1 text-sm font-medium text-foreground">
                     Assistant
                   </div>
-                  {streamingContent && (
+                  {throttledStreamingContent && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {streamingContent}
+                        {throttledStreamingContent}
                       </ReactMarkdown>
                     </div>
                   )}
@@ -570,45 +625,62 @@ export function Insights({ projectId }: InsightsProps) {
       <div className="border-t border-border p-4">
         {/* Image thumbnails display */}
         {images.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {images.map((image) => (
-              <div
-                key={image.id}
-                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                style={{ width: '64px', height: '64px' }}
-                title={image.filename}
-              >
-                {image.thumbnail ? (
-                  <img
-                    src={image.thumbnail}
-                    alt={image.filename}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                {/* Remove button */}
-                <button
-                  type="button"
-                  className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveImage(image.id);
-                  }}
-                  aria-label={t('accessibility.removeImageAriaLabel')}
+          <>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {images.map((image) => (
+                <div
+                  key={image.id}
+                  className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  style={{ width: '64px', height: '64px' }}
+                  title={image.filename}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
+                  {image.thumbnail ? (
+                    <img
+                      src={image.thumbnail}
+                      alt={image.filename}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage(image.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRemoveImage(image.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={t('tasks:images.removeImageAriaLabel', { filename: image.filename })}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Image count indicator */}
+            <p className="text-xs text-muted-foreground mb-3">
+              {images.length} image{images.length !== 1 ? 's' : ''} attached ({MAX_IMAGES_PER_TASK - images.length} remaining)
+            </p>
+          </>
         )}
 
         {/* Paste Success Indicator */}
         {pasteSuccess && (
-          <div className="flex items-center gap-2 text-sm text-green-600 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 text-sm text-green-600 mb-2 animate-in fade-in slide-in-from-top-1 duration-200"
+          >
             <ImageIcon className="h-4 w-4" />
             {t('tasks:feedback.imageAdded')}
           </div>
@@ -616,7 +688,11 @@ export function Insights({ projectId }: InsightsProps) {
 
         {/* Error display */}
         {imageError && (
-          <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-sm text-destructive mb-2">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-sm text-destructive mb-2"
+          >
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>{imageError}</span>
           </div>
@@ -700,9 +776,10 @@ function MessageBubble({
         {message.images && message.images.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {message.images.map((image) => (
-              <div
+              <button
+                type="button"
                 key={image.id}
-                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 focus:ring-2 focus:ring-primary/50 transition-all"
                 style={{ width: '120px', height: '120px' }}
                 title={image.filename}
                 onClick={() => {
@@ -710,11 +787,19 @@ function MessageBubble({
                   const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
                   window.open(fullSizeUrl, '_blank');
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                    window.open(fullSizeUrl, '_blank');
+                  }
+                }}
+                aria-label={`View full-size image: ${image.filename}`}
               >
                 {image.thumbnail ? (
                   <img
                     src={image.thumbnail}
-                    alt={image.filename}
+                    alt={`Message attachment: ${image.filename}`}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -722,7 +807,7 @@ function MessageBubble({
                     <ImageIcon className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}

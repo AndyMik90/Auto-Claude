@@ -12,6 +12,9 @@ import type {
   ImageAttachment
 } from '../../shared/types';
 
+// Maximum number of images across all messages in a session to prevent memory explosion
+const MAX_IMAGES_PER_SESSION = 100;
+
 interface ToolUsage {
   name: string;
   input?: string;
@@ -215,7 +218,51 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 // Helper functions
 
 /**
- * Convert File objects to ImageAttachment format
+ * Safely extract base64 data from a data URL
+ * @param dataUrl The data URL (e.g., "data:image/png;base64,abc123")
+ * @returns The base64 string without the data URL prefix
+ * @throws Error if the data URL format is invalid
+ */
+function getBase64FromDataUrl(dataUrl: string): string {
+  const parts = dataUrl.split(',');
+  if (parts.length < 2) {
+    throw new Error('Invalid data URL format');
+  }
+  return parts[1];
+}
+
+/**
+ * Compress an image data URL to reduce memory usage
+ * @param dataUrl The original data URL
+ * @param maxWidth Maximum width in pixels (default 1920)
+ * @param quality JPEG quality 0-1 (default 0.8)
+ * @returns Compressed data URL as base64 string
+ */
+async function compressImage(dataUrl: string, maxWidth = 1920, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, maxWidth / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Convert File objects to ImageAttachment format with compression
  */
 async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttachment[]> {
   const attachments: ImageAttachment[] = [];
@@ -228,12 +275,15 @@ async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttac
       reader.readAsDataURL(file);
     });
 
+    // Compress image before storing to reduce memory usage
+    const compressedDataUrl = await compressImage(dataUrl);
+
     attachments.push({
       id: crypto.randomUUID(),
       filename: file.name,
       mimeType: file.type,
       size: file.size,
-      data: dataUrl.split(',')[1] // Store base64 without data URL prefix
+      data: getBase64FromDataUrl(compressedDataUrl) // Store compressed base64 without prefix
     });
   }
 
@@ -276,9 +326,27 @@ export async function sendMessage(
   const store = useInsightsStore.getState();
   const session = store.session;
 
+  // Count existing images in session to prevent memory explosion
+  const existingImageCount = session?.messages.reduce(
+    (count, msg) => count + (msg.images?.length || 0),
+    0
+  ) || 0;
+
+  // Check if adding images would exceed the session-wide limit
+  if (images && images.length > 0) {
+    const newTotal = existingImageCount + images.length;
+    if (newTotal > MAX_IMAGES_PER_SESSION) {
+      const remaining = MAX_IMAGES_PER_SESSION - existingImageCount;
+      throw new Error(
+        `Session image limit reached. Can only add ${remaining} more image${remaining !== 1 ? 's' : ''}. ` +
+        `Start a new conversation for more.`
+      );
+    }
+  }
+
   // Convert images to ImageAttachment format if provided
   // Accepts both File[] and ImageAttachment[] for flexibility
-  let imageAttachments: ImageAttachment[] | undefined = undefined;
+  let imageAttachments: ImageAttachment[] | undefined ;
   if (images && images.length > 0) {
     // Check if images are already ImageAttachment format
     if (images.length > 0 && 'data' in images[0]) {
@@ -312,8 +380,8 @@ export async function sendMessage(
   // Use provided modelConfig, or fall back to session's config
   const configToUse = modelConfig || session?.modelConfig;
 
-  // Send to main process
-  // TODO: Type assertion until IPC API types are updated in separate subtask
+  // Send to main process with optional image attachments
+  // TODO: Type assertion until IPC backend handler is updated to accept images parameter
   (window.electronAPI.sendInsightsMessage as any)(
     projectId,
     message,
