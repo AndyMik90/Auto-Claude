@@ -24,7 +24,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
-import { killProcessGracefully } from '../platform';
+import { killProcessGracefully, isWindows } from '../platform';
 
 /**
  * Type for supported CLI tools
@@ -42,7 +42,7 @@ const CLI_TOOL_ENV_MAP: Readonly<Record<CliTool, string>> = {
 
 
 function deriveGitBashPath(gitExePath: string): string | null {
-  if (process.platform !== 'win32') {
+  if (!isWindows()) {
     return null;
   }
 
@@ -181,7 +181,7 @@ export class AgentProcessManager {
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
-    if (process.platform === 'win32' && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
+    if (isWindows() && !process.env.CLAUDE_CODE_GIT_BASH_PATH) {
       try {
         const gitInfo = getToolInfo('git');
         if (gitInfo.found && gitInfo.path) {
