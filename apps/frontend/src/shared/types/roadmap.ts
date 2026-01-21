@@ -180,4 +180,6 @@ export interface RoadmapGenerationStatus {
   progress: number;
   message: string;
   error?: string;
+  startedAt?: Date;
+  lastActivityAt?: Date;
 }
