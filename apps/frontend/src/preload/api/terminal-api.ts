@@ -113,6 +113,7 @@ export interface TerminalAPI {
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<import('../../shared/types').ClaudeProfile | null>>;
   onSDKRateLimit: (callback: (info: import('../../shared/types').SDKRateLimitInfo) => void) => () => void;
+  onAuthFailure: (callback: (info: import('../../shared/types').AuthFailureInfo) => void) => () => void;
   retryWithProfile: (request: import('../../shared/types').RetryWithProfileRequest) => Promise<IPCResult>;
 
   // Usage Monitoring (Proactive Account Switching)
@@ -482,6 +483,21 @@ export const createTerminalAPI = (): TerminalAPI => ({
     ipcRenderer.on(IPC_CHANNELS.CLAUDE_SDK_RATE_LIMIT, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.CLAUDE_SDK_RATE_LIMIT, handler);
+    };
+  },
+
+  onAuthFailure: (
+    callback: (info: import('../../shared/types').AuthFailureInfo) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      info: import('../../shared/types').AuthFailureInfo
+    ): void => {
+      callback(info);
+    };
+    ipcRenderer.on(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, handler);
     };
   },
 

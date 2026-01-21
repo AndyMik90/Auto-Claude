@@ -105,7 +105,10 @@ const STRIP_PATTERNS = {
   // Format: 'package_name/subpath' - removes the entire subpath
   packagePaths: [
     'googleapiclient/discovery_cache/documents',  // Cached Google API discovery docs (92MB!)
-    'claude_agent_sdk/_bundled',                  // Bundled Claude CLI (224MB!) - users have it installed separately
+    // NOTE: claude_agent_sdk/_bundled is NO LONGER excluded.
+    // On Windows, the system-installed Claude CLI is claude.cmd (a batch script),
+    // which cannot be executed by anyio.open_process() / asyncio.create_subprocess_exec().
+    // The SDK's bundled claude.exe is a proper executable and works correctly.
   ],
   // Packages that should NEVER be bundled (too large, specialized)
   // If these appear in dependencies, warn and skip

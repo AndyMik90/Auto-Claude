@@ -9,13 +9,29 @@ Tests the client.py and simple_client.py module functionality including:
 - Client creation with valid tokens
 """
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Auth token env vars that need to be cleared between tests
+AUTH_TOKEN_ENV_VARS = [
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "ANTHROPIC_AUTH_TOKEN",
+]
+
 
 class TestClientTokenValidation:
     """Tests for client token validation."""
+
+    @pytest.fixture(autouse=True)
+    def clear_env(self):
+        """Clear auth environment variables before and after each test."""
+        for var in AUTH_TOKEN_ENV_VARS:
+            os.environ.pop(var, None)
+        yield
+        for var in AUTH_TOKEN_ENV_VARS:
+            os.environ.pop(var, None)
 
     def test_create_client_rejects_encrypted_tokens(self, tmp_path, monkeypatch):
         """Verify create_client() rejects encrypted tokens."""
@@ -24,6 +40,12 @@ class TestClientTokenValidation:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "enc:test123456789012")
         # Mock keychain to ensure encrypted token is the only source
         monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+        # Mock decrypt_token to raise ValueError (simulates decryption failure)
+        # This ensures the encrypted token flows through to validate_token_not_encrypted
+        monkeypatch.setattr(
+            "core.auth.decrypt_token",
+            lambda t: (_ for _ in ()).throw(ValueError("Decryption not supported")),
+        )
 
         with pytest.raises(ValueError, match="encrypted format"):
             create_client(tmp_path, tmp_path, "claude-sonnet-4", "coder")
@@ -35,6 +57,11 @@ class TestClientTokenValidation:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "enc:test123456789012")
         # Mock keychain to ensure encrypted token is the only source
         monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+        # Mock decrypt_token to raise ValueError (simulates decryption failure)
+        monkeypatch.setattr(
+            "core.auth.decrypt_token",
+            lambda t: (_ for _ in ()).throw(ValueError("Decryption not supported")),
+        )
 
         with pytest.raises(ValueError, match="encrypted format"):
             create_simple_client(agent_type="merge_resolver")

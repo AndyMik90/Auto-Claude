@@ -43,9 +43,9 @@ const OAUTH_URL_PATTERN = /https:\/\/claude\.ai\/oauth\/authorize\?[^\s\x1b\]]+/
  */
 const EMAIL_PATTERNS = [
   /(?:Authenticated as |Logged in as |email[:\s]+)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,  // Note: space after "as"
-  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})[''\u2019]s\s*Organization/i,  // "user@example.com's Organization" (various apostrophes)
+  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s\s*Organization/i,  // "user@example.com's Organization" (ASCII and curly apostrophes)
   /Claude\s+(?:Max|Pro|Team|Enterprise)\s*[·•]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,  // "Claude Max · user@example.com"
-  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['''\u2019]s/i,  // Just "user@example.com's" (broader match)
+  /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s/i,  // Just "user@example.com's" (broader match)
 ];
 
 /**

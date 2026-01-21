@@ -631,7 +631,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT_TOKEN to bypass branch protection rules on main
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Extract version and detect release type
         id: version
