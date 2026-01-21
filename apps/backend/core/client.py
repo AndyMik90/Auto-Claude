@@ -476,7 +476,7 @@ def should_use_claude_rules() -> bool:
     return should_use_claude_md()
 
 
-def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
+def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
     """
     Parse YAML frontmatter from a rule file to extract path patterns and required skills.
 
@@ -485,6 +485,29 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
 
     Returns:
         Tuple of (path_patterns, required_skills, rule_content_without_frontmatter)
+
+        required_skills is a list of dicts with format:
+        {"skill": "/review", "when": "end_of_coding", "paths": ["src/**"]}
+
+        Supported 'when' values:
+        - "planning": Planner should include in implementation_plan.json
+        - "per_subtask": Coder runs on each matching subtask (default)
+        - "end_of_coding": Coder runs once after ALL subtasks complete
+        - "qa_phase": QA agent runs during review
+
+    Supported frontmatter formats:
+        # Simple (backwards compatible) - defaults to when: per_subtask
+        require_skills:
+          - /review
+          - /audit
+
+        # Structured with timing control
+        require_skills:
+          - skill: /review
+            when: end_of_coding
+          - skill: /security-audit
+            when: per_subtask
+            paths: [src/app/api/**]
     """
     if not content.startswith("---"):
         return [], [], content
@@ -503,17 +526,22 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
     # Parse the frontmatter
     frontmatter_lines = lines[1:end_idx]
     paths = []
-    skills = []
+    skills: list[dict] = []
 
     in_paths = False
     in_skills = False
+    current_skill: dict | None = None  # Track structured skill entry
+
     for line in frontmatter_lines:
         stripped = line.strip()
+        # Calculate indentation for detecting nested properties
+        indent = len(line) - len(line.lstrip())
 
         # Parse paths: array
-        if stripped.startswith("paths:"):
+        if stripped.startswith("paths:") and not in_skills:
             in_paths = True
             in_skills = False
+            current_skill = None
             # Check for inline array: paths: [a, b, c]
             if "[" in stripped:
                 import re
@@ -525,12 +553,17 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
         elif stripped.startswith("require_skills:"):
             in_skills = True
             in_paths = False
+            current_skill = None
             # Check for inline array: require_skills: [/skill1, /skill2]
             if "[" in stripped:
                 import re
                 match = re.search(r'\[(.*)\]', stripped)
                 if match:
-                    skills = [s.strip().strip("'\"") for s in match.group(1).split(",")]
+                    # Simple inline format - convert to dicts with default 'when'
+                    for s in match.group(1).split(","):
+                        skill_name = s.strip().strip("'\"")
+                        if skill_name:
+                            skills.append({"skill": skill_name, "when": "per_subtask"})
                 in_skills = False
         elif in_paths:
             if stripped.startswith("- "):
@@ -539,11 +572,49 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[str], str]:
                 # End of paths array
                 in_paths = False
         elif in_skills:
+            # Check for new list item
             if stripped.startswith("- "):
-                skills.append(stripped[2:].strip().strip("'\""))
-            elif stripped and not stripped.startswith("#"):
-                # End of skills array
+                # Save previous skill entry if exists
+                if current_skill and current_skill.get("skill"):
+                    skills.append(current_skill)
+                    current_skill = None
+
+                item_content = stripped[2:].strip()
+
+                # Check if it's structured format: "- skill: /review"
+                if item_content.startswith("skill:"):
+                    skill_name = item_content[6:].strip().strip("'\"")
+                    current_skill = {"skill": skill_name, "when": "per_subtask"}
+                else:
+                    # Simple format: "- /review" - convert to dict immediately
+                    skill_name = item_content.strip("'\"")
+                    if skill_name:
+                        skills.append({"skill": skill_name, "when": "per_subtask"})
+            # Check for nested properties of current skill (indented)
+            elif current_skill is not None and indent >= 4:
+                if stripped.startswith("when:"):
+                    when_value = stripped[5:].strip().strip("'\"")
+                    if when_value in ("planning", "per_subtask", "end_of_coding", "qa_phase"):
+                        current_skill["when"] = when_value
+                elif stripped.startswith("paths:"):
+                    # Check for inline array: paths: [src/**, lib/**]
+                    if "[" in stripped:
+                        import re
+                        match = re.search(r'\[(.*)\]', stripped)
+                        if match:
+                            current_skill["paths"] = [
+                                p.strip().strip("'\"") for p in match.group(1).split(",")
+                            ]
+            elif stripped and not stripped.startswith("#") and indent < 4:
+                # End of skills array (non-indented, non-empty, non-comment line)
+                if current_skill and current_skill.get("skill"):
+                    skills.append(current_skill)
+                    current_skill = None
                 in_skills = False
+
+    # Don't forget to save the last skill entry
+    if current_skill and current_skill.get("skill"):
+        skills.append(current_skill)
 
     # Return content without frontmatter
     rule_content = "\n".join(lines[end_idx + 1:]).strip()
@@ -629,7 +700,7 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
     return None
 
 
-def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[str], str]]:
+def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[dict], str]]:
     """
     Recursively collect all rule files from the rules directory.
 
@@ -638,6 +709,7 @@ def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[str]
 
     Returns:
         List of tuples: (rule_path, path_patterns, required_skills, rule_content)
+        where required_skills is a list of dicts with 'skill', 'when', and optional 'paths' keys
     """
     rules = []
 
@@ -656,7 +728,7 @@ def _collect_all_rules(rules_dir: Path) -> list[tuple[Path, list[str], list[str]
 def load_claude_rules(
     project_dir: Path,
     files_to_check: list[str] | None = None,
-) -> tuple[str, list[str], list[str]]:
+) -> tuple[str, list[str], list[dict]]:
     """
     Load Claude Code rules from .claude/rules/ that match the given files.
 
@@ -672,6 +744,7 @@ def load_claude_rules(
 
     Returns:
         Tuple of (combined_rules_content, list_of_matched_rule_names, list_of_required_skills)
+        where required_skills is a list of dicts with 'skill', 'when', and optional 'paths' keys
     """
     rules_dir = _discover_rules_directory(project_dir)
     if not rules_dir:
@@ -683,7 +756,9 @@ def load_claude_rules(
 
     matched_rules = []
     matched_names = []
-    all_required_skills: set[str] = set()
+    # Track skills by name to avoid duplicates (keep first occurrence)
+    seen_skills: set[str] = set()
+    all_required_skills: list[dict] = []
 
     for rule_path, patterns, skills, content in all_rules:
         # Get relative name for display
@@ -693,7 +768,11 @@ def load_claude_rules(
         if files_to_check is None:
             matched_rules.append((rel_name, content))
             matched_names.append(rel_name)
-            all_required_skills.update(skills)
+            for skill in skills:
+                skill_name = skill.get("skill", "")
+                if skill_name and skill_name not in seen_skills:
+                    seen_skills.add(skill_name)
+                    all_required_skills.append(skill)
             continue
 
         # Check if any pattern matches any file
@@ -702,7 +781,11 @@ def load_claude_rules(
                 if _match_glob_pattern(pattern, filepath):
                     matched_rules.append((rel_name, content))
                     matched_names.append(rel_name)
-                    all_required_skills.update(skills)
+                    for skill in skills:
+                        skill_name = skill.get("skill", "")
+                        if skill_name and skill_name not in seen_skills:
+                            seen_skills.add(skill_name)
+                            all_required_skills.append(skill)
                     break
             else:
                 continue
@@ -716,7 +799,7 @@ def load_claude_rules(
     for name, content in matched_rules:
         combined.append(f"## Rule: {name}\n\n{content}")
 
-    return "\n\n---\n\n".join(combined), matched_names, sorted(all_required_skills)
+    return "\n\n---\n\n".join(combined), matched_names, all_required_skills
 
 
 def _get_files_from_implementation_plan(spec_dir: Path) -> list[str]:
@@ -1107,7 +1190,7 @@ def create_client(
 
     # Include .claude/rules/ if enabled
     # Rules are matched based on files being modified in the implementation plan
-    required_skills: list[str] = []
+    required_skills: list[dict] = []
     if should_use_claude_rules():
         files_in_plan = _get_files_from_implementation_plan(spec_dir)
         if files_in_plan:
@@ -1131,19 +1214,89 @@ def create_client(
                 print("   - .claude/rules/: no rules found")
 
         # Add required skills instruction if any rules specify them
+        # Filter skills based on agent_type and 'when' timing
         if required_skills:
-            skills_formatted = ", ".join(f"`{s}`" for s in required_skills)
-            skill_instruction = (
-                f"\n\n# Required Skills\n\n"
-                f"The following skills MUST be invoked before completing this task:\n"
-                f"{skills_formatted}\n\n"
-                f"Use the Skill tool to invoke each required skill. For example:\n"
-                f"- `/security-audit` - Run security audit on modified files\n"
-                f"- `/review` - Review code changes for quality and patterns\n\n"
-                f"Do NOT mark the task as complete until all required skills have been run."
-            )
-            base_prompt = f"{base_prompt}{skill_instruction}"
-            print(f"   - Required skills: {', '.join(required_skills)}")
+            # Map 'when' values to agent types
+            WHEN_TO_AGENTS = {
+                "planning": ["planner", "spec_gatherer"],
+                "per_subtask": ["coder"],
+                "end_of_coding": ["coder"],
+                "qa_phase": ["qa_reviewer", "qa_fixer"],
+            }
+
+            # Filter skills relevant to this agent type
+            relevant_skills = [
+                s for s in required_skills
+                if agent_type in WHEN_TO_AGENTS.get(s.get("when", "per_subtask"), [])
+            ]
+
+            if relevant_skills:
+                # Group skills by 'when' for appropriate instructions
+                planning_skills = [s for s in relevant_skills if s.get("when") == "planning"]
+                per_subtask_skills = [s for s in relevant_skills if s.get("when") == "per_subtask"]
+                end_of_coding_skills = [s for s in relevant_skills if s.get("when") == "end_of_coding"]
+                qa_skills = [s for s in relevant_skills if s.get("when") == "qa_phase"]
+
+                skill_instructions = []
+
+                # Planning phase instructions
+                if planning_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in planning_skills)
+                    skill_instructions.append(
+                        f"**Planning skills** ({skills_list}):\n"
+                        f"Include these as verification_steps in implementation_plan.json with "
+                        f"appropriate timing (e.g., as final verification step)."
+                    )
+
+                # Per-subtask instructions
+                if per_subtask_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in per_subtask_skills)
+                    paths_info = []
+                    for s in per_subtask_skills:
+                        if s.get("paths"):
+                            paths_info.append(f"  - `{s['skill']}` on files matching: {', '.join(s['paths'])}")
+                    paths_section = "\n".join(paths_info) if paths_info else ""
+                    skill_instructions.append(
+                        f"**Per-subtask skills** ({skills_list}):\n"
+                        f"Run these skills on relevant files during subtask implementation.\n"
+                        f"{paths_section}"
+                    )
+
+                # End-of-coding instructions
+                if end_of_coding_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in end_of_coding_skills)
+                    skill_instructions.append(
+                        f"**End-of-coding skills** ({skills_list}):\n"
+                        f"Run these skills ONCE after ALL subtasks are complete, before signaling completion.\n"
+                        f"Do NOT run on every subtask - only at the very end."
+                    )
+
+                # QA phase instructions
+                if qa_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in qa_skills)
+                    skill_instructions.append(
+                        f"**QA phase skills** ({skills_list}):\n"
+                        f"Run these skills during your QA review before sign-off."
+                    )
+
+                if skill_instructions:
+                    combined_instructions = "\n\n".join(skill_instructions)
+                    skill_instruction = (
+                        f"\n\n# Required Skills\n\n"
+                        f"The following skills are required based on project rules:\n\n"
+                        f"{combined_instructions}\n\n"
+                        f"Use the Skill tool to invoke skills. Example: `/review`, `/security-audit`\n\n"
+                        f"Do NOT mark your work as complete until all required skills for your phase have been run."
+                    )
+                    base_prompt = f"{base_prompt}{skill_instruction}"
+
+                    # Print summary of relevant skills
+                    skill_names = [s["skill"] for s in relevant_skills]
+                    print(f"   - Required skills ({agent_type}): {', '.join(skill_names)}")
+            else:
+                # Skills exist but none for this agent type
+                all_skill_names = [s["skill"] for s in required_skills]
+                print(f"   - Required skills: {', '.join(all_skill_names)} (not for {agent_type})")
     else:
         print("   - .claude/rules/: disabled")
     print()
