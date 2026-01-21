@@ -32,6 +32,8 @@ function createTestTaskOrder(overrides: Partial<TaskOrderState> = {}): TaskOrder
     ai_review: [],
     human_review: [],
     done: [],
+    pr_created: [],
+    error: [],
     ...overrides
   };
 }
@@ -245,11 +247,13 @@ describe('Task Order State Management', () => {
 
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        queue: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
-        queue: [],
-        done: []
+        done: [],
+        pr_created: [],
+        error: []
       });
     });
 
@@ -277,11 +281,13 @@ describe('Task Order State Management', () => {
       // Should fall back to empty order state
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        queue: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
-        queue: [],
-        done: []
+        done: [],
+        pr_created: [],
+        error: []
       });
       expect(consoleSpy).toHaveBeenCalledWith('Failed to load task order:', expect.any(Error));
 
@@ -303,11 +309,13 @@ describe('Task Order State Management', () => {
       // Should fall back to empty order state
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        queue: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
-        queue: [],
-        done: []
+        done: [],
+        pr_created: [],
+        error: []
       });
 
       localStorage.getItem = originalGetItem;
@@ -495,7 +503,9 @@ describe('Task Order State Management', () => {
         ai_review: [],
         human_review: [],
         queue: [],
-        done: []
+        done: [],
+        pr_created: [],
+        error: []
       } as TaskOrderState;
       useTaskStore.setState({ taskOrder: order });
 
@@ -588,11 +598,13 @@ describe('Task Order State Management', () => {
       // Empty string causes JSON.parse to throw - should fall back to empty order
       expect(useTaskStore.getState().taskOrder).toEqual({
         backlog: [],
+        queue: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
-        queue: [],
-        done: []
+        done: [],
+        pr_created: [],
+        error: []
       });
 
       consoleSpy.mockRestore();
