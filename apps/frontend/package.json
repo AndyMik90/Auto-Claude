@@ -140,6 +140,7 @@
   "build": {
     "appId": "com.autoclaude.ui",
     "productName": "Auto-Claude",
+    "npmRebuild": false,
     "artifactName": "${productName}-${version}-${platform}-${arch}.${ext}",
     "publish": [
       {
