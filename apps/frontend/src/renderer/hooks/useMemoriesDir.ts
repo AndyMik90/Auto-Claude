@@ -8,15 +8,23 @@ export function useMemoriesDir(): string {
   const [memoriesDir, setMemoriesDir] = useState<string>('');
 
   useEffect(() => {
+    let isMounted = true;
+
     window.electronAPI.getMemoriesDir()
       .then((result) => {
-        if (result.success && result.data) {
+        if (isMounted && result.success && result.data) {
           setMemoriesDir(result.data);
         }
       })
       .catch((err) => {
-        console.error('Failed to get memories directory:', err);
+        if (isMounted) {
+          console.error('Failed to get memories directory:', err);
+        }
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return memoriesDir;

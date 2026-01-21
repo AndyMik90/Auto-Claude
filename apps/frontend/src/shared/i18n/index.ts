@@ -13,7 +13,6 @@ import enGitlab from './locales/en/gitlab.json';
 import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
 import enErrors from './locales/en/errors.json';
-import enMemory from './locales/en/memory.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -27,7 +26,6 @@ import frGitlab from './locales/fr/gitlab.json';
 import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
-import frMemory from './locales/fr/memory.json';
 
 export const defaultNS = 'common';
 
@@ -43,8 +41,7 @@ export const resources = {
     gitlab: enGitlab,
     taskReview: enTaskReview,
     terminal: enTerminal,
-    errors: enErrors,
-    memory: enMemory
+    errors: enErrors
   },
   fr: {
     common: frCommon,
@@ -57,8 +54,7 @@ export const resources = {
     gitlab: frGitlab,
     taskReview: frTaskReview,
     terminal: frTerminal,
-    errors: frErrors,
-    memory: frMemory
+    errors: frErrors
   }
 } as const;
 
@@ -69,7 +65,7 @@ i18n
     lng: 'en', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'memory'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

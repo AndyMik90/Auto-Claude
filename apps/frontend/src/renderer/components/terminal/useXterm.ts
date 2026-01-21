@@ -23,13 +23,20 @@ interface UseXtermOptions {
   onDimensionsReady?: (cols: number, rows: number) => void;
 }
 
-// Debounce helper function
-function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+// Debounce helper function with cancel support
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T & { cancel: () => void } {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: unknown[]) => {
+
+  const debounced = ((...args: unknown[]) => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
-  }) as T;
+  }) as T & { cancel: () => void };
+
+  debounced.cancel = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+
+  return debounced;
 }
 
 /**
@@ -360,7 +367,10 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     if (container) {
       const resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(container);
-      return () => resizeObserver.disconnect();
+      return () => {
+        handleResize.cancel();
+        resizeObserver.disconnect();
+      };
     }
   }, [onDimensionsReady]);
 
@@ -415,6 +425,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     mediaQuery.addEventListener('change', handleDPIChange, { once: true });
 
     return () => {
+      handleDPIChange.cancel();
       mediaQuery.removeEventListener('change', handleDPIChange);
     };
   }, [dpr]); // Re-run when dpr changes

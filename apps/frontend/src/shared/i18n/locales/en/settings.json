@@ -503,6 +503,14 @@
       "description": "Select a project from the sidebar to configure its settings."
     }
   },
+  "memory": {
+    "database": "Database",
+    "path": "Path",
+    "fallbacks": {
+      "auto_claude_memory": "auto_claude_memory",
+      "memories_directory": "memories directory"
+    }
+  },
   "mcp": {
     "title": "MCP Server Overview",
     "titleWithProject": "MCP Server Overview for {{projectName}}",

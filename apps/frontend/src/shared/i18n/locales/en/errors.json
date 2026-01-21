@@ -1,4 +1,5 @@
 {
+  "graphiti_not_configured": "Graphiti memory is not configured",
   "task": {
     "parseImplementationPlan": "Failed to parse implementation_plan.json for {{specId}}: {{error}}",
     "jsonError": {
