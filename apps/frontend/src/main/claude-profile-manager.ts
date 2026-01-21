@@ -380,9 +380,7 @@ export class ClaudeProfileManager {
     // Claude CLI will use credentials stored in that directory's Keychain
     if (profile?.configDir && !profile.isDefault) {
       // Expand ~ to home directory for the environment variable
-      const expandedConfigDir = profile.configDir.startsWith('~')
-        ? profile.configDir.replace(/^~/, require('os').homedir())
-        : profile.configDir;
+      const expandedConfigDir = expandHomePath(profile.configDir);
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
       console.warn('[ClaudeProfileManager] Using configDir for profile:', profile.name, expandedConfigDir);
       // DO NOT set CLAUDE_CODE_OAUTH_TOKEN here - let Claude Code use Keychain
