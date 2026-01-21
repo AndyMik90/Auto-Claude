@@ -71,6 +71,9 @@ import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
 import { ViewStateProvider } from './contexts/ViewStateContext';
 
+// Version constant for version-specific warnings (e.g., reauthentication notices)
+const VERSION_WARNING_275 = '2.7.5';
+
 // Wrapper component for ProjectTabBar
 interface ProjectTabBarWithContextProps {
   projects: Project[];
@@ -275,12 +278,16 @@ export function App() {
     const checkVersionWarning = async () => {
       if (!settingsHaveLoaded) return;
 
-      const version = await window.electronAPI.getAppVersion();
-      const seenWarnings = settings.seenVersionWarnings || [];
+      try {
+        const version = await window.electronAPI.getAppVersion();
+        const seenWarnings = settings.seenVersionWarnings || [];
 
-      // Show warning for 2.7.5 if not already seen
-      if (version === '2.7.5' && !seenWarnings.includes('2.7.5')) {
-        setIsVersionWarningModalOpen(true);
+        // Show warning for 2.7.5 if not already seen
+        if (version === VERSION_WARNING_275 && !seenWarnings.includes(VERSION_WARNING_275)) {
+          setIsVersionWarningModalOpen(true);
+        }
+      } catch (error) {
+        console.error('Failed to check version warning:', error);
       }
     };
 
@@ -292,9 +299,9 @@ export function App() {
     setIsVersionWarningModalOpen(false);
     // Persist that user has seen this warning
     const seenWarnings = settings.seenVersionWarnings || [];
-    if (!seenWarnings.includes('2.7.5')) {
+    if (!seenWarnings.includes(VERSION_WARNING_275)) {
       useSettingsStore.getState().updateSettings({
-        seenVersionWarnings: [...seenWarnings, '2.7.5']
+        seenVersionWarnings: [...seenWarnings, VERSION_WARNING_275]
       });
     }
   };

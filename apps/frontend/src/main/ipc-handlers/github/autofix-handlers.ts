@@ -35,6 +35,21 @@ import { getRunnerEnv } from './utils/runner-env';
 const { debug: debugLog } = createContextLogger('GitHub AutoFix');
 
 /**
+ * Create an auth failure callback for subprocess runners.
+ * This reduces duplication of the auth failure handling pattern.
+ */
+function createAuthFailureCallback(
+  mainWindow: BrowserWindow | null,
+  context: string
+): ((authFailureInfo: AuthFailureInfo) => void) | undefined {
+  if (!mainWindow) return undefined;
+  return (authFailureInfo: AuthFailureInfo) => {
+    debugLog(`Auth failure detected in ${context}`, authFailureInfo);
+    mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+  };
+}
+
+/**
  * Auto-fix configuration stored in .auto-claude/github/config.json
  */
 export interface AutoFixConfig {
@@ -265,7 +280,10 @@ async function checkAutoFixLabels(project: Project): Promise<number[]> {
 /**
  * Check for NEW issues not yet in the auto-fix queue (no labels required)
  */
-async function checkNewIssues(project: Project): Promise<Array<{number: number}>> {
+async function checkNewIssues(
+  project: Project,
+  onAuthFailure?: (authFailureInfo: AuthFailureInfo) => void
+): Promise<Array<{number: number}>> {
   const config = getAutoFixConfig(project);
   if (!config.enabled) {
     return [];
@@ -286,6 +304,7 @@ async function checkNewIssues(project: Project): Promise<Array<{number: number}>
     args,
     cwd: backendPath,
     env: subprocessEnv,
+    onAuthFailure,
     onComplete: (stdout) => {
       return parseJSONFromOutput<Array<{number: number}>>(stdout);
     },
@@ -536,8 +555,12 @@ export function registerAutoFixHandlers(
     IPC_CHANNELS.GITHUB_AUTOFIX_CHECK_NEW,
     async (_, projectId: string): Promise<Array<{number: number}>> => {
       debugLog('checkNewIssues handler called', { projectId });
+      const mainWindow = getMainWindow();
       const result = await withProjectOrNull(projectId, async (project) => {
-        const issues = await checkNewIssues(project);
+        const issues = await checkNewIssues(
+          project,
+          createAuthFailureCallback(mainWindow, 'check-new')
+        );
         debugLog('New issues found', { count: issues.length, issues });
         return issues;
       });
@@ -639,10 +662,7 @@ export function registerAutoFixHandlers(
             },
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
-            onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
-              debugLog('Auth failure detected in batch auto-fix', authFailureInfo);
-              mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
-            },
+            onAuthFailure: createAuthFailureCallback(mainWindow, 'batch auto-fix'),
             onComplete: () => {
               const batches = getBatches(project);
               debugLog('Batch auto-fix completed', { batchCount: batches.length });
@@ -759,10 +779,7 @@ export function registerAutoFixHandlers(
             },
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
-            onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
-              debugLog('Auth failure detected in analyze preview', authFailureInfo);
-              mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
-            },
+            onAuthFailure: createAuthFailureCallback(mainWindow, 'analyze preview'),
             onComplete: (stdout) => {
               const rawResult = parseJSONFromOutput<Record<string, unknown>>(stdout);
               const convertedResult = convertAnalyzePreviewResult(rawResult);

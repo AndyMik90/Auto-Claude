@@ -129,6 +129,7 @@ export function runPythonSubprocess<T = unknown>(
     let stdout = '';
     let stderr = '';
     let authFailureEmitted = false; // Track if we've already emitted an auth failure
+    let killedDueToAuthFailure = false; // Track if subprocess was killed due to auth failure
 
     // Default progress pattern: [ 30%] message OR [30%] message
     const progressPattern = options.progressPattern ?? /\[\s*(\d+)%\]\s*(.+)/;
@@ -157,9 +158,14 @@ export function runPythonSubprocess<T = unknown>(
           detectedAt: new Date(),
         };
 
-        options.onAuthFailure(authFailureInfo);
+        try {
+          options.onAuthFailure(authFailureInfo);
+        } catch (e) {
+          console.error('[SubprocessRunner] onAuthFailure callback threw:', e);
+        }
 
         // Kill the subprocess to stop the auth failure spam
+        killedDueToAuthFailure = true;
         // The process is stuck in a loop of 401 errors - no point continuing
         console.log('[SubprocessRunner] Killing subprocess due to auth failure, pid:', child.pid);
 
@@ -226,12 +232,13 @@ export function runPythonSubprocess<T = unknown>(
       }
     });
 
-    child.on('close', (code: number) => {
-      const exitCode = code ?? 0;
+    child.on('close', (code: number | null) => {
+      // Treat null exit code (killed with SIGKILL) as failure, not success
+      const exitCode = code ?? -1;
 
       // Debug logging only in development mode
       if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] Process exited with code:', exitCode);
+        console.log('[DEBUG] Process exited with code:', exitCode, '(raw:', code, ')');
         console.log('[DEBUG] Raw stdout length:', stdout.length);
         console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
         console.log('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
@@ -240,6 +247,18 @@ export function runPythonSubprocess<T = unknown>(
       // Note: Auth failure detection now happens in real-time during stdout/stderr processing
       // (see checkAuthFailure helper above). This ensures the modal appears immediately,
       // not just when the process exits.
+
+      // Check if subprocess was killed due to auth failure
+      if (killedDueToAuthFailure) {
+        resolve({
+          success: false,
+          exitCode: exitCode,
+          stdout,
+          stderr,
+          error: 'Authentication failed. Please re-authenticate.',
+        });
+        return;
+      }
 
       if (exitCode === 0) {
         try {
@@ -295,7 +314,7 @@ export function runPythonSubprocess<T = unknown>(
  * Cross-platform: uses Scripts/python.exe on Windows, bin/python on Unix
  */
 export function getPythonPath(backendPath: string): string {
-  return process.platform === 'win32'
+  return isWindows()
     ? path.join(backendPath, '.venv', 'Scripts', 'python.exe')
     : path.join(backendPath, '.venv', 'bin', 'python');
 }
@@ -427,7 +446,7 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 
   // 2. Check gh CLI installation (cross-platform)
   try {
-    const whichCommand = process.platform === 'win32' ? 'where gh' : 'which gh';
+    const whichCommand = isWindows() ? 'where gh' : 'which gh';
     await execAsync(whichCommand);
     result.ghCliInstalled = true;
   } catch {
