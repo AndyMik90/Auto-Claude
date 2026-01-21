@@ -41,7 +41,7 @@
  * - Check that xterm.refresh() is called after options update
  */
 
-import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
+import { useTerminalFontSettingsStore } from '../stores/terminal-font-settings-store';
 
 /**
  * Simulate a store change and verify all terminals update
