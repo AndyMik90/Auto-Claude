@@ -639,6 +639,12 @@
       "cursorStyleDescription": "Choose the appearance of the terminal cursor",
       "selectStyle": "Select cursor style...",
       "currentStyle": "Current:",
+      "styleBlock": "Block",
+      "styleBlockDescription": "Full block cursor",
+      "styleUnderline": "Underline",
+      "styleUnderlineDescription": "Underline cursor",
+      "styleBar": "Bar",
+      "styleBarDescription": "Vertical bar cursor",
       "cursorBlink": "Cursor Blink",
       "cursorBlinkDescription": "Enable or disable cursor blinking animation",
       "blinkStatus": "Status:",
@@ -646,6 +652,8 @@
       "disabled": "Disabled",
       "cursorAccentColor": "Cursor Accent Color",
       "cursorAccentColorDescription": "Choose the color of the terminal cursor",
+      "cursorColorLabel": "Cursor accent color",
+      "cursorColorDescription": "Current color: {{color}}",
       "pickColor": "Click to pick a color",
       "resetColor": "Reset to black",
       "reset": "Reset",
@@ -658,7 +666,15 @@
       "presetsDescription": "Common scrollback limits for different use cases",
       "scrollback": "Scrollback Limit",
       "scrollbackDescription": "Maximum number of lines to keep in terminal history",
-      "scrollbackPresets": "Quick Presets"
+      "scrollbackPresets": "Quick Presets",
+      "presetMinimal": "Minimal",
+      "presetMinimalDescription": "Minimal history (1K lines)",
+      "presetStandard": "Standard",
+      "presetStandardDescription": "Standard history (10K lines)",
+      "presetExtended": "Extended",
+      "presetExtendedDescription": "Extended history (50K lines)",
+      "presetMaximum": "Maximum",
+      "presetMaximumDescription": "Maximum history (100K lines)"
     },
     "presets": {
       "title": "Quick Presets",
@@ -679,7 +695,10 @@
       "savePreset": "Save current configuration as a preset",
       "applyPreset": "Apply this preset",
       "deletePreset": "Delete this preset",
-      "noCustomPresets": "No custom presets yet. Save your current configuration to get started."
+      "noCustomPresets": "No custom presets yet. Save your current configuration to get started.",
+      "duplicateName": "A preset with this name already exists",
+      "saved": "Preset \"{{name}}\" saved",
+      "deleted": "Preset \"{{name}}\" deleted"
     },
     "livePreview": {
       "title": "Live Preview",
@@ -692,6 +711,22 @@
       "description": "Preview your terminal settings in real-time (updates within 300ms)",
       "ariaLabel": "Terminal font preview",
       "infoText": "This preview updates within 300ms of any change to show how your settings will look in actual terminals."
+    },
+    "importExport": {
+      "exportSuccess": "Settings exported successfully",
+      "exportFailed": "Failed to export settings",
+      "importSuccess": "Settings imported successfully",
+      "importFailed": "Failed to import settings: Invalid JSON format",
+      "importFailedRange": "Failed to import settings: Values out of valid range",
+      "copySuccess": "Settings copied to clipboard",
+      "copyFailed": "Failed to copy to clipboard",
+      "fileTooLarge": "Import file too large (max 10KB)",
+      "readError": "Failed to read file"
+    },
+    "slider": {
+      "decrease": "Decrease {{label}} by {{step}}",
+      "increase": "Increase {{label}} by {{step}}",
+      "currentValue": "Current value: {{value}}"
     }
   }
 }

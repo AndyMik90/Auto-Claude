@@ -639,6 +639,12 @@
       "cursorStyleDescription": "Choisir l'apparence du curseur de terminal",
       "selectStyle": "Sélectionner le style de curseur...",
       "currentStyle": "Actuel :",
+      "styleBlock": "Bloc",
+      "styleBlockDescription": "Curseur bloc complet",
+      "styleUnderline": "Soulignement",
+      "styleUnderlineDescription": "Curseur souligné",
+      "styleBar": "Barre",
+      "styleBarDescription": "Barre verticale",
       "cursorBlink": "Clignotement du Curseur",
       "cursorBlinkDescription": "Activer ou désactiver l'animation de clignotement du curseur",
       "blinkStatus": "État :",
@@ -646,6 +652,8 @@
       "disabled": "Désactivé",
       "cursorAccentColor": "Couleur d'Accent du Curseur",
       "cursorAccentColorDescription": "Choisir la couleur du curseur de terminal",
+      "cursorColorLabel": "Couleur d'accent du curseur",
+      "cursorColorDescription": "Couleur actuelle : {{color}}",
       "pickColor": "Cliquer pour choisir une couleur",
       "resetColor": "Réinitialiser en noir",
       "reset": "Réinitialiser",
@@ -658,7 +666,15 @@
       "presetsDescription": "Limites de défilement courantes pour différents cas d'usage",
       "scrollback": "Limite de Défilement",
       "scrollbackDescription": "Nombre maximum de lignes à conserver dans l'historique du terminal",
-      "scrollbackPresets": "Préréglages Rapides"
+      "scrollbackPresets": "Préréglages Rapides",
+      "presetMinimal": "Minimal",
+      "presetMinimalDescription": "Historique minimal (1 000 lignes)",
+      "presetStandard": "Standard",
+      "presetStandardDescription": "Historique standard (10 000 lignes)",
+      "presetExtended": "Étendu",
+      "presetExtendedDescription": "Historique étendu (50 000 lignes)",
+      "presetMaximum": "Maximum",
+      "presetMaximumDescription": "Historique maximum (100 000 lignes)"
     },
     "presets": {
       "title": "Préréglages Rapides",
@@ -679,7 +695,10 @@
       "savePreset": "Sauvegarder la configuration actuelle comme un préréglage",
       "applyPreset": "Appliquer ce préréglage",
       "deletePreset": "Supprimer ce préréglage",
-      "noCustomPresets": "Aucun préréglage personnalisé pour le moment. Sauvegardez votre configuration actuelle pour commencer."
+      "noCustomPresets": "Aucun préréglage personnalisé pour le moment. Sauvegardez votre configuration actuelle pour commencer.",
+      "duplicateName": "Un préréglage avec ce nom existe déjà",
+      "saved": "Préréglage « {{name}} » sauvegardé",
+      "deleted": "Préréglage « {{name}} » supprimé"
     },
     "livePreview": {
       "title": "Aperçu en Direct",
@@ -692,6 +711,22 @@
       "description": "Prévisualiser vos paramètres de terminal en temps réel (mises à jour dans les 300ms)",
       "ariaLabel": "Aperçu des polices de terminal",
       "infoText": "Cet aperçu se met à jour dans les 300ms suivant tout changement pour montrer l'apparence de vos paramètres dans les terminaux réels."
+    },
+    "importExport": {
+      "exportSuccess": "Paramètres exportés avec succès",
+      "exportFailed": "Échec de l'export des paramètres",
+      "importSuccess": "Paramètres importés avec succès",
+      "importFailed": "Échec de l'import : format JSON invalide",
+      "importFailedRange": "Échec de l'import : valeurs hors plage valide",
+      "copySuccess": "Paramètres copiés dans le presse-papier",
+      "copyFailed": "Échec de la copie dans le presse-papier",
+      "fileTooLarge": "Fichier d'import trop volumineux (max 10 Ko)",
+      "readError": "Échec de la lecture du fichier"
+    },
+    "slider": {
+      "decrease": "Diminuer {{label}} de {{step}}",
+      "increase": "Augmenter {{label}} de {{step}}",
+      "currentValue": "Valeur actuelle : {{value}}"
     }
   }
 }

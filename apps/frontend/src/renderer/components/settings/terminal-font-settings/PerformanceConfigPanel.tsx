@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../../lib/utils';
 import { Label } from '../../ui/label';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
+import { SCROLLBACK_MIN, SCROLLBACK_MAX, SCROLLBACK_STEP } from '../../../lib/terminal-font-constants';
 
 interface PerformanceConfigPanelProps {
   settings: TerminalFontSettings;
@@ -11,19 +12,6 @@ interface PerformanceConfigPanelProps {
     value: TerminalFontSettings[K]
   ) => void;
 }
-
-// Scrollback constraints
-const SCROLLBACK_MIN = 1000;
-const SCROLLBACK_MAX = 100000;
-const SCROLLBACK_STEP = 1000;
-
-// Preset scrollback values with labels
-const SCROLLBACK_PRESETS = [
-  { value: 1000, label: '1K', description: 'Minimal' },
-  { value: 10000, label: '10K', description: 'Standard' },
-  { value: 50000, label: '50K', description: 'Extended' },
-  { value: 100000, label: '100K', description: 'Maximum' },
-] as const;
 
 /**
  * Performance configuration panel for terminal scrollback settings.
@@ -35,6 +23,30 @@ const SCROLLBACK_PRESETS = [
  */
 export function PerformanceConfigPanel({ settings, onSettingChange }: PerformanceConfigPanelProps) {
   const { t } = useTranslation('settings');
+
+  // Preset scrollback values with labels (defined inside component to access t())
+  const scrollbackPresets = [
+    {
+      value: 1000,
+      label: '1K',
+      description: t('terminalFonts.performanceConfig.presetMinimal', { defaultValue: 'Minimal' }),
+    },
+    {
+      value: 10000,
+      label: '10K',
+      description: t('terminalFonts.performanceConfig.presetStandard', { defaultValue: 'Standard' }),
+    },
+    {
+      value: 50000,
+      label: '50K',
+      description: t('terminalFonts.performanceConfig.presetExtended', { defaultValue: 'Extended' }),
+    },
+    {
+      value: 100000,
+      label: '100K',
+      description: t('terminalFonts.performanceConfig.presetMaximum', { defaultValue: 'Maximum' }),
+    },
+  ] as const;
 
   // Handle scrollback change
   const handleScrollbackChange = (value: number) => {
@@ -72,7 +84,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
           })}
         </p>
         <div className="grid grid-cols-4 gap-3 max-w-lg pt-1">
-          {SCROLLBACK_PRESETS.map((preset) => {
+          {scrollbackPresets.map((preset) => {
             const isSelected = settings.scrollback === preset.value;
             return (
               <button

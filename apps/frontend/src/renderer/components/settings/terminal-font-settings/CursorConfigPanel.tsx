@@ -14,13 +14,6 @@ interface CursorConfigPanelProps {
   ) => void;
 }
 
-// Cursor style options
-const CURSOR_STYLES: Array<{ value: 'block' | 'underline' | 'bar'; label: string; description: string }> = [
-  { value: 'block', label: 'Block', description: 'Full block cursor' },
-  { value: 'underline', label: 'Underline', description: 'Underline cursor' },
-  { value: 'bar', label: 'Bar', description: 'Vertical bar cursor' },
-];
-
 /**
  * Cursor configuration panel for terminal cursor customization.
  * Provides controls for:
@@ -32,6 +25,25 @@ const CURSOR_STYLES: Array<{ value: 'block' | 'underline' | 'bar'; label: string
  */
 export function CursorConfigPanel({ settings, onSettingChange }: CursorConfigPanelProps) {
   const { t } = useTranslation('settings');
+
+  // Cursor style options (defined inside component to access t())
+  const cursorStyles = [
+    {
+      value: 'block' as const,
+      label: t('terminalFonts.cursorConfig.styleBlock', { defaultValue: 'Block' }),
+      description: t('terminalFonts.cursorConfig.styleBlockDescription', { defaultValue: 'Full block cursor' }),
+    },
+    {
+      value: 'underline' as const,
+      label: t('terminalFonts.cursorConfig.styleUnderline', { defaultValue: 'Underline' }),
+      description: t('terminalFonts.cursorConfig.styleUnderlineDescription', { defaultValue: 'Underline cursor' }),
+    },
+    {
+      value: 'bar' as const,
+      label: t('terminalFonts.cursorConfig.styleBar', { defaultValue: 'Bar' }),
+      description: t('terminalFonts.cursorConfig.styleBarDescription', { defaultValue: 'Vertical bar cursor' }),
+    },
+  ];
 
   // Handle cursor style change
   const handleCursorStyleChange = (value: 'block' | 'underline' | 'bar') => {
@@ -68,7 +80,7 @@ export function CursorConfigPanel({ settings, onSettingChange }: CursorConfigPan
               <SelectValue placeholder={t('terminalFonts.cursorConfig.selectStyle', { defaultValue: 'Select cursor style...' })} />
             </SelectTrigger>
             <SelectContent>
-              {CURSOR_STYLES.map((style) => (
+              {cursorStyles.map((style) => (
                 <SelectItem key={style.value} value={style.value}>
                   <div className="flex flex-col">
                     <span className="font-medium">{style.label}</span>
@@ -83,7 +95,7 @@ export function CursorConfigPanel({ settings, onSettingChange }: CursorConfigPan
         <div className="text-xs text-muted-foreground">
           {t('terminalFonts.cursorConfig.currentStyle', { defaultValue: 'Current:' })}{' '}
           <span className="font-medium text-foreground">
-            {CURSOR_STYLES.find((s) => s.value === settings.cursorStyle)?.label || settings.cursorStyle}
+            {cursorStyles.find((s) => s.value === settings.cursorStyle)?.label || settings.cursorStyle}
           </span>
         </div>
       </div>

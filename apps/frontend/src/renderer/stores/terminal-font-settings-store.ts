@@ -1,6 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { isWindows, isMacOS, isLinux } from '../../shared/platform';
+import { isWindows, isMacOS, isLinux } from '../lib/os-detection';
+import {
+  isValidFontSize,
+  isValidFontWeight,
+  isValidLineHeight,
+  isValidLetterSpacing,
+  isValidScrollback,
+  isValidCursorStyle,
+  isValidHexColor,
+  isValidFontFamily,
+  type CursorStyle,
+} from '../lib/terminal-font-constants';
 
 /**
  * Terminal font settings interface
@@ -215,19 +226,49 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
         try {
           const parsed = JSON.parse(json);
 
-          // Validate parsed object has required fields
-          if (
-            typeof parsed !== 'object' ||
-            !Array.isArray(parsed.fontFamily) ||
-            typeof parsed.fontSize !== 'number' ||
-            typeof parsed.fontWeight !== 'number' ||
-            typeof parsed.lineHeight !== 'number' ||
-            typeof parsed.letterSpacing !== 'number' ||
-            !['block', 'underline', 'bar'].includes(parsed.cursorStyle) ||
-            typeof parsed.cursorBlink !== 'boolean' ||
-            typeof parsed.cursorAccentColor !== 'string' ||
-            typeof parsed.scrollback !== 'number'
-          ) {
+          // Validate parsed object is an object
+          if (typeof parsed !== 'object' || parsed === null) {
+            return false;
+          }
+
+          // Validate fontFamily array
+          if (!isValidFontFamily(parsed.fontFamily)) {
+            return false;
+          }
+
+          // Validate numeric ranges
+          if (typeof parsed.fontSize !== 'number' || !isValidFontSize(parsed.fontSize)) {
+            return false;
+          }
+
+          if (typeof parsed.fontWeight !== 'number' || !isValidFontWeight(parsed.fontWeight)) {
+            return false;
+          }
+
+          if (typeof parsed.lineHeight !== 'number' || !isValidLineHeight(parsed.lineHeight)) {
+            return false;
+          }
+
+          if (typeof parsed.letterSpacing !== 'number' || !isValidLetterSpacing(parsed.letterSpacing)) {
+            return false;
+          }
+
+          if (typeof parsed.scrollback !== 'number' || !isValidScrollback(parsed.scrollback)) {
+            return false;
+          }
+
+          // Validate cursor style enum
+          if (!isValidCursorStyle(parsed.cursorStyle)) {
+            return false;
+          }
+
+          // Validate boolean
+          if (typeof parsed.cursorBlink !== 'boolean') {
+            return false;
+          }
+
+          // Validate hex color
+          if (typeof parsed.cursorAccentColor !== 'string' || !isValidHexColor(parsed.cursorAccentColor)) {
             return false;
           }
 
