@@ -240,6 +240,13 @@ class PRReviewFinding:
     validation_evidence: str | None = None  # Code snippet examined during validation
     validation_explanation: str | None = None  # Why finding was validated/dismissed
 
+    # Cross-validation and confidence routing fields
+    confidence: float = 0.5  # Confidence score (0.0-1.0), defaults to medium confidence
+    source_agents: list[str] = field(
+        default_factory=list
+    )  # Which agents reported this finding
+    cross_validated: bool = False  # Whether multiple agents agreed on this finding
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -260,6 +267,10 @@ class PRReviewFinding:
             "validation_status": self.validation_status,
             "validation_evidence": self.validation_evidence,
             "validation_explanation": self.validation_explanation,
+            # Cross-validation and confidence routing fields
+            "confidence": self.confidence,
+            "source_agents": self.source_agents,
+            "cross_validated": self.cross_validated,
         }
 
     @classmethod
@@ -283,6 +294,10 @@ class PRReviewFinding:
             validation_status=data.get("validation_status"),
             validation_evidence=data.get("validation_evidence"),
             validation_explanation=data.get("validation_explanation"),
+            # Cross-validation and confidence routing fields
+            confidence=data.get("confidence", 0.5),
+            source_agents=data.get("source_agents", []),
+            cross_validated=data.get("cross_validated", False),
         )
 
 

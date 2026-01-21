@@ -53,6 +53,7 @@ import type {
   SessionDateRestoreResult,
   RateLimitInfo,
   SDKRateLimitInfo,
+  AuthFailureInfo,
   RetryWithProfileRequest,
   CreateTerminalWorktreeRequest,
   TerminalWorktreeConfig,
@@ -155,7 +156,7 @@ export interface ElectronAPI {
   saveTabState: (tabState: TabState) => Promise<IPCResult>;
 
   // Task operations
-  getTasks: (projectId: string) => Promise<IPCResult<Task[]>>;
+  getTasks: (projectId: string, options?: { forceRefresh?: boolean }) => Promise<IPCResult<Task[]>>;
   createTask: (projectId: string, title: string, description: string, metadata?: TaskMetadata) => Promise<IPCResult<Task>>;
   deleteTask: (taskId: string) => Promise<IPCResult>;
   updateTask: (taskId: string, updates: { title?: string; description?: string }) => Promise<IPCResult<Task>>;
@@ -297,6 +298,8 @@ export interface ElectronAPI {
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<ClaudeProfile | null>>;
   /** Listen for SDK/CLI rate limit events (non-terminal) */
   onSDKRateLimit: (callback: (info: SDKRateLimitInfo) => void) => () => void;
+  /** Listen for auth failure events (401 errors requiring re-authentication) */
+  onAuthFailure: (callback: (info: AuthFailureInfo) => void) => () => void;
   /** Retry a rate-limited operation with a different profile */
   retryWithProfile: (request: RetryWithProfileRequest) => Promise<IPCResult>;
 

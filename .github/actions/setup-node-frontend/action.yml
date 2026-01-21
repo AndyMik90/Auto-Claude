@@ -34,15 +34,54 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.npm-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json', 'apps/frontend/package-lock.json') }}
+        key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
         restore-keys: ${{ runner.os }}-npm-
 
     - name: Install dependencies
-      working-directory: apps/frontend
       shell: bash
+      # Run npm ci from root to properly handle workspace dependencies.
+      # With npm workspaces, the lock file is at root and dependencies are hoisted there.
+      # Running npm ci in apps/frontend would fail to populate node_modules correctly.
       run: |
         if [ "${{ inputs.ignore-scripts }}" == "true" ]; then
           npm ci --ignore-scripts
         else
           npm ci
+        fi
+
+    - name: Link node_modules for electron-builder
+      shell: bash
+      # electron-builder expects node_modules in apps/frontend for native module rebuilding.
+      # With npm workspaces, packages are hoisted to root. Create a link so electron-builder
+      # can find the modules during packaging and code signing.
+      # Uses symlink on Unix, directory junction on Windows (works without admin privileges).
+      run: |
+        # Verify npm ci succeeded
+        if [ ! -d "node_modules" ]; then
+          echo "::error::Root node_modules does not exist. npm ci may have failed."
+          exit 1
+        fi
+
+        # Create link if needed
+        if [ ! -d "apps/frontend/node_modules" ] && [ ! -L "apps/frontend/node_modules" ]; then
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            # Use directory junction on Windows (works without admin privileges)
+            cmd //c "mklink /J apps\\frontend\\node_modules ..\\..\\node_modules"
+            if [ $? -eq 0 ]; then
+              echo "Created junction: apps/frontend/node_modules -> ../../node_modules"
+            else
+              echo "::error::Failed to create directory junction on Windows"
+              exit 1
+            fi
+          else
+            # Use symlink on Unix (macOS/Linux)
+            if ln -s ../../node_modules apps/frontend/node_modules; then
+              echo "Created symlink: apps/frontend/node_modules -> ../../node_modules"
+            else
+              echo "::error::Failed to create symlink"
+              exit 1
+            fi
+          fi
+        else
+          echo "apps/frontend/node_modules already exists, skipping"
         fi

@@ -408,8 +408,9 @@ class FindingValidator:
         Returns:
             True if meets threshold, False otherwise
         """
-        # If finding has explicit confidence field, use it
-        if hasattr(finding, "confidence") and finding.confidence:
+        # If finding has explicit confidence above default (0.5), use it directly
+        # Note: 0.5 is the default value, so we only use explicit confidence if set higher
+        if hasattr(finding, "confidence") and finding.confidence > 0.5:
             return finding.confidence >= self.HIGH_ACTIONABILITY_SCORE
 
         # Otherwise, use actionability score as proxy for confidence
@@ -499,7 +500,8 @@ class FindingValidator:
             category_counts[finding.category.value] += 1
 
             # Get actionability score
-            if hasattr(finding, "confidence") and finding.confidence:
+            # Note: 0.5 is the default confidence, only use explicit if set higher
+            if hasattr(finding, "confidence") and finding.confidence > 0.5:
                 total_actionability += finding.confidence
             else:
                 total_actionability += self._score_actionability(finding)
