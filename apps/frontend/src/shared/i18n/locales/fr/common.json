@@ -566,5 +566,11 @@
       "technicalDetails": "Détails techniques",
       "goToSettings": "Aller aux paramètres"
     }
+  },
+  "roadmapProgress": {
+    "elapsedTime": "Écoulé",
+    "lastActivity": "Dernière activité",
+    "staleWarning": "Aucune activité depuis un moment",
+    "staleWarningTooltip": "Cette tâche n'a eu aucune activité depuis {{minutes}} minutes"
   }
 }
