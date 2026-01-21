@@ -24,7 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
 import { detectProvider, getProviderLabel, getProviderBadgeColor, type ApiProvider } from '../../shared/utils/provider-detection';
-import { formatTimeRemaining, localizeUsageWindowLabel } from '../../shared/utils/format-time';
+import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 /**
@@ -94,11 +94,11 @@ export function AuthStatusIndicator() {
     : 0;
 
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Only fall back to sessionResetTime if it doesn't contain placeholder text
+  // Only fall back to sessionResetTime if it doesn't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
-      (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime))
-    : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
+      (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime))
+    : (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime);
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
   const authStatus = useMemo(() => {

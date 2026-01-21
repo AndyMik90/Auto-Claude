@@ -896,8 +896,8 @@ export class UsageMonitor extends EventEmitter {
     profileId: string,
     profileName: string
   ): ClaudeUsageSnapshot {
-    const fiveHourUtil = data.five_hour_utilization || 0;
-    const sevenDayUtil = data.seven_day_utilization || 0;
+    const fiveHourUtil = data.five_hour_utilization ?? 0;
+    const sevenDayUtil = data.seven_day_utilization ?? 0;
 
     return {
       sessionPercent: Math.round(fiveHourUtil * 100),

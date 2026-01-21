@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import { formatTimeRemaining, localizeUsageWindowLabel } from '../../shared/utils/format-time';
+import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
 export function UsageIndicator() {
@@ -23,7 +23,20 @@ export function UsageIndicator() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
-  // Helper function to format large numbers with locale-aware compact notation
+  /**
+   * Helper function to format large numbers with locale-aware compact notation
+   *
+   * Returns undefined for null/undefined values. The caller (JSX conditional guards)
+   * is responsible for checking values before calling this function.
+   *
+   * @param value - The number to format (undefined, null, or number)
+   * @returns Formatted compact number string (e.g., "1.2K", "3.4M"), or undefined if input is null/undefined
+   *
+   * @example
+   * formatUsageValue(1234) // "1.2K" (en-US)
+   * formatUsageValue(null) // undefined
+   * formatUsageValue(undefined) // undefined
+   */
   const formatUsageValue = (value?: number | null): string | undefined => {
     if (value == null) return undefined;
 
@@ -42,10 +55,6 @@ export function UsageIndicator() {
     }
     return value.toString();
   };
-
-  // Known hardcoded English patterns from main process to filter out
-  const hasHardcodedText = (text?: string): boolean =>
-    !text || text === 'Unknown' || text === 'Expired';
 
   // Get formatted reset times (calculated dynamically from timestamps)
   // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder/hardcoded text

@@ -6,6 +6,24 @@
  */
 
 /**
+ * Known hardcoded English patterns from main process to filter out
+ *
+ * The main process may send these sentinel values when time data is unavailable.
+ * This helper is used to filter them out before displaying to users.
+ *
+ * @param text - The text to check
+ * @returns true if text is a hardcoded sentinel value (undefined, null, 'Unknown', 'Expired')
+ *
+ * @example
+ * hasHardcodedText('Unknown') // true
+ * hasHardcodedText('Expired') // true
+ * hasHardcodedText('Resets in 2h') // false
+ */
+export function hasHardcodedText(text?: string | null): boolean {
+  return !text || text === 'Unknown' || text === 'Expired';
+}
+
+/**
  * Translation key mapping for backend usage window labels
  * Maps backend-provided English strings to i18n translation keys
  */
