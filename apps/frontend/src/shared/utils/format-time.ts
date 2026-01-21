@@ -12,15 +12,18 @@
  * This helper is used to filter them out before displaying to users.
  *
  * @param text - The text to check
- * @returns true if text is a hardcoded sentinel value (undefined, null, 'Unknown', 'Expired')
+ * @returns true if text is a hardcoded sentinel value (undefined, null, 'Unknown', 'Expired', or whitespace-only)
  *
  * @example
  * hasHardcodedText('Unknown') // true
  * hasHardcodedText('Expired') // true
+ * hasHardcodedText('   ') // true (whitespace-only)
  * hasHardcodedText('Resets in 2h') // false
  */
 export function hasHardcodedText(text?: string | null): boolean {
-  return !text || text === 'Unknown' || text === 'Expired';
+  // Trim whitespace before checking - whitespace-only strings are treated as empty
+  const trimmed = text?.trim();
+  return !trimmed || trimmed === 'Unknown' || trimmed === 'Expired';
 }
 
 /**

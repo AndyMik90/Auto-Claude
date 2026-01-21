@@ -400,8 +400,9 @@ export class UsageMonitor extends EventEmitter {
   private shouldUseApiMethod(profileId: string): boolean {
     const lastFailure = this.apiFailureTimestamps.get(profileId);
     if (!lastFailure) return true; // No previous failure, try API
-    // Check if cooldown has expired
-    return Date.now() - lastFailure > UsageMonitor.API_FAILURE_COOLDOWN_MS;
+    // Check if cooldown has expired (use >= to allow retry at exact boundary)
+    const elapsed = Date.now() - lastFailure;
+    return elapsed >= UsageMonitor.API_FAILURE_COOLDOWN_MS;
   }
 
   /**
@@ -682,26 +683,32 @@ export class UsageMonitor extends EventEmitter {
       // Step 1: Determine if we're using an API profile or OAuth profile
       // Use passed activeProfile if available, otherwise detect to maintain backward compatibility
       let apiProfile: APIProfile | undefined;
+      let baseUrl: string;
+      let provider: ApiProvider;
+
       if (activeProfile && activeProfile.isAPIProfile) {
         // Use the pre-determined profile to avoid race conditions
-        const profilesFile = await loadProfilesFile();
-        apiProfile = profilesFile.profiles.find(p => p.id === activeProfile.profileId);
-      }
-
-      const isAPIProfile = !!apiProfile;
-
-      // Step 2: Detect provider from baseUrl
-      let provider: ApiProvider;
-      let baseUrl: string;
-
-      if (isAPIProfile && apiProfile) {
-        // API profile - detect from profile's baseUrl
-        baseUrl = apiProfile.baseUrl;
+        // Trust the activeProfile data and use baseUrl directly
+        baseUrl = activeProfile.baseUrl;
         provider = detectProvider(baseUrl);
-      } else {
+      } else if (activeProfile && !activeProfile.isAPIProfile) {
         // OAuth profile - always Anthropic
         provider = 'anthropic';
         baseUrl = 'https://api.anthropic.com';
+      } else {
+        // No activeProfile passed - need to detect from profiles file
+        const profilesFile = await loadProfilesFile();
+        apiProfile = profilesFile.profiles.find(p => p.id === activeProfile?.profileId);
+
+        if (apiProfile && apiProfile.apiKey) {
+          // API profile found
+          baseUrl = apiProfile.baseUrl;
+          provider = detectProvider(baseUrl);
+        } else {
+          // OAuth profile fallback
+          provider = 'anthropic';
+          baseUrl = 'https://api.anthropic.com';
+        }
       }
 
       if (this.isDebug) {
@@ -772,6 +779,8 @@ export class UsageMonitor extends EventEmitter {
               parseError
             });
           }
+          // Record failure timestamp for cooldown retry
+          this.apiFailureTimestamps.set(profileId, Date.now());
           return null;
         }
 
@@ -806,6 +815,8 @@ export class UsageMonitor extends EventEmitter {
           throw error;
         }
 
+        // Record failure timestamp for cooldown retry (non-auth error)
+        this.apiFailureTimestamps.set(profileId, Date.now());
         return null;
       }
 
@@ -873,6 +884,8 @@ export class UsageMonitor extends EventEmitter {
 
       if (!normalizedUsage) {
         console.warn('[UsageMonitor] Failed to normalize response from', provider);
+        // Record failure timestamp for cooldown retry (normalization failure)
+        this.apiFailureTimestamps.set(profileId, Date.now());
         return null;
       }
 
@@ -895,6 +908,8 @@ export class UsageMonitor extends EventEmitter {
       }
 
       console.error('[UsageMonitor] API fetch failed:', error);
+      // Record failure timestamp for cooldown retry (network/other errors)
+      this.apiFailureTimestamps.set(profileId, Date.now());
       return null;
     }
   }
