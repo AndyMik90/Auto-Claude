@@ -87,11 +87,10 @@ runs:
         if [ ! -L "apps/frontend/node_modules" ]; then
           if [ "$RUNNER_OS" == "Windows" ]; then
             # Use directory junction on Windows (works without admin privileges)
-            # IMPORTANT: Junction targets must be absolute Windows paths because mklink resolves
-            # relative paths from CWD, not from the junction's location
-            # Use cygpath to convert to proper Windows path format (backslashes)
+            # Use PowerShell's New-Item -ItemType Junction for reliable path handling
             abs_target=$(cygpath -w "$(pwd)/node_modules")
-            cmd //c "mklink /J apps\\frontend\\node_modules \"$abs_target\""
+            link_path=$(cygpath -w "$(pwd)/apps/frontend/node_modules")
+            powershell -Command "New-Item -ItemType Junction -Path '$link_path' -Target '$abs_target'" > /dev/null
             if [ $? -eq 0 ]; then
               echo "Created junction: apps/frontend/node_modules -> $abs_target"
             else
