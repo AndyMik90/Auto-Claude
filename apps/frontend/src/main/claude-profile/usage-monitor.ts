@@ -156,6 +156,8 @@ interface ActiveProfileResult {
   profileId: string;
   profileName: string;
   isAPIProfile: boolean;
+  baseUrl: string;
+  credential?: string;
 }
 
 export class UsageMonitor extends EventEmitter {
@@ -431,7 +433,8 @@ export class UsageMonitor extends EventEmitter {
           return {
             profileId: activeAPIProfile.id,
             profileName: activeAPIProfile.name,
-            isAPIProfile: true
+            isAPIProfile: true,
+            baseUrl: activeAPIProfile.baseUrl
           };
         } else if (activeAPIProfile) {
           // API profile exists but missing apiKey - fall back to OAuth
@@ -474,7 +477,8 @@ export class UsageMonitor extends EventEmitter {
     return {
       profileId: activeOAuthProfile.id,
       profileName: activeOAuthProfile.name,
-      isAPIProfile: false
+      isAPIProfile: false,
+      baseUrl: 'https://api.anthropic.com'
     };
   }
 
@@ -712,6 +716,7 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
+        const isAPIProfile = !!apiProfile;
         console.warn('[UsageMonitor:TRACE] Fetching usage', {
           provider,
           baseUrl,
