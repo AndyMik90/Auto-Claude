@@ -281,8 +281,9 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage.sessionPercent).toBe(50);
       expect(usage.weeklyPercent).toBe(0); // Missing field defaults to 0
-      expect(usage.sessionResetTime).toBe('Unknown'); // Missing reset time
-      expect(usage.weeklyResetTime).toBe('Unknown'); // Missing reset time
+      // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+      expect(usage.sessionResetTime).toBeUndefined();
+      expect(usage.weeklyResetTime).toBeUndefined();
       expect(usage.sessionResetTimestamp).toBeUndefined();
       expect(usage.weeklyResetTimestamp).toBeUndefined();
     });
@@ -318,9 +319,12 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage?.sessionPercent).toBe(72); // TOKENS_LIMIT percentage
       expect(usage?.weeklyPercent).toBe(51); // TIME_LIMIT percentage
-      expect(usage?.sessionResetTime).toBeDefined(); // Placeholder text, actual countdown calculated in UI
-      expect(typeof usage?.sessionResetTime).toBe('string');
-      expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
+      // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+      expect(usage?.sessionResetTime).toBeUndefined();
+      expect(usage?.weeklyResetTime).toBeUndefined();
+      // Verify timestamps are provided for renderer
+      expect(usage?.sessionResetTimestamp).toBeDefined();
+      expect(usage?.weeklyResetTimestamp).toBeDefined();
       expect(usage?.limitType).toBe('session'); // 51 (weekly) < 72 (session), so session is higher
     });
 
@@ -347,10 +351,12 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage?.sessionPercent).toBe(25); // TOKENS_LIMIT percentage
       expect(usage?.weeklyPercent).toBe(50); // TIME_LIMIT percentage
-      // sessionResetTime is a placeholder, calculated dynamically in UI
-      expect(usage?.sessionResetTime).toBeDefined();
-      expect(typeof usage?.sessionResetTime).toBe('string');
-      expect(usage?.weeklyResetTime).toMatch(/\d+st of \w+/); // Monthly reset: "1st of February"
+      // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+      expect(usage?.sessionResetTime).toBeUndefined();
+      expect(usage?.weeklyResetTime).toBeUndefined();
+      // Verify timestamps are provided for renderer
+      expect(usage?.sessionResetTimestamp).toBeDefined();
+      expect(usage?.weeklyResetTimestamp).toBeDefined();
     });
 
     it('should return null when no data can be extracted from z.ai', () => {
@@ -907,8 +913,9 @@ describe('usage-monitor', () => {
       expect(usage).not.toBeNull();
       expect(usage.sessionPercent).toBe(0);
       expect(usage.weeklyPercent).toBe(0);
-      expect(usage.sessionResetTime).toBe('Unknown');
-      expect(usage.weeklyResetTime).toBe('Unknown');
+      // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+      expect(usage.sessionResetTime).toBeUndefined();
+      expect(usage.weeklyResetTime).toBeUndefined();
     });
   });
 
@@ -1000,55 +1007,6 @@ describe('usage-monitor', () => {
       expect(consoleSpy).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
-    });
-  });
-
-  describe('Reset time formatting error handling', () => {
-    it('should handle invalid ISO timestamp format', () => {
-      const monitor = getUsageMonitor();
-
-      // When Date parsing fails with "Invalid Date", getTime() returns NaN
-      // The fixed code now checks for invalid dates and returns 'Unknown'
-      const formatted = monitor['formatResetTime']('not-a-valid-timestamp');
-
-      // Invalid dates are now handled and return 'Unknown'
-      expect(formatted).toBe('Unknown');
-    });
-
-    it('should handle null timestamp', () => {
-      const monitor = getUsageMonitor();
-
-      const formatted = monitor['formatResetTime'](null as any);
-
-      expect(formatted).toBe('Unknown');
-    });
-
-    it('should handle undefined timestamp', () => {
-      const monitor = getUsageMonitor();
-
-      const formatted = monitor['formatResetTime'](undefined);
-
-      expect(formatted).toBe('Unknown');
-    });
-
-    it('should handle past dates in reset time', () => {
-      const monitor = getUsageMonitor();
-
-      const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25 hours ago (over 24h)
-      const formatted = monitor['formatResetTime'](pastDate.toISOString());
-
-      // Past dates are now handled and return 'Expired'
-      expect(formatted).toBe('Expired');
-    });
-
-    it('should handle recent past dates in hours format', () => {
-      const monitor = getUsageMonitor();
-
-      const pastDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago (under 24h)
-      const formatted = monitor['formatResetTime'](pastDate.toISOString());
-
-      // All past dates now return 'Expired'
-      expect(formatted).toBe('Expired');
     });
   });
 
@@ -1260,8 +1218,9 @@ describe('usage-monitor', () => {
         expect(usage).not.toBeNull();
         expect(usage.sessionPercent).toBe(75);
         expect(usage.weeklyPercent).toBe(50);
-        expect(usage.sessionResetTime).toBe('Unknown');
-        expect(usage.weeklyResetTime).toBe('Unknown');
+        // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+        expect(usage.sessionResetTime).toBeUndefined();
+        expect(usage.weeklyResetTime).toBeUndefined();
       });
 
       it('should handle response with zero utilization values', () => {
@@ -1295,8 +1254,11 @@ describe('usage-monitor', () => {
         expect(usage).not.toBeNull();
         expect(usage.sessionPercent).toBe(80);
         expect(usage.weeklyPercent).toBe(0); // Defaults to 0
-        expect(usage.sessionResetTime).not.toBe('Unknown');
-        expect(usage.weeklyResetTime).toBe('Unknown');
+        // sessionResetTime/weeklyResetTime are now undefined - renderer uses timestamps
+        expect(usage.sessionResetTime).toBeUndefined();
+        expect(usage.weeklyResetTime).toBeUndefined();
+        // Verify timestamps are still provided for renderer
+        expect(usage.sessionResetTimestamp).toBe('2025-01-17T15:00:00Z');
       });
     });
 

@@ -32,8 +32,8 @@ const USAGE_WINDOW_LABEL_MAP: Readonly<Record<string, string>> = {
  * // Returns: t('common:usage.window5Hour') → "5-hour window" (en) or localized equivalent
  *
  * @example
- * localizeUsageWindowLabel('Unknown Label', t)
- * // Returns: "Unknown Label" (fallback to backend label)
+ * localizeUsageWindowLabel('Unknown Label', t, 'common:usage.weeklyDefault')
+ * // Returns: t('common:usage.weeklyDefault') → localized fallback, not the raw backend label
  */
 export function localizeUsageWindowLabel(
   backendLabel: string | undefined,
@@ -50,8 +50,8 @@ export function localizeUsageWindowLabel(
     return translated === `common:usage.${translationKey}` ? backendLabel : translated;
   }
 
-  // Unknown label - use as-is (should be rare)
-  return backendLabel;
+  // Unknown label - use localized default instead of raw backend text
+  return t(defaultKey);
 }
 
 export interface FormatTimeRemainingOptions {

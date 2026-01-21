@@ -15,7 +15,6 @@ import { ClaudeUsageSnapshot } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
 import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
-import { formatTimeRemainingSimple } from '../../shared/utils/format-time';
 
 // Re-export for backward compatibility
 export type { ApiProvider };
@@ -903,8 +902,9 @@ export class UsageMonitor extends EventEmitter {
     return {
       sessionPercent: Math.round(fiveHourUtil * 100),
       weeklyPercent: Math.round(sevenDayUtil * 100),
-      sessionResetTime: this.formatResetTime(data.five_hour_reset_at),
-      weeklyResetTime: this.formatResetTime(data.seven_day_reset_at),
+      // Omit sessionResetTime/weeklyResetTime - renderer uses timestamps with formatTimeRemaining
+      sessionResetTime: undefined,
+      weeklyResetTime: undefined,
       sessionResetTimestamp: data.five_hour_reset_at,
       weeklyResetTimestamp: data.seven_day_reset_at,
       profileId,
@@ -1022,15 +1022,13 @@ export class UsageMonitor extends EventEmitter {
       nextMonth.setUTCMonth(now.getUTCMonth() + 1, 1);
       nextMonth.setUTCHours(0, 0, 0, 0);
       const weeklyResetTimestamp = nextMonth.toISOString();
-      // Use Intl API for locale-aware month name (defaulting to English)
-      const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(nextMonth);
-      const monthlyResetTime = `1st of ${monthName}`;
 
       return {
         sessionPercent,
         weeklyPercent,
-        sessionResetTime: 'Resets in ...', // Placeholder, will be calculated dynamically in UI
-        weeklyResetTime: monthlyResetTime,
+        // Omit sessionResetTime/weeklyResetTime - renderer uses timestamps with formatTimeRemaining
+        sessionResetTime: undefined,
+        weeklyResetTime: undefined,
         sessionResetTimestamp,
         weeklyResetTimestamp,
         profileId,
@@ -1145,14 +1143,6 @@ export class UsageMonitor extends EventEmitter {
     // we would need to spawn a Claude process with /usage command and parse the output.
     console.warn('[UsageMonitor] CLI fallback not implemented, API method should be used');
     return null;
-  }
-
-  /**
-   * Format ISO timestamp to human-readable reset time
-   * Wrapper around shared formatTimeRemainingSimple utility
-   */
-  private formatResetTime(isoTimestamp?: string): string {
-    return formatTimeRemainingSimple(isoTimestamp);
   }
 
   /**

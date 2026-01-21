@@ -96,7 +96,8 @@ export function AuthStatusIndicator() {
   // Get formatted reset times (calculated dynamically from timestamps)
   // Only fall back to sessionResetTime if it doesn't contain placeholder text
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? formatTimeRemaining(usage.sessionResetTimestamp, t)
+    ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
+      (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime))
     : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
 
   // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders

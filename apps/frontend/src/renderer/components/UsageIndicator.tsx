@@ -46,10 +46,12 @@ export function UsageIndicator() {
   // Get formatted reset times (calculated dynamically from timestamps)
   // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder text
   const sessionResetTime = usage?.sessionResetTimestamp
-    ? formatTimeRemaining(usage.sessionResetTimestamp, t)
+    ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
+      (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime))
     : (usage?.sessionResetTime?.includes('...') ? undefined : usage?.sessionResetTime);
   const weeklyResetTime = usage?.weeklyResetTimestamp
-    ? formatTimeRemaining(usage.weeklyResetTimestamp, t)
+    ? (formatTimeRemaining(usage.weeklyResetTimestamp, t) ??
+      (usage?.weeklyResetTime?.includes('...') ? undefined : usage?.weeklyResetTime))
     : (usage?.weeklyResetTime?.includes('...') ? undefined : usage?.weeklyResetTime);
 
   useEffect(() => {
@@ -127,9 +129,17 @@ export function UsageIndicator() {
     'text-green-500 bg-green-500/10 border-green-500/20';
 
   // Get window labels for display
-  // Map backend-provided labels to localized versions
-  const sessionLabel = localizeUsageWindowLabel(usage?.usageWindows?.sessionWindowLabel, t);
-  const weeklyLabel = localizeUsageWindowLabel(usage?.usageWindows?.weeklyWindowLabel, t);
+  // Map backend-provided labels to localized versions with appropriate defaults
+  const sessionLabel = localizeUsageWindowLabel(
+    usage?.usageWindows?.sessionWindowLabel,
+    t,
+    'common:usage.sessionDefault'
+  );
+  const weeklyLabel = localizeUsageWindowLabel(
+    usage?.usageWindows?.weeklyWindowLabel,
+    t,
+    'common:usage.weeklyDefault'
+  );
 
   // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
