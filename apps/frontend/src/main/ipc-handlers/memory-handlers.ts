@@ -23,7 +23,7 @@ import type {
   GraphitiConnectionTestResult,
 } from '../../shared/types';
 import {
-  getMemoryServiceStatus,
+  getMemoryServiceStatusAsync,
   getMemoryService,
   getDefaultDbPath,
   isKuzuAvailable,
@@ -380,7 +380,7 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.MEMORY_STATUS,
     async (_): Promise<IPCResult<InfrastructureStatus>> => {
       try {
-        const status = getMemoryServiceStatus();
+        const status = await getMemoryServiceStatusAsync();
         return {
           success: true,
           data: {
@@ -402,7 +402,7 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.MEMORY_LIST_DATABASES,
     async (_, dbPath?: string): Promise<IPCResult<string[]>> => {
       try {
-        const status = getMemoryServiceStatus(dbPath);
+        const status = await getMemoryServiceStatusAsync(dbPath);
         return { success: true, data: status.databases };
       } catch (error) {
         return {
