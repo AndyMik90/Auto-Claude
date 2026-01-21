@@ -51,14 +51,6 @@ def create_zai_llm_client(config: "GraphitiConfig") -> Any:
         base_url=config.zai_base_url,
     )
 
-    # Determine if model supports reasoning (GLM-4 models usually do)
-    # Z.AI primarily serves GLM models (GLM-4.7, etc.)
-    model_lower = config.zai_model.lower()
-    supports_reasoning = model_lower.startswith("glm-4")
-
-    if supports_reasoning:
-        # Use defaults for models that support reasoning params
-        return OpenAIClient(config=llm_config)
-    else:
-        # Disable reasoning/verbosity for models that don't support them
-        return OpenAIClient(config=llm_config, reasoning=None, verbosity=None)
+    # Z.AI uses its own parameter names (e.g., 'thinking') and doesn't support
+    # OpenAI's 'reasoning' or 'verbosity' parameters - disable them for compatibility
+    return OpenAIClient(config=llm_config, reasoning=None, verbosity=None)
