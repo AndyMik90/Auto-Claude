@@ -179,7 +179,7 @@ export function runPythonSubprocess<T = unknown>(
             } else {
               // On Windows, use taskkill to kill the process tree
               execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], (err: Error | null) => {
-                if (err) console.log('[SubprocessRunner] taskkill error (process may have already exited):', err.message);
+                if (err) console.warn('[SubprocessRunner] taskkill error (process may have already exited):', err.message);
               });
             }
           } catch (err) {
