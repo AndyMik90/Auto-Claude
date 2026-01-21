@@ -1050,10 +1050,16 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
         t.status === 'in_progress' && !t.metadata?.archivedAt
       ).length;
 
-      // If limit reached, move to queue instead (unless already coming from queue)
-      if (inProgressCount >= maxParallelTasks && oldStatus !== 'queue') {
-        console.log(`[Queue] In Progress full (${inProgressCount}/${maxParallelTasks}), moving task to Queue`);
-        newStatus = 'queue';
+      // If limit reached, move to queue instead
+      if (inProgressCount >= maxParallelTasks) {
+        // Only bypass the capacity check if coming from queue AND queue is NOT being processed
+        // This prevents race condition where both auto-promotion and manual drag exceed the limit
+        const isAutoPromotionInProgress = oldStatus === 'queue' && isProcessingQueueRef.current;
+
+        if (!isAutoPromotionInProgress) {
+          console.log(`[Queue] In Progress full (${inProgressCount}/${maxParallelTasks}), moving task to Queue`);
+          newStatus = 'queue';
+        }
       }
     }
 
