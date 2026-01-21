@@ -532,6 +532,7 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
 
     in_paths = False
     in_skills = False
+    in_skill_paths = False  # Track when parsing nested paths: list under a skill
     current_skill: dict | None = None  # Track structured skill entry
     skill_base_indent: int = 0  # Track base indent of current skill list item
 
@@ -573,12 +574,25 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                 # End of paths array
                 in_paths = False
         elif in_skills:
+            # Collect nested paths list items for current skill
+            if (
+                current_skill is not None
+                and in_skill_paths
+                and stripped.startswith("- ")
+                and indent > skill_base_indent
+            ):
+                current_skill.setdefault("paths", []).append(
+                    stripped[2:].strip().strip("'\"")
+                )
+                continue
+
             # Check for new list item
             if stripped.startswith("- "):
                 # Save previous skill entry if exists
                 if current_skill and current_skill.get("skill"):
                     skills.append(current_skill)
                     current_skill = None
+                in_skill_paths = False
 
                 item_content = stripped[2:].strip()
                 # Track the indent of this list item for nested property detection
@@ -600,6 +614,8 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                     if when_value in ("planning", "per_subtask", "end_of_coding", "qa_phase"):
                         current_skill["when"] = when_value
                 elif stripped.startswith("paths:"):
+                    in_skill_paths = True
+                    current_skill.setdefault("paths", [])
                     # Check for inline array: paths: [src/**, lib/**]
                     if "[" in stripped:
                         match = re.search(r'\[(.*)\]', stripped)
@@ -607,12 +623,14 @@ def _parse_rule_frontmatter(content: str) -> tuple[list[str], list[dict], str]:
                             current_skill["paths"] = [
                                 p.strip().strip("'\"") for p in match.group(1).split(",")
                             ]
+                        in_skill_paths = False
             elif stripped and not stripped.startswith("#") and indent <= skill_base_indent:
                 # End of skills array (same or less indent, non-empty, non-comment line)
                 if current_skill and current_skill.get("skill"):
                     skills.append(current_skill)
                     current_skill = None
                 in_skills = False
+                in_skill_paths = False
 
     # Don't forget to save the last skill entry
     if current_skill and current_skill.get("skill"):
@@ -753,9 +771,22 @@ def load_claude_rules(
 
     matched_rules = []
     matched_names = []
-    # Track skills by name to avoid duplicates (keep first occurrence)
-    seen_skills: set[str] = set()
+    # Track skills by (name, when, paths) to preserve different configurations
+    # of the same skill across phases or with different path filters
+    seen_skills: set[tuple[str, str, tuple[str, ...]]] = set()
     all_required_skills: list[dict] = []
+
+    def _add_skill(skill: dict) -> None:
+        """Add skill if not already seen with same configuration."""
+        skill_name = skill.get("skill", "")
+        if not skill_name:
+            return
+        when = skill.get("when", "per_subtask")
+        paths_key = tuple(sorted(skill.get("paths", []) or []))
+        key = (skill_name, when, paths_key)
+        if key not in seen_skills:
+            seen_skills.add(key)
+            all_required_skills.append(skill)
 
     for rule_path, patterns, skills, content in all_rules:
         # Get relative name for display
@@ -766,10 +797,7 @@ def load_claude_rules(
             matched_rules.append((rel_name, content))
             matched_names.append(rel_name)
             for skill in skills:
-                skill_name = skill.get("skill", "")
-                if skill_name and skill_name not in seen_skills:
-                    seen_skills.add(skill_name)
-                    all_required_skills.append(skill)
+                _add_skill(skill)
             continue
 
         # Check if any pattern matches any file
@@ -779,10 +807,7 @@ def load_claude_rules(
                     matched_rules.append((rel_name, content))
                     matched_names.append(rel_name)
                     for skill in skills:
-                        skill_name = skill.get("skill", "")
-                        if skill_name and skill_name not in seen_skills:
-                            seen_skills.add(skill_name)
-                            all_required_skills.append(skill)
+                        _add_skill(skill)
                     break
             else:
                 continue
