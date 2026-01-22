@@ -66,7 +66,10 @@ const mockProfileManager = {
   getProfile: (_profileId: string) => mockProfile,
   // Token decryption methods - return mock token for tests
   getActiveProfileToken: () => 'mock-decrypted-token-for-testing',
-  getProfileToken: (_profileId: string) => 'mock-decrypted-token-for-testing'
+  getProfileToken: (_profileId: string) => 'mock-decrypted-token-for-testing',
+  // Token expiration methods - mock as non-expired for tests
+  isActiveTokenExpired: () => false,
+  syncProfileTokenFromSystem: (_profileId: string) => true
 };
 
 vi.mock('../../main/claude-profile-manager', () => ({
