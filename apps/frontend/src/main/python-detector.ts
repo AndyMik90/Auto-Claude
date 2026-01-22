@@ -93,12 +93,10 @@ export function findPythonCommand(): string | null {
         return cmd;
       } else {
         console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
-        continue;
       }
     } catch {
       // Command not found or errored, try next
       console.warn(`[Python] Command not found or errored: ${cmd}`);
-      continue;
     }
   }
 
@@ -293,6 +291,12 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^.*\/miniconda\d*\/bin\/python\d*(\.\d+)?$/,
   /^.*\/anaconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
   /^.*\/miniconda\d*\/envs\/[^/]+\/bin\/python\d*(\.\d+)?$/,
+  // Bundled Python in packaged Electron apps (macOS/Linux)
+  // Matches paths like: /path/to/app/resources/python/bin/python3
+  /^.*\/resources\/python\/bin\/python\d*(\.\d+)?$/,
+  // Bundled Python in packaged Electron apps (Windows)
+  // Matches paths like: C:\path\to\app\resources\python\python.exe
+  /^.*\\resources\\python\\python\.exe$/i,
 ];
 
 /**

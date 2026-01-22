@@ -67,8 +67,10 @@ class TestEnvVarTokenResolution:
         token = get_auth_token()
         assert token == claude_token
 
-    def test_no_token_returns_none(self):
+    def test_no_token_returns_none(self, mocker):
         """Returns None when no auth token is configured."""
+        # Mock keychain to return None (env vars already cleared by fixture)
+        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
         token = get_auth_token()
         assert token is None
 
@@ -367,10 +369,12 @@ class TestRequireAuthToken:
     """Tests for require_auth_token function."""
 
     @pytest.fixture(autouse=True)
-    def clear_env(self):
-        """Clear auth environment variables before each test."""
+    def clear_env(self, mocker):
+        """Clear auth environment variables and mock keychain before each test."""
         for var in AUTH_TOKEN_ENV_VARS:
             os.environ.pop(var, None)
+        # Mock keychain to return None (tests that need a token will set env var)
+        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
         yield
         # Cleanup after test
         for var in AUTH_TOKEN_ENV_VARS:
@@ -398,7 +402,7 @@ class TestRequireAuthToken:
 
         error_msg = str(exc_info.value)
         assert "macOS Keychain" in error_msg
-        assert "claude setup-token" in error_msg
+        assert "/login" in error_msg
 
     def test_error_message_includes_windows_instructions(self, monkeypatch):
         """Error message includes Windows setup instructions."""
@@ -409,7 +413,7 @@ class TestRequireAuthToken:
 
         error_msg = str(exc_info.value)
         assert "Windows Credential Manager" in error_msg
-        assert "claude setup-token" in error_msg
+        assert "/login" in error_msg
 
     def test_error_message_includes_linux_instructions(self, monkeypatch):
         """Error message includes Linux setup instructions."""
@@ -419,9 +423,9 @@ class TestRequireAuthToken:
             require_auth_token()
 
         error_msg = str(exc_info.value)
-        assert "secret service" in error_msg.lower()
-        assert "gnome-keyring" in error_msg.lower()
-        assert "claude setup-token" in error_msg
+        # Linux error message uses /login and mentions .env file as alternative
+        assert "/login" in error_msg
+        assert "CLAUDE_CODE_OAUTH_TOKEN" in error_msg
 
 
 class TestEnsureClaudeCodeOAuthToken:
@@ -552,8 +556,10 @@ class TestTokenSourceDetection:
         source = get_auth_token_source()
         assert source == "Linux Secret Service"
 
-    def test_source_none_when_not_found(self):
+    def test_source_none_when_not_found(self, mocker):
         """Returns None when no token source is found."""
+        # Mock keychain to return None (env vars already cleared by fixture)
+        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
         source = get_auth_token_source()
         assert source is None
 
@@ -606,3 +612,124 @@ class TestSdkEnvVars:
         env = get_sdk_env_vars()
 
         assert env["CLAUDE_CODE_GIT_BASH_PATH"] == existing_path
+
+
+class TestTokenDecryption:
+    """Tests for token decryption functionality."""
+
+    def test_is_encrypted_token_detects_prefix(self):
+        """Verify is_encrypted_token() detects enc: prefix."""
+        from core.auth import is_encrypted_token
+
+        assert is_encrypted_token("enc:test123")
+        assert is_encrypted_token("enc:djEwtxMGISt3tQ")
+        assert not is_encrypted_token("sk-ant-oat01-test")
+        assert not is_encrypted_token("")
+        assert not is_encrypted_token(None)
+
+    def test_decrypt_token_validates_format(self):
+        """Verify decrypt_token() validates token format."""
+        from core.auth import decrypt_token
+
+        with pytest.raises(ValueError, match="Invalid encrypted token format"):
+            decrypt_token("sk-ant-oat01-test")
+
+    def test_decrypt_token_handles_short_data(self):
+        """Verify decrypt_token() rejects short encrypted data."""
+        from core.auth import decrypt_token
+
+        with pytest.raises(ValueError, match="too short"):
+            decrypt_token("enc:abc")
+
+    def test_get_auth_token_decrypts_encrypted_env_token(self, monkeypatch):
+        """Verify get_auth_token() attempts to decrypt encrypted tokens from env."""
+        from unittest.mock import patch
+
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "enc:testtoken123456789")
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+
+        with patch("core.auth.decrypt_token") as mock_decrypt:
+            # Simulate decryption failure
+            mock_decrypt.side_effect = ValueError("Decryption not implemented")
+
+            from core.auth import get_auth_token
+
+            result = get_auth_token()
+
+            # Verify decrypt_token was called with the encrypted token
+            mock_decrypt.assert_called_once_with("enc:testtoken123456789")
+            # Verify the encrypted token is returned on decryption failure
+            assert result == "enc:testtoken123456789"
+
+    def test_get_auth_token_returns_decrypted_token_on_success(self, monkeypatch):
+        """Verify get_auth_token() returns decrypted token when decryption succeeds."""
+        from unittest.mock import patch
+
+        encrypted_token = "enc:testtoken123456789"
+        decrypted_token = "sk-ant-oat01-decrypted-token"
+
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", encrypted_token)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+
+        with patch("core.auth.decrypt_token") as mock_decrypt:
+            mock_decrypt.return_value = decrypted_token
+
+            from core.auth import get_auth_token
+
+            result = get_auth_token()
+
+            # Verify decrypt_token was called
+            mock_decrypt.assert_called_once_with(encrypted_token)
+            # Verify the decrypted token is returned
+            assert result == decrypted_token
+
+    def test_backward_compatibility_plaintext_tokens(self, monkeypatch):
+        """Verify plaintext tokens continue to work unchanged."""
+        token = "sk-ant-oat01-test"
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", token)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda: None)
+
+        from core.auth import get_auth_token
+
+        result = get_auth_token()
+        assert result == token
+
+
+class TestValidateTokenNotEncrypted:
+    """Tests for validate_token_not_encrypted function."""
+
+    def test_validate_token_not_encrypted_raises_for_encrypted(self):
+        """Verify validate_token_not_encrypted() raises ValueError for encrypted tokens."""
+        from core.auth import validate_token_not_encrypted
+
+        with pytest.raises(ValueError, match="encrypted format"):
+            validate_token_not_encrypted("enc:test123456789012")
+
+    def test_validate_token_not_encrypted_raises_with_helpful_message(self):
+        """Verify validate_token_not_encrypted() provides helpful error message."""
+        from core.auth import validate_token_not_encrypted
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_token_not_encrypted("enc:test123456789012")
+
+        error_msg = str(exc_info.value)
+        assert "claude setup-token" in error_msg
+        assert "CLAUDE_CODE_OAUTH_TOKEN" in error_msg
+        assert "plaintext token" in error_msg
+
+    def test_validate_token_not_encrypted_accepts_plaintext(self):
+        """Verify validate_token_not_encrypted() accepts plaintext tokens without raising."""
+        from core.auth import validate_token_not_encrypted
+
+        # Should not raise for valid plaintext tokens
+        validate_token_not_encrypted("sk-ant-oat01-test-token")
+        validate_token_not_encrypted("sk-ant-api01-test-token")
+        validate_token_not_encrypted("any-other-plaintext-token")
+
+    def test_validate_token_not_encrypted_accepts_empty_prefix(self):
+        """Verify validate_token_not_encrypted() accepts tokens without enc: prefix."""
+        from core.auth import validate_token_not_encrypted
+
+        # Token that starts with 'enc' but not 'enc:' should be accepted
+        validate_token_not_encrypted("encrypted-looking-but-not")
+        validate_token_not_encrypted("enctest")

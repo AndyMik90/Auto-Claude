@@ -25,6 +25,12 @@ export default defineConfig({
       exclude: [
         'uuid',
         'chokidar',
+        'dotenv',
+        'electron-log',
+        'proper-lockfile',
+        'semver',
+        'zod',
+        '@anthropic-ai/sdk',
         'kuzu',
         'electron-updater',
         '@electron-toolkit/utils',
@@ -35,7 +41,9 @@ export default defineConfig({
         '@sentry/utils',
         '@opentelemetry/instrumentation',
         'debug',
-        'ms'
+        'ms',
+        // Minimatch for glob pattern matching in worktree handlers
+        'minimatch'
       ]
     })],
     build: {

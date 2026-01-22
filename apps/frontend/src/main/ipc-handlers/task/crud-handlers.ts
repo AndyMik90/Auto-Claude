@@ -2,11 +2,12 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, Task, TaskMetadata } from '../../../shared/types';
 import path from 'path';
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
+import { findAllSpecPaths } from '../../utils/spec-path-helpers';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -14,11 +15,22 @@ import { findTaskAndProject } from './shared';
 export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
   /**
    * List all tasks for a project
+   * @param projectId - The project ID to fetch tasks for
+   * @param options - Optional parameters
+   * @param options.forceRefresh - If true, invalidates cache before fetching (for refresh button)
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_LIST,
-    async (_, projectId: string): Promise<IPCResult<Task[]>> => {
-      console.warn('[IPC] TASK_LIST called with projectId:', projectId);
+    async (_, projectId: string, options?: { forceRefresh?: boolean }): Promise<IPCResult<Task[]>> => {
+      console.warn('[IPC] TASK_LIST called with projectId:', projectId, 'options:', options);
+
+      // If forceRefresh is requested, invalidate cache first
+      // This ensures the refresh button always returns fresh data from disk
+      if (options?.forceRefresh) {
+        projectStore.invalidateTasksCache(projectId);
+        console.warn('[IPC] TASK_LIST cache invalidated for forceRefresh');
+      }
+
       const tasks = projectStore.getTasks(projectId);
       console.warn('[IPC] TASK_LIST returning', tasks.length, 'tasks');
       return { success: true, data: tasks };
@@ -73,16 +85,16 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       let specNumber = 1;
       if (existsSync(specsDir)) {
         const existingDirs = readdirSync(specsDir, { withFileTypes: true })
-          .filter(d => d.isDirectory())
-          .map(d => d.name);
+          .filter((d: Dirent) => d.isDirectory())
+          .map((d: Dirent) => d.name);
 
         // Extract numbers from spec directory names (e.g., "001-feature" -> 1)
         const existingNumbers = existingDirs
-          .map(name => {
+          .map((name: string) => {
             const match = name.match(/^(\d+)/);
             return match ? parseInt(match[1], 10) : 0;
           })
-          .filter(n => n > 0);
+          .filter((n: number) => n > 0);
 
         if (existingNumbers.length > 0) {
           specNumber = Math.max(...existingNumbers) + 1;
@@ -222,29 +234,47 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         return { success: false, error: 'Cannot delete a running task. Stop the task first.' };
       }
 
-      // Delete the spec directory - use task.specsPath if available (handles worktree tasks)
-      const specDir = task.specsPath || path.join(project.path, getSpecsDir(project.autoBuildPath), task.specId);
+      // Find ALL locations where this task exists (main + worktrees)
+      // Following the archiveTasks() pattern from project-store.ts
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, task.specId);
 
-      try {
-        console.warn(`[TASK_DELETE] Attempting to delete: ${specDir} (location: ${task.location || 'unknown'})`);
-        if (existsSync(specDir)) {
+      // If spec directory doesn't exist anywhere, return success (already removed)
+      if (specPaths.length === 0) {
+        console.warn(`[TASK_DELETE] No spec directories found for task ${taskId} - already removed`);
+        projectStore.invalidateTasksCache(project.id);
+        return { success: true };
+      }
+
+      let hasErrors = false;
+      const errors: string[] = [];
+
+      // Delete from ALL locations
+      for (const specDir of specPaths) {
+        try {
+          console.warn(`[TASK_DELETE] Attempting to delete: ${specDir}`);
           await rm(specDir, { recursive: true, force: true });
           console.warn(`[TASK_DELETE] Deleted spec directory: ${specDir}`);
-        } else {
-          console.warn(`[TASK_DELETE] Spec directory not found: ${specDir}`);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`[TASK_DELETE] Error deleting spec directory ${specDir}:`, error);
+          hasErrors = true;
+          errors.push(`${specDir}: ${errorMsg}`);
+          // Continue with other locations even if one fails
         }
+      }
 
-        // Invalidate cache since a task was deleted
-        projectStore.invalidateTasksCache(project.id);
+      // Invalidate cache since a task was deleted
+      projectStore.invalidateTasksCache(project.id);
 
-        return { success: true };
-      } catch (error) {
-        console.error('[TASK_DELETE] Error deleting spec directory:', error);
+      if (hasErrors) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to delete task files'
+          error: `Failed to delete some task files: ${errors.join('; ')}`
         };
       }
+
+      return { success: true };
     }
   );
 

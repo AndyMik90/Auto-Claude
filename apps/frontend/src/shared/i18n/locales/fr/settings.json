@@ -262,6 +262,10 @@
     "notInstalled": "Non installé",
     "detectedSummary": "Détecté sur votre système :",
     "noToolsDetected": "Aucun outil supplémentaire détecté (VS Code et le terminal système seront utilisés)",
+    "autoNameClaude": {
+      "label": "Nommer automatiquement les terminaux Claude",
+      "description": "Utiliser l'IA pour générer un nom descriptif pour les terminaux Claude basé sur votre premier message"
+    },
     "yoloMode": {
       "label": "Mode YOLO",
       "description": "Démarrer Claude avec le flag --dangerously-skip-permissions, contournant toutes les invites de sécurité. À utiliser avec une extrême prudence.",
@@ -414,9 +418,10 @@
     "authenticated": "Authentifié",
     "needsAuth": "Auth requise",
     "authenticate": "Authentifier",
+    "authenticating": "Authentification...",
     "setActive": "Définir actif",
     "manualTokenEntry": "Saisie manuelle du token",
-    "runSetupToken": "Exécutez claude setup-token pour obtenir votre token",
+    "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
     "tokenPlaceholder": "sk-ant-oat01-...",
     "emailPlaceholder": "Email (optionnel, pour l'affichage)",
     "saveToken": "Enregistrer le token",
@@ -448,11 +453,30 @@
       "authSuccessGeneric": "Authentification terminée. Vous pouvez maintenant utiliser ce profil.",
       "authStartFailed": "Échec de l'authentification",
       "addProfileFailed": "Échec de l'ajout du profil",
+      "loadProfilesFailed": "Échec du chargement des profils",
+      "deleteProfileFailed": "Échec de la suppression du profil",
+      "renameProfileFailed": "Échec du renommage du profil",
+      "setActiveProfileFailed": "Échec de l'activation du profil",
+      "profileCreatedAuthFailed": "Profil créé - Authentification requise",
+      "profileCreatedAuthFailedDescription": "Le profil a été ajouté mais l'authentification n'a pas pu démarrer. Cliquez sur le bouton de connexion pour vous authentifier.",
       "tokenSaved": "Token enregistré",
       "tokenSavedDescription": "Votre token a été enregistré avec succès.",
       "tokenSaveFailed": "Échec de l'enregistrement du token",
       "settingsUpdateFailed": "Échec de la mise à jour des paramètres",
-      "tryAgain": "Veuillez réessayer."
+      "tryAgain": "Veuillez réessayer.",
+      "terminalCreationFailed": "Échec de la création du terminal d'authentification",
+      "terminalCreationFailedDescription": "Impossible de démarrer le processus d'authentification. {{error}}",
+      "maxTerminalsReached": "Nombre maximum de terminaux atteint",
+      "maxTerminalsReachedDescription": "Veuillez fermer certains terminaux et réessayer. Vous pouvez avoir jusqu'à 12 terminaux ouverts.",
+      "terminalError": "Erreur de terminal",
+      "terminalErrorDescription": "Échec de la création du terminal : {{error}}",
+      "authProcessFailed": "Le processus d'authentification n'a pas pu démarrer",
+      "authProcessFailedDescription": "Le terminal d'authentification n'a pas pu être créé. Veuillez réessayer ou consulter les logs pour plus de détails."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
+      "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
+      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
     }
   },
   "debug": {

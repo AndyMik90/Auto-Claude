@@ -39,7 +39,15 @@ const AUTH_FAILURE_PATTERNS = [
   /access\s*denied/i,
   /permission\s*denied/i,
   /401\s*unauthorized/i,
-  /credentials\s*(are\s*)?(missing|invalid|expired)/i
+  /credentials\s*(are\s*)?(missing|invalid|expired)/i,
+  // Match "OAuth token has expired" format from Claude API
+  /oauth\s*token\s+has\s+expired/i,
+  // Match Claude API authentication_error type in JSON responses
+  /["']?type["']?\s*:\s*["']?authentication_error["']?/i,
+  // Match plain "API Error: 401" without requiring "unauthorized"
+  /API\s*Error:\s*401/i,
+  // Match "Please obtain a new token" message from Claude API
+  /please\s*(obtain|get|refresh)\s*(a\s*)?new\s*token/i
 ];
 
 /**
@@ -177,10 +185,12 @@ function classifyAuthFailureType(output: string): 'missing' | 'invalid' | 'expir
   if (/missing|not\s*(yet\s*)?authenticated|required/.test(lowerOutput)) {
     return 'missing';
   }
-  if (/expired|session\s*expired/.test(lowerOutput)) {
+  // Check for expired tokens - includes "has expired", "obtain a new token", etc.
+  if (/expired|session\s*expired|obtain\s*(a\s*)?new\s*token|refresh\s*(your\s*)?(existing\s*)?token/.test(lowerOutput)) {
     return 'expired';
   }
-  if (/invalid|unauthorized|denied/.test(lowerOutput)) {
+  // Check for invalid auth - includes 401, authentication_error, unauthorized
+  if (/invalid|unauthorized|denied|401|authentication_error/.test(lowerOutput)) {
     return 'invalid';
   }
   return 'unknown';
@@ -293,8 +303,7 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
 
   // Fallback: Use configDir for profiles without OAuth token (legacy)
   if (profile.configDir) {
-    console.warn('[getProfileEnv] Using configDir fallback for profile:', profile.name);
-    console.warn('[getProfileEnv] WARNING: Profile has no OAuth token. Run "claude setup-token" and save the token to enable instant switching.');
+    console.warn('[getProfileEnv] Using configDir for profile:', profile.name);
     return {
       CLAUDE_CONFIG_DIR: profile.configDir
     };
