@@ -317,11 +317,11 @@ class TaskLogger:
         if content or detail:
             from .utils import strip_ansi_codes
 
-        if content:
-            content = strip_ansi_codes(content)
+            if content:
+                content = strip_ansi_codes(content)
 
-        if detail:
-            detail = strip_ansi_codes(detail)
+            if detail:
+                detail = strip_ansi_codes(detail)
 
         entry = LogEntry(
             timestamp=self._timestamp(),
