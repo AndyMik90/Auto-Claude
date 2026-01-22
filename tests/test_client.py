@@ -151,6 +151,8 @@ class TestSystemPromptPreparation:
                 if os.path.exists(temp_file):
                     os.unlink(temp_file)
             except OSError:
+                # Ignore errors during cleanup - file may have been deleted already
+                # or there may be permission issues; we don't want test teardown to fail
                 pass
         client._system_prompt_temp_files.clear()
 
@@ -228,6 +230,7 @@ class TestSystemPromptPreparation:
 
         # Verify temp file is tracked for cleanup
         from core.client import _system_prompt_temp_files
+
         assert temp_file in _system_prompt_temp_files
 
         # Temp file cleanup is handled by the reset_temp_files_list fixture

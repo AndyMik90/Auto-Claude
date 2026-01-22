@@ -52,7 +52,8 @@ _CACHE_LOCK = threading.Lock()  # Protects _PROJECT_INDEX_CACHE access
 
 # Lock for protecting CLAUDE_SYSTEM_PROMPT_FILE environment variable access
 # Prevents race conditions when multiple clients are created concurrently with large prompts
-_PROMPT_FILE_LOCK = threading.Lock()
+# Note: Currently unused - the monkey-patch in __init__ handles this atomically
+_PROMPT_FILE_LOCK = threading.Lock()  # noqa: F401 - kept for potential future use
 
 
 def _get_cached_project_data(

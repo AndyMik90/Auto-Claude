@@ -30,9 +30,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Flag to track if patch has been applied (idempotency guard)
-_PATCH_APPLIED = False
-
 
 def apply_sdk_patch():
     """
@@ -45,10 +42,6 @@ def apply_sdk_patch():
     This function is idempotent - subsequent calls will skip patching
     if already applied.
     """
-    global _PATCH_APPLIED
-    if _PATCH_APPLIED:
-        return
-
     try:
         from claude_agent_sdk._internal.transport.subprocess_cli import (
             SubprocessCLITransport,
@@ -59,7 +52,6 @@ def apply_sdk_patch():
 
     # Check if already patched by looking for our marker attribute
     if hasattr(SubprocessCLITransport, "_auto_claude_patched"):
-        _PATCH_APPLIED = True
         return
 
     # Patch __init__ to capture the prompt file path during client creation
@@ -200,9 +192,8 @@ def apply_sdk_patch():
     SubprocessCLITransport._build_command = patched_build_command
     SubprocessCLITransport.connect = patched_connect
 
-    # Set marker attribute and flag to indicate patch has been applied
+    # Set marker attribute to indicate patch has been applied
     SubprocessCLITransport._auto_claude_patched = True
-    _PATCH_APPLIED = True
 
 
 # Auto-apply patch on import
