@@ -281,6 +281,17 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
   // Prefer OAuth token (instant switching, no browser auth needed)
   // Use profile manager to get decrypted token
   if (profile.oauthToken) {
+    // Check if token is expired - if so, try to sync from system credentials
+    if (profileManager.isActiveTokenExpired()) {
+      console.warn('[getProfileEnv] Token expired, attempting to sync from system credentials');
+      const synced = profileManager.syncProfileTokenFromSystem(profile.id);
+      if (synced) {
+        console.warn('[getProfileEnv] Successfully synced fresh token from system credentials');
+      } else {
+        console.warn('[getProfileEnv] Failed to sync token - system credentials may also be expired');
+      }
+    }
+
     const decryptedToken = profileId
       ? profileManager.getProfileToken(profileId)
       : profileManager.getActiveProfileToken();
@@ -292,6 +303,19 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
       };
     } else {
       console.warn('[getProfileEnv] Failed to decrypt token for profile:', profile.name);
+    }
+  } else {
+    // No stored token - try to sync from system credentials
+    console.warn('[getProfileEnv] No stored token, attempting to sync from system credentials');
+    const synced = profileManager.syncProfileTokenFromSystem(profile.id);
+    if (synced) {
+      console.warn('[getProfileEnv] Successfully synced token from system credentials');
+      const freshToken = profileManager.getProfileToken(profile.id);
+      if (freshToken) {
+        return {
+          CLAUDE_CODE_OAUTH_TOKEN: freshToken
+        };
+      }
     }
   }
 
