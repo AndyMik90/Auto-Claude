@@ -328,4 +328,3 @@ class TestTaskLoggerPublicAPI:
             StreamingLogCapture,
         )
         # If imports succeed, the test passes
-        assert True
