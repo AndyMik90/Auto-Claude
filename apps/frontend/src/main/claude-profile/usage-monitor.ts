@@ -1011,18 +1011,42 @@ export class UsageMonitor extends EventEmitter {
     profileName: string,
     profileEmail?: string
   ): ClaudeUsageSnapshot {
-    // API returns nested objects with integer percentages (0-100)
-    const fiveHourUtil = data.five_hour?.utilization ?? 0;
-    const sevenDayUtil = data.seven_day?.utilization ?? 0;
+    // Support both new nested format and legacy flat format for backward compatibility
+    //
+    // NEW format (current API): { five_hour: { utilization: 72, resets_at: "..." } }
+    // OLD format (legacy):      { five_hour_utilization: 0.72, five_hour_reset_at: "..." }
+
+    let fiveHourUtil: number;
+    let sevenDayUtil: number;
+    let sessionResetTimestamp: string | undefined;
+    let weeklyResetTimestamp: string | undefined;
+
+    // Check for new nested format first
+    if (data.five_hour !== undefined || data.seven_day !== undefined) {
+      // New nested format - utilization is already 0-100 integer
+      fiveHourUtil = data.five_hour?.utilization ?? 0;
+      sevenDayUtil = data.seven_day?.utilization ?? 0;
+      sessionResetTimestamp = data.five_hour?.resets_at;
+      weeklyResetTimestamp = data.seven_day?.resets_at;
+    } else {
+      // Legacy flat format - utilization is 0-1 float, needs *100
+      const rawFiveHour = data.five_hour_utilization ?? 0;
+      const rawSevenDay = data.seven_day_utilization ?? 0;
+      // Convert 0-1 float to 0-100 integer
+      fiveHourUtil = Math.round(rawFiveHour * 100);
+      sevenDayUtil = Math.round(rawSevenDay * 100);
+      sessionResetTimestamp = data.five_hour_reset_at;
+      weeklyResetTimestamp = data.seven_day_reset_at;
+    }
 
     return {
-      sessionPercent: fiveHourUtil,  // Already 0-100 integer
-      weeklyPercent: sevenDayUtil,   // Already 0-100 integer
+      sessionPercent: fiveHourUtil,
+      weeklyPercent: sevenDayUtil,
       // Omit sessionResetTime/weeklyResetTime - renderer uses timestamps with formatTimeRemaining
       sessionResetTime: undefined,
       weeklyResetTime: undefined,
-      sessionResetTimestamp: data.five_hour?.resets_at,
-      weeklyResetTimestamp: data.seven_day?.resets_at,
+      sessionResetTimestamp,
+      weeklyResetTimestamp,
       profileId,
       profileName,
       profileEmail,

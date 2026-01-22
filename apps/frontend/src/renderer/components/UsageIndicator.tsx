@@ -65,9 +65,8 @@ export function UsageIndicator() {
     // Dispatch custom event to open settings with integrations section
     // Small delay to allow popover to close first
     setTimeout(() => {
-      const event = new CustomEvent<AppSection>('open-settings', {
-        detail: 'integrations',
-        bubbles: true
+      const event = new CustomEvent<AppSection>('open-app-settings', {
+        detail: 'integrations'
       });
       window.dispatchEvent(event);
     }, 100);
