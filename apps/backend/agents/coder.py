@@ -190,6 +190,24 @@ async def run_autonomous_agent(
         print(f"Continuing build: {highlight(spec_dir.name)}")
         print_progress_summary(spec_dir)
 
+        # Fix for #509: Transition from human_review to in_progress after approval
+        # When continuing a build that was approved, ensure we transition out of human_review
+        plan = load_implementation_plan(spec_dir)
+        if plan and plan.status == "human_review" and plan.planStatus == "review":
+            from review.state import ReviewState
+            review_state = ReviewState.load(spec_dir)
+            if review_state.is_approval_valid(spec_dir):
+                # User approved the plan - transition to in_progress now that execution begins
+                plan.status = "in_progress"
+                plan.planStatus = "in_progress"
+                plan_file = spec_dir / "implementation_plan.json"
+                plan.save(plan_file)
+                print_status("Transitioned from human_review to in_progress after approval", "success")
+            else:
+                # Plan changed after approval or not approved - stay in human_review
+                print_status("Plan requires re-approval before execution can continue", "warning")
+                return
+
         # Check if already complete
         if is_build_complete(spec_dir):
             print_build_complete_banner(spec_dir)

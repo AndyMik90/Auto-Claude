@@ -167,7 +167,17 @@ class ImplementationPlan:
         all_subtasks = [s for p in self.phases for s in p.subtasks]
 
         if not all_subtasks:
-            # No subtasks yet - stay in backlog/pending
+            # No subtasks yet - check if this is a failed planning state
+            # Fix for #1149: If status is human_review but no phases/subtasks exist,
+            # planning crashed - reset to backlog instead of preserving invalid state
+            if self.status == "human_review" and not self.phases:
+                # Planning failed - don't show as human_review with Resume button
+                self.status = "backlog"
+                self.planStatus = "pending"
+                self.recoveryNote = "Planning phase failed - no implementation plan created"
+                return
+
+            # Normal case: No subtasks yet - stay in backlog/pending
             if not self.status:
                 self.status = "backlog"
             if not self.planStatus:
