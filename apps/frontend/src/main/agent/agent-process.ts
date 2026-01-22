@@ -1,4 +1,4 @@
-﻿import { spawn } from 'child_process';
+import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, readFileSync } from 'fs';
@@ -171,6 +171,37 @@ export class AgentProcessManager {
     return env;
   }
 
+  /**
+   * Get language environment variables from user settings.
+   * Extracted as helper to avoid code duplication between setupProcessEnvironment and getCombinedEnv.
+   *
+   * @returns Record with AUTO_CLAUDE_USER_LANGUAGE and AUTO_CLAUDE_USER_LANGUAGE_NAME if set
+   */
+  private getLanguageEnvVars(): Record<string, string> {
+    const languageEnv: Record<string, string> = {};
+    try {
+      const settings = readSettingsFile();
+      const language = settings?.language;
+
+      // Only set language env vars if language is a non-empty string
+      if (typeof language === 'string' && language.trim()) {
+        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = language;
+
+        // Also pass the language display name so backend doesn't need to maintain a mapping
+        // This makes frontend (i18n.ts) the single source of truth for language names
+        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === language);
+        if (langConfig) {
+          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
+        }
+
+        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', language, langConfig?.label);
+      }
+    } catch (error) {
+      console.warn('[AgentProcess] Failed to read language setting:', error);
+    }
+    return languageEnv;
+  }
+
   private setupProcessEnvironment(
     extraEnv: Record<string, string>
   ): NodeJS.ProcessEnv {
@@ -202,28 +233,7 @@ export class AgentProcessManager {
     const ghCliEnv = this.detectAndSetCliPath('gh');
 
     // Read user's language preference from settings and pass to backend
-    // This allows AI agents to respond in the user's preferred language
-    const languageEnv: Record<string, string> = {};
-    try {
-      const settings = readSettingsFile();
-      const language = settings?.language;
-
-      // Only set language env vars if language is a non-empty string
-      if (typeof language === 'string' && language.trim()) {
-        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = language;
-
-        // Also pass the language display name so backend doesn't need to maintain a mapping
-        // This makes frontend (i18n.ts) the single source of truth for language names
-        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === language);
-        if (langConfig) {
-          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
-        }
-
-        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', language, langConfig?.label);
-      }
-    } catch (error) {
-      console.warn('[AgentProcess] Failed to read language setting:', error);
-    }
+    const languageEnv = this.getLanguageEnvVars();
 
     return {
       ...augmentedEnv,
@@ -831,26 +841,7 @@ export class AgentProcessManager {
     const memoryEnv = buildMemoryEnvVars(appSettings as AppSettings);
 
     // Get language preference from settings
-    const languageEnv: Record<string, string> = {};
-    try {
-      const language = appSettings?.language;
-
-      // Only set language env vars if language is a non-empty string
-      if (typeof language === 'string' && language.trim()) {
-        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = language;
-
-        // Also pass the language display name so backend doesn't need to maintain a mapping
-        // This makes frontend (i18n.ts) the single source of truth for language names
-        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === language);
-        if (langConfig) {
-          languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
-        }
-
-        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', language, langConfig?.label);
-      }
-    } catch (error) {
-      console.warn('[AgentProcess] Failed to read language setting:', error);
-    }
+    const languageEnv = this.getLanguageEnvVars();
 
     // Existing env sources
     const autoBuildEnv = this.loadAutoBuildEnv();
