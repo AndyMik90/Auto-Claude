@@ -6,6 +6,7 @@ Main QA loop that coordinates reviewer and fixer sessions until
 approval or max iterations.
 """
 
+import asyncio
 import os
 import time as time_module
 from pathlib import Path
@@ -49,6 +50,7 @@ from .reviewer import run_qa_agent_session
 # Configuration
 MAX_QA_ITERATIONS = 50
 MAX_CONSECUTIVE_ERRORS = 3  # Stop after 3 consecutive errors without progress
+QA_SESSION_TIMEOUT_SECONDS = 30 * 60  # 30 minute timeout per QA session (fixes infinite hang)
 
 
 # =============================================================================
@@ -236,15 +238,58 @@ async def run_qa_validation_loop(
 
         async with client:
             debug("qa_loop", "Running QA reviewer agent session...")
-            status, response = await run_qa_agent_session(
-                client,
-                project_dir,  # Pass project_dir for capability-based tool injection
-                spec_dir,
-                qa_iteration,
-                MAX_QA_ITERATIONS,
-                verbose,
-                previous_error=last_error_context,  # Pass error context for self-correction
-            )
+            try:
+                # Add timeout to prevent infinite hangs (fixes ai_review stuck issue)
+                status, response = await asyncio.wait_for(
+                    run_qa_agent_session(
+                        client,
+                        project_dir,  # Pass project_dir for capability-based tool injection
+                        spec_dir,
+                        qa_iteration,
+                        MAX_QA_ITERATIONS,
+                        verbose,
+                        previous_error=last_error_context,  # Pass error context for self-correction
+                    ),
+                    timeout=QA_SESSION_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                debug_error(
+                    "qa_loop",
+                    f"QA session timeout after {QA_SESSION_TIMEOUT_SECONDS}s",
+                    iteration=qa_iteration,
+                )
+                print(f"\n⚠️  QA session timed out after {QA_SESSION_TIMEOUT_SECONDS // 60} minutes")
+                print("This may indicate the agent is stuck in extended thinking or waiting for a resource.")
+                print("\nTip: You can manually approve QA by editing implementation_plan.json:")
+                print(f'  {{"qa_signoff": {{"status": "approved", "verified_by": "manual"}}}}')
+
+                # Treat timeout as an error with recovery context
+                consecutive_errors += 1
+                last_error_context = {
+                    "error_type": "timeout",
+                    "error_message": f"QA session timed out after {QA_SESSION_TIMEOUT_SECONDS}s",
+                    "consecutive_errors": consecutive_errors,
+                    "expected_action": f"Complete QA review within {QA_SESSION_TIMEOUT_SECONDS}s or consider reducing thinking budget",
+                }
+
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                    debug_error(
+                        "qa_loop",
+                        f"Max consecutive timeouts ({MAX_CONSECUTIVE_ERRORS}) - escalating to human",
+                    )
+                    print(f"\n⚠️  {MAX_CONSECUTIVE_ERRORS} consecutive timeouts.")
+                    print("Escalating to human review - please manually approve or fix the issues.")
+                    # End validation phase as failed
+                    if task_logger:
+                        task_logger.end_phase(
+                            LogPhase.VALIDATION,
+                            success=False,
+                            message=f"QA timed out {MAX_CONSECUTIVE_ERRORS} times consecutively",
+                        )
+                    return False
+
+                print(f"\nRetrying... (attempt {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS})")
+                continue  # Skip to next iteration
 
         iteration_duration = time_module.time() - iteration_start
         debug(

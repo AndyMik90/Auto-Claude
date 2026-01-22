@@ -10,6 +10,7 @@ Memory Integration:
 - Saves QA findings (bugs, patterns, validation outcomes) after session
 """
 
+import time as time_module
 from pathlib import Path
 
 # Memory integration for cross-session learning
@@ -190,9 +191,16 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
 
         response_text = ""
         debug("qa_reviewer", "Starting to receive response stream...")
+
+        # Add heartbeat tracking to detect hangs (every 60 seconds of no messages)
+        last_message_time = time_module.time()
+        heartbeat_interval = 60  # Log heartbeat every 60 seconds of inactivity
+
         async for msg in client.receive_response():
             msg_type = type(msg).__name__
             message_count += 1
+            last_message_time = time_module.time()  # Update last activity time
+
             debug_detailed(
                 "qa_reviewer",
                 f"Received message #{message_count}",

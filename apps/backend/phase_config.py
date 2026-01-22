@@ -16,6 +16,7 @@ MODEL_ID_MAP: dict[str, str] = {
     "opus": "claude-opus-4-5-20251101",
     "sonnet": "claude-sonnet-4-5-20250929",
     "haiku": "claude-haiku-4-5-20251001",
+    "glm4.7": "glm-4.7",
 }
 
 # Thinking level to budget tokens mapping (None = no extended thinking)
@@ -59,7 +60,7 @@ DEFAULT_PHASE_THINKING: dict[str, str] = {
     "spec": "medium",
     "planning": "high",
     "coding": "medium",
-    "qa": "high",
+    "qa": "medium",  # Changed from "high" to reduce QA hang time (10000→5000 tokens)
 }
 
 
@@ -317,3 +318,29 @@ def get_spec_phase_thinking_budget(phase_name: str) -> int | None:
     """
     thinking_level = SPEC_PHASE_THINKING_LEVELS.get(phase_name, "medium")
     return get_thinking_budget(thinking_level)
+
+
+def is_claude_model(model_id: str) -> bool:
+    """
+    Detect if a model is a Claude model.
+
+    This is used to determine whether Claude-specific features like
+    SDK agents (parallel execution) are available.
+
+    Args:
+        model_id: Full model ID or shorthand (e.g., "claude-sonnet-4-5-20250929" or "sonnet")
+
+    Returns:
+        True if this is a Claude model, False for other providers (glm4.7, etc.)
+    """
+    # Resolve shorthands first
+    resolved = resolve_model_id(model_id)
+
+    # Check if it's a Claude model ID
+    claude_indicators = [
+        "claude-",
+        "anthropic",
+    ]
+
+    resolved_lower = resolved.lower()
+    return any(indicator in resolved_lower for indicator in claude_indicators)
