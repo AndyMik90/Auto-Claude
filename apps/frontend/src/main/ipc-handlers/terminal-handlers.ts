@@ -10,7 +10,7 @@ import { terminalNameGenerator } from '../terminal-name-generator';
 import { readSettingsFileAsync } from '../settings-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { migrateSession } from '../claude-profile/session-utils';
-import { DEFAULT_CLAUDE_CONFIG_DIR } from '../claude-profile/profile-utils';
+import { DEFAULT_CLAUDE_CONFIG_DIR, createProfileDirectory } from '../claude-profile/profile-utils';
 import { isValidConfigDir } from '../utils/config-path-validator';
 
 
@@ -142,9 +142,17 @@ export function registerTerminalHandlers(
           profile.id = profileManager.generateProfileId(profile.name);
         }
 
-        // Security: Validate configDir path to prevent path traversal attacks
-        // Only validate non-default profiles with custom configDir
-        if (!profile.isDefault && profile.configDir) {
+        // For non-default profiles, ensure configDir is ALWAYS set
+        // This is critical for the CLAUDE_CONFIG_DIR-based auth flow
+        // See: docs/LONG_LIVED_AUTH_PLAN.md for context
+        if (!profile.isDefault) {
+          if (!profile.configDir) {
+            // Auto-create a configDir in ~/.claude-profiles/{profile-name}/
+            console.warn('[CLAUDE_PROFILE_SAVE] Profile missing configDir, creating one:', profile.name);
+            profile.configDir = await createProfileDirectory(profile.name);
+          }
+
+          // Security: Validate configDir path to prevent path traversal attacks
           if (!isValidConfigDir(profile.configDir)) {
             return {
               success: false,
@@ -152,7 +160,7 @@ export function registerTerminalHandlers(
             };
           }
 
-          // Ensure config directory exists for non-default profiles
+          // Ensure config directory exists
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
             mkdirSync(profile.configDir, { recursive: true });

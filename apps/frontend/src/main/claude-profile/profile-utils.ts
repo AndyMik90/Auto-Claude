@@ -128,23 +128,30 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
 }
 
 /**
- * Check if a profile has a valid OAuth token.
- * Token is valid for 1 year from creation.
+ * Check if a profile has a valid OAuth token stored in the profile.
+ *
+ * DEPRECATED: This function checks for CACHED OAuth tokens which we no longer store.
+ * OAuth tokens expire in 8-12 hours, not 1 year. We now use CLAUDE_CONFIG_DIR
+ * to let Claude CLI read fresh tokens from Keychain on each invocation.
+ *
+ * This function is kept for backwards compatibility with existing profiles that
+ * have oauthToken stored. For these profiles, we return true (assuming token might
+ * still be valid) and let the actual API call determine if re-auth is needed.
+ *
+ * New profiles will NOT have oauthToken stored (per the auth flow changes).
+ * Use isProfileAuthenticated() to check for configDir-based credentials instead.
+ *
+ * See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
  */
 export function hasValidToken(profile: ClaudeProfile): boolean {
   if (!profile?.oauthToken) {
     return false;
   }
 
-  // Check if token is expired (1 year validity)
-  if (profile.tokenCreatedAt) {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    if (new Date(profile.tokenCreatedAt) < oneYearAgo) {
-      return false;
-    }
-  }
-
+  // For legacy profiles with stored oauthToken, return true.
+  // The actual token validity is determined by the Keychain (via CLAUDE_CONFIG_DIR).
+  // We keep this for backwards compat to avoid breaking existing profiles during migration.
+  console.warn('[hasValidToken] DEPRECATED: Profile has cached oauthToken. Using CLAUDE_CONFIG_DIR for fresh tokens.');
   return true;
 }
 

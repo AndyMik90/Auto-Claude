@@ -495,34 +495,36 @@ export function handleOAuthToken(
     }
 
     if (keychainCreds.token) {
-      // Store the token in our profile store
-      const success = profileManager.setProfileToken(
-        profileId,
-        keychainCreds.token,
-        emailFromOutput || keychainCreds.email || undefined
-      );
+      // NOTE: We intentionally do NOT store the OAuth token in the profile.
+      // Storing causes AutoClaude to use a stale cached token instead of letting
+      // Claude CLI read fresh tokens from Keychain (which auto-refreshes).
+      // See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
 
-      if (success) {
-        console.warn('[ClaudeIntegration] OAuth token extracted from Keychain and saved to profile:', profileId);
+      // Just update email if we found one
+      const email = emailFromOutput || keychainCreds.email;
+      if (email) {
+        profile.email = email;
+      }
+      profile.isAuthenticated = true;
+      profileManager.saveProfile(profile);
 
-        // Set flag to watch for Claude's ready state (onboarding complete)
-        terminal.awaitingOnboardingComplete = true;
+      console.warn('[ClaudeIntegration] Profile credentials verified via Keychain (not caching token):', profileId);
 
-        const win = getWindow();
-        if (win) {
-          // needsOnboarding: true tells the UI to show "complete setup" message
-          // instead of "success" - user should finish Claude's onboarding before closing
-          win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
-            terminalId: terminal.id,
-            profileId,
-            email: emailFromOutput || keychainCreds.email || profile?.email,
-            success: true,
-            needsOnboarding: true,
-            detectedAt: new Date().toISOString()
-          } as OAuthTokenEvent);
-        }
-      } else {
-        console.error('[ClaudeIntegration] Failed to save Keychain token to profile:', profileId);
+      // Set flag to watch for Claude's ready state (onboarding complete)
+      terminal.awaitingOnboardingComplete = true;
+
+      const win = getWindow();
+      if (win) {
+        // needsOnboarding: true tells the UI to show "complete setup" message
+        // instead of "success" - user should finish Claude's onboarding before closing
+        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
+          terminalId: terminal.id,
+          profileId,
+          email: emailFromOutput || keychainCreds.email || profile?.email,
+          success: true,
+          needsOnboarding: true,
+          detectedAt: new Date().toISOString()
+        } as OAuthTokenEvent);
       }
     } else {
       // Token not in Keychain yet, but profile may still be authenticated via configDir
@@ -566,15 +568,21 @@ export function handleOAuthToken(
   const email = OutputParser.extractEmail(terminal.outputBuffer);
 
   if (profileId) {
-    // Save to specific profile (profile login terminal)
+    // Update profile metadata (but NOT the token - see docs/LONG_LIVED_AUTH_PLAN.md)
     const profileManager = getClaudeProfileManager();
     const profile = profileManager.getProfile(profileId);
-    const success = profileManager.setProfileToken(profileId, token, email || undefined);
 
-    if (success) {
+    if (profile) {
+      // Just update email if we found one
+      if (email) {
+        profile.email = email;
+      }
+      profile.isAuthenticated = true;
+      profileManager.saveProfile(profile);
+
       // Clear keychain cache so next getCredentialsFromKeychain() fetches fresh token
-      clearKeychainCache(profile?.configDir);
-      console.warn('[ClaudeIntegration] OAuth token auto-saved to profile:', profileId);
+      clearKeychainCache(profile.configDir);
+      console.warn('[ClaudeIntegration] Profile credentials verified (not caching token):', profileId);
 
       const win = getWindow();
       if (win) {
@@ -587,17 +595,18 @@ export function handleOAuthToken(
         } as OAuthTokenEvent);
       }
     } else {
-      console.error('[ClaudeIntegration] Failed to save OAuth token to profile:', profileId);
+      console.error('[ClaudeIntegration] Profile not found for OAuth token:', profileId);
     }
   } else {
-    // No profile-specific terminal, save to active profile (GitHub OAuth flow, etc.)
-    console.warn('[ClaudeIntegration] OAuth token detected in non-profile terminal, saving to active profile');
+    // No profile-specific terminal, update active profile metadata (GitHub OAuth flow, etc.)
+    // NOTE: We do NOT store the token - see docs/LONG_LIVED_AUTH_PLAN.md
+    console.warn('[ClaudeIntegration] OAuth token detected in non-profile terminal, updating active profile metadata');
     const profileManager = getClaudeProfileManager();
     const activeProfile = profileManager.getActiveProfile();
 
     // Defensive null check for active profile
     if (!activeProfile) {
-      console.error('[ClaudeIntegration] Failed to save OAuth token: no active profile found');
+      console.error('[ClaudeIntegration] Failed to update profile: no active profile found');
       const win = getWindow();
       if (win) {
         win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
@@ -612,36 +621,26 @@ export function handleOAuthToken(
       return;
     }
 
-    const success = profileManager.setProfileToken(activeProfile.id, token, email || undefined);
+    // Just update email if we found one
+    if (email) {
+      activeProfile.email = email;
+    }
+    activeProfile.isAuthenticated = true;
+    profileManager.saveProfile(activeProfile);
 
-    if (success) {
-      // Clear keychain cache so next getCredentialsFromKeychain() fetches fresh token
-      clearKeychainCache(activeProfile.configDir);
-      console.warn('[ClaudeIntegration] OAuth token auto-saved to active profile:', activeProfile.name);
+    // Clear keychain cache so next getCredentialsFromKeychain() fetches fresh token
+    clearKeychainCache(activeProfile.configDir);
+    console.warn('[ClaudeIntegration] Active profile credentials verified (not caching token):', activeProfile.name);
 
-      const win = getWindow();
-      if (win) {
-        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
-          terminalId: terminal.id,
-          profileId: activeProfile.id,
-          email,
-          success: true,
-          detectedAt: new Date().toISOString()
-        } as OAuthTokenEvent);
-      }
-    } else {
-      console.error('[ClaudeIntegration] Failed to save OAuth token to active profile:', activeProfile.name);
-      const win = getWindow();
-      if (win) {
-        win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
-          terminalId: terminal.id,
-          profileId: activeProfile?.id,
-          email,
-          success: false,
-          message: 'Failed to save token to active profile',
-          detectedAt: new Date().toISOString()
-        } as OAuthTokenEvent);
-      }
+    const win = getWindow();
+    if (win) {
+      win.webContents.send(IPC_CHANNELS.TERMINAL_OAUTH_TOKEN, {
+        terminalId: terminal.id,
+        profileId: activeProfile.id,
+        email,
+        success: true,
+        detectedAt: new Date().toISOString()
+      } as OAuthTokenEvent);
     }
   }
 }

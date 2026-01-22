@@ -254,9 +254,17 @@ export function isAuthFailureError(output: string): boolean {
 
 /**
  * Get environment variables for a specific Claude profile.
- * Uses OAuth token (CLAUDE_CODE_OAUTH_TOKEN) if available, otherwise falls back to CLAUDE_CONFIG_DIR.
- * OAuth tokens are preferred as they provide instant, reliable profile switching.
- * Note: Tokens are decrypted automatically by the profile manager.
+ *
+ * IMPORTANT: Always uses CLAUDE_CONFIG_DIR to let Claude CLI read fresh tokens from Keychain.
+ * We do NOT use cached OAuth tokens (CLAUDE_CODE_OAUTH_TOKEN) because:
+ * 1. OAuth tokens expire in 8-12 hours
+ * 2. Claude CLI's token refresh mechanism works (updates Keychain)
+ * 3. Cached tokens don't benefit from Claude CLI's automatic refresh
+ *
+ * By using CLAUDE_CONFIG_DIR, Claude CLI reads fresh tokens from Keychain each time,
+ * which includes any refreshed tokens. This solves the 401 errors after a few hours.
+ *
+ * See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
  */
 export function getProfileEnv(profileId?: string): Record<string, string> {
   const profileManager = getClaudeProfileManager();
@@ -269,7 +277,6 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
     profileName: profile?.name,
     email: profile?.email,
     isDefault: profile?.isDefault,
-    hasOAuthToken: !!profile?.oauthToken,
     configDir: profile?.configDir
   });
 
@@ -278,38 +285,22 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
     return {};
   }
 
-  // Prefer OAuth token (instant switching, no browser auth needed)
-  // Use profile manager to get decrypted token
-  if (profile.oauthToken) {
-    const decryptedToken = profileId
-      ? profileManager.getProfileToken(profileId)
-      : profileManager.getActiveProfileToken();
-
-    if (decryptedToken) {
-      console.warn('[getProfileEnv] Using OAuth token for profile:', profile.name);
-      return {
-        CLAUDE_CODE_OAUTH_TOKEN: decryptedToken
-      };
-    } else {
-      console.warn('[getProfileEnv] Failed to decrypt token for profile:', profile.name);
-    }
-  }
-
-  // Fallback: If default profile, no env vars needed
+  // Default profile uses ~/.claude implicitly (no env var needed)
   if (profile.isDefault) {
-    console.warn('[getProfileEnv] Using default profile (no env vars)');
+    console.warn('[getProfileEnv] Using default profile (Claude CLI uses ~/.claude)');
     return {};
   }
 
-  // Fallback: Use configDir for profiles without OAuth token (legacy)
+  // Non-default profiles: use CLAUDE_CONFIG_DIR to point Claude CLI to profile's config
+  // Claude CLI will read fresh tokens from Keychain, benefiting from auto-refresh
   if (profile.configDir) {
-    console.warn('[getProfileEnv] Using configDir for profile:', profile.name);
+    console.warn('[getProfileEnv] Using CLAUDE_CONFIG_DIR for profile:', profile.name, profile.configDir);
     return {
       CLAUDE_CONFIG_DIR: profile.configDir
     };
   }
 
-  console.warn('[getProfileEnv] Profile has no auth method configured');
+  console.warn('[getProfileEnv] Profile has no configDir configured - cannot authenticate');
   return {};
 }
 
