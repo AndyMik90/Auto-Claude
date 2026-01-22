@@ -1,14 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Database,
   Info,
   Loader2,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Globe
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -82,9 +78,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
     azureOpenaiBaseUrl: '',
     azureOpenaiEmbeddingDeployment: '',
     voyageApiKey: '',
-    voyageEmbeddingModel: '',
+    voyageEmbeddingModel: settings.memoryVoyageEmbeddingModel || '',
     googleApiKey: settings.globalGoogleApiKey || '',
-    ollamaBaseUrl: 'http://localhost:11434',
+    ollamaBaseUrl: settings.ollamaBaseUrl || 'http://localhost:11434',
     ollamaEmbeddingModel: 'qwen3-embedding:4b',
     ollamaEmbeddingDim: 2560,
   });
@@ -370,7 +366,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                       placeholder="pa-..."
                     />
                     <div className="space-y-1 mt-2">
-                        <Label className="text-xs text-muted-foreground">Embedding Model</Label>
+                        <Label className="text-xs text-muted-foreground">{t('memory.embeddingModel')}</Label>
                         <Input
                           placeholder="voyage-3"
                           value={config.voyageEmbeddingModel}
@@ -442,7 +438,6 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                   </div>
                 )}
 
-                {/* Ollama (Local) */}
                 {/* Ollama (Local) */}
                 {/* Ollama (Local) */}
                 {config.embeddingProvider === 'ollama' && (

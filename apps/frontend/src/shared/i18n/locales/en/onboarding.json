@@ -100,6 +100,7 @@
     "openaiGetKey": "Get your key from",
     "voyageApiKey": "Voyage AI API Key",
     "voyageApiKeyDescription": "Required for Voyage AI embeddings",
+    "voyageEmbeddingModel": "Embedding Model",
     "googleApiKey": "Google AI API Key",
     "googleApiKeyDescription": "Required for Google AI embeddings",
     "azureConfig": "Azure OpenAI Configuration",
