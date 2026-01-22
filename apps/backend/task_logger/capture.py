@@ -2,9 +2,9 @@
 Streaming log capture for agent sessions.
 """
 
+from .ansi import strip_ansi_codes
 from .logger import TaskLogger
 from .models import LogPhase
-from .utils import strip_ansi_codes
 
 
 class StreamingLogCapture:

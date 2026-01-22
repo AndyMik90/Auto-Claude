@@ -11,10 +11,10 @@ import sys
 # Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'apps', 'backend'))
 
-from task_logger.models import LogEntryType, LogPhase
-from task_logger.utils import strip_ansi_codes
-from task_logger.logger import TaskLogger
+from task_logger.ansi import strip_ansi_codes
 from task_logger.capture import StreamingLogCapture
+from task_logger.logger import TaskLogger
+from task_logger.models import LogEntryType, LogPhase
 
 
 # ============================================================================
