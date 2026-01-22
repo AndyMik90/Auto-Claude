@@ -160,6 +160,10 @@ class TaskLogger:
 
         # Add phase start entry
         phase_message = message or f"Starting {phase_key} phase"
+        if phase_message:
+            from .utils import strip_ansi_codes
+
+            phase_message = strip_ansi_codes(phase_message)
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=LogEntryType.PHASE_START.value,
@@ -203,6 +207,11 @@ class TaskLogger:
         phase_message = (
             message or f"{'Completed' if success else 'Failed'} {phase_key} phase"
         )
+        if phase_message:
+            from .utils import strip_ansi_codes
+
+            phase_message = strip_ansi_codes(phase_message)
+
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=LogEntryType.PHASE_END.value,
@@ -379,6 +388,12 @@ class TaskLogger:
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
+        # Sanitize subphase before use
+        if subphase:
+            from .utils import strip_ansi_codes
+
+            subphase = strip_ansi_codes(subphase)
+
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=LogEntryType.INFO.value,
@@ -421,6 +436,12 @@ class TaskLogger:
             print_to_console: Whether to also print to stdout (default True)
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
+
+        # Sanitize tool_input before use
+        if tool_input:
+            from .utils import strip_ansi_codes
+
+            tool_input = strip_ansi_codes(tool_input)
 
         # Truncate long inputs for display (increased limit to avoid hiding critical info)
         display_input = tool_input
