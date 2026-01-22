@@ -124,23 +124,8 @@ export function OnboardingWizard({
     setOauthBypassed(false);
   }, []);
 
-  const skipWizard = useCallback(async () => {
+  const completeWizard = useCallback(async () => {
     // Mark onboarding as completed and close - save to disk AND update local state
-    try {
-      const result = await window.electronAPI.saveSettings({ onboardingCompleted: true });
-      if (!result?.success) {
-        console.error('Failed to save onboarding completion:', result?.error);
-      }
-    } catch (err) {
-      console.error('Error saving onboarding completion:', err);
-    }
-    updateSettings({ onboardingCompleted: true });
-    onOpenChange(false);
-    resetWizard();
-  }, [updateSettings, onOpenChange, resetWizard]);
-
-  const finishWizard = useCallback(async () => {
-    // Mark onboarding as completed - save to disk AND update local state
     try {
       const result = await window.electronAPI.saveSettings({ onboardingCompleted: true });
       if (!result?.success) {
@@ -167,10 +152,10 @@ export function OnboardingWizard({
   const handleOpenSettings = useCallback(() => {
     if (onOpenSettings) {
       // Finish wizard first, then open settings
-      finishWizard();
+      completeWizard();
       onOpenSettings();
     }
-  }, [onOpenSettings, finishWizard]);
+  }, [onOpenSettings, completeWizard]);
 
   // Render current step content
   const renderStepContent = () => {
@@ -179,7 +164,7 @@ export function OnboardingWizard({
         return (
           <WelcomeStep
             onGetStarted={goToNextStep}
-            onSkip={skipWizard}
+            onSkip={completeWizard}
           />
         );
       case 'auth-choice':
@@ -187,7 +172,7 @@ export function OnboardingWizard({
           <AuthChoiceStep
             onNext={goToNextStep}
             onBack={goToPreviousStep}
-            onSkip={skipWizard}
+            onSkip={completeWizard}
             onAPIKeyPathComplete={handleSkipToMemory}
           />
         );
@@ -196,7 +181,7 @@ export function OnboardingWizard({
           <OAuthStep
             onNext={goToNextStep}
             onBack={goToPreviousStep}
-            onSkip={skipWizard}
+            onSkip={completeWizard}
           />
         );
       case 'claude-code':
@@ -204,7 +189,7 @@ export function OnboardingWizard({
           <ClaudeCodeStep
             onNext={goToNextStep}
             onBack={goToPreviousStep}
-            onSkip={skipWizard}
+            onSkip={completeWizard}
           />
         );
       case 'devtools':
@@ -231,7 +216,7 @@ export function OnboardingWizard({
       case 'completion':
         return (
           <CompletionStep
-            onFinish={finishWizard}
+            onFinish={completeWizard}
             onOpenTaskCreator={handleOpenTaskCreator}
             onOpenSettings={handleOpenSettings}
           />
@@ -245,11 +230,11 @@ export function OnboardingWizard({
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (!newOpen) {
       // If closing before completion, skip the wizard
-      skipWizard();
+      completeWizard();
     } else {
       onOpenChange(newOpen);
     }
-  }, [skipWizard, onOpenChange]);
+  }, [completeWizard, onOpenChange]);
 
   return (
     <FullScreenDialog open={open} onOpenChange={handleOpenChange}>
