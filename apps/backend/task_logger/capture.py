@@ -37,9 +37,9 @@ class StreamingLogCapture:
 
     def process_text(self, text: str) -> None:
         """Process text output from the agent."""
-        if text.strip():
-            # Remove ANSI escape codes before logging
-            sanitized_text = strip_ansi_codes(text)
+        # Remove ANSI escape codes before logging
+        sanitized_text = strip_ansi_codes(text)
+        if sanitized_text.strip():
             self.logger.log(sanitized_text, phase=self.phase)
 
     def process_tool_start(self, tool_name: str, tool_input: str | None = None) -> None:

@@ -106,6 +106,9 @@ def update_task_logger_path(new_spec_dir: Path) -> None:
     if _current_logger is None:
         return
 
+    # Lazy import to avoid cyclic import
+    from .logger import TaskLogger
+
     # Update the logger's internal paths
     _current_logger.spec_dir = Path(new_spec_dir)
     _current_logger.log_file = _current_logger.spec_dir / TaskLogger.LOG_FILE
