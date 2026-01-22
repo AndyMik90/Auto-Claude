@@ -48,6 +48,8 @@ import {
   createProfileDirectory as createProfileDirectoryImpl,
   isProfileAuthenticated as isProfileAuthenticatedImpl,
   hasValidToken,
+  getTokenFromSystemCredentials,
+  isTokenExpired,
   expandHomePath
 } from './claude-profile/profile-utils';
 
@@ -327,8 +329,13 @@ export class ClaudeProfileManager {
   /**
    * Set the OAuth token for a profile (encrypted storage).
    * Used when capturing token from `claude setup-token` output.
+   *
+   * @param profileId - Profile ID to update
+   * @param token - OAuth access token
+   * @param email - Optional email address
+   * @param expiresAt - Optional expiration timestamp in milliseconds
    */
-  setProfileToken(profileId: string, token: string, email?: string): boolean {
+  setProfileToken(profileId: string, token: string, email?: string, expiresAt?: number): boolean {
     const profile = this.getProfile(profileId);
     if (!profile) {
       return false;
@@ -337,6 +344,9 @@ export class ClaudeProfileManager {
     // Encrypt the token before storing
     profile.oauthToken = encryptToken(token);
     profile.tokenCreatedAt = new Date();
+    if (expiresAt) {
+      profile.tokenExpiresAt = expiresAt;
+    }
     if (email) {
       profile.email = email;
     }
@@ -346,6 +356,72 @@ export class ClaudeProfileManager {
 
     this.save();
     return true;
+  }
+
+  /**
+   * Sync OAuth token from system credentials file.
+   * Reads the fresh token from ~/.claude/.credentials.json (Linux) or
+   * ~/.claude/.claude.json (macOS/Windows) and updates the profile.
+   *
+   * This is useful when the user has re-authenticated via CLI and the
+   * profile manager has a stale/expired token.
+   *
+   * @param profileId - Profile ID to sync (defaults to active profile)
+   * @returns true if token was synced, false otherwise
+   */
+  syncProfileTokenFromSystem(profileId?: string): boolean {
+    const profile = profileId ? this.getProfile(profileId) : this.getActiveProfile();
+    if (!profile) {
+      console.warn('[ClaudeProfileManager] syncProfileTokenFromSystem: No profile found');
+      return false;
+    }
+
+    // Read token from system credentials
+    const configDir = profile.configDir || DEFAULT_CLAUDE_CONFIG_DIR;
+    const credentials = getTokenFromSystemCredentials(configDir);
+
+    if (!credentials?.accessToken) {
+      console.warn('[ClaudeProfileManager] syncProfileTokenFromSystem: No token found in system credentials');
+      return false;
+    }
+
+    // Check if system token is newer/different
+    const currentToken = profile.oauthToken ? decryptToken(profile.oauthToken) : undefined;
+    if (currentToken === credentials.accessToken) {
+      console.log('[ClaudeProfileManager] syncProfileTokenFromSystem: Token already up to date');
+      return false;
+    }
+
+    // Check if system token is expired
+    if (isTokenExpired(credentials.expiresAt)) {
+      console.warn('[ClaudeProfileManager] syncProfileTokenFromSystem: System token is expired');
+      return false;
+    }
+
+    // Update profile with fresh token
+    console.log('[ClaudeProfileManager] syncProfileTokenFromSystem: Syncing fresh token from system credentials');
+    return this.setProfileToken(
+      profile.id,
+      credentials.accessToken,
+      credentials.email || profile.email,
+      credentials.expiresAt
+    );
+  }
+
+  /**
+   * Check if the active profile's token is expired and needs refresh.
+   */
+  isActiveTokenExpired(): boolean {
+    const profile = this.getActiveProfile();
+    if (!profile) return true;
+
+    // If we have a stored expiration time, use it
+    if (profile.tokenExpiresAt) {
+      return isTokenExpired(profile.tokenExpiresAt);
+    }
+
+    // Fallback to 1-year heuristic
+    return !hasValidToken(profile);
   }
 
   /**

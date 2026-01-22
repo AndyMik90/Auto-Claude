@@ -158,3 +158,98 @@ export function expandHomePath(path: string): string {
   }
   return path;
 }
+
+/**
+ * Result of reading OAuth token from system credentials
+ */
+export interface SystemCredentialsResult {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;  // Unix timestamp in milliseconds
+  email?: string;
+}
+
+/**
+ * Read OAuth token from system credentials file.
+ * Checks .claude.json (macOS/Windows) and .credentials.json (Linux).
+ *
+ * @param configDir - The config directory to check (defaults to ~/.claude)
+ * @returns The OAuth credentials if found, or undefined
+ */
+export function getTokenFromSystemCredentials(configDir?: string): SystemCredentialsResult | undefined {
+  const dir = configDir ? expandHomePath(configDir) : DEFAULT_CLAUDE_CONFIG_DIR;
+
+  // Check .claude.json first (modern format, used on macOS/Windows)
+  const claudeJsonPath = join(dir, '.claude.json');
+  if (existsSync(claudeJsonPath)) {
+    try {
+      const content = readFileSync(claudeJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+      if (data?.oauthAccount?.accessToken) {
+        return {
+          accessToken: data.oauthAccount.accessToken,
+          refreshToken: data.oauthAccount.refreshToken,
+          expiresAt: data.oauthAccount.expiresAt,
+          email: data.oauthAccount.emailAddress
+        };
+      }
+    } catch (error) {
+      console.warn('[profile-utils] Failed to read .claude.json:', error);
+    }
+  }
+
+  // Check .credentials.json (Linux format)
+  const credentialsJsonPath = join(dir, '.credentials.json');
+  if (existsSync(credentialsJsonPath)) {
+    try {
+      const content = readFileSync(credentialsJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Format: { claudeAiOauth: { accessToken, refreshToken, expiresAt, ... } }
+      if (data?.claudeAiOauth?.accessToken) {
+        return {
+          accessToken: data.claudeAiOauth.accessToken,
+          refreshToken: data.claudeAiOauth.refreshToken,
+          expiresAt: data.claudeAiOauth.expiresAt,
+          email: data.claudeAiOauth.email || data.claudeAiOauth.emailAddress
+        };
+      }
+
+      // Alternative format: { oauthAccount: { ... } }
+      if (data?.oauthAccount?.accessToken) {
+        return {
+          accessToken: data.oauthAccount.accessToken,
+          refreshToken: data.oauthAccount.refreshToken,
+          expiresAt: data.oauthAccount.expiresAt,
+          email: data.oauthAccount.emailAddress
+        };
+      }
+    } catch (error) {
+      console.warn('[profile-utils] Failed to read .credentials.json:', error);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if a token from system credentials is expired.
+ *
+ * @param expiresAt - The expiration timestamp in milliseconds
+ * @returns true if the token is expired or will expire in the next 5 minutes.
+ *          Returns false if no expiration is provided (backward compatibility
+ *          for tokens without expiration tracking, e.g., legacy or manually-set tokens).
+ */
+export function isTokenExpired(expiresAt?: number): boolean {
+  if (!expiresAt) {
+    // No expiration timestamp means either:
+    // 1. Legacy token without expiration tracking
+    // 2. Manually-set token without server-provided expiration
+    // Assume valid to maintain backward compatibility
+    return false;
+  }
+
+  // Add 5 minute buffer to avoid edge cases
+  const bufferMs = 5 * 60 * 1000;
+  return Date.now() + bufferMs >= expiresAt;
+}

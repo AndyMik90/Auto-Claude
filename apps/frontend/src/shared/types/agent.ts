@@ -108,6 +108,8 @@ export interface ClaudeProfile {
   email?: string;
   /** When the OAuth token was created (for expiry tracking - 1 year validity) */
   tokenCreatedAt?: Date;
+  /** When the OAuth token expires (Unix timestamp in milliseconds from server) */
+  tokenExpiresAt?: number;
   /**
    * Path to the Claude config directory (e.g., ~/.claude or ~/.claude-profiles/work)
    * @deprecated Use oauthToken instead for reliable multi-profile switching
