@@ -1,0 +1,25 @@
+{
+  "connection": {
+    "unverified": "Server reachable but MCP protocol could not be verified",
+    "serverError": "Server returned error",
+    "mcpError": "MCP error",
+    "success": "Connected successfully",
+    "timeout": "Connection timeout",
+    "failed": "Connection failed"
+  },
+  "sse": {
+    "parseError": "SSE response could not be parsed as MCP JSON-RPC",
+    "noDataLines": "SSE response did not contain expected data lines",
+    "parseWarning": "SSE response received but could not parse JSON - verify server configuration",
+    "noDataWarning": "SSE response received without data lines - verify server configuration"
+  },
+  "response": {
+    "invalidJson": "Response was not valid JSON",
+    "nonJsonFormat": "Server responded with non-JSON format - may not be MCP compliant"
+  },
+  "errors": {
+    "parseError": "Parse error: {{error}}",
+    "httpError": "HTTP {{status}}: {{statusText}}",
+    "httpErrorWithBody": "HTTP {{status}}: {{statusText}} - {{body}}"
+  }
+}

@@ -174,8 +174,8 @@ async function readResponseWithSSESupport(
       responseText += decoder.decode(additionalResult.value, { stream: false });
       additionalReads++;
 
-      // Stop if we have complete SSE data lines
-      if (responseText.includes('\n\n') || responseText.includes('data:')) {
+      // Stop if we have complete SSE data lines (require full data line with newline)
+      if (responseText.includes('\n\n') || /data:.*\n/.test(responseText)) {
         break;
       }
     }

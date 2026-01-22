@@ -1,0 +1,25 @@
+{
+  "connection": {
+    "unverified": "Serveur accessible mais le protocole MCP n'a pas pu être vérifié",
+    "serverError": "Le serveur a retourné une erreur",
+    "mcpError": "Erreur MCP",
+    "success": "Connexion réussie",
+    "timeout": "Délai de connexion dépassé",
+    "failed": "Échec de la connexion"
+  },
+  "sse": {
+    "parseError": "La réponse SSE n'a pas pu être analysée comme JSON-RPC MCP",
+    "noDataLines": "La réponse SSE ne contenait pas les lignes de données attendues",
+    "parseWarning": "Réponse SSE reçue mais impossible d'analyser le JSON - vérifiez la configuration du serveur",
+    "noDataWarning": "Réponse SSE reçue sans lignes de données - vérifiez la configuration du serveur"
+  },
+  "response": {
+    "invalidJson": "La réponse n'était pas un JSON valide",
+    "nonJsonFormat": "Le serveur a répondu dans un format non-JSON - peut ne pas être conforme à MCP"
+  },
+  "errors": {
+    "parseError": "Erreur d'analyse: {{error}}",
+    "httpError": "HTTP {{status}}: {{statusText}}",
+    "httpErrorWithBody": "HTTP {{status}}: {{statusText}} - {{body}}"
+  }
+}
