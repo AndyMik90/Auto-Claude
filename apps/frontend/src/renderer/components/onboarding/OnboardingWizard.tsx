@@ -108,7 +108,6 @@ export function OnboardingWizard({
   }, [currentStepIndex, currentStepId, oauthBypassed]);
 
   // Handler for when API key path is chosen - skips oauth step
-  // Handler for when API key path is chosen - skips oauth step
   const handleSkipToMemory = useCallback(() => {
     setOauthBypassed(true);
     setCompletedSteps(prev => new Set(prev).add('auth-choice'));

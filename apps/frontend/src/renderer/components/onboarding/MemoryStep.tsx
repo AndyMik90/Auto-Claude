@@ -26,6 +26,7 @@ import { InfrastructureStatus } from '../project-settings/InfrastructureStatus';
 import { PasswordInput } from '../project-settings/PasswordInput';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { GraphitiEmbeddingProvider, AppSettings, InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
+import { OllamaModelSelector } from './OllamaModelSelector';
 
 interface MemoryStepProps {
   onNext: () => void;
@@ -207,8 +208,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
         globalGoogleApiKey: config.googleApiKey.trim() || undefined,
         // Provider-specific keys for memory
         memoryVoyageApiKey: config.voyageApiKey.trim() || undefined,
-        // memoryVoyageEmbeddingModel not in AppSettings yet
-        // memoryVoyageEmbeddingModel: config.voyageEmbeddingModel.trim() || undefined,
+        memoryVoyageEmbeddingModel: config.voyageEmbeddingModel.trim() || undefined,
         memoryAzureApiKey: config.azureOpenaiApiKey.trim() || undefined,
         memoryAzureBaseUrl: config.azureOpenaiBaseUrl.trim() || undefined,
         memoryAzureEmbeddingDeployment: config.azureOpenaiEmbeddingDeployment.trim() || undefined,
@@ -229,6 +229,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
           globalOpenAIApiKey: config.openaiApiKey.trim() || undefined,
           globalGoogleApiKey: config.googleApiKey.trim() || undefined,
           memoryVoyageApiKey: config.voyageApiKey.trim() || undefined,
+          memoryVoyageEmbeddingModel: config.voyageEmbeddingModel.trim() || undefined,
           memoryAzureApiKey: config.azureOpenaiApiKey.trim() || undefined,
           memoryAzureBaseUrl: config.azureOpenaiBaseUrl.trim() || undefined,
           memoryAzureEmbeddingDeployment: config.azureOpenaiEmbeddingDeployment.trim() || undefined,
@@ -488,27 +489,28 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 )}
 
                 {/* Ollama (Local) */}
+                {/* Ollama (Local) */}
                 {config.embeddingProvider === 'ollama' && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-foreground">Ollama Configuration</Label>
+                      <Label className="text-sm font-medium text-foreground">{t('memory.ollamaConfig')}</Label>
                       <div className="flex items-center gap-2">
                         {ollamaStatus === 'checking' && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            Checking...
+                            {t('memory.checking')}
                           </span>
                         )}
                         {ollamaStatus === 'connected' && (
                           <span className="flex items-center gap-1 text-xs text-success">
                             <CheckCircle2 className="h-3 w-3" />
-                            Connected
+                            {t('memory.connected')}
                           </span>
                         )}
                         {ollamaStatus === 'disconnected' && (
                           <span className="flex items-center gap-1 text-xs text-destructive">
                             <AlertCircle className="h-3 w-3" />
-                            Not running
+                            {t('memory.notRunning')}
                           </span>
                         )}
                         <Button
@@ -524,7 +526,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Base URL</Label>
+                      <Label className="text-xs text-muted-foreground">{t('memory.baseUrl')}</Label>
                       <Input
                         placeholder="http://localhost:11434"
                         value={config.ollamaBaseUrl}
@@ -539,63 +541,18 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                     )}
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Embedding Model</Label>
-                      {ollamaModels.length > 0 ? (
-                        <Select
-                          value={config.ollamaEmbeddingModel}
-                          onValueChange={(value) => {
-                            const model = ollamaModels.find(m => m.name === value);
-                            setConfig(prev => ({
-                              ...prev,
-                              ollamaEmbeddingModel: value,
-                              ollamaEmbeddingDim: model?.embedding_dim || prev.ollamaEmbeddingDim,
-                            }));
-                          }}
-                          disabled={isSaving}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select embedding model" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ollamaModels.map((model) => (
-                              <SelectItem key={model.name} value={model.name}>
-                                <div className="flex items-center gap-2">
-                                  <span>{model.name}</span>
-                                  {model.embedding_dim && (
-                                    <span className="text-xs text-muted-foreground">
-                                      ({model.embedding_dim}d)
-                                    </span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          placeholder="nomic-embed-text"
-                          value={config.ollamaEmbeddingModel}
-                          onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingModel: e.target.value }))}
-                          disabled={isSaving}
-                        />
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Recommended: qwen3-embedding:4b (balanced), :8b (quality), :0.6b (fast)
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Embedding Dimension</Label>
-                      <Input
-                        type="number"
-                        placeholder="768"
-                        value={config.ollamaEmbeddingDim}
-                        onChange={(e) => setConfig(prev => ({ ...prev, ollamaEmbeddingDim: parseInt(e.target.value) || 0 }))}
-                        disabled={isSaving}
+                      <Label className="text-xs text-muted-foreground">{t('memory.embeddingModel')}</Label>
+                      <OllamaModelSelector 
+                         selectedModel={config.ollamaEmbeddingModel}
+                         onModelSelect={(model, dim) => {
+                           setConfig(prev => ({
+                             ...prev,
+                             ollamaEmbeddingModel: model,
+                             ollamaEmbeddingDim: dim
+                           }));
+                         }}
+                         disabled={isSaving}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Required for Ollama embeddings (e.g., 768 for nomic-embed-text)
-                      </p>
                     </div>
                   </div>
                 )}
