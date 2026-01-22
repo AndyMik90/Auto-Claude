@@ -22,6 +22,8 @@ import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
+import { clearKeychainCache } from '../claude-profile/keychain-utils';
+import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -1326,6 +1328,19 @@ export function registerClaudeCodeHandlers(): void {
 
           // Save profile metadata (email, isAuthenticated) but NOT the OAuth token
           profileManager.saveProfile(profile);
+
+          // CRITICAL: Clear keychain cache for this profile's configDir
+          // This ensures the new token is read from keychain instead of using a stale cached token
+          // Without this, UsageMonitor would use the old cached token and show incorrect usage data
+          clearKeychainCache(expandedConfigDir);
+          console.warn('[Claude Code] Cleared keychain cache for profile after re-authentication:', profileId);
+
+          // CRITICAL: Also clear the UsageMonitor's usage cache for this profile
+          // This ensures fresh usage data is fetched from the API instead of using stale cached data
+          // The keychain cache clear alone is not enough - we also need to clear the usage cache
+          const usageMonitor = getUsageMonitor();
+          usageMonitor.clearProfileUsageCache(profileId);
+          console.warn('[Claude Code] Cleared usage cache for profile after re-authentication:', profileId);
 
           // Clean up backup file after successful authentication
           if (existsSync(claudeJsonBakPath)) {

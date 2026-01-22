@@ -29,6 +29,8 @@ export interface ProfileStoreData {
   profiles: ClaudeProfile[];
   activeProfileId: string;
   autoSwitch?: ClaudeAutoSwitchSettings;
+  /** Unified priority order for both OAuth and API profiles */
+  accountPriorityOrder?: string[];
 }
 
 /**

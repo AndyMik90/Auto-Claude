@@ -403,6 +403,40 @@ export function registerTerminalHandlers(
     }
   );
 
+  // Get account priority order
+  ipcMain.handle(
+    IPC_CHANNELS.ACCOUNT_PRIORITY_GET,
+    async (): Promise<IPCResult<string[]>> => {
+      try {
+        const profileManager = getClaudeProfileManager();
+        const order = profileManager.getAccountPriorityOrder();
+        return { success: true, data: order };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get account priority order'
+        };
+      }
+    }
+  );
+
+  // Set account priority order
+  ipcMain.handle(
+    IPC_CHANNELS.ACCOUNT_PRIORITY_SET,
+    async (_, order: string[]): Promise<IPCResult> => {
+      try {
+        const profileManager = getClaudeProfileManager();
+        profileManager.setAccountPriorityOrder(order);
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to set account priority order'
+        };
+      }
+    }
+  );
+
   // Fetch usage by sending /usage command to terminal
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_FETCH_USAGE,

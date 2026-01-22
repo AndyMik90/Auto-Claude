@@ -119,6 +119,10 @@ export const IPC_CHANNELS = {
   CLAUDE_PROFILE_FETCH_USAGE: 'claude:fetchUsage',
   CLAUDE_PROFILE_GET_BEST_PROFILE: 'claude:getBestProfile',
 
+  // Account priority order (unified OAuth + API profile ordering)
+  ACCOUNT_PRIORITY_GET: 'account:priorityGet',
+  ACCOUNT_PRIORITY_SET: 'account:prioritySet',
+
   // SDK/CLI rate limit event (for non-terminal Claude invocations)
   CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
   // Auth failure event (401 errors requiring re-authentication)

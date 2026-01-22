@@ -293,6 +293,10 @@ export interface ElectronAPI {
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */
   updateAutoSwitchSettings: (settings: Partial<ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  /** Get unified account priority order (both OAuth and API profiles) */
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  /** Set unified account priority order */
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   /** Request usage fetch from a terminal (sends /usage command) */
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   /** Get the best available profile (for manual switching) */

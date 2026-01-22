@@ -117,19 +117,19 @@ export function UsageIndicator() {
   };
 
   /**
-   * Navigate to settings integrations tab
+   * Navigate to settings accounts tab
    */
-  const handleOpenIntegrations = useCallback((e: React.MouseEvent) => {
+  const handleOpenAccounts = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // Close the popover first
     setIsOpen(false);
     setIsPinned(false);
-    // Dispatch custom event to open settings with integrations section
+    // Dispatch custom event to open settings with accounts section
     // Small delay to allow popover to close first
     setTimeout(() => {
       const event = new CustomEvent<AppSection>('open-app-settings', {
-        detail: 'integrations'
+        detail: 'accounts'
       });
       window.dispatchEvent(event);
     }, 100);
@@ -506,7 +506,7 @@ export function UsageIndicator() {
           {/* Active account footer - clickable to go to settings */}
           <button
             type="button"
-            onClick={handleOpenIntegrations}
+            onClick={handleOpenAccounts}
             className={`w-full pt-3 border-t flex items-center gap-2.5 hover:bg-muted/50 -mx-3 px-3 ${otherProfiles.length === 0 ? '-mb-3 pb-3 rounded-b-md' : 'pb-2'} transition-colors cursor-pointer group`}
           >
             {/* Initials Avatar */}

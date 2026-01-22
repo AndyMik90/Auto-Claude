@@ -100,12 +100,28 @@ export function hasOAuthUrl(data: string): boolean {
 }
 
 /**
+ * Strip ANSI escape codes from a string
+ * Handles common escape sequences like colors, cursor movement, etc.
+ */
+// eslint-disable-next-line no-control-regex
+const ANSI_ESCAPE_PATTERN = /\x1b\[[0-9;]*[a-zA-Z]/g;
+
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_ESCAPE_PATTERN, '');
+}
+
+/**
  * Extract email from output
  * Tries multiple patterns to handle different output formats
+ * Automatically strips ANSI escape codes before matching
  */
 export function extractEmail(data: string): string | null {
+  // Strip ANSI escape codes - terminal output often contains formatting
+  // that can break regex matching (e.g., color codes within the email text)
+  const cleanData = stripAnsi(data);
+
   for (const pattern of EMAIL_PATTERNS) {
-    const match = data.match(pattern);
+    const match = cleanData.match(pattern);
     if (match && match[1]) {
       return match[1];
     }

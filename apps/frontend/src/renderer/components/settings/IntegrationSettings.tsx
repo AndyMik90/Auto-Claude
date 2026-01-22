@@ -18,7 +18,9 @@ import {
   ChevronRight,
   RefreshCw,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -30,13 +32,40 @@ import { SettingsSection } from './SettingsSection';
 import { AuthTerminal } from './AuthTerminal';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useToast } from '../../hooks/use-toast';
-import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings } from '../../../shared/types';
+import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings, ProfileUsageSummary } from '../../../shared/types';
 
 interface IntegrationSettingsProps {
   settings: AppSettings;
   onSettingsChange: (settings: AppSettings) => void;
   isOpen: boolean;
 }
+
+/**
+ * Usage threshold constants for color coding
+ */
+const THRESHOLD_CRITICAL = 95;
+const THRESHOLD_WARNING = 91;
+const THRESHOLD_ELEVATED = 71;
+
+/**
+ * Get color class based on usage percentage
+ */
+const getUsageColorClass = (percent: number): string => {
+  if (percent >= THRESHOLD_CRITICAL) return 'text-red-500';
+  if (percent >= THRESHOLD_WARNING) return 'text-orange-500';
+  if (percent >= THRESHOLD_ELEVATED) return 'text-yellow-500';
+  return 'text-green-500';
+};
+
+/**
+ * Get background class for progress bars
+ */
+const getBarColorClass = (percent: number): string => {
+  if (percent >= THRESHOLD_CRITICAL) return 'bg-red-500';
+  if (percent >= THRESHOLD_WARNING) return 'bg-orange-500';
+  if (percent >= THRESHOLD_ELEVATED) return 'bg-yellow-500';
+  return 'bg-green-500';
+};
 
 /**
  * Integration settings for Claude accounts and API keys
@@ -68,6 +97,9 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
   const [autoSwitchSettings, setAutoSwitchSettings] = useState<ClaudeAutoSwitchSettings | null>(null);
   const [isLoadingAutoSwitch, setIsLoadingAutoSwitch] = useState(false);
 
+  // Usage data state (for displaying usage in account list)
+  const [profileUsageData, setProfileUsageData] = useState<Map<string, ProfileUsageSummary>>(new Map());
+
   // Auth terminal state - for embedded authentication
   const [authTerminal, setAuthTerminal] = useState<{
     terminalId: string;
@@ -76,12 +108,46 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
     profileName: string;
   } | null>(null);
 
+  // Load usage data for profiles
+  const loadProfileUsageData = useCallback(async () => {
+    try {
+      const result = await window.electronAPI.requestAllProfilesUsage?.();
+      if (result?.success && result.data) {
+        const usageMap = new Map<string, ProfileUsageSummary>();
+        result.data.allProfiles.forEach(profile => {
+          usageMap.set(profile.profileId, profile);
+        });
+        setProfileUsageData(usageMap);
+      }
+    } catch (err) {
+      console.error('[IntegrationSettings] Failed to load profile usage data:', err);
+    }
+  }, []);
+
   // Load Claude profiles and auto-swap settings when section is shown
   useEffect(() => {
     if (isOpen) {
       loadClaudeProfiles();
       loadAutoSwitchSettings();
+      loadProfileUsageData();
     }
+  }, [isOpen, loadProfileUsageData]);
+
+  // Subscribe to usage updates
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const unsubscribe = window.electronAPI.onAllProfilesUsageUpdated?.((allProfilesUsage) => {
+      const usageMap = new Map<string, ProfileUsageSummary>();
+      allProfilesUsage.allProfiles.forEach(profile => {
+        usageMap.set(profile.profileId, profile);
+      });
+      setProfileUsageData(usageMap);
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
   }, [isOpen]);
 
   const loadClaudeProfiles = async () => {
@@ -101,7 +167,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.warn('[IntegrationSettings] Failed to load Claude profiles:', err);
+      console.error('[IntegrationSettings] Failed to load Claude profiles:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.loadProfilesFailed'),
@@ -149,7 +215,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
             profileName,
           });
 
-          console.warn('[IntegrationSettings] New profile auth terminal ready:', authResult.data);
         } else {
           alert(t('integrations.alerts.profileCreatedAuthFailed', { error: authResult.error || t('integrations.toast.tryAgain') }));
         }
@@ -179,7 +244,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.warn('[IntegrationSettings] Failed to delete profile:', err);
+      console.error('[IntegrationSettings] Failed to delete profile:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.deleteProfileFailed'),
@@ -215,7 +280,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.warn('[IntegrationSettings] Failed to rename profile:', err);
+      console.error('[IntegrationSettings] Failed to rename profile:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.renameProfileFailed'),
@@ -241,7 +306,7 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         });
       }
     } catch (err) {
-      console.warn('[IntegrationSettings] Failed to set active profile:', err);
+      console.error('[IntegrationSettings] Failed to set active profile:', err);
       toast({
         variant: 'destructive',
         title: t('integrations.toast.setActiveProfileFailed'),
@@ -274,7 +339,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
         profileName,
       });
 
-      console.warn('[IntegrationSettings] Auth terminal ready:', result.data);
     } catch (err) {
       console.error('Failed to authenticate profile:', err);
       alert(t('integrations.alerts.authStartFailedMessage'));
@@ -290,8 +354,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
 
   // Handle auth terminal success
   const handleAuthTerminalSuccess = useCallback(async (email?: string) => {
-    console.warn('[IntegrationSettings] Auth success:', email);
-
     // Close terminal immediately
     setAuthTerminal(null);
     setAuthenticatingProfileId(null);
@@ -412,9 +474,18 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
           </div>
 
           <div className="rounded-lg bg-muted/30 border border-border p-4">
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-3">
               {t('integrations.claudeAccountsDescription')}
             </p>
+
+            {/* Warning about authenticating with correct account */}
+            <div className="flex items-start gap-2 rounded-md bg-warning/10 border border-warning/30 p-2.5 mb-4">
+              <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-warning">
+                <span className="font-semibold">{tCommon('labels.important')}:</span>{' '}
+                {t('integrations.claudeAccountsWarning')}
+              </p>
+            </div>
 
             {/* Accounts list */}
             {isLoadingProfiles ? (
@@ -509,6 +580,57 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
                               {profile.email && (
                                 <span className="text-xs text-muted-foreground">{profile.email}</span>
                               )}
+
+                              {/* Usage bars for authenticated profiles */}
+                              {profile.isAuthenticated && (() => {
+                                const usage = profileUsageData.get(profile.id);
+                                if (!usage) return null;
+                                return (
+                                <div className="flex items-center gap-3 mt-1.5">
+                                  {/* Session usage */}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1.5 flex-1 max-w-[100px]">
+                                        <Clock className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={cn("h-full rounded-full transition-all", getBarColorClass(usage.sessionPercent))}
+                                            style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className={cn("text-[10px] tabular-nums font-medium w-7", getUsageColorClass(usage.sessionPercent))}>
+                                          {Math.round(usage.sessionPercent)}%
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {tCommon('usage.sessionShort')}
+                                    </TooltipContent>
+                                  </Tooltip>
+
+                                  {/* Weekly usage */}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1.5 flex-1 max-w-[100px]">
+                                        <TrendingUp className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={cn("h-full rounded-full transition-all", getBarColorClass(usage.weeklyPercent))}
+                                            style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className={cn("text-[10px] tabular-nums font-medium w-7", getUsageColorClass(usage.weeklyPercent))}>
+                                          {Math.round(usage.weeklyPercent)}%
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {tCommon('usage.weeklyShort')}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                );
+                              })()}
                             </>
                           )}
                         </div>

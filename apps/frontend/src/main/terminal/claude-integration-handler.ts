@@ -678,57 +678,31 @@ export function handleOnboardingComplete(
   const profileId = extractProfileIdFromAuthTerminalId(terminal.id) || undefined;
 
   // Try to extract email from the welcome screen (e.g., "user@example.com's Organization")
-  // Strip ANSI escape codes first since terminal output contains formatting
-  // eslint-disable-next-line no-control-regex
-  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-
-  const cleanData = stripAnsi(data);
-  const cleanBuffer = stripAnsi(terminal.outputBuffer);
-
-  let email = OutputParser.extractEmail(cleanData);
+  // Note: extractEmail automatically strips ANSI escape codes internally
+  let email = OutputParser.extractEmail(data);
   if (!email) {
-    email = OutputParser.extractEmail(cleanBuffer);
+    email = OutputParser.extractEmail(terminal.outputBuffer);
   }
-
-  // Debug: Test each pattern individually to see what matches
-  const emailPatternTests = [
-    { name: 'Authenticated/Logged in', pattern: /(?:Authenticated as |Logged in as |email[:\s]+)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
-    { name: "email's Organization", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s\s*Organization/i },
-    { name: 'Claude Max · email', pattern: /Claude\s+(?:Max|Pro|Team|Enterprise)\s*[·•]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
-    { name: "email's (broad)", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s/i },
-    { name: 'any email', pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
-  ];
-
-  const patternResults = emailPatternTests.map(({ name, pattern }) => {
-    const match = cleanBuffer.match(pattern);
-    return { name, matched: !!match, email: match?.[1] || null };
-  });
-
-  // Redact PII from pattern results for logging
-  const redactedPatternResults = patternResults.map(({ name, matched, email: foundEmail }) => ({
-    name,
-    matched,
-    email: maskEmail(foundEmail)
-  }));
 
   console.warn('[ClaudeIntegration] Email extraction attempt:', {
     profileId,
     foundEmail: maskEmail(email),
     dataLength: data.length,
-    bufferLength: terminal.outputBuffer.length,
-    cleanBufferLength: cleanBuffer.length,
-    patternResults: redactedPatternResults
+    bufferLength: terminal.outputBuffer.length
   });
 
   // Update profile with email if found and profile exists
+  // Always update - the newly extracted email from re-authentication should overwrite any stale/truncated email
   if (profileId && email) {
     const profileManager = getClaudeProfileManager();
     const profile = profileManager.getProfile(profileId);
-    if (profile && !profile.email) {
-      // Update the profile with the email
+    if (profile) {
+      const previousEmail = profile.email;
       profile.email = email;
       profileManager.saveProfile(profile);
-      console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email));
+      if (previousEmail !== email) {
+        console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email), '(was:', maskEmail(previousEmail), ')');
+      }
     }
   }
 

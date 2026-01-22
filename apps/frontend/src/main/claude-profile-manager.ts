@@ -177,6 +177,24 @@ export class ClaudeProfileManager {
   }
 
   /**
+   * Get unified account priority order
+   * Returns array of account IDs in priority order (first = highest priority)
+   * IDs are prefixed: 'oauth-{profileId}' for OAuth, 'api-{profileId}' for API profiles
+   */
+  getAccountPriorityOrder(): string[] {
+    return this.data.accountPriorityOrder || [];
+  }
+
+  /**
+   * Set unified account priority order
+   * @param order Array of account IDs in priority order
+   */
+  setAccountPriorityOrder(order: string[]): void {
+    this.data.accountPriorityOrder = order;
+    this.save();
+  }
+
+  /**
    * Get a specific profile by ID
    */
   getProfile(profileId: string): ClaudeProfile | undefined {

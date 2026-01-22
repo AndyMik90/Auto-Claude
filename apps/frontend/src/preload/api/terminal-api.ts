@@ -110,6 +110,8 @@ export interface TerminalAPI {
   verifyClaudeProfileAuth: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
   getAutoSwitchSettings: () => Promise<IPCResult<import('../../shared/types').ClaudeAutoSwitchSettings>>;
   updateAutoSwitchSettings: (settings: Partial<import('../../shared/types').ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<import('../../shared/types').ClaudeProfile | null>>;
   onSDKRateLimit: (callback: (info: import('../../shared/types').SDKRateLimitInfo) => void) => () => void;
@@ -466,6 +468,12 @@ export const createTerminalAPI = (): TerminalAPI => ({
 
   updateAutoSwitchSettings: (settings: Partial<import('../../shared/types').ClaudeAutoSwitchSettings>): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_UPDATE_AUTO_SWITCH, settings),
+
+  getAccountPriorityOrder: (): Promise<IPCResult<string[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ACCOUNT_PRIORITY_GET),
+
+  setAccountPriorityOrder: (order: string[]): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ACCOUNT_PRIORITY_SET, order),
 
   fetchClaudeUsage: (terminalId: string): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_FETCH_USAGE, terminalId),

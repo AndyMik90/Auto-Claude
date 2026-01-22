@@ -247,6 +247,22 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
+   * Clear the usage cache for a specific profile.
+   * Called after re-authentication to ensure fresh usage data is fetched.
+   *
+   * @param profileId - Profile identifier to clear cache for
+   */
+  clearProfileUsageCache(profileId: string): void {
+    const deleted = this.allProfilesUsageCache.delete(profileId);
+    if (this.isDebug) {
+      console.warn('[UsageMonitor] Cleared usage cache for profile:', {
+        profileId,
+        wasInCache: deleted
+      });
+    }
+  }
+
+  /**
    * Get all profiles usage data (for multi-profile display in UI)
    * Returns cached data if fresh, otherwise fetches for all profiles
    */
@@ -526,8 +542,9 @@ export class UsageMonitor extends EventEmitter {
     if (activeProfile) {
       // Read fresh token from Keychain using configDir (same as CLAUDE_CONFIG_DIR)
       // This ensures we get the auto-refreshed token, not a stale cached copy
-      const configDir = activeProfile.isDefault ? undefined : activeProfile.configDir;
-      const keychainCreds = getCredentialsFromKeychain(configDir);
+      // IMPORTANT: Always pass configDir, even for default profiles - the keychain
+      // service name is based on the expanded path (e.g., /Users/xxx/.claude), not undefined
+      const keychainCreds = getCredentialsFromKeychain(activeProfile.configDir);
 
       if (keychainCreds.token) {
         if (this.isDebug) {
@@ -750,8 +767,8 @@ export class UsageMonitor extends EventEmitter {
     let profileEmail = activeOAuthProfile.email;
     if (!profileEmail) {
       // Try to get email from keychain
-      const configDir = activeOAuthProfile.isDefault ? undefined : activeOAuthProfile.configDir;
-      const keychainCreds = getCredentialsFromKeychain(configDir);
+      // IMPORTANT: Always pass configDir - service name is based on expanded path (e.g., /Users/xxx/.claude)
+      const keychainCreds = getCredentialsFromKeychain(activeOAuthProfile.configDir);
       profileEmail = keychainCreds.email ?? undefined;
     }
 
@@ -861,33 +878,45 @@ export class UsageMonitor extends EventEmitter {
     credential?: string,
     activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
-    // Get profile name and email - check both API profiles and OAuth profiles
+    // Get profile name and email - prefer activeProfile since it's already determined
     let profileName: string | undefined;
     let profileEmail: string | undefined;
 
-    // Use email from activeProfile if available (already fetched from keychain)
-    if (activeProfile?.profileEmail) {
+    // Use activeProfile data if available (already fetched and validated)
+    // This fixes the bug where API profile names were incorrectly shown for OAuth profiles
+    if (activeProfile?.profileName) {
+      profileName = activeProfile.profileName;
       profileEmail = activeProfile.profileEmail;
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:FETCH] Using activeProfile data:', {
+          profileId,
+          profileName,
+          profileEmail,
+          isAPIProfile: activeProfile.isAPIProfile
+        });
+      }
     }
 
-    // First, check if it's an API profile
-    try {
-      const profilesFile = await loadProfilesFile();
-      const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
-      if (apiProfile) {
-        profileName = apiProfile.name;
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:FETCH] Found API profile:', {
-            profileId,
-            profileName,
-            baseUrl: apiProfile.baseUrl
-          });
+    // Only search API profiles if not already set from activeProfile
+    if (!profileName) {
+      try {
+        const profilesFile = await loadProfilesFile();
+        const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
+        if (apiProfile) {
+          profileName = apiProfile.name;
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:FETCH] Found API profile:', {
+              profileId,
+              profileName,
+              baseUrl: apiProfile.baseUrl
+            });
+          }
         }
-      }
-    } catch (error) {
-      // Failed to load API profiles, continue to OAuth check
-      if (this.isDebug) {
-        console.warn('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+      } catch (error) {
+        // Failed to load API profiles, continue to OAuth check
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+        }
       }
     }
 
@@ -1532,13 +1561,61 @@ export class UsageMonitor extends EventEmitter {
     additionalExclusions: string[] = []
   ): Promise<void> {
     const profileManager = getClaudeProfileManager();
-
-    // Get all profiles to swap to, excluding current and any additional exclusions
-    const allProfiles = profileManager.getProfilesSortedByAvailability();
     const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
-    const eligibleProfiles = allProfiles.filter(p => !excludeIds.has(p.id));
 
-    if (eligibleProfiles.length === 0) {
+    // Get priority order for unified account system
+    const priorityOrder = profileManager.getAccountPriorityOrder();
+
+    // Build unified list of available accounts
+    type UnifiedSwapTarget = {
+      id: string;
+      unifiedId: string;  // oauth-{id} or api-{id}
+      name: string;
+      type: 'oauth' | 'api';
+      priorityIndex: number;
+    };
+
+    const unifiedAccounts: UnifiedSwapTarget[] = [];
+
+    // Add OAuth profiles (sorted by availability)
+    const oauthProfiles = profileManager.getProfilesSortedByAvailability();
+    for (const profile of oauthProfiles) {
+      if (!excludeIds.has(profile.id)) {
+        const unifiedId = `oauth-${profile.id}`;
+        const priorityIndex = priorityOrder.indexOf(unifiedId);
+        unifiedAccounts.push({
+          id: profile.id,
+          unifiedId,
+          name: profile.name,
+          type: 'oauth',
+          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+        });
+      }
+    }
+
+    // Add API profiles (always considered available since they have unlimited usage)
+    try {
+      const profilesFile = await loadProfilesFile();
+      for (const apiProfile of profilesFile.profiles) {
+        if (!excludeIds.has(apiProfile.id) && apiProfile.apiKey) {
+          const unifiedId = `api-${apiProfile.id}`;
+          const priorityIndex = priorityOrder.indexOf(unifiedId);
+          unifiedAccounts.push({
+            id: apiProfile.id,
+            unifiedId,
+            name: apiProfile.name,
+            type: 'api',
+            priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+          });
+        }
+      }
+    } catch (error) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Failed to load API profiles for swap:', error);
+      }
+    }
+
+    if (unifiedAccounts.length === 0) {
       console.warn('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds), ')');
       this.emit('proactive-swap-failed', {
         reason: additionalExclusions.length > 0 ? 'all_alternatives_failed_auth' : 'no_alternative',
@@ -1548,30 +1625,79 @@ export class UsageMonitor extends EventEmitter {
       return;
     }
 
-    // Use the best available from eligible profiles
-    const bestProfile = eligibleProfiles[0];
+    // Sort by priority order (lower index = higher priority)
+    // If no priority order is set, OAuth profiles come first (they were already sorted by availability)
+    unifiedAccounts.sort((a, b) => {
+      // If both have priority indices, use them
+      if (a.priorityIndex !== Infinity || b.priorityIndex !== Infinity) {
+        return a.priorityIndex - b.priorityIndex;
+      }
+      // Otherwise, prefer OAuth profiles (which are sorted by availability)
+      if (a.type !== b.type) {
+        return a.type === 'oauth' ? -1 : 1;
+      }
+      return 0;
+    });
+
+    // Use the best available from unified accounts
+    const bestAccount = unifiedAccounts[0];
 
     console.warn('[UsageMonitor] Proactive swap:', {
       from: currentProfileId,
-      to: bestProfile.id,
+      to: bestAccount.id,
+      toType: bestAccount.type,
       reason: limitType
     });
 
-    // Switch profile
-    profileManager.setActiveProfile(bestProfile.id);
+    // Switch to the new profile
+    if (bestAccount.type === 'oauth') {
+      // Switch OAuth profile via profile manager
+      profileManager.setActiveProfile(bestAccount.id);
+    } else {
+      // Switch API profile via profile-manager service
+      try {
+        const profilesFile = await loadProfilesFile();
+        profilesFile.activeProfileId = bestAccount.id;
+        // Note: We need to save this. Import the setActiveAPIProfile function.
+        // For now, emit an event to let the UI handle it since there's no direct save function here
+        const { setActiveAPIProfile } = await import('../services/profile/profile-manager');
+        await setActiveAPIProfile(bestAccount.id);
+      } catch (error) {
+        console.error('[UsageMonitor] Failed to set active API profile:', error);
+        return;
+      }
+    }
+
+    // Get the "from" profile name
+    let fromProfileName: string | undefined;
+    const fromOAuthProfile = profileManager.getProfile(currentProfileId);
+    if (fromOAuthProfile) {
+      fromProfileName = fromOAuthProfile.name;
+    } else {
+      // It might be an API profile
+      try {
+        const profilesFile = await loadProfilesFile();
+        const fromAPIProfile = profilesFile.profiles.find(p => p.id === currentProfileId);
+        if (fromAPIProfile) {
+          fromProfileName = fromAPIProfile.name;
+        }
+      } catch {
+        // Ignore
+      }
+    }
 
     // Emit swap event
     this.emit('proactive-swap-completed', {
-      fromProfile: { id: currentProfileId, name: profileManager.getProfile(currentProfileId)?.name },
-      toProfile: { id: bestProfile.id, name: bestProfile.name },
+      fromProfile: { id: currentProfileId, name: fromProfileName },
+      toProfile: { id: bestAccount.id, name: bestAccount.name },
       limitType,
       timestamp: new Date()
     });
 
     // Notify UI
     this.emit('show-swap-notification', {
-      fromProfile: profileManager.getProfile(currentProfileId)?.name,
-      toProfile: bestProfile.name,
+      fromProfile: fromProfileName,
+      toProfile: bestAccount.name,
       reason: 'proactive',
       limitType
     });
