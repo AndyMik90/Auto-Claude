@@ -421,8 +421,15 @@ export async function sendMessage(
   // Accepts both File[] and ImageAttachment[] for flexibility
   let imageAttachments: ImageAttachment[] | undefined;
   if (images && images.length > 0) {
+    // Validate homogeneous array - all elements must be same type
+    const firstIsFile = images[0] instanceof File;
+    const allSameType = images.every(img => (img instanceof File) === firstIsFile);
+    if (!allSameType) {
+      throw new Error('Mixed image types not allowed: all elements must be either File or ImageAttachment');
+    }
+
     // Check if images are File objects using instanceof File (robust type check)
-    if (images[0] instanceof File) {
+    if (firstIsFile) {
       // Convert File[] to ImageAttachment[]
       imageAttachments = await convertFilesToImageAttachments(images as File[]);
     } else {

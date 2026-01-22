@@ -57,6 +57,7 @@ import {
   TASK_COMPLEXITY_LABELS,
   TASK_COMPLEXITY_COLORS,
   MAX_IMAGES_PER_TASK,
+  MAX_IMAGE_SIZE,
   ALLOWED_IMAGE_TYPES_DISPLAY
 } from '../../shared/constants';
 
@@ -252,8 +253,7 @@ export function Insights({ projectId }: InsightsProps) {
       if (!file) continue;
 
       // Check file size for large file warning
-      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-      if (file.size > MAX_SIZE) {
+      if (file.size > MAX_IMAGE_SIZE) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
         setImageError(
           t('tasks:images.largeFileWarning', { name: file.name, size: sizeMB })
@@ -305,7 +305,7 @@ export function Insights({ projectId }: InsightsProps) {
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
-  }, []);
+  }, [images, t]);
 
   /**
    * Remove an image from the attachments
@@ -409,7 +409,7 @@ export function Insights({ projectId }: InsightsProps) {
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [status.phase]
+    [status.phase, images, t]
   );
 
   const handleNewSession = async () => {
@@ -420,10 +420,21 @@ export function Insights({ projectId }: InsightsProps) {
 
   const handleSelectSession = async (sessionId: string) => {
     if (sessionId !== session?.id) {
+      // Store current state for potential restoration
+      const currentImages = images;
+      const currentError = imageError;
+
       // Clear pending images before switching to prevent sending them to wrong session
       setImages([]);
       setImageError(null);
-      await switchSession(projectId, sessionId);
+
+      try {
+        await switchSession(projectId, sessionId);
+      } catch (error) {
+        // Restore state on failure
+        setImages(currentImages);
+        setImageError(currentError);
+      }
     }
   };
 
