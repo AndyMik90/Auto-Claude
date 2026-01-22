@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot } from '../../shared/types';
+import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot, AllProfilesUsage } from '../../shared/types';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import { TerminalManager } from '../terminal-manager';
@@ -506,6 +506,23 @@ export function registerTerminalHandlers(
     }
   );
 
+  // Request all profiles usage immediately (for startup/refresh)
+  ipcMain.handle(
+    IPC_CHANNELS.ALL_PROFILES_USAGE_REQUEST,
+    async (): Promise<IPCResult<AllProfilesUsage | null>> => {
+      try {
+        const monitor = getUsageMonitor();
+        const allProfilesUsage = await monitor.getAllProfilesUsage();
+        return { success: true, data: allProfilesUsage };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get all profiles usage'
+        };
+      }
+    }
+  );
+
 
   // Terminal session management (persistence/restore)
   ipcMain.handle(
@@ -682,6 +699,11 @@ export function initializeUsageMonitorForwarding(mainWindow: BrowserWindow): voi
   // Forward usage updates to renderer
   monitor.on('usage-updated', (usage: ClaudeUsageSnapshot) => {
     mainWindow.webContents.send(IPC_CHANNELS.USAGE_UPDATED, usage);
+  });
+
+  // Forward all profiles usage updates to renderer (for multi-profile display)
+  monitor.on('all-profiles-usage-updated', (allProfilesUsage: AllProfilesUsage) => {
+    mainWindow.webContents.send(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, allProfilesUsage);
   });
 
   // Forward proactive swap notifications to renderer

@@ -118,7 +118,9 @@ export interface TerminalAPI {
 
   // Usage Monitoring (Proactive Account Switching)
   requestUsageUpdate: () => Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>>;
+  requestAllProfilesUsage: () => Promise<IPCResult<import('../../shared/types').AllProfilesUsage | null>>;
   onUsageUpdated: (callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void) => () => void;
+  onAllProfilesUsageUpdated: (callback: (allProfilesUsage: import('../../shared/types').AllProfilesUsage) => void) => () => void;
   onProactiveSwapNotification: (callback: (notification: ProactiveSwapNotification) => void) => () => void;
 }
 
@@ -508,6 +510,9 @@ export const createTerminalAPI = (): TerminalAPI => ({
   requestUsageUpdate: (): Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.USAGE_REQUEST),
 
+  requestAllProfilesUsage: (): Promise<IPCResult<import('../../shared/types').AllProfilesUsage | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ALL_PROFILES_USAGE_REQUEST),
+
   onUsageUpdated: (
     callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void
   ): (() => void) => {
@@ -520,6 +525,21 @@ export const createTerminalAPI = (): TerminalAPI => ({
     ipcRenderer.on(IPC_CHANNELS.USAGE_UPDATED, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.USAGE_UPDATED, handler);
+    };
+  },
+
+  onAllProfilesUsageUpdated: (
+    callback: (allProfilesUsage: import('../../shared/types').AllProfilesUsage) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      allProfilesUsage: import('../../shared/types').AllProfilesUsage
+    ): void => {
+      callback(allProfilesUsage);
+    };
+    ipcRenderer.on(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, handler);
     };
   },
 

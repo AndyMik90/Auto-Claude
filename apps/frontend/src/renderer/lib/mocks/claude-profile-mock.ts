@@ -68,7 +68,14 @@ export const claudeProfileMock = {
     data: null
   }),
 
+  requestAllProfilesUsage: async () => ({
+    success: true,
+    data: null
+  }),
+
   onUsageUpdated: () => () => {},
+
+  onAllProfilesUsageUpdated: () => () => {},
 
   onProactiveSwapNotification: () => () => {},
 

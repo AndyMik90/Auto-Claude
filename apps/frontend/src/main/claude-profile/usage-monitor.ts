@@ -12,11 +12,12 @@
 import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
 import { getClaudeProfileManager } from '../claude-profile-manager';
-import { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import { ClaudeUsageSnapshot, ProfileUsageSummary, AllProfilesUsage } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
 import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
 import { getCredentialsFromKeychain, clearKeychainCache } from './keychain-utils';
+import { isProfileRateLimited } from './rate-limit-manager';
 
 // Re-export for backward compatibility
 export type { ApiProvider };
@@ -178,6 +179,11 @@ export class UsageMonitor extends EventEmitter {
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
   private static AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
 
+  // Cache for all profiles' usage data
+  // Map<profileId, { usage: ProfileUsageSummary, fetchedAt: number }>
+  private allProfilesUsageCache: Map<string, { usage: ProfileUsageSummary; fetchedAt: number }> = new Map();
+  private static PROFILE_USAGE_CACHE_TTL_MS = 60 * 1000; // 1 minute cache for inactive profiles
+
   // Debug flag for verbose logging
   private readonly isDebug = process.env.DEBUG === 'true';
 
@@ -238,6 +244,243 @@ export class UsageMonitor extends EventEmitter {
    */
   getCurrentUsage(): ClaudeUsageSnapshot | null {
     return this.currentUsage;
+  }
+
+  /**
+   * Get all profiles usage data (for multi-profile display in UI)
+   * Returns cached data if fresh, otherwise fetches for all profiles
+   */
+  async getAllProfilesUsage(): Promise<AllProfilesUsage | null> {
+    const profileManager = getClaudeProfileManager();
+    const settings = profileManager.getSettings();
+    const activeProfileId = settings.activeProfileId;
+
+    if (!this.currentUsage) {
+      return null;
+    }
+
+    // Build the all profiles list
+    const allProfiles: ProfileUsageSummary[] = [];
+
+    for (const profile of settings.profiles) {
+      const cached = this.allProfilesUsageCache.get(profile.id);
+      const now = Date.now();
+
+      // Use cached data if fresh (within TTL)
+      if (cached && (now - cached.fetchedAt) < UsageMonitor.PROFILE_USAGE_CACHE_TTL_MS) {
+        allProfiles.push({
+          ...cached.usage,
+          isActive: profile.id === activeProfileId
+        });
+        continue;
+      }
+
+      // For active profile, use the current detailed usage
+      if (profile.id === activeProfileId && this.currentUsage) {
+        const summary = this.buildProfileUsageSummary(profile, this.currentUsage);
+        allProfiles.push(summary);
+        this.allProfilesUsageCache.set(profile.id, { usage: summary, fetchedAt: now });
+        continue;
+      }
+
+      // For inactive profiles, fetch real usage from API using their credentials
+      const inactiveUsage = await this.fetchUsageForInactiveProfile(profile);
+      const rateLimitStatus = isProfileRateLimited(profile);
+
+      let sessionPercent = 0;
+      let weeklyPercent = 0;
+
+      if (inactiveUsage) {
+        sessionPercent = inactiveUsage.sessionPercent;
+        weeklyPercent = inactiveUsage.weeklyPercent;
+        // Save to profile for persistence
+        profileManager.updateProfileUsageFromAPI(profile.id, sessionPercent, weeklyPercent);
+      } else {
+        // Fallback to cached profile data if API fetch failed
+        sessionPercent = profile.usage?.sessionUsagePercent ?? 0;
+        weeklyPercent = profile.usage?.weeklyUsagePercent ?? 0;
+      }
+
+      const summary: ProfileUsageSummary = {
+        profileId: profile.id,
+        profileName: profile.name,
+        profileEmail: profile.email,
+        sessionPercent,
+        weeklyPercent,
+        isAuthenticated: profile.isAuthenticated ?? false,
+        isRateLimited: rateLimitStatus.limited,
+        rateLimitType: rateLimitStatus.type,
+        availabilityScore: this.calculateAvailabilityScore(
+          sessionPercent,
+          weeklyPercent,
+          rateLimitStatus.limited,
+          rateLimitStatus.type,
+          profile.isAuthenticated ?? false
+        ),
+        isActive: profile.id === activeProfileId,
+        lastFetchedAt: inactiveUsage?.fetchedAt?.toISOString() ?? profile.usage?.lastUpdated?.toISOString()
+      };
+
+      allProfiles.push(summary);
+      this.allProfilesUsageCache.set(profile.id, { usage: summary, fetchedAt: now });
+    }
+
+    // Sort by availability score (highest first = most available)
+    allProfiles.sort((a, b) => b.availabilityScore - a.availabilityScore);
+
+    return {
+      activeProfile: this.currentUsage,
+      allProfiles,
+      fetchedAt: new Date()
+    };
+  }
+
+  /**
+   * Fetch usage for an inactive profile using its own credentials
+   * This allows showing real usage data for non-active profiles
+   */
+  private async fetchUsageForInactiveProfile(
+    profile: { id: string; name: string; email?: string; configDir?: string; isAuthenticated?: boolean }
+  ): Promise<ClaudeUsageSnapshot | null> {
+    // Only fetch for authenticated profiles with a configDir
+    if (!profile.isAuthenticated || !profile.configDir) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Skipping inactive profile fetch - not authenticated or no configDir:', {
+          profileId: profile.id,
+          profileName: profile.name,
+          isAuthenticated: profile.isAuthenticated,
+          hasConfigDir: !!profile.configDir
+        });
+      }
+      return null;
+    }
+
+    try {
+      // Get credentials from keychain for this profile's configDir
+      const expandedConfigDir = profile.configDir.startsWith('~')
+        ? profile.configDir.replace(/^~/, require('os').homedir())
+        : profile.configDir;
+
+      const keychainCreds = getCredentialsFromKeychain(expandedConfigDir);
+
+      if (!keychainCreds.token) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor] No keychain credentials for inactive profile:', profile.name);
+        }
+        return null;
+      }
+
+      if (this.isDebug) {
+        const tokenHash = createHash('sha256').update(keychainCreds.token).digest('hex').slice(0, 8);
+        console.warn('[UsageMonitor] Fetching usage for inactive profile:', {
+          profileId: profile.id,
+          profileName: profile.name,
+          tokenHash
+        });
+      }
+
+      // Fetch usage via API - OAuth profiles always use Anthropic
+      const usage = await this.fetchUsageViaAPI(
+        keychainCreds.token,
+        profile.id,
+        profile.name,
+        keychainCreds.email ?? profile.email,
+        {
+          profileId: profile.id,
+          profileName: profile.name,
+          profileEmail: keychainCreds.email ?? profile.email,
+          isAPIProfile: false,
+          baseUrl: 'https://api.anthropic.com'
+        }
+      );
+
+      if (this.isDebug && usage) {
+        console.warn('[UsageMonitor] Successfully fetched inactive profile usage:', {
+          profileName: profile.name,
+          sessionPercent: usage.sessionPercent,
+          weeklyPercent: usage.weeklyPercent
+        });
+      }
+
+      return usage;
+    } catch (error) {
+      console.warn('[UsageMonitor] Failed to fetch inactive profile usage:', profile.name, error);
+      return null;
+    }
+  }
+
+  /**
+   * Build a ProfileUsageSummary from a ClaudeUsageSnapshot
+   */
+  private buildProfileUsageSummary(
+    profile: { id: string; name: string; email?: string; isAuthenticated?: boolean },
+    usage: ClaudeUsageSnapshot
+  ): ProfileUsageSummary {
+    const profileManager = getClaudeProfileManager();
+    const fullProfile = profileManager.getProfile(profile.id);
+    const rateLimitStatus = fullProfile ? isProfileRateLimited(fullProfile) : { limited: false };
+
+    return {
+      profileId: profile.id,
+      profileName: profile.name,
+      profileEmail: usage.profileEmail || profile.email,
+      sessionPercent: usage.sessionPercent,
+      weeklyPercent: usage.weeklyPercent,
+      sessionResetTimestamp: usage.sessionResetTimestamp,
+      weeklyResetTimestamp: usage.weeklyResetTimestamp,
+      isAuthenticated: profile.isAuthenticated ?? true,
+      isRateLimited: rateLimitStatus.limited,
+      rateLimitType: rateLimitStatus.type,
+      availabilityScore: this.calculateAvailabilityScore(
+        usage.sessionPercent,
+        usage.weeklyPercent,
+        rateLimitStatus.limited,
+        rateLimitStatus.type,
+        profile.isAuthenticated ?? true
+      ),
+      isActive: usage.profileId === profileManager.getActiveProfile()?.id,
+      lastFetchedAt: usage.fetchedAt?.toISOString()
+    };
+  }
+
+  /**
+   * Calculate availability score for a profile (higher = more available)
+   *
+   * Scoring algorithm:
+   * - Base score: 100
+   * - Rate limited: -500 (session) or -1000 (weekly)
+   * - Unauthenticated: -500
+   * - Weekly usage penalty: -(weeklyPercent * 0.5)
+   * - Session usage penalty: -(sessionPercent * 0.2)
+   */
+  private calculateAvailabilityScore(
+    sessionPercent: number,
+    weeklyPercent: number,
+    isRateLimited: boolean,
+    rateLimitType?: 'session' | 'weekly',
+    isAuthenticated: boolean = true
+  ): number {
+    let score = 100;
+
+    // Penalize rate-limited profiles heavily
+    if (isRateLimited) {
+      if (rateLimitType === 'weekly') {
+        score -= 1000; // Weekly limit is worse (takes longer to reset)
+      } else {
+        score -= 500; // Session limit resets sooner
+      }
+    }
+
+    // Penalize unauthenticated profiles
+    if (!isAuthenticated) {
+      score -= 500;
+    }
+
+    // Penalize based on current usage (weekly more important)
+    score -= weeklyPercent * 0.5;
+    score -= sessionPercent * 0.2;
+
+    return Math.round(score * 100) / 100; // Round to 2 decimal places
   }
 
   /**
@@ -350,8 +593,18 @@ export class UsageMonitor extends EventEmitter {
 
       this.currentUsage = usage;
 
+      // Step 2.5: Persist usage to profile for caching (so other profiles can display cached usage)
+      const profileManager = getClaudeProfileManager();
+      profileManager.updateProfileUsageFromAPI(profileId, usage.sessionPercent, usage.weeklyPercent);
+
       // Step 3: Emit usage update for UI (always emit, regardless of proactive swap settings)
       this.emit('usage-updated', usage);
+
+      // Step 3.5: Emit all profiles usage for multi-profile display
+      const allProfilesUsage = await this.getAllProfilesUsage();
+      if (allProfilesUsage) {
+        this.emit('all-profiles-usage-updated', allProfilesUsage);
+      }
 
       // Step 4: Check thresholds and perform proactive swap (OAuth profiles only)
       if (!isAPIProfile) {

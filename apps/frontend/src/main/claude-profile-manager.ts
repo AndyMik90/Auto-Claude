@@ -417,6 +417,31 @@ export class ClaudeProfileManager {
   }
 
   /**
+   * Update usage data for a profile from API response (percentages directly)
+   * This is called by the usage monitor after fetching usage via the API
+   */
+  updateProfileUsageFromAPI(profileId: string, sessionPercent: number, weeklyPercent: number): ClaudeUsageData | null {
+    const profile = this.getProfile(profileId);
+    if (!profile) {
+      return null;
+    }
+
+    // Preserve existing reset times if available, otherwise use empty string
+    const existingUsage = profile.usage;
+    const usage: ClaudeUsageData = {
+      sessionUsagePercent: sessionPercent,
+      sessionResetTime: existingUsage?.sessionResetTime ?? '',
+      weeklyUsagePercent: weeklyPercent,
+      weeklyResetTime: existingUsage?.weeklyResetTime ?? '',
+      opusUsagePercent: existingUsage?.opusUsagePercent,
+      lastUpdated: new Date()
+    };
+    profile.usage = usage;
+    this.save();
+    return usage;
+  }
+
+  /**
    * Record a rate limit event for a profile
    */
   recordRateLimitEvent(profileId: string, resetTimeStr: string): ClaudeRateLimitEvent {
