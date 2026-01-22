@@ -142,11 +142,13 @@ async function readResponseWithSSESupport(
   try {
     // Race between reading first chunk and timeout
     const readPromise = reader.read();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
-      setTimeout(() => resolve({ done: true, value: undefined }), timeoutMs);
+      timeoutId = setTimeout(() => resolve({ done: true, value: undefined }), timeoutMs);
     });
 
     const result = await Promise.race([readPromise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
 
     if (!result.done && result.value) {
       responseText = decoder.decode(result.value, { stream: false });
@@ -157,11 +159,13 @@ async function readResponseWithSSESupport(
     const maxAdditionalReads = 3;
 
     while (additionalReads < maxAdditionalReads) {
+      let shortTimeoutId: ReturnType<typeof setTimeout> | undefined;
       const shortTimeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
-        setTimeout(() => resolve({ done: true, value: undefined }), 500);
+        shortTimeoutId = setTimeout(() => resolve({ done: true, value: undefined }), 500);
       });
 
       const additionalResult = await Promise.race([reader.read(), shortTimeoutPromise]);
+      if (shortTimeoutId) clearTimeout(shortTimeoutId);
 
       if (additionalResult.done || !additionalResult.value) {
         break;
