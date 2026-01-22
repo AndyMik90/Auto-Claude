@@ -104,6 +104,14 @@ class TestStripAnsiCodes:
         expected = "Click here"
         assert strip_ansi_codes(input_text) == expected
 
+    def test_csi_bracketed_paste(self):
+        """CSI bracketed paste sequences should be removed (final byte ~)."""
+        # Bracketed paste start/end
+        assert strip_ansi_codes("\x1b[200~") == ""
+        assert strip_ansi_codes("\x1b[201~") == ""
+        # Bracketed paste with content
+        assert strip_ansi_codes("\x1b[200~text\x1b[201~") == "text"
+
     def test_unicode_with_ansi(self):
         """Unicode text combined with ANSI codes should preserve Unicode."""
         input_text = "\x1b[31m你好\x1b[0m \x1b[32m世界\x1b[0m"

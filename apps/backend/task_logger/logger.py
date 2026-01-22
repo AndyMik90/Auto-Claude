@@ -176,9 +176,9 @@ class TaskLogger:
         # Debug log (when DEBUG=true)
         self._debug_log(phase_message, LogEntryType.PHASE_START, phase_key)
 
-        # Also print the message
-        if message:
-            print(message, flush=True)
+        # Also print the message (sanitized)
+        if phase_message:
+            print(phase_message, flush=True)
 
     def end_phase(
         self, phase: LogPhase, success: bool = True, message: str | None = None
@@ -225,8 +225,9 @@ class TaskLogger:
         entry_type = LogEntryType.SUCCESS if success else LogEntryType.ERROR
         self._debug_log(phase_message, entry_type, phase_key)
 
-        if message:
-            print(message, flush=True)
+        # Print the message (sanitized)
+        if phase_message:
+            print(phase_message, flush=True)
 
         if phase == self.current_phase:
             self.current_phase = None

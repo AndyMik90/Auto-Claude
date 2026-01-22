@@ -9,10 +9,12 @@ import re
 
 # ANSI escape code patterns
 # ANSI CSI (Control Sequence Introducer) escape sequence pattern.
-# Matches: \x1b[ followed by optional private mode chars (?<>=), parameters,
-# and ending with a command byte
-# Examples: \x1b[31m (red), \x1b[?25l (hide cursor), \x1b[=1h (application keypad)
-ANSI_CSI_PATTERN = re.compile(r"\x1b\[[?><=0-9;]*[A-Za-z]")
+# Matches the full ANSI/VT100 CSI form: ESC [ parameter bytes (0-?) intermediate bytes ( -/) final bytes (@-~)
+# Parameter bytes: 0x30-0x3F (digits 0-9, :;<=>?)
+# Intermediate bytes: 0x20-0x2F (space and !"#$%&'()*+,-./)
+# Final bytes: 0x40-0x7E (@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~)
+# Examples: \x1b[31m (red), \x1b[?25l (hide cursor), \x1b[200~ (bracketed paste start)
+ANSI_CSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 # OSC (Operating System Command) escape sequences with BEL (bell) terminator
 # Matches: \x1b] ... \x07
