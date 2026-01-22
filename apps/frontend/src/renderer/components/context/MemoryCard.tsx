@@ -89,6 +89,16 @@ function ListItem({ children, variant = 'default' }: { children: React.ReactNode
   );
 }
 
+// Helper to safely extract text from mixed-type recommendation/pattern/gotcha items
+// Handles null values safely (typeof null === 'object' in JS)
+function getItemText<T extends { [key: string]: unknown }>(
+  item: string | T | null | undefined,
+  key: keyof T
+): string | undefined {
+  if (typeof item === 'string') return item;
+  return item?.[key] as string | undefined;
+}
+
 // Check if memory content looks like a PR review
 function isPRReviewMemory(memory: MemoryEpisode): boolean {
   // Check by type first
@@ -122,6 +132,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
       (d.gotchas_discovered?.length ?? 0) > 0 ||
       (d.file_insights?.length ?? 0) > 0 ||
       (d.changed_files?.length ?? 0) > 0 ||
+      (d.recommendations?.length ?? 0) > 0 ||
       d.approach_outcome?.approach_used
     );
   }, [parsed]);
@@ -261,11 +272,11 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 />
                 <ul className="space-y-0.5">
                   {parsed.recommendations_for_next_session?.map((item, idx) => {
-                    const text = typeof item === 'string' ? item : item.recommendation;
+                    const text = getItemText(item, 'recommendation');
                     return text ? <ListItem key={`rec-${idx}`}>{text}</ListItem> : null;
                   })}
                   {parsed.discoveries?.recommendations?.map((item, idx) => {
-                    const text = typeof item === 'string' ? item : item.recommendation;
+                    const text = getItemText(item, 'recommendation');
                     return text ? <ListItem key={`disc-rec-${idx}`}>{text}</ListItem> : null;
                   })}
                 </ul>
@@ -278,7 +289,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 <SectionHeader icon={Sparkles} title="Patterns" count={parsed.discoveries.patterns_discovered.length} />
                 <div className="flex flex-wrap gap-2 pl-4">
                   {parsed.discoveries.patterns_discovered.map((pattern, idx) => {
-                    const text = typeof pattern === 'string' ? pattern : pattern.pattern;
+                    const text = getItemText(pattern, 'pattern');
                     return text ? (
                       <Badge key={idx} variant="secondary" className="text-xs">
                         {text}
@@ -295,7 +306,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 <SectionHeader icon={AlertTriangle} title="Gotchas" count={parsed.discoveries.gotchas_discovered.length} />
                 <ul className="space-y-0.5">
                   {parsed.discoveries.gotchas_discovered.map((gotcha, idx) => {
-                    const text = typeof gotcha === 'string' ? gotcha : gotcha.gotcha;
+                    const text = getItemText(gotcha, 'gotcha');
                     return text ? (
                       <ListItem key={idx} variant="error">{text}</ListItem>
                     ) : null;
@@ -356,13 +367,6 @@ export function MemoryCard({ memory }: MemoryCardProps) {
               </div>
             )}
           </div>
-        )}
-
-        {/* Fallback for unparseable content or empty parsed content */}
-        {expanded && (!parsed || !hasContent) && (
-          <pre className="mt-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono p-3 bg-background rounded-lg max-h-64 overflow-auto border border-border/50">
-            {memory.content}
-          </pre>
         )}
       </CardContent>
     </Card>
