@@ -46,6 +46,10 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
   const fitAddonRef = useRef<FitAddon | null>(null);
   const isInitializedRef = useRef<boolean>(false);
 
+  // Use a ref to hold current settings, avoiding stale closure in debounced function
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   // Create persistent debounced update function
   const debouncedUpdateRef = useRef<ReturnType<typeof debounce<() => void>> | null>(null);
 
@@ -166,6 +170,7 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
 
   /**
    * Initialize the debounced update function once
+   * Uses settingsRef to avoid stale closure - reads current settings at execution time
    */
   useEffect(() => {
     if (!debouncedUpdateRef.current) {
@@ -173,17 +178,20 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
         const xterm = xtermRef.current;
         if (!xterm) return;
 
+        // Read from settingsRef.current to get current values, not closure values
+        const currentSettings = settingsRef.current;
+
         // Update terminal options with current settings
-        xterm.options.cursorBlink = settings.cursorBlink;
-        xterm.options.cursorStyle = settings.cursorStyle;
-        xterm.options.fontSize = settings.fontSize;
-        xterm.options.fontFamily = settings.fontFamily.join(', ');
-        xterm.options.fontWeight = settings.fontWeight;
-        xterm.options.lineHeight = settings.lineHeight;
-        xterm.options.letterSpacing = settings.letterSpacing;
+        xterm.options.cursorBlink = currentSettings.cursorBlink;
+        xterm.options.cursorStyle = currentSettings.cursorStyle;
+        xterm.options.fontSize = currentSettings.fontSize;
+        xterm.options.fontFamily = currentSettings.fontFamily.join(', ');
+        xterm.options.fontWeight = currentSettings.fontWeight;
+        xterm.options.lineHeight = currentSettings.lineHeight;
+        xterm.options.letterSpacing = currentSettings.letterSpacing;
         xterm.options.theme = {
           ...xterm.options.theme,
-          cursorAccent: settings.cursorAccentColor,
+          cursorAccent: currentSettings.cursorAccentColor,
         };
 
         // Refresh terminal to apply visual changes

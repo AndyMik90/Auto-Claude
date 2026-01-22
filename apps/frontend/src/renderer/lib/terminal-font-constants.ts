@@ -42,6 +42,33 @@ export type CursorStyle = typeof VALID_CURSOR_STYLES[number];
 export const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
 
 /**
+ * Shared Tailwind CSS classes for range input sliders
+ * Custom styling for webkit (Chrome, Safari, Edge) and Firefox thumb controls
+ */
+export const SLIDER_INPUT_CLASSES = [
+  'w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  // Webkit (Chrome, Safari, Edge)
+  '[&::-webkit-slider-thumb]:appearance-none',
+  '[&::-webkit-slider-thumb]:w-4',
+  '[&::-webkit-slider-thumb]:h-4',
+  '[&::-webkit-slider-thumb]:rounded-full',
+  '[&::-webkit-slider-thumb]:bg-primary',
+  '[&::-webkit-slider-thumb]:cursor-pointer',
+  '[&::-webkit-slider-thumb]:transition-all',
+  '[&::-webkit-slider-thumb]:hover:scale-110',
+  // Firefox
+  '[&::-moz-range-thumb]:w-4',
+  '[&::-moz-range-thumb]:h-4',
+  '[&::-moz-range-thumb]:rounded-full',
+  '[&::-moz-range-thumb]:bg-primary',
+  '[&::-moz-range-thumb]:border-0',
+  '[&::-moz-range-thumb]:cursor-pointer',
+  '[&::-moz-range-thumb]:transition-all',
+  '[&::-moz-range-thumb]:hover:scale-110',
+] as const;
+
+/**
  * Validates a font size value is within bounds
  */
 export function isValidFontSize(value: number): boolean {
@@ -49,10 +76,15 @@ export function isValidFontSize(value: number): boolean {
 }
 
 /**
- * Validates a font weight value is within bounds
+ * Validates a font weight value is within bounds and is a multiple of 100
+ * CSS font-weight only accepts 100, 200, 300... 900
  */
 export function isValidFontWeight(value: number): boolean {
-  return value >= FONT_WEIGHT_MIN && value <= FONT_WEIGHT_MAX;
+  return (
+    value >= FONT_WEIGHT_MIN &&
+    value <= FONT_WEIGHT_MAX &&
+    value % FONT_WEIGHT_STEP === 0
+  );
 }
 
 /**

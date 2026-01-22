@@ -5,7 +5,7 @@ import { useToast } from '../../../hooks/use-toast';
 import { cn } from '../../../lib/utils';
 import { Label } from '../../ui/label';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
-import { TERMINAL_PRESETS, useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
+import { useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
 import { getOS } from '../../../lib/os-detection';
 
 interface PresetsPanelProps {
