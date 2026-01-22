@@ -12,14 +12,28 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 
+/**
+ * Props for QueueSettingsModal component
+ */
 interface QueueSettingsModalProps {
+  /** Whether the modal is currently open */
   open: boolean;
+  /** Callback to control modal open state */
   onOpenChange: (open: boolean) => void;
+  /** The project ID to update settings for */
   projectId: string;
+  /** Current maximum parallel tasks setting (default: 3) */
   currentMaxParallel?: number;
+  /** Callback when user saves the new max parallel value */
   onSave: (maxParallel: number) => void;
 }
 
+/**
+ * QueueSettingsModal - Modal for configuring queue parallel task limits
+ *
+ * Allows users to adjust the maximum number of tasks that can run in parallel
+ * for a specific project. Validates input between 1-10 tasks.
+ */
 export function QueueSettingsModal({
   open,
   onOpenChange,
@@ -39,14 +53,20 @@ export function QueueSettingsModal({
     }
   }, [open, currentMaxParallel]);
 
+  /**
+   * Validates and saves the max parallel tasks setting
+   *
+   * Validates that the value is between 1-10, sets an error message
+   * if invalid, otherwise calls onSave and closes the modal.
+   */
   const handleSave = () => {
     // Validate the input
     if (maxParallel < 1) {
-      setError(t('queue.settings.minValueError'));
+      setError(t('tasks:queue.settings.minValueError'));
       return;
     }
     if (maxParallel > 10) {
-      setError(t('queue.settings.maxValueError'));
+      setError(t('tasks:queue.settings.maxValueError'));
       return;
     }
 
@@ -54,6 +74,14 @@ export function QueueSettingsModal({
     onOpenChange(false);
   };
 
+  /**
+   * Handles input field changes for the max parallel tasks value
+   *
+   * Parses the input value, validates it's a number, and updates state.
+   * Allows empty input for editing purposes (will fail validation on save).
+   *
+   * @param e - The input change event from the number input field
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
 
@@ -75,16 +103,16 @@ export function QueueSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('queue.settings.title')}</DialogTitle>
+          <DialogTitle>{t('tasks:queue.settings.title')}</DialogTitle>
           <DialogDescription>
-            {t('queue.settings.description')}
+            {t('tasks:queue.settings.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="maxParallel">
-              {t('queue.settings.maxParallelLabel')}
+              {t('tasks:queue.settings.maxParallelLabel')}
             </Label>
             <Input
               id="maxParallel"
@@ -99,7 +127,7 @@ export function QueueSettingsModal({
               <p className="text-sm text-destructive">{error}</p>
             )}
             <p className="text-sm text-muted-foreground">
-              {t('queue.settings.hint')}
+              {t('tasks:queue.settings.hint')}
             </p>
           </div>
         </div>
