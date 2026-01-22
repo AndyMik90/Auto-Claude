@@ -1119,6 +1119,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
               onQueueAll={status === 'backlog' ? handleQueueAll : undefined}
               onQueueSettings={status === 'queue' ? () => {
+                // Only open modal if we have a valid projectId
+                if (!projectId) return;
                 queueSettingsProjectIdRef.current = projectId;
                 setShowQueueSettings(true);
               } : undefined}
