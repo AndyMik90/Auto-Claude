@@ -30,11 +30,10 @@ from core.platform import (
 
 # Apply runtime monkey-patch to SDK for CLAUDE_SYSTEM_PROMPT_FILE support
 # This enables large system prompts to be passed via temp file to avoid ARG_MAX limits
+# The patch auto-applies on import (see patch_sdk_system_prompt.py line ~179)
 # See: https://github.com/AndyMik90/Auto-Claude/issues/384
 try:
-    from scripts.patch_sdk_system_prompt import apply_sdk_patch
-
-    apply_sdk_patch()
+    import scripts.patch_sdk_system_prompt  # noqa: F401 - patch auto-applies on import
 except ImportError:
     # Patch module not available (e.g., during testing), continue without it
     pass
@@ -479,13 +478,22 @@ def _cleanup_temp_files() -> None:
     with _TEMP_FILES_LOCK:
         files_to_clean = list(_system_prompt_temp_files)
 
+    cleaned = []
     for temp_file_path in files_to_clean:
         try:
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
                 logger.debug(f"Cleaned up temp file: {temp_file_path}")
+            cleaned.append(temp_file_path)
         except Exception as e:
             logger.warning(f"Failed to clean up temp file {temp_file_path}: {e}")
+
+    # Remove cleaned files from tracking list
+    if cleaned:
+        with _TEMP_FILES_LOCK:
+            for path in cleaned:
+                if path in _system_prompt_temp_files:
+                    _system_prompt_temp_files.remove(path)
 
 
 # Register cleanup handler to run on process exit
@@ -540,7 +548,7 @@ def _prepare_system_prompt(
     # Check if prompt exceeds safe threshold
     prompt_size = len(base_prompt.encode("utf-8"))
     if prompt_size > _SYSTEM_PROMPT_SIZE_THRESHOLD:
-        # Write to temp file and use @filepath syntax
+        # Write to temp file - path will be passed via CLAUDE_SYSTEM_PROMPT_FILE env var
         # Use delete=False to keep the file for the CLI subprocess to read
         # File is tracked and cleaned up on exit via atexit handler
         temp_file_path: str
@@ -951,22 +959,17 @@ def create_client(
     if agents:
         options_kwargs["agents"] = agents
 
-    # Use lock to prevent race conditions when multiple clients are created concurrently
-    # The lock ensures that the environment variable is set and the SDK client is created atomically
-    # This prevents Thread B from overwriting the env var before Thread A's SDK reads it
-    with _PROMPT_FILE_LOCK:
-        # Log when using temp file for large prompt
-        if _temp_prompt_file:
-            # Pass temp file path via environment variable since @filepath syntax
-            # is not supported by the CLI for --system-prompt
-            # Set in both os.environ (for monkey-patch) and sdk_env (for subprocess)
-            os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-            sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-            print("   - CLAUDE.md: large prompt (using temp file)")
-        print()
+    # Log when using temp file for large prompt
+    if _temp_prompt_file:
+        # Pass temp file path via environment variable for the monkey-patch
+        # The monkey-patch in SubprocessCLITransport.__init__ reads this env var
+        # and stores it on the instance, then clears the env var immediately.
+        # This avoids race conditions with concurrent client creation.
+        os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+        sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+        print("   - CLAUDE.md: large prompt (using temp file)")
+    print()
 
-        # Create SDK client while holding the lock
-        # This ensures the env var is read by this thread's SDK client before another thread overwrites it
-        # Note: The env var is NOT cleared here because _build_command() is called later in connect()
-        # The monkey-patch in patched_connect() clears the env var after storing it on the instance
-        return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+    # Create SDK client
+    # The monkey-patch in __init__ will capture and clear the env var atomically
+    return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))

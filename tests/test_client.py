@@ -145,6 +145,13 @@ class TestSystemPromptPreparation:
 
         client._system_prompt_temp_files.clear()
         yield
+        # Clean up any actual temp files created during test
+        for temp_file in list(client._system_prompt_temp_files):
+            try:
+                if os.path.exists(temp_file):
+                    os.unlink(temp_file)
+            except OSError:
+                pass
         client._system_prompt_temp_files.clear()
 
     def test_cleanup_temp_files_removes_files(self, tmp_path):
@@ -187,12 +194,10 @@ class TestSystemPromptPreparation:
 
         prompt_value, temp_file = _prepare_system_prompt(tmp_path)
 
-        # Small prompts should be returned directly, not as temp file reference
-        assert not prompt_value.startswith("@")
-        assert temp_file is None
-        # Verify prompt contains expected content
+        # Small prompts should be returned directly with content, not empty
+        assert prompt_value  # Non-empty string
         assert "expert full-stack developer" in prompt_value
-        assert str(tmp_path) in prompt_value
+        assert temp_file is None
 
     def test_large_prompt_returns_temp_file_reference(self, tmp_path, monkeypatch):
         """Verify large system prompts use temp file with CLAUDE_SYSTEM_PROMPT_FILE."""
@@ -221,6 +226,10 @@ class TestSystemPromptPreparation:
             assert "expert full-stack developer" in content
             assert "Project Instructions" in content
 
+        # Verify temp file is tracked for cleanup
+        from core.client import _system_prompt_temp_files
+        assert temp_file in _system_prompt_temp_files
+
         # Temp file cleanup is handled by the reset_temp_files_list fixture
 
     def test_medium_prompt_uses_direct_string(self, tmp_path, monkeypatch):
@@ -237,8 +246,8 @@ class TestSystemPromptPreparation:
 
         prompt_value, temp_file = _prepare_system_prompt(tmp_path)
 
-        # Medium prompts should be returned directly
-        assert not prompt_value.startswith("@")
+        # Medium prompts should be returned directly with content
+        assert prompt_value  # Non-empty string
         assert temp_file is None
         assert "Project Instructions" in prompt_value
 

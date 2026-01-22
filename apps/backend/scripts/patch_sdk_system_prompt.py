@@ -30,6 +30,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Flag to track if patch has been applied (idempotency guard)
+_PATCH_APPLIED = False
+
 
 def apply_sdk_patch():
     """
@@ -38,7 +41,14 @@ def apply_sdk_patch():
 
     This patches both _build_command to remove system_prompt from args,
     and connect() to write it to stdin, avoiding ARG_MAX limits.
+
+    This function is idempotent - subsequent calls will skip patching
+    if already applied.
     """
+    global _PATCH_APPLIED
+    if _PATCH_APPLIED:
+        return
+
     try:
         from claude_agent_sdk._internal.transport.subprocess_cli import (
             SubprocessCLITransport,
@@ -47,35 +57,43 @@ def apply_sdk_patch():
         # SDK not available, skip patching
         return
 
+    # Check if already patched by looking for our marker attribute
+    if hasattr(SubprocessCLITransport, "_auto_claude_patched"):
+        _PATCH_APPLIED = True
+        return
+
+    # Patch __init__ to capture the prompt file path during client creation
+    original_init = SubprocessCLITransport.__init__
+
+    def patched_init(self, prompt, options):
+        """Patch __init__ to capture CLAUDE_SYSTEM_PROMPT_FILE from env var."""
+        # Call original __init__
+        original_init(self, prompt, options)
+
+        # Check for CLAUDE_SYSTEM_PROMPT_FILE environment variable
+        # Store directly on instance to avoid race conditions
+        system_prompt_file = os.environ.get("CLAUDE_SYSTEM_PROMPT_FILE")
+        if system_prompt_file and Path(system_prompt_file).exists():
+            self._auto_claude_prompt_file = system_prompt_file
+            # Clear the env var after capturing - prevents other clients from using it
+            os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)
+        else:
+            self._auto_claude_prompt_file = None
+
     # Store original methods
     original_build_command = SubprocessCLITransport._build_command
     original_connect = SubprocessCLITransport.connect
 
     def patched_build_command(self) -> list[str]:
         """
-        Patched version of _build_command that removes --system-prompt when
-        CLAUDE_SYSTEM_PROMPT_FILE is set (to be sent via stdin instead).
+        Patched version of _build_command that removes --system-prompt.
 
         This avoids ARG_MAX limits by not passing large prompts as command-line args.
-
-        Also stores the prompt file path on the instance to avoid race conditions
-        when multiple clients are created concurrently.
         """
         cmd = original_build_command(self)
 
-        # Check if CLAUDE_SYSTEM_PROMPT_FILE environment variable is set
-        # Store on instance to avoid race conditions with concurrent client creation
-        system_prompt_file = os.environ.get("CLAUDE_SYSTEM_PROMPT_FILE")
-        if system_prompt_file and Path(system_prompt_file).exists():
-            # Store on instance for later use in patched_connect
-            # This avoids race conditions where concurrent create_client() calls
-            # overwrite each other's environment variable values
-            self._auto_claude_prompt_file = system_prompt_file
-
-            # Clear the environment variable after storing on instance
-            # This prevents subsequent client creations from using a stale value
-            os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)
-
+        # Check if this transport instance has a prompt file (set in patched_init)
+        if hasattr(self, "_auto_claude_prompt_file") and self._auto_claude_prompt_file:
             # Remove --system-prompt argument from command to avoid ARG_MAX
             # The prompt will be sent via stdin in patched_connect instead
             new_cmd = []
@@ -88,8 +106,6 @@ def apply_sdk_patch():
                     new_cmd.append(cmd[i])
                     i += 1
             cmd = new_cmd
-        else:
-            self._auto_claude_prompt_file = None
 
         return cmd
 
@@ -114,21 +130,30 @@ def apply_sdk_patch():
         # This avoids race conditions with concurrent client creation
         system_prompt_file = getattr(self, "_auto_claude_prompt_file", None)
 
-        if system_prompt_file and Path(system_prompt_file).exists():
-            try:
-                with open(system_prompt_file, encoding="utf-8") as f:
-                    system_prompt_content = f.read()
-                logger.info(
-                    f"Read system prompt from file ({len(system_prompt_content)} chars)"
+        if system_prompt_file:
+            if not Path(system_prompt_file).exists():
+                # TOCTOU: File was deleted between _build_command and connect
+                logger.warning(
+                    f"System prompt file {system_prompt_file} was expected but no longer exists. "
+                    f"The agent will run without the large system prompt. "
+                    f"This may indicate the temp file was cleaned up prematurely."
                 )
-            except OSError as e:
-                logger.error(
-                    f"Failed to read system prompt file {system_prompt_file}: {e}"
-                )
-                raise
-            finally:
-                # Clear the instance attribute after reading
                 self._auto_claude_prompt_file = None
+            else:
+                try:
+                    with open(system_prompt_file, encoding="utf-8") as f:
+                        system_prompt_content = f.read()
+                    logger.info(
+                        f"Read system prompt from file ({len(system_prompt_content)} chars)"
+                    )
+                except OSError as e:
+                    logger.error(
+                        f"Failed to read system prompt file {system_prompt_file}: {e}"
+                    )
+                    raise
+                finally:
+                    # Clear the instance attribute after reading
+                    self._auto_claude_prompt_file = None
 
         # Call original connect to start the subprocess
         await original_connect(self)
@@ -171,8 +196,13 @@ def apply_sdk_patch():
                 raise
 
     # Apply the monkey-patches
+    SubprocessCLITransport.__init__ = patched_init
     SubprocessCLITransport._build_command = patched_build_command
     SubprocessCLITransport.connect = patched_connect
+
+    # Set marker attribute and flag to indicate patch has been applied
+    SubprocessCLITransport._auto_claude_patched = True
+    _PATCH_APPLIED = True
 
 
 # Auto-apply patch on import
