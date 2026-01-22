@@ -84,11 +84,87 @@ function redactSensitiveHeaders(headers: Record<string, string>): Record<string,
 }
 
 /**
+ * Read response body with SSE stream support.
+ * For SSE streams, performs a bounded read to avoid hanging on endless streams.
+ * For regular responses, uses standard response.text().
+ *
+ * @param response - Fetch response object
+ * @param contentType - Content-Type header value
+ * @param timeoutMs - Timeout for SSE bounded read (default: 5000ms)
+ * @returns Response text (may be partial for SSE streams)
+ */
+async function readResponseWithSSESupport(
+  response: Response,
+  contentType: string,
+  timeoutMs: number = 5000
+): Promise<string> {
+  const isSSEContentType = contentType.includes('text/event-stream');
+
+  if (!isSSEContentType || !response.body) {
+    // Non-SSE response - use standard text() method
+    return response.text();
+  }
+
+  // SSE stream - perform bounded read to avoid hanging
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let responseText = '';
+
+  try {
+    // Race between reading first chunk and timeout
+    const readPromise = reader.read();
+    const timeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
+      setTimeout(() => resolve({ done: true, value: undefined }), timeoutMs);
+    });
+
+    const result = await Promise.race([readPromise, timeoutPromise]);
+
+    if (!result.done && result.value) {
+      responseText = decoder.decode(result.value, { stream: false });
+    }
+
+    // Try to read more chunks with short timeout for complete SSE messages
+    let additionalReads = 0;
+    const maxAdditionalReads = 3;
+
+    while (additionalReads < maxAdditionalReads) {
+      const shortTimeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
+        setTimeout(() => resolve({ done: true, value: undefined }), 500);
+      });
+
+      const additionalResult = await Promise.race([reader.read(), shortTimeoutPromise]);
+
+      if (additionalResult.done || !additionalResult.value) {
+        break;
+      }
+
+      responseText += decoder.decode(additionalResult.value, { stream: false });
+      additionalReads++;
+
+      // Stop if we have complete SSE data lines
+      if (responseText.includes('\n\n') || responseText.includes('data:')) {
+        break;
+      }
+    }
+  } finally {
+    // Clean up - cancel reader and release lock
+    try {
+      await reader.cancel();
+    } catch {
+      // Ignore cancel errors
+    }
+  }
+
+  return responseText;
+}
+
+/**
  * Interface for MCP JSON-RPC response
  */
 interface McpJsonRpcResponse {
   jsonrpc: string;
-  id: number;
+  /** JSON-RPC 2.0 id can be string, number, or null */
+  id: string | number | null;
   result?: {
     protocolVersion?: string;
     capabilities?: Record<string, unknown>;
@@ -417,7 +493,8 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     appLog.info('[MCP Test] Content-Type:', contentType);
 
     let data: McpJsonRpcResponse | undefined;
-    const responseText = await response.text();
+    // Use bounded read for SSE streams to avoid hanging on endless streams
+    const responseText = await readResponseWithSSESupport(response, contentType);
     appLog.debug('[MCP Test] Response text (first 500):', responseText.substring(0, 500));
 
     // Determine if response is SSE format
@@ -442,13 +519,14 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
           });
           return {
             serverId: server.id,
-            success: true,
-            message: 'Server responded (SSE format, MCP protocol not verified)',
+            success: false,
+            message: 'Server reachable but MCP protocol could not be verified',
+            error: 'SSE response could not be parsed as MCP JSON-RPC',
             responseTime,
           };
         }
       } else {
-        // SSE response without data - log warning but consider it working
+        // SSE response without data - server reachable but MCP not verified
         appLog.warn('[MCP Test] SSE response received without data lines - verify server configuration', {
           serverId: server.id,
           responseTime,
@@ -456,8 +534,9 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
         });
         return {
           serverId: server.id,
-          success: true,
-          message: 'Server responded (SSE format, MCP protocol not verified)',
+          success: false,
+          message: 'Server reachable but MCP protocol could not be verified',
+          error: 'SSE response did not contain expected data lines',
           responseTime,
         };
       }
@@ -467,7 +546,7 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
         data = JSON.parse(responseText) as McpJsonRpcResponse;
       } catch (parseError) {
         appLog.error('[MCP Test] Failed to parse response as JSON:', parseError);
-        // Non-JSON 200 response - warn about non-compliance but consider it working
+        // Non-JSON 200 response - server reachable but MCP not verified
         appLog.warn('[MCP Test] Server responded with non-JSON format - may not be MCP compliant', {
           serverId: server.id,
           responseTime,
@@ -475,8 +554,9 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
         });
         return {
           serverId: server.id,
-          success: true,
-          message: 'Server responded (non-JSON)',
+          success: false,
+          message: 'Server reachable but MCP protocol could not be verified',
+          error: 'Response was not valid JSON',
           responseTime,
         };
       }
@@ -612,20 +692,8 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
       }
     }, 15000); // 15 second timeout (matches spawn timeout)
 
-    // Send MCP initialize request
-    const initRequest = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: {
-          name: MCP_CLIENT_NAME,
-          version: MCP_CLIENT_VERSION,
-        },
-      },
-    }) + '\n';
+    // Send MCP initialize request (use shared factory for consistency)
+    const initRequest = JSON.stringify(createMcpInitRequest()) + '\n';
 
     proc.stdin.write(initRequest);
 
