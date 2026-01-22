@@ -74,6 +74,34 @@ const RECOMMENDED_MODELS: OllamaModel[] = [
   },
 ];
 
+/**
+ * OllamaModelSelector Component
+ *
+ * Provides UI for selecting and downloading Ollama embedding models for semantic search.
+ * Features:
+ * - Displays list of recommended embedding models (embeddinggemma, nomic-embed-text, mxbai-embed-large)
+ * - Shows installation status with checkmarks for installed models
+ * - Download buttons with file size estimates for uninstalled models
+ * - Real-time download progress tracking with speed and ETA
+ * - Automatic list refresh after successful downloads
+ * - Graceful handling when Ollama service is not running
+ *
+ * @component
+ * @param {Object} props - Component props
+ * @param {string} props.selectedModel - Currently selected model name
+ * @param {Function} props.onModelSelect - Callback when a model is selected (model: string, dim: number) => void
+ * @param {boolean} [props.disabled=false] - If true, disables selection and downloads
+ * @param {string} [props.className] - Additional CSS classes to apply to root element
+ *
+ * @example
+ * ```tsx
+ * <OllamaModelSelector
+ *   selectedModel="embeddinggemma"
+ *   onModelSelect={(model, dim) => console.log(`Selected ${model} with ${dim} dimensions`)}
+ *   disabled={false}
+ * />
+ * ```
+ */
 export function OllamaModelSelector({
   selectedModel,
   onModelSelect,

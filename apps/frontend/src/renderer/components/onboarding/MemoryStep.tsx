@@ -241,9 +241,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
               <div className="flex items-center gap-3">
                 <Database className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <Label className="font-medium text-foreground">Enable Memory</Label>
+                  <Label className="font-medium text-foreground">{t('memory.enableMemory')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Persistent cross-session memory using embedded graph database
+                    {t('memory.enableMemoryDescription')}
                   </p>
                 </div>
               </div>
@@ -260,8 +260,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 <div className="flex items-start gap-3">
                   <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   <p className="text-sm text-muted-foreground">
-                    Using file-based memory. Session insights are stored locally in JSON files.
-                    Enable Memory for persistent cross-session context with semantic search.
+                    {t('memory.memoryDisabledInfo')}
                   </p>
                 </div>
               </div>
@@ -279,9 +278,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* Agent Memory Access Toggle */}
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
+                    <Label className="font-normal text-foreground">{t('memory.enableAgentAccess')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Allow agents to search and add to the knowledge graph via MCP
+                      {t('memory.enableAgentAccessDescription')}
                     </p>
                   </div>
                   <Switch
@@ -294,9 +293,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* MCP Server URL (shown when agent memory is enabled) */}
                 {config.agentMemoryEnabled && (
                   <div className="space-y-2 ml-6">
-                    <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
+                    <Label className="text-sm font-medium text-foreground">{t('memory.mcpServerUrl')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      URL of the Graphiti MCP server
+                      {t('memory.mcpServerUrlDescription')}
                     </p>
                     <Input
                       placeholder="http://localhost:8000/mcp/"
@@ -312,9 +311,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
 
                 {/* Embedding Provider Selection */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-foreground">Embedding Provider</Label>
+                  <Label className="text-sm font-medium text-foreground">{t('memory.embeddingProvider')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Provider for semantic search (optional - keyword search works without)
+                    {t('memory.embeddingProviderDescription')}
                   </p>
                   <Select
                     value={config.embeddingProvider}
@@ -324,14 +323,14 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                     disabled={isSaving}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select embedding provider" />
+                      <SelectValue placeholder={t('memory.selectEmbeddingModel')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ollama">Ollama (Local - Free)</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="voyage">Voyage AI</SelectItem>
-                      <SelectItem value="google">Google AI</SelectItem>
-                      <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+                      <SelectItem value="ollama">{t('memory.providers.ollama')}</SelectItem>
+                      <SelectItem value="openai">{t('memory.providers.openai')}</SelectItem>
+                      <SelectItem value="voyage">{t('memory.providers.voyage')}</SelectItem>
+                      <SelectItem value="google">{t('memory.providers.google')}</SelectItem>
+                      <SelectItem value="azure_openai">{t('memory.providers.azure')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -340,9 +339,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* OpenAI */}
                 {config.embeddingProvider === 'openai' && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-foreground">OpenAI API Key</Label>
+                    <Label className="text-sm font-medium text-foreground">{t('memory.openaiApiKey')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Required for OpenAI embeddings
+                      {t('memory.openaiApiKeyDescription')}
                     </p>
                     <PasswordInput
                       value={config.openaiApiKey}
@@ -361,9 +360,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* Voyage AI */}
                 {config.embeddingProvider === 'voyage' && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-foreground">Voyage AI API Key</Label>
+                    <Label className="text-sm font-medium text-foreground">{t('memory.voyageApiKey')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Required for Voyage AI embeddings
+                      {t('memory.voyageApiKeyDescription')}
                     </p>
                     <PasswordInput
                       value={config.voyageApiKey}
@@ -390,9 +389,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* Google AI */}
                 {config.embeddingProvider === 'google' && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-foreground">Google AI API Key</Label>
+                    <Label className="text-sm font-medium text-foreground">{t('memory.googleApiKey')}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Required for Google AI embeddings
+                      {t('memory.googleApiKeyDescription')}
                     </p>
                     <PasswordInput
                       value={config.googleApiKey}
@@ -411,9 +410,9 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                 {/* Azure OpenAI */}
                 {config.embeddingProvider === 'azure_openai' && (
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-foreground">Azure OpenAI Configuration</Label>
+                    <Label className="text-sm font-medium text-foreground">{t('memory.azureConfig')}</Label>
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">API Key</Label>
+                      <Label className="text-xs text-muted-foreground">{t('memory.azureApiKey')}</Label>
                       <PasswordInput
                         value={config.azureOpenaiApiKey}
                         onChange={(value) => setConfig(prev => ({ ...prev, azureOpenaiApiKey: value }))}
@@ -421,7 +420,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Base URL</Label>
+                      <Label className="text-xs text-muted-foreground">{t('memory.azureBaseUrl')}</Label>
                       <Input
                         placeholder="https://your-resource.openai.azure.com"
                         value={config.azureOpenaiBaseUrl}
@@ -431,7 +430,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Embedding Deployment Name</Label>
+                      <Label className="text-xs text-muted-foreground">{t('memory.azureEmbeddingDeployment')}</Label>
                       <Input
                         placeholder="text-embedding-ada-002"
                         value={config.azureOpenaiEmbeddingDeployment}
