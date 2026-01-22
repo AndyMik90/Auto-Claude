@@ -28,6 +28,7 @@ interface OllamaModelSelectorProps {
   onModelSelect: (model: string, dim: number) => void;
   disabled?: boolean;
   className?: string;
+  baseUrl?: string;
 }
 
 // Recommended embedding models for Auto Claude Memory
@@ -73,40 +74,12 @@ const RECOMMENDED_MODELS: OllamaModel[] = [
   },
 ];
 
-
-/**
- * OllamaModelSelector Component
- *
- * Provides UI for selecting and downloading Ollama embedding models for semantic search.
- * Features:
- * - Displays list of recommended embedding models (embeddinggemma, nomic-embed-text, mxbai-embed-large)
- * - Shows installation status with checkmarks for installed models
- * - Download buttons with file size estimates for uninstalled models
- * - Real-time download progress tracking with speed and ETA
- * - Automatic list refresh after successful downloads
- * - Graceful handling when Ollama service is not running
- *
- * @component
- * @param {Object} props - Component props
- * @param {string} props.selectedModel - Currently selected model name
- * @param {Function} props.onModelSelect - Callback when a model is selected (model: string, dim: number) => void
- * @param {boolean} [props.disabled=false] - If true, disables selection and downloads
- * @param {string} [props.className] - Additional CSS classes to apply to root element
- *
- * @example
- * ```tsx
- * <OllamaModelSelector
- *   selectedModel="embeddinggemma"
- *   onModelSelect={(model, dim) => console.log(`Selected ${model} with ${dim} dimensions`)}
- *   disabled={false}
- * />
- * ```
- */
 export function OllamaModelSelector({
   selectedModel,
   onModelSelect,
   disabled = false,
   className,
+  baseUrl,
 }: OllamaModelSelectorProps) {
   const { t } = useTranslation('onboarding');
   const [models, setModels] = useState<OllamaModel[]>(RECOMMENDED_MODELS);
@@ -149,7 +122,7 @@ export function OllamaModelSelector({
       }
 
       // Ollama is installed, now check if it's running
-      const statusResult = await window.electronAPI.checkOllamaStatus();
+      const statusResult = await window.electronAPI.checkOllamaStatus(baseUrl);
       if (abortSignal?.aborted) return;
 
       if (!statusResult?.success || !statusResult?.data?.running) {
@@ -161,7 +134,7 @@ export function OllamaModelSelector({
       setOllamaState('available');
 
       // Get list of installed embedding models
-      const result = await window.electronAPI.listOllamaEmbeddingModels();
+      const result = await window.electronAPI.listOllamaEmbeddingModels(baseUrl);
       if (abortSignal?.aborted) return;
 
       if (result?.success && result?.data?.embedding_models) {
@@ -258,7 +231,7 @@ export function OllamaModelSelector({
         clearTimeout(installCheckTimeoutRef.current);
       }
     };
-  }, []);
+  }, [baseUrl]);
 
   // Progress is now handled globally by the download store listener initialized in App.tsx
 

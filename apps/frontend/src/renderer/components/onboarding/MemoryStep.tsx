@@ -55,12 +55,7 @@ interface MemoryConfig {
   ollamaEmbeddingDim: number;
 }
 
-interface OllamaEmbeddingModel {
-  name: string;
-  embedding_dim: number | null;
-  description: string;
-  size_gb: number;
-}
+
 
 /**
  * Memory configuration step for the onboarding wizard.
@@ -99,10 +94,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
   const [infrastructureStatus, setInfrastructureStatus] = useState<InfrastructureStatusType | null>(null);
   const [isCheckingInfra, setIsCheckingInfra] = useState(true);
 
-  // Ollama state
-  const [ollamaModels, setOllamaModels] = useState<OllamaEmbeddingModel[]>([]);
-  const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
-  const [ollamaError, setOllamaError] = useState<string | null>(null);
+
 
   // Check LadybugDB/Kuzu availability on mount
   useEffect(() => {
@@ -123,44 +115,7 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
     checkInfrastructure();
   }, []);
 
-  // Detect Ollama embedding models
-  const detectOllamaModels = useCallback(async () => {
-    if (!config.enabled || config.embeddingProvider !== 'ollama') return;
 
-    setOllamaStatus('checking');
-    setOllamaError(null);
-
-    try {
-      // Check Ollama status first
-      const statusResult = await window.electronAPI.checkOllamaStatus(config.ollamaBaseUrl);
-      if (!statusResult.success || !statusResult.data?.running) {
-        setOllamaStatus('disconnected');
-        setOllamaError(statusResult.data?.message || 'Ollama is not running');
-        return;
-      }
-
-      // Get embedding models
-      const modelsResult = await window.electronAPI.listOllamaEmbeddingModels(config.ollamaBaseUrl);
-      if (!modelsResult.success) {
-        setOllamaStatus('connected');
-        setOllamaError(modelsResult.error || 'Failed to list models');
-        return;
-      }
-
-      setOllamaModels(modelsResult.data?.embedding_models || []);
-      setOllamaStatus('connected');
-    } catch (err) {
-      setOllamaStatus('disconnected');
-      setOllamaError(err instanceof Error ? err.message : 'Failed to detect Ollama models');
-    }
-  }, [config.enabled, config.embeddingProvider, config.ollamaBaseUrl]);
-
-  // Auto-detect when Ollama is selected
-  useEffect(() => {
-    if (config.embeddingProvider === 'ollama' && config.enabled) {
-      detectOllamaModels();
-    }
-  }, [config.embeddingProvider, config.enabled, detectOllamaModels]);
 
   // Check if we have valid configuration
   const isConfigValid = (): boolean => {
@@ -490,39 +445,11 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
 
                 {/* Ollama (Local) */}
                 {/* Ollama (Local) */}
+                {/* Ollama (Local) */}
                 {config.embeddingProvider === 'ollama' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium text-foreground">{t('memory.ollamaConfig')}</Label>
-                      <div className="flex items-center gap-2">
-                        {ollamaStatus === 'checking' && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            {t('memory.checking')}
-                          </span>
-                        )}
-                        {ollamaStatus === 'connected' && (
-                          <span className="flex items-center gap-1 text-xs text-success">
-                            <CheckCircle2 className="h-3 w-3" />
-                            {t('memory.connected')}
-                          </span>
-                        )}
-                        {ollamaStatus === 'disconnected' && (
-                          <span className="flex items-center gap-1 text-xs text-destructive">
-                            <AlertCircle className="h-3 w-3" />
-                            {t('memory.notRunning')}
-                          </span>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={detectOllamaModels}
-                          disabled={ollamaStatus === 'checking' || isSaving}
-                          className="h-6 px-2"
-                        >
-                          <RefreshCw className={`h-3 w-3 ${ollamaStatus === 'checking' ? 'animate-spin' : ''}`} />
-                        </Button>
-                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -534,16 +461,11 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                       />
                     </div>
 
-                    {ollamaError && (
-                      <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
-                        {ollamaError}
-                      </div>
-                    )}
-
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground">{t('memory.embeddingModel')}</Label>
                       <OllamaModelSelector 
                          selectedModel={config.ollamaEmbeddingModel}
+                         baseUrl={config.ollamaBaseUrl}
                          onModelSelect={(model, dim) => {
                            setConfig(prev => ({
                              ...prev,
