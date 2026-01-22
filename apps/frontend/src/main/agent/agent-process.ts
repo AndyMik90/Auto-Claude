@@ -175,26 +175,32 @@ export class AgentProcessManager {
    * Get language environment variables from user settings.
    * Extracted as helper to avoid code duplication between setupProcessEnvironment and getCombinedEnv.
    *
+   * @param appSettings - Optional pre-read settings to avoid duplicate file reads
    * @returns Record with AUTO_CLAUDE_USER_LANGUAGE and AUTO_CLAUDE_USER_LANGUAGE_NAME if set
    */
-  private getLanguageEnvVars(): Record<string, string> {
+  private getLanguageEnvVars(appSettings?: Partial<AppSettings>): Record<string, string> {
     const languageEnv: Record<string, string> = {};
     try {
-      const settings = readSettingsFile();
+      const settings = appSettings ?? readSettingsFile();
       const language = settings?.language;
 
       // Only set language env vars if language is a non-empty string
-      if (typeof language === 'string' && language.trim()) {
-        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = language;
+      if (typeof language === 'string') {
+        const normalizedLanguage = language.trim();
+        if (!normalizedLanguage) {
+          return languageEnv;
+        }
+
+        languageEnv['AUTO_CLAUDE_USER_LANGUAGE'] = normalizedLanguage;
 
         // Also pass the language display name so backend doesn't need to maintain a mapping
         // This makes frontend (i18n.ts) the single source of truth for language names
-        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === language);
+        const langConfig = AVAILABLE_LANGUAGES.find(l => l.value === normalizedLanguage);
         if (langConfig) {
           languageEnv['AUTO_CLAUDE_USER_LANGUAGE_NAME'] = langConfig.label;
         }
 
-        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', language, langConfig?.label);
+        console.log('[AgentProcess] Setting AUTO_CLAUDE_USER_LANGUAGE:', normalizedLanguage, langConfig?.label);
       }
     } catch (error) {
       console.warn('[AgentProcess] Failed to read language setting:', error);
@@ -840,8 +846,8 @@ export class AgentProcessManager {
     const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
     const memoryEnv = buildMemoryEnvVars(appSettings as AppSettings);
 
-    // Get language preference from settings
-    const languageEnv = this.getLanguageEnvVars();
+    // Get language preference from settings (reuse appSettings to avoid double read)
+    const languageEnv = this.getLanguageEnvVars(appSettings);
 
     // Existing env sources
     const autoBuildEnv = this.loadAutoBuildEnv();

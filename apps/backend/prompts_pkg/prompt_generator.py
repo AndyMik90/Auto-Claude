@@ -100,12 +100,20 @@ def get_user_language_instruction() -> str:
     # Remove potentially dangerous characters (keep only alphanumeric, spaces, hyphens, common accents)
     # Allowed characters:
     # - \w: alphanumeric + underscore (includes CJK in Unicode mode)
-    # - \s: whitespace
-    # - \-: hyphen
+    # - \s: whitespace (will be normalized below)
+    # - \-: hyphen (will be normalized below)
     # - French accents: àâäèéêëîïôùûüÿçœæ
     # - CJK characters are included via \w with re.UNICODE
     # This allows "Français", "한국어", "日本語", "中文" but blocks prompt injection
     lang_name = re.sub(r"[^\w\s\-àâäèéêëîïôùûüÿçœæ]", "", lang_name, flags=re.UNICODE)
+
+    # Remove newlines and control characters (convert to space, then collapse)
+    lang_name = re.sub(r"[\r\n]+", " ", lang_name)
+    # Collapse multiple whitespace into single space
+    lang_name = re.sub(r"\s+", " ", lang_name)
+    # Collapse multiple hyphens into single hyphen (prevents --- markdown separators)
+    lang_name = re.sub(r"-{2,}", "-", lang_name)
+
     lang_name = lang_name.strip()[:50]  # Limit length to 50 characters
 
     # Final safety check - if sanitization left nothing, use the language code
