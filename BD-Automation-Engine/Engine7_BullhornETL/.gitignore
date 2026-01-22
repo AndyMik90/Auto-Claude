@@ -1,0 +1,18 @@
+# Engine7 Bullhorn ETL - Gitignore
+
+# Data files (large, generated)
+data/
+outputs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
