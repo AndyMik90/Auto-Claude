@@ -41,6 +41,28 @@ const MCP_CLIENT_NAME = 'auto-claude-client';
 const MCP_CLIENT_VERSION = '1.0.0';
 
 /**
+ * Create MCP initialize request object.
+ * Extracted as shared factory to avoid DRY violation.
+ */
+function createMcpInitRequest() {
+  return {
+    jsonrpc: '2.0' as const,
+    id: 1,
+    method: 'initialize' as const,
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        roots: { listChanged: true },
+      },
+      clientInfo: {
+        name: MCP_CLIENT_NAME,
+        version: MCP_CLIENT_VERSION,
+      },
+    },
+  };
+}
+
+/**
  * Sensitive header keys that should be redacted in logs
  */
 const SENSITIVE_HEADER_KEYS = ['authorization', 'x-api-key', 'cookie', 'x-auth-token', 'bearer'];
@@ -158,21 +180,7 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
     appLog.debug('[MCP Health] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
 
     // Use POST with MCP initialize for health check (many MCP servers don't support GET)
-    const initRequest = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {
-          roots: { listChanged: true },
-        },
-        clientInfo: {
-          name: MCP_CLIENT_NAME,
-          version: MCP_CLIENT_VERSION,
-        },
-      },
-    };
+    const initRequest = createMcpInitRequest();
 
     const response = await fetch(server.url, {
       method: 'POST',
@@ -362,21 +370,7 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     appLog.debug('[MCP Test] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
 
     // Send MCP initialize request
-    const initRequest = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {
-          roots: { listChanged: true },
-        },
-        clientInfo: {
-          name: MCP_CLIENT_NAME,
-          version: MCP_CLIENT_VERSION,
-        },
-      },
-    };
+    const initRequest = createMcpInitRequest();
 
     const response = await fetch(server.url, {
       method: 'POST',
@@ -449,16 +443,21 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
           return {
             serverId: server.id,
             success: true,
-            message: 'Connected successfully (SSE transport)',
+            message: 'Server responded (SSE format, MCP protocol not verified)',
             responseTime,
           };
         }
       } else {
-        // SSE response without data - consider it working
+        // SSE response without data - log warning but consider it working
+        appLog.warn('[MCP Test] SSE response received without data lines - verify server configuration', {
+          serverId: server.id,
+          responseTime,
+          contentType
+        });
         return {
           serverId: server.id,
           success: true,
-          message: 'Connected successfully (SSE transport)',
+          message: 'Server responded (SSE format, MCP protocol not verified)',
           responseTime,
         };
       }
