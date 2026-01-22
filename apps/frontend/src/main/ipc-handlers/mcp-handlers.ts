@@ -63,9 +63,38 @@ function createMcpInitRequest() {
 }
 
 /**
- * Sensitive header keys that should be redacted in logs
+ * Sensitive header keys that should be redacted in logs.
+ * Uses substring matching via lowerKey.includes(), so entries like 'token'
+ * will match 'x-access-token', 'x-refresh-token', 'x-auth-token', etc.
  */
-const SENSITIVE_HEADER_KEYS = ['authorization', 'x-api-key', 'cookie', 'x-auth-token', 'bearer'];
+const SENSITIVE_HEADER_KEYS = [
+  // Standard auth headers
+  'authorization',      // Authorization, Proxy-Authorization
+  'cookie',             // Cookie, Set-Cookie
+  'bearer',             // Bearer tokens
+
+  // Token-based auth (substring matches many variants)
+  'token',              // *-token, token-*, x-access-token, x-refresh-token, etc.
+  'api-key',            // x-api-key, api-key
+  'apikey',             // X-ApiKey, apikey (no hyphen variants)
+
+  // OAuth and session
+  'oauth',              // OAuth headers
+  'session',            // Session IDs
+
+  // AWS security
+  'x-amz-security',     // x-amz-security-token
+  'x-aws-security',     // x-aws-security-token
+
+  // Secrets and credentials
+  'secret',             // client-secret, x-secret, etc.
+  'password',           // x-password, password headers
+  'credential',         // credentials, x-credential
+
+  // Authentication variants
+  'x-auth',             // x-auth-*, authentication headers
+  'authentication',     // Authentication header
+];
 
 /**
  * Redact sensitive values from headers for safe logging
