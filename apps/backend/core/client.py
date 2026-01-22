@@ -14,6 +14,7 @@ single source of truth for phase-aware tool and MCP server configuration.
 
 import atexit
 import copy
+import importlib
 import json
 import logging
 import os
@@ -28,15 +29,17 @@ from core.platform import (
     validate_cli_path,
 )
 
-# Apply runtime monkey-patch to SDK for CLAUDE_SYSTEM_PROMPT_FILE support
+# Track whether the runtime patch is available for large system prompts
 # This enables large system prompts to be passed via temp file to avoid ARG_MAX limits
-# The patch auto-applies on import (see patch_sdk_system_prompt.py line ~179)
-# See: https://github.com/AndyMik90/Auto-Claude/issues/384
+_PATCH_AVAILABLE = False
+
 try:
-    import scripts.patch_sdk_system_prompt  # noqa: F401 - patch auto-applies on import
+    importlib.import_module("scripts.patch_sdk_system_prompt")
+    _PATCH_AVAILABLE = True
 except ImportError:
-    # Patch module not available (e.g., during testing), continue without it
-    pass
+    # Patch module not available (e.g., during testing)
+    # Large prompts will fail fast when _temp_prompt_file is set
+    _PATCH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -964,6 +967,16 @@ def create_client(
     # Use lock to prevent race conditions when multiple clients are created concurrently
     # The lock ensures the environment variable is set and the SDK client is created atomically
     # The __init__ monkey-patch reads and clears the env var during client creation
+
+    # Fail fast if large prompt requires the patch but it's not available
+    if _temp_prompt_file and not _PATCH_AVAILABLE:
+        raise RuntimeError(
+            "Large system prompts require scripts.patch_sdk_system_prompt to be "
+            "importable. The patch module could not be imported. "
+            "Either enable the patch or reduce CLAUDE.md size below 90KB. "
+            "See: https://github.com/AndyMik90/Auto-Claude/issues/384"
+        )
+
     with _PROMPT_FILE_LOCK:
         # Log when using temp file for large prompt
         if _temp_prompt_file:
