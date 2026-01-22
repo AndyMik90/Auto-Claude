@@ -50,6 +50,12 @@ _PROJECT_INDEX_CACHE: dict[str, tuple[dict[str, Any], dict[str, bool], float]] =
 _CACHE_TTL_SECONDS = 300  # 5 minute TTL
 _CACHE_LOCK = threading.Lock()  # Protects _PROJECT_INDEX_CACHE access
 
+# Lock for protecting CLAUDE_SYSTEM_PROMPT_FILE environment variable access
+# Prevents race conditions when multiple clients are created concurrently with large prompts
+# The lock must be held from when we set the env var until after the SDK client is created
+# (including the __init__ monkey-patch that reads and clears the env var)
+_PROMPT_FILE_LOCK = threading.Lock()
+
 
 def _get_cached_project_data(
     project_dir: Path,
@@ -955,17 +961,20 @@ def create_client(
     if agents:
         options_kwargs["agents"] = agents
 
-    # Log when using temp file for large prompt
-    if _temp_prompt_file:
-        # Pass temp file path via environment variable for the monkey-patch
-        # The monkey-patch in SubprocessCLITransport.__init__ reads this env var
-        # and stores it on the instance, then clears the env var immediately.
-        # This avoids race conditions with concurrent client creation.
-        os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-        sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-        print("   - CLAUDE.md: large prompt (using temp file)")
-    print()
+    # Use lock to prevent race conditions when multiple clients are created concurrently
+    # The lock ensures the environment variable is set and the SDK client is created atomically
+    # The __init__ monkey-patch reads and clears the env var during client creation
+    with _PROMPT_FILE_LOCK:
+        # Log when using temp file for large prompt
+        if _temp_prompt_file:
+            # Pass temp file path via environment variable for the monkey-patch
+            # The monkey-patch in SubprocessCLITransport.__init__ reads this env var
+            # and stores it on the instance, then clears the env var immediately.
+            os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            print("   - CLAUDE.md: large prompt (using temp file)")
+        print()
 
-    # Create SDK client
-    # The monkey-patch in __init__ will capture and clear the env var atomically
-    return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+        # Create SDK client while holding the lock
+        # The monkey-patch in __init__ will capture and clear the env var atomically
+        return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))

@@ -170,11 +170,16 @@ def apply_sdk_patch():
             try:
                 import json
 
-                # SSE (Server-Sent Events) format used by SDK for message communication
+                # The SDK's stdin protocol uses user-type messages in JSONL/SSE format
                 # Format: event: message\ndata: <json>\n\n
+                # We send the system prompt as the first user message with a text content block
+                # This is a workaround since the CLI may not accept system-role messages via stdin
                 message_data = {
-                    "type": "message",
-                    "message": {"role": "system", "content": system_prompt_content},
+                    "type": "user",
+                    "message": {
+                        "role": "user",
+                        "content": [{"type": "text", "text": system_prompt_content}],
+                    },
                 }
 
                 sse_message = f"event: message\ndata: {json.dumps(message_data)}\n\n"
