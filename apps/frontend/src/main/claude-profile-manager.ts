@@ -102,7 +102,7 @@ export class ClaudeProfileManager {
   /**
    * Load profiles from disk
    */
-  private load(): ProfileStoreData {
+  private _load(): ProfileStoreData {
     const loadedData = loadProfileStore(this.storePath);
     if (loadedData) {
       return loadedData;

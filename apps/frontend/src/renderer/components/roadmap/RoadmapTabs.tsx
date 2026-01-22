@@ -24,7 +24,15 @@ export function RoadmapTabs({
   onConvertToSpec,
   onGoToTask,
   onSave,
+  onDependencyClick
 }: RoadmapTabsProps) {
+  const handleDependencyClick = (depId: string) => {
+    const depFeature = roadmap.features.find(f => f.id === depId);
+    if (depFeature) {
+      onFeatureSelect(depFeature);
+    }
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="h-full flex flex-col">
       <TabsList className="shrink-0 mx-4 mt-4">
@@ -43,6 +51,7 @@ export function RoadmapTabs({
           onConvertToSpec={onConvertToSpec}
           onGoToTask={onGoToTask}
           onSave={onSave}
+          onDependencyClick={onDependencyClick || handleDependencyClick}
         />
       </TabsContent>
 
@@ -70,10 +79,12 @@ export function RoadmapTabs({
             <FeatureCard
               key={feature.id}
               feature={feature}
+              features={roadmap.features}
               onClick={() => onFeatureSelect(feature)}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
               hasCompetitorInsight={hasCompetitorInsight(feature)}
+              onDependencyClick={handleDependencyClick}
             />
           ))}
         </div>

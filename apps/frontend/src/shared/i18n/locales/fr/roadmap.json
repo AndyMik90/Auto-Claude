@@ -1,0 +1,77 @@
+{
+  "dependencyDetailPanel": {
+    "title": "Détails de la dépendance",
+    "description": "Description",
+    "details": "Détails",
+    "priority": "Priorité",
+    "complexity": "Complexité",
+    "impact": "Impact",
+    "status": "Statut",
+    "dependencies": "Dépendances",
+    "dependenciesCount": "Dépendances ({{count}})",
+    "requiredBy": "Requis par",
+    "requiredByCount": "Requis par ({{count}})",
+    "goToTask": "Aller à la tâche",
+    "convertToSpec": "Convertir en spécification",
+    "viewInRoadmap": "Voir dans la feuille de route",
+    "closePanel": "Fermer le panneau"
+  },
+  "featureCard": {
+    "dependencies": "Dépendances",
+    "dependenciesCount": "Dépendances ({{count}})",
+    "requiredBy": "Requis par",
+    "circularDependency": "Dépendance circulaire détectée",
+    "circularDependencyAriaLabel": "Dépendance circulaire détectée",
+    "build": "Construire",
+    "buildAriaLabel": "Construire cette fonctionnalité",
+    "task": "Tâche",
+    "taskAriaLabel": "Aller à la tâche liée",
+    "goToTask": "Aller à la tâche",
+    "depsCount": "{{count}} dép.",
+    "requiredByCount": "{{count}} requis par"
+  },
+  "featureDetailPanel": {
+    "title": "Détails de la fonctionnalité",
+    "descriptionLabel": "Description",
+    "rationale": "Justification",
+    "userStories": "User stories",
+    "acceptanceCriteria": "Critères d'acceptation",
+    "metrics": {
+      "complexity": "Complexité",
+      "impact": "Impact",
+      "dependencies": "Dépendances"
+    },
+    "dependenciesSection": {
+      "dependencies": "Dépendances ({{count}})",
+      "requiredBy": "Requis par ({{count}})",
+      "notFound": "Dépendance '{{id}}' introuvable dans la feuille de route"
+    },
+    "competitorInsights": {
+      "title": "Répond aux points de douleur des concurrents",
+      "source": "{{source}}",
+      "severity": "Gravité {{severity}}"
+    },
+    "actions": {
+      "convertToAutoBuild": "Convertir en tâche Auto-Build",
+      "goToTask": "Aller à la tâche"
+    },
+    "deleteConfirmation": {
+      "title": "Supprimer la fonctionnalité ?",
+      "message": "Cela supprimera définitivement « {{title}} » de votre feuille de route.",
+      "confirm": "Supprimer",
+      "cancel": "Annuler"
+    }
+  },
+  "sortableFeatureCard": {
+    "phaseLabel": "Phase : {{name}}",
+    "addressesCompetitorPainPoints": "Cette fonctionnalité répond aux points de douleur des concurrents",
+    "votesFromUserFeedback": "{{count}} votes des commentaires des utilisateurs",
+    "importedFrom": "Importé de {{provider}}",
+    "depsCount": "{{count}} dép.",
+    "requiredByCount": "{{count}} requis par",
+    "circularDependency": "Dépendance circulaire détectée",
+    "dependenciesLabel": "Dépendances :",
+    "requiredByLabel": "Requis par :",
+    "andMore": "+{{count}} de plus"
+  }
+}

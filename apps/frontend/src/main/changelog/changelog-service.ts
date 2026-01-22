@@ -44,7 +44,7 @@ export class ChangelogService extends EventEmitter {
   private _pythonPath: string | null = null;
   private claudePath: string;
   private autoBuildSourcePath: string = '';
-  private cachedEnv: Record<string, string> | null = null;
+  private _cachedEnv: Record<string, string> | null = null;
   private debugEnabled: boolean | null = null;
   private generator: ChangelogGenerator | null = null;
   private versionSuggester: VersionSuggester | null = null;
@@ -97,8 +97,20 @@ export class ChangelogService extends EventEmitter {
       this._pythonPath = getValidatedPythonPath(pythonPath, 'ChangelogService');
     }
     if (autoBuildSourcePath) {
+      // Invalidate env cache when source path changes
+      if (this.autoBuildSourcePath !== autoBuildSourcePath) {
+        this.invalidateEnvCache();
+      }
       this.autoBuildSourcePath = autoBuildSourcePath;
     }
+  }
+
+  /**
+   * Public method to refresh environment cache
+   * Call this when the .env file may have changed externally
+   */
+  refreshEnvCache(): void {
+    this.invalidateEnvCache();
   }
 
   /**
@@ -138,13 +150,25 @@ export class ChangelogService extends EventEmitter {
 
   /**
    * Load environment variables from auto-claude .env file
+   * Results are cached after first successful load
    */
   private loadAutoBuildEnv(): Record<string, string> {
+    // Return cached result if available
+    if (this._cachedEnv !== null) {
+      return this._cachedEnv;
+    }
+
     const autoBuildSource = this.getAutoBuildSourcePath();
-    if (!autoBuildSource) return {};
+    if (!autoBuildSource) {
+      this._cachedEnv = {};
+      return {};
+    }
 
     const envPath = path.join(autoBuildSource, '.env');
-    if (!existsSync(envPath)) return {};
+    if (!existsSync(envPath)) {
+      this._cachedEnv = {};
+      return {};
+    }
 
     try {
       const envContent = readFileSync(envPath, 'utf-8');
@@ -169,10 +193,22 @@ export class ChangelogService extends EventEmitter {
         }
       }
 
+      // Cache the result
+      this._cachedEnv = envVars;
       return envVars;
     } catch {
+      this._cachedEnv = {};
       return {};
     }
+  }
+
+  /**
+   * Invalidate the cached environment variables
+   * Call this when the .env file may have changed
+   */
+  private invalidateEnvCache(): void {
+    this._cachedEnv = null;
+    this.debugEnabled = null;
   }
 
   /**
@@ -485,7 +521,7 @@ export class ChangelogService extends EventEmitter {
    * Suggest version using AI analysis of git commits
    */
   async suggestVersionFromCommits(
-    projectPath: string,
+    _projectPath: string,
     commits: import('../../shared/types').GitCommit[],
     currentVersion?: string
   ): Promise<{ version: string; reason: string }> {

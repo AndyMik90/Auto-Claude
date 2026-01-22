@@ -9,11 +9,11 @@ import { InsightsPaths } from './paths';
 export class SessionManager {
   private sessions: Map<string, InsightsSession> = new Map();
   private storage: SessionStorage;
-  private paths: InsightsPaths;
+  private _paths: InsightsPaths;
 
   constructor(storage: SessionStorage, paths: InsightsPaths) {
     this.storage = storage;
-    this.paths = paths;
+    this._paths = paths;
   }
 
   /**

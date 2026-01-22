@@ -8,7 +8,9 @@ import { RoadmapHeader } from './roadmap/RoadmapHeader';
 import { RoadmapEmptyState } from './roadmap/RoadmapEmptyState';
 import { RoadmapTabs } from './roadmap/RoadmapTabs';
 import { FeatureDetailPanel } from './roadmap/FeatureDetailPanel';
+import { DependencyDetailSidePanel } from './roadmap/DependencyDetailSidePanel';
 import { useRoadmapData, useFeatureActions, useRoadmapGeneration, useRoadmapSave, useFeatureDelete } from './roadmap/hooks';
+import { useRoadmapStore } from '../stores/roadmap-store';
 import { getCompetitorInsightsForFeature } from './roadmap/utils';
 import type { RoadmapFeature } from '../../shared/types';
 import type { RoadmapProps } from './roadmap/types';
@@ -19,6 +21,10 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   const [activeTab, setActiveTab] = useState('kanban');
   const [showAddFeatureDialog, setShowAddFeatureDialog] = useState(false);
   const [showCompetitorViewer, setShowCompetitorViewer] = useState(false);
+
+  // Dependency detail panel state from store
+  const dependencyDetailFeatureId = useRoadmapStore(s => s.dependencyDetailFeatureId);
+  const closeDependencyDetail = useRoadmapStore(s => s.closeDependencyDetail);
 
   // Custom hooks
   const { roadmap, competitorAnalysis, generationStatus } = useRoadmapData(projectId);
@@ -51,6 +57,13 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
   const handleGoToTask = (specId: string) => {
     if (onGoToTask) {
       onGoToTask(specId);
+    }
+  };
+
+  const handleDependencyClick = (depId: string) => {
+    const depFeature = roadmap?.features.find(f => f.id === depId);
+    if (depFeature) {
+      setSelectedFeature(depFeature);
     }
   };
 
@@ -121,11 +134,31 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
       {selectedFeature && (
         <FeatureDetailPanel
           feature={selectedFeature}
+          features={roadmap.features}
           onClose={() => setSelectedFeature(null)}
           onConvertToSpec={handleConvertToSpec}
           onGoToTask={handleGoToTask}
           onDelete={deleteFeature}
           competitorInsights={getCompetitorInsightsForFeature(selectedFeature, competitorAnalysis)}
+          onDependencyClick={handleDependencyClick}
+        />
+      )}
+
+      {/* Dependency Detail Side Panel */}
+      {dependencyDetailFeatureId && (
+        <DependencyDetailSidePanel
+          feature={roadmap.features.find(f => f.id === dependencyDetailFeatureId) || null}
+          onClose={closeDependencyDetail}
+          onGoToFeature={(featureId) => {
+            // Defensive null check to avoid crashes when roadmap is null
+            if (!roadmap) return;
+
+            const feature = roadmap.features.find(f => f.id === featureId);
+            if (feature) {
+              setSelectedFeature(feature);
+              closeDependencyDetail();
+            }
+          }}
         />
       )}
 

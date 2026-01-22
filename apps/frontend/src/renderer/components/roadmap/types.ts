@@ -20,15 +20,19 @@ export interface FeatureCardProps {
   onConvertToSpec: (feature: RoadmapFeature) => void;
   onGoToTask: (specId: string) => void;
   hasCompetitorInsight?: boolean;
+  onDependencyClick?: (featureId: string) => void;
+  features: RoadmapFeature[];
 }
 
 export interface FeatureDetailPanelProps {
   feature: RoadmapFeature;
+  features: RoadmapFeature[];
   onClose: () => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
   onGoToTask: (specId: string) => void;
   onDelete?: (featureId: string) => void;
   competitorInsights?: CompetitorPainPoint[];
+  onDependencyClick?: (depId: string) => void;
 }
 
 export interface RoadmapHeaderProps {
@@ -51,4 +55,5 @@ export interface RoadmapTabsProps {
   onConvertToSpec: (feature: RoadmapFeature) => void;
   onGoToTask: (specId: string) => void;
   onSave?: () => void;
+  onDependencyClick?: (featureId: string) => void;
 }
