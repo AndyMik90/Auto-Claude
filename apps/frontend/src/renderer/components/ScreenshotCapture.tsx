@@ -22,7 +22,7 @@ import {
   DialogTitle
 } from './ui/dialog';
 import { Button } from './ui/button';
-import type { ScreenshotSource } from '../../preload/api/screenshot-api';
+import type { ScreenshotSource } from '../../shared/types/screenshot';
 
 interface ScreenshotCaptureProps {
   open: boolean;
@@ -50,11 +50,11 @@ export function ScreenshotCapture({ open, onOpenChange, onCapture }: ScreenshotC
         setSources(result.data);
         setSelectedSource(null);
       } else {
-        setError(result.error || 'Failed to get screenshot sources');
+        setError(result.error || t('tasks:screenshot.errors.getSources'));
       }
     } catch (err) {
       console.error('Failed to fetch screenshot sources:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch screenshot sources');
+      setError(err instanceof Error ? err.message : t('tasks:screenshot.errors.fetchSources'));
     } finally {
       setIsLoading(false);
     }
@@ -82,11 +82,11 @@ export function ScreenshotCapture({ open, onOpenChange, onCapture }: ScreenshotC
         onOpenChange(false);
         setSelectedSource(null);
       } else {
-        setError(result.error || 'Failed to capture screenshot');
+        setError(result.error || t('tasks:screenshot.errors.capture'));
       }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
-      setError(err instanceof Error ? err.message : 'Failed to capture screenshot');
+      setError(err instanceof Error ? err.message : t('tasks:screenshot.errors.captureFailed'));
     } finally {
       setIsCapturing(false);
     }

@@ -20,8 +20,10 @@ import { Button } from '../ui/button';
 import { AgentProfileSelector } from '../AgentProfileSelector';
 import { ClassificationFields } from './ClassificationFields';
 import { useImageUpload, type FileReferenceData } from './useImageUpload';
+import { createThumbnail } from '../ImageUpload';
 import { ScreenshotCapture } from '../ScreenshotCapture';
 import { cn } from '../../lib/utils';
+import { MAX_IMAGES_PER_TASK } from '../../../shared/constants';
 import type {
   TaskCategory,
   TaskPriority,
@@ -178,18 +180,28 @@ export function TaskFormFields({
 
   /**
    * Handle screenshot capture from modal
+   *
+   * Validates the max images limit and creates a thumbnail for the screenshot.
    */
-  const handleScreenshotCapture = (imageData: string) => {
-    // Convert base64 to ImageAttachment
+  const handleScreenshotCapture = async (imageData: string) => {
+    // Check max images limit
+    if (images.length >= MAX_IMAGES_PER_TASK) {
+      onError?.(t('tasks:form.errors.maxImagesReached'));
+      return;
+    }
+
     // Calculate size from base64 string (approximate)
     const base64Length = imageData.length;
     const sizeInBytes = Math.round(base64Length * 0.75); // Base64 is ~33% larger than binary
+
+    // Create thumbnail from full resolution screenshot
+    const thumbnail = await createThumbnail(imageData);
 
     const newImage: ImageAttachment = {
       id: crypto.randomUUID(),
       filename: `screenshot-${Date.now()}.png`,
       data: imageData,
-      thumbnail: imageData, // For now, use same image for thumbnail
+      thumbnail,
       mimeType: 'image/png',
       size: sizeInBytes
     };

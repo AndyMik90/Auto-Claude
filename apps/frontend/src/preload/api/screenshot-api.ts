@@ -6,16 +6,10 @@
  */
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
 import { ipcRenderer } from 'electron';
+import type { ScreenshotSource, ScreenshotCaptureOptions } from '../../shared/types/screenshot';
 
-export interface ScreenshotSource {
-  id: string;
-  name: string;
-  thumbnail: string; // base64 encoded PNG
-}
-
-export interface ScreenshotCaptureOptions {
-  sourceId: string;
-}
+// Re-export types for convenience
+export type { ScreenshotSource, ScreenshotCaptureOptions };
 
 export interface ScreenshotAPI {
   getSources: () => Promise<{

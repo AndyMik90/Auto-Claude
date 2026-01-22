@@ -7,16 +7,7 @@
 import { ipcMain } from 'electron';
 import { desktopCapturer } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants/ipc';
-
-export interface ScreenshotSource {
-  id: string;
-  name: string;
-  thumbnail: string; // base64 encoded PNG
-}
-
-export interface ScreenshotCaptureOptions {
-  sourceId: string;
-}
+import type { ScreenshotSource, ScreenshotCaptureOptions } from '../../shared/types/screenshot';
 
 /**
  * Register screenshot capture handlers
@@ -57,6 +48,14 @@ export function registerScreenshotHandlers(): void {
    * Returns full resolution screenshot as base64 PNG
    */
   ipcMain.handle(IPC_CHANNELS.SCREENSHOT_CAPTURE, async (_event, options: ScreenshotCaptureOptions) => {
+    // Validate sourceId parameter
+    if (!options?.sourceId || typeof options.sourceId !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid sourceId parameter'
+      };
+    }
+
     try {
       const sources = await desktopCapturer.getSources({
         types: ['screen', 'window'],
