@@ -18,7 +18,10 @@ vi.mock('../claude-profile-manager', () => ({
       isDefault: true
     })),
     getBestAvailableProfile: vi.fn(() => null),
-    recordRateLimitEvent: vi.fn()
+    recordRateLimitEvent: vi.fn(),
+    // Token expiration methods - mock as non-expired for tests
+    isActiveTokenExpired: vi.fn(() => false),
+    syncProfileTokenFromSystem: vi.fn(() => false)
   }))
 }));
 
