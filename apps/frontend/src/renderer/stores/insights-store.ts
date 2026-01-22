@@ -15,6 +15,17 @@ import type {
 // Maximum number of images across all messages in a session to prevent memory explosion
 const MAX_IMAGES_PER_SESSION = 100;
 
+/**
+ * Custom error class for session image limit exceeded.
+ * Allows component to translate the error message with proper i18n.
+ */
+export class SessionImageLimitError extends Error {
+  constructor(public remaining: number) {
+    super('SESSION_IMAGE_LIMIT');
+    this.name = 'SessionImageLimitError';
+  }
+}
+
 interface ToolUsage {
   name: string;
   input?: string;
@@ -402,10 +413,7 @@ export async function sendMessage(
     const newTotal = existingImageCount + images.length;
     if (newTotal > MAX_IMAGES_PER_SESSION) {
       const remaining = MAX_IMAGES_PER_SESSION - existingImageCount;
-      throw new Error(
-        `Session image limit reached. Can only add ${remaining} more image${remaining !== 1 ? 's' : ''}. ` +
-        `Start a new conversation for more.`
-      );
+      throw new SessionImageLimitError(remaining);
     }
   }
 

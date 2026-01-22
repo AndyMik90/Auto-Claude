@@ -39,6 +39,7 @@ import {
   setupInsightsListeners,
   getBase64FromDataUrl
 } from '../stores/insights-store';
+import { SessionImageLimitError } from '../stores/insights-store';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
@@ -193,10 +194,14 @@ export function Insights({ projectId }: InsightsProps) {
       // Restore user input on error
       setInputValue(currentMessage);
       setImages(currentImages);
-      setImageError(error instanceof Error ? error.message : t('tasks:insights.sessionImageLimitError', {
-        remaining: 0,
-        plural: ''
-      }));
+      if (error instanceof SessionImageLimitError) {
+        setImageError(t('tasks:insights.sessionImageLimitError', {
+          remaining: error.remaining,
+          plural: error.remaining !== 1 ? 's' : ''
+        }));
+      } else {
+        setImageError(error instanceof Error ? error.message : t('tasks:feedback.processingError'));
+      }
     }
   };
 
@@ -295,12 +300,12 @@ export function Insights({ projectId }: InsightsProps) {
     }
 
     if (newImages.length > 0) {
-      setImages([...images, ...newImages]);
+      setImages(prevImages => [...prevImages, ...newImages]);
       // Show success feedback
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
-  }, [images]);
+  }, []);
 
   /**
    * Remove an image from the attachments
@@ -398,13 +403,13 @@ export function Insights({ projectId }: InsightsProps) {
       }
 
       if (newImages.length > 0) {
-        setImages([...images, ...newImages]);
+        setImages(prevImages => [...prevImages, ...newImages]);
         // Show success feedback
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [images, status.phase]
+    [status.phase]
   );
 
   const handleNewSession = async () => {
