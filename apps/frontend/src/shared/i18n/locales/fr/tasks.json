@@ -283,5 +283,16 @@
     "noTasksToSelect": "Aucune tâche disponible à sélectionner",
     "confirmBulkAction": "Confirmer l'action groupée pour {{count}} tâches",
     "processingTasks": "Traitement des tâches sélectionnées..."
+  },
+  "screenshot": {
+    "title": "Capturer une capture d'écran",
+    "description": "Sélectionnez un écran ou une fenêtre à capturer comme image de référence",
+    "capture": "Capturer",
+    "capturing": "Capture...",
+    "noSources": "Aucun écran ou fenêtre trouvé"
+  },
+  "referenceImages": {
+    "title": "Images de référence (facultatif)",
+    "description": "Ajoutez des références visuelles comme des captures d'écran ou des conceptions pour aider l'IA à comprendre vos exigences."
   }
 }
