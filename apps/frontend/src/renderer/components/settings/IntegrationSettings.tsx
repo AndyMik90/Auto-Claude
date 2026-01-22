@@ -798,22 +798,6 @@ export function IntegrationSettings({ settings, onSettingsChange, isOpen }: Inte
 
                     {autoSwitchSettings?.proactiveSwapEnabled && (
                       <>
-                        {/* Check interval */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">{t('integrations.checkUsageEvery')}</Label>
-                          <select
-                            className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                            value={autoSwitchSettings?.usageCheckInterval ?? 30000}
-                            onChange={(e) => handleUpdateAutoSwitch({ usageCheckInterval: parseInt(e.target.value) })}
-                            disabled={isLoadingAutoSwitch}
-                          >
-                            <option value={15000}>{t('integrations.seconds15')}</option>
-                            <option value={30000}>{t('integrations.seconds30')}</option>
-                            <option value={60000}>{t('integrations.minute1')}</option>
-                            <option value={0}>{t('integrations.disabled')}</option>
-                          </select>
-                        </div>
-
                         {/* Session threshold */}
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
