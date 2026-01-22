@@ -12,10 +12,23 @@ See: https://github.com/AndyMik90/Auto-Claude/issues/384
 Usage:
     from scripts.patch_sdk_system_prompt import apply_sdk_patch
     apply_sdk_patch()
+
+IMPLEMENTATION NOTES:
+This patch relies on the following SDK internals which may change in future versions:
+- SubprocessCLITransport._stdin_stream: The async stream for writing to subprocess stdin
+- SSE message format: "event: message\\ndata: <json>\\n\\n" for sending messages
+
+If these internals change, the patch will fail with explicit errors rather than
+silently ignoring the system prompt.
+
+Tested with claude-agent-sdk versions: 0.x.x
 """
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def apply_sdk_patch():
@@ -71,51 +84,71 @@ def apply_sdk_patch():
 
         When CLAUDE_SYSTEM_PROMPT_FILE is set, reads the system prompt from that file
         and writes it to the subprocess stdin before any user messages, avoiding ARG_MAX limits.
+
+        Raises:
+            RuntimeError: If system prompt was expected but _stdin_stream is not available,
+                          indicating SDK internals may have changed.
         """
         # Check for CLAUDE_SYSTEM_PROMPT_FILE environment variable before starting
         system_prompt_file = os.environ.get("CLAUDE_SYSTEM_PROMPT_FILE")
         system_prompt_content = None
+        prompt_expected = False
 
         if system_prompt_file and Path(system_prompt_file).exists():
+            prompt_expected = True
             try:
                 with open(system_prompt_file, encoding="utf-8") as f:
                     system_prompt_content = f.read()
+                logger.info(
+                    f"Read system prompt from CLAUDE_SYSTEM_PROMPT_FILE ({len(system_prompt_content)} chars)"
+                )
                 # Clear from environment so we don't process it again
                 del os.environ["CLAUDE_SYSTEM_PROMPT_FILE"]
             except OSError as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.warning(
+                logger.error(
                     f"Failed to read CLAUDE_SYSTEM_PROMPT_FILE {system_prompt_file}: {e}"
                 )
-                system_prompt_content = None
+                raise
 
         # Call original connect to start the subprocess
         await original_connect(self)
 
-        # If we have large system prompt content, write it to stdin first
+        # If we have system prompt content, write it to stdin
         # This must be done before any user messages are sent
-        if system_prompt_content and self._stdin_stream:
+        if system_prompt_content:
+            if not hasattr(self, "_stdin_stream"):
+                raise RuntimeError(
+                    "CLAUDE_SYSTEM_PROMPT_FILE was set but SubprocessCLITransport._stdin_stream "
+                    "not found after connect(). SDK internals may have changed. "
+                    "This patch requires the _stdin_stream attribute to inject the system prompt. "
+                    "Please report this issue at: https://github.com/AndyMik90/Auto-Claude/issues/384"
+                )
+
+            if not self._stdin_stream:
+                raise RuntimeError(
+                    "CLAUDE_SYSTEM_PROMPT_FILE was set but _stdin_stream is None/empty. "
+                    "This may indicate the SDK changed its subprocess handling."
+                )
+
             try:
-                # Write system prompt followed by a message separator
-                # The SDK uses SSE format, so we need to send it as a message
-                # Format: event: message\ndata: <json>\n\n
                 import json
 
+                # SSE (Server-Sent Events) format used by SDK for message communication
+                # Format: event: message\ndata: <json>\n\n
                 message_data = {
                     "type": "message",
                     "message": {"role": "system", "content": system_prompt_content},
                 }
 
-                await self._stdin_stream.send(
-                    f"event: message\ndata: {json.dumps(message_data)}\n\n"
-                )
+                sse_message = f"event: message\ndata: {json.dumps(message_data)}\n\n"
+                await self._stdin_stream.send(sse_message)
+                logger.debug("System prompt injected via stdin successfully")
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to write system prompt to subprocess stdin: {e}")
+                logger.error(
+                    f"Failed to write system prompt to subprocess stdin: {e}. "
+                    f"System prompt ({len(system_prompt_content)} chars) was not delivered."
+                )
+                raise
 
     # Apply the monkey-patches
     SubprocessCLITransport._build_command = patched_build_command
