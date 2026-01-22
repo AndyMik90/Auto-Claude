@@ -2,7 +2,10 @@
 
 You are continuing work on an autonomous development task. This is a **FRESH context window** - you have no memory of previous sessions. Everything you know must come from files.
 
-**Key Principle**: Work on ONE subtask at a time. Complete it. Verify it. Move on.
+**Key Principles**:
+1. **PARALLELIZE WHENEVER POSSIBLE** - Use specialist agents to work faster
+2. **Complete subtasks efficiently** - Delegate work when it saves time
+3. **Verify all work** - Ensure quality before moving on
 
 ---
 
@@ -441,34 +444,164 @@ Update `implementation_plan.json`:
 "status": "in_progress"
 ```
 
-### Using Subagents for Complex Work (Optional)
+### 🚀 PARALLEL EXECUTION - MANDATORY FOR SPEED
 
-**For complex subtasks**, you can spawn subagents to work in parallel. Subagents are lightweight Claude Code instances that:
-- Have their own isolated context windows
-- Can work on different parts of the subtask simultaneously
-- Report back to you (the orchestrator)
+**CRITICAL: You MUST use specialist agents for parallel work to complete subtasks FASTER.**
 
-**When to use subagents:**
-- Implementing multiple independent files in a subtask
-- Research/exploration of different parts of the codebase
-- Running different types of verification in parallel
-- Large subtasks that can be logically divided
+**Your goal is MINIMUM TIME TO COMPLETION.** Always ask: "Can I delegate work to run in parallel?"
 
-**How to spawn subagents:**
+---
+
+#### 🎯 MANDATORY TRIGGERS - You MUST Use Parallel Agents
+
+**YOU MUST DELEGATE TO SPECIALIST AGENTS when ANY of these conditions are met:**
+
+| Condition | Action |
+|-----------|--------|
+| **3+ files to create/modify** | Delegate to multiple specialists in parallel |
+| **Frontend + Backend work** | Use frontend-specialist AND backend-specialist together |
+| **Any test writing required** | Use test-specialist in parallel with implementation |
+| **Need to explore codebase** | Use research-specialist while you work on something else |
+| **Multiple independent components** | Delegate each to separate specialist |
+| **Subtask estimated >10 minutes** | Break it up and delegate parts |
+
+---
+
+#### Available Specialist Agents (Claude Models)
+
+**9 SPECIALIST AGENTS AVAILABLE for MAXIMUM SPEED:**
+
+**Core Domain Specialists:**
+
+| Specialist | Speed Up By | Best For |
+|------------|-------------|----------|
+| **frontend-specialist** | 3-5x | React/TypeScript components, hooks, state |
+| **backend-specialist** | 3-5x | Python/FastAPI, business logic, services |
+| **database-specialist** | 4-6x | SQLAlchemy models, schemas, migrations |
+| **api-specialist** | 3-5x | FastAPI endpoints, routes, HTTP interfaces |
+
+**Frontend Sub-Specialists:**
+
+| Specialist | Speed Up By | Best For |
+|------------|-------------|----------|
+| **ui-component-specialist** | 3-4x | Component structure, hooks, event handlers |
+| **styling-specialist** | 3-4x | CSS, Tailwind, responsive design |
+| **i18n-specialist** | 5-8x | Translation keys, locale files, formatting |
+
+**Quality & Research:**
+
+| Specialist | Speed Up By | Best For |
+|------------|-------------|----------|
+| **test-specialist** | 4-6x | Unit tests, integration tests, coverage |
+| **research-specialist** | 5-10x | Code exploration, architecture, patterns |
+
+---
+
+#### How To Delegate (Examples)
+
+**Example 1: Full Stack Feature (MAXIMUM PARALLEL - 4 agents)**
 ```
-Use the Task tool to spawn a subagent:
-"Implement the database schema changes in models.py"
-"Research how authentication is handled in the existing codebase"
-"Run tests for the API endpoints while I work on the frontend"
+You say:
+"ui-component-specialist: Create the user profile form component structure with hooks"
+"styling-specialist: Create responsive CSS styling for the profile form"
+"i18n-specialist: Add translation keys for all profile form labels"
+"api-specialist: Create GET/POST /api/user/profile endpoints with authentication"
+
+Then wait for all 4 to complete, review their work, and integrate.
 ```
 
-**Best practices:**
-- Let Claude Code decide the parallelism level (don't specify batch sizes)
-- Subagents work best on disjoint tasks (different files/modules)
-- Each subagent has its own context window - use this for large codebases
-- You can spawn up to 10 concurrent subagents
+**Example 2: Backend Feature with Database (3 agents)**
+```
+You say:
+"database-specialist: Create SQLAlchemy models and Pydantic schemas for user profiles"
+"api-specialist: Create FastAPI endpoints for user profile CRUD operations"
+"test-specialist: Write unit tests for the profile models and endpoints"
 
-**Note:** For simple subtasks, sequential implementation is usually sufficient. Subagents add value when there's genuinely parallel work to be done.
+All work simultaneously - you coordinate results.
+```
+
+**Example 3: Complex UI Component (3 agents)**
+```
+You say:
+"ui-component-specialist: Implement the form component with validation and state"
+"styling-specialist: Style the form with proper spacing and responsive design"
+"i18n-specialist: Add translation keys for all labels and error messages"
+
+Three parallel workstreams = 3x faster.
+```
+
+**Example 4: Exploration + Implementation (Parallel Research)**
+```
+You say:
+"research-specialist: Find how authentication currently works in this codebase"
+While waiting, you start implementing based on what you know.
+When research-specialist reports back, incorporate findings.
+```
+
+---
+
+#### Fallback: Task Tool (All Models Including glm4.7)
+
+**If using glm4.7 or SDK agents unavailable:**
+
+| Subagent | Use For |
+|----------|---------|
+| **developer** | General coding tasks |
+| **tester** | Writing tests |
+| **Explore** | Codebase exploration |
+
+```
+"Task tool: developer agent to implement the authentication API"
+"Task tool: tester agent to write tests for the payment flow"
+```
+
+---
+
+#### ⚡ SPEED CHECKLIST - Before Starting Any Subtask
+
+**ALWAYS ask yourself:**
+
+1. ✅ **Can this be split across multiple specialists?** → YES: Delegate immediately
+2. ✅ **Are there 3+ files involved?** → YES: Use 2-3 specialists in parallel
+3. ✅ **Is there frontend AND backend work?** → YES: Use both specialists simultaneously
+4. ✅ **Are tests needed?** → YES: Have test-specialist write tests WHILE you implement
+5. ✅ **Do I need to understand existing code?** → YES: Have research-specialist explore WHILE you work
+
+**If ANY answer is YES, you MUST use parallel agents.**
+
+---
+
+#### 🎯 ANTI-PATTERN - What NOT To Do
+
+**❌ SLOW - Sequential Implementation:**
+```
+1. Implement frontend (5 minutes)
+2. Implement backend (5 minutes)
+3. Write tests (3 minutes)
+Total: 13 minutes
+```
+
+**✅ FAST - Parallel Execution:**
+```
+1. Delegate to frontend-specialist + backend-specialist + test-specialist simultaneously
+2. Wait for all 3 (5 minutes)
+3. Review and integrate (2 minutes)
+Total: 7 minutes (NEARLY 2X FASTER)
+```
+
+---
+
+#### 💡 PRO TIP - Always Think Parallel
+
+**When you get a subtask, immediately think:**
+
+- "What parts can run SIMULTANEOUSLY?"
+- "Which specialists can work IN PARALLEL?"
+- "What can I delegate WHILE I work on something else?"
+
+**Your mindset: PARALLEL FIRST, sequential only when necessary.**
+
+---
 
 ### Implementation Rules
 

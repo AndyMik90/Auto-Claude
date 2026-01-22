@@ -10,6 +10,7 @@ import logging
 import os
 from pathlib import Path
 
+from claude_agent_sdk import AgentDefinition
 from core.client import create_client
 from linear_updater import (
     LinearTaskState,
@@ -18,7 +19,7 @@ from linear_updater import (
     linear_task_started,
     linear_task_stuck,
 )
-from phase_config import get_phase_model, get_phase_thinking_budget
+from phase_config import get_phase_model, get_phase_thinking_budget, is_claude_model
 from phase_event import ExecutionPhase, emit_phase
 from progress import (
     count_subtasks,
@@ -70,6 +71,170 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Specialist Agent Definitions for Parallel Execution
+# =============================================================================
+
+
+def _load_coding_prompt(filename: str) -> str:
+    """Load a specialist coding prompt file.
+
+    Args:
+        filename: Name of the prompt file in prompts/coding/
+
+    Returns:
+        Prompt file contents or empty string if not found
+    """
+    # Get the prompts directory relative to this file
+    prompts_dir = Path(__file__).parent.parent / "prompts" / "coding"
+    prompt_file = prompts_dir / filename
+
+    if prompt_file.exists():
+        return prompt_file.read_text(encoding="utf-8")
+
+    logger.warning(f"Coding specialist prompt not found: {prompt_file}")
+    return ""
+
+
+def _define_specialist_agents() -> dict[str, AgentDefinition]:
+    """
+    Define specialist coding agents for SDK parallel execution.
+
+    Each agent has:
+    - description: When the coder should invoke this agent
+    - prompt: System prompt for the agent
+    - tools: Tools the agent can use
+    - model: "inherit" = use same model as the coder agent
+
+    Returns:
+        Dictionary of agent name -> AgentDefinition
+
+    These agents enable parallel work on different aspects of a subtask.
+    More granular specialists = more parallelization = faster builds.
+    """
+    # Load specialist agent prompts
+    frontend_prompt = _load_coding_prompt("frontend_specialist.md")
+    backend_prompt = _load_coding_prompt("backend_specialist.md")
+    test_prompt = _load_coding_prompt("test_specialist.md")
+    research_prompt = _load_coding_prompt("research_specialist.md")
+
+    return {
+        # === CORE DOMAIN SPECIALISTS ===
+        "frontend-specialist": AgentDefinition(
+            description=(
+                "Frontend development specialist for React/TypeScript components. "
+                "Invoke for: components, hooks, state management, props, UI implementation. "
+                "Use for: component structure, TypeScript typing, React patterns."
+            ),
+            prompt=frontend_prompt
+            or "You are a frontend development specialist. Implement React/TypeScript components.",
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        "backend-specialist": AgentDefinition(
+            description=(
+                "Backend development specialist for Python/FastAPI code. "
+                "Invoke for: API endpoints, business logic, services, utilities. "
+                "Use for: function implementation, class design, async operations."
+            ),
+            prompt=backend_prompt
+            or "You are a backend development specialist. Implement Python/FastAPI code.",
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        "database-specialist": AgentDefinition(
+            description=(
+                "Database specialist for schema, models, and migrations. "
+                "Invoke for: SQLAlchemy models, Pydantic schemas, database operations, "
+                "SQL queries, migrations, relationships. Use for: data layer design."
+            ),
+            prompt=(
+                "You are a database specialist. Implement database schemas, models, "
+                "migrations, and SQL operations using SQLAlchemy and proper relationships."
+            ),
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        "api-specialist": AgentDefinition(
+            description=(
+                "API specialist for endpoints, routes, and HTTP interfaces. "
+                "Invoke for: FastAPI routes, endpoints, request/response models, "
+                "error handling, status codes. Use for: API layer implementation."
+            ),
+            prompt=(
+                "You are an API specialist. Implement FastAPI endpoints with proper "
+                "routing, request/response models, error handling, and HTTP semantics."
+            ),
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        # === FRONTEND SUB-SPECIALISTS ===
+        "ui-component-specialist": AgentDefinition(
+            description=(
+                "UI component specialist for React component structure and logic. "
+                "Invoke for: component implementation, hooks, state, props, event handlers. "
+                "Focus on: component code, not styling."
+            ),
+            prompt=(
+                "You are a UI component specialist. Implement React component structure, "
+                "hooks, state management, props, and event handlers. Focus on code logic."
+            ),
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        "styling-specialist": AgentDefinition(
+            description=(
+                "Styling specialist for CSS, Tailwind, and visual design. "
+                "Invoke for: styles, responsive design, layouts, themes, CSS modules. "
+                "Focus on: visual appearance, not component logic."
+            ),
+            prompt=(
+                "You are a styling specialist. Implement CSS, Tailwind classes, "
+                "responsive layouts, and visual design. Focus on appearance."
+            ),
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        "i18n-specialist": AgentDefinition(
+            description=(
+                "Internationalization specialist for translations and locale support. "
+                "Invoke for: translation keys, locale files, i18n integration, "
+                "formatting, date/time localization. Use for: multi-language support."
+            ),
+            prompt=(
+                "You are an i18n specialist. Implement translation keys, locale files, "
+                "and internationalization. Use proper i18n patterns and key namespacing."
+            ),
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        # === QUALITY ASSURANCE ===
+        "test-specialist": AgentDefinition(
+            description=(
+                "Testing specialist for writing comprehensive tests. "
+                "Invoke for: unit tests, integration tests, test coverage, "
+                "pytest, test fixtures, assertions. Use for: ALL testing work."
+            ),
+            prompt=test_prompt
+            or "You are a testing specialist. Write comprehensive tests with pytest.",
+            tools=["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+            model="inherit",
+        ),
+        # === RESEARCH ===
+        "research-specialist": AgentDefinition(
+            description=(
+                "Codebase research specialist for exploration and documentation. "
+                "Invoke for: finding files, understanding architecture, pattern discovery, "
+                "documentation, code archaeology. Use for: learning how things work."
+            ),
+            prompt=research_prompt
+            or "You are a codebase research specialist. Explore and document code architecture.",
+            tools=["Read", "Glob", "Grep"],
+            model="inherit",
+        ),
+    }
+
+
 async def run_autonomous_agent(
     project_dir: Path,
     spec_dir: Path,
@@ -81,8 +246,27 @@ async def run_autonomous_agent(
     """
     Run the autonomous agent loop with automatic memory management.
 
-    The agent can use subagents (via Task tool) for parallel execution if needed.
-    This is decided by the agent itself based on the task complexity.
+    During the coding phase, the agent has access to specialist agents (via SDK agents parameter)
+    for parallel execution across different domains:
+
+    Core Domain Specialists:
+    - frontend-specialist: React/TypeScript components
+    - backend-specialist: Python/FastAPI code, business logic
+    - database-specialist: SQLAlchemy models, schemas, migrations
+    - api-specialist: FastAPI endpoints, routes, HTTP interfaces
+
+    Frontend Sub-Specialists:
+    - ui-component-specialist: Component structure, hooks, state
+    - styling-specialist: CSS, Tailwind, responsive design
+    - i18n-specialist: Translation keys, locale files
+
+    Quality Assurance:
+    - test-specialist: Unit tests, integration tests, coverage
+
+    Research:
+    - research-specialist: Codebase exploration, architecture, patterns
+
+    The agent can delegate work to these specialists for parallel execution on complex subtasks.
 
     Args:
         project_dir: Root directory for the project
@@ -283,12 +467,19 @@ async def run_autonomous_agent(
 
         # Create client (fresh context) with phase-specific model and thinking
         # Use appropriate agent_type for correct tool permissions and thinking budget
+        # For coding phase with Claude models, include specialist agents for parallel execution
+        # For non-Claude models (glm4.7, etc.), SDK agents are not supported - use Task tool instead
+        use_specialist_agents = (
+            not first_run  # Only in coding phase
+            and is_claude_model(phase_model)  # Only for Claude models
+        )
         client = create_client(
             project_dir,
             spec_dir,
             phase_model,
             agent_type="planner" if first_run else "coder",
             max_thinking_tokens=phase_thinking_budget,
+            agents=_define_specialist_agents() if use_specialist_agents else None,
         )
 
         # Generate appropriate prompt
