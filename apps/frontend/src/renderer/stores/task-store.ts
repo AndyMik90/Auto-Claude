@@ -32,6 +32,9 @@ interface TaskState {
   saveTaskOrder: (projectId: string) => boolean;
   clearTaskOrder: (projectId: string) => void;
 
+  // Task status change listeners (for queue auto-promotion)
+  registerTaskStatusChangeListener: (listener: (taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus) => void) => () => void;
+
   // Selectors
   getSelectedTask: () => Task | undefined;
   getTasksByStatus: (status: TaskStatus) => Task[];
@@ -43,6 +46,25 @@ interface TaskState {
  */
 function findTaskIndex(tasks: Task[], taskId: string): number {
   return tasks.findIndex((t) => t.id === taskId || t.specId === taskId);
+}
+
+/**
+ * Task status change listeners for queue auto-promotion
+ * Stored outside the store to avoid triggering re-renders
+ */
+const taskStatusChangeListeners = new Set<(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus) => void>();
+
+/**
+ * Notify all registered listeners when a task status changes
+ */
+function notifyTaskStatusChange(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus): void {
+  for (const listener of taskStatusChangeListeners) {
+    try {
+      listener(taskId, oldStatus, newStatus);
+    } catch (error) {
+      console.error('[TaskStore] Error in task status change listener:', error);
+    }
+  }
 }
 
 /**
@@ -120,11 +142,12 @@ function getTaskOrderKey(projectId: string): string {
 function createEmptyTaskOrder(): TaskOrderState {
   return {
     backlog: [],
+    queue: [],
     in_progress: [],
     ai_review: [],
     human_review: [],
-    pr_created: [],
     done: [],
+    pr_created: [],
     error: []
   };
 }
@@ -178,14 +201,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
     }),
 
-  updateTaskStatus: (taskId, status) =>
-    set((state) => {
-      const index = findTaskIndex(state.tasks, taskId);
-      if (index === -1) {
-        debugLog('[updateTaskStatus] Task not found:', taskId);
-        return state;
-      }
+  updateTaskStatus: (taskId, status) => {
+    // Capture old status before update
+    const state = get();
+    const index = findTaskIndex(state.tasks, taskId);
+    if (index === -1) {
+      debugLog('[updateTaskStatus] Task not found:', taskId);
+      return;
+    }
+    const oldTask = state.tasks[index];
+    const oldStatus = oldTask.status;
 
+    // Skip if status is the same
+    if (oldStatus === status) return;
+
+    // Perform the state update
+    set((state) => {
       return {
         tasks: updateTaskAtIndex(state.tasks, index, (t) => {
           // Determine execution progress based on status transition
@@ -218,7 +249,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           return { ...t, status, executionProgress, updatedAt: new Date() };
         })
       };
-    }),
+    });
+
+    // Notify listeners after state update (schedule after current tick)
+    queueMicrotask(() => {
+      notifyTaskStatusChange(taskId, oldStatus, status);
+    });
+  },
 
   updateTaskFromPlan: (taskId, plan) =>
     set((state) => {
@@ -317,7 +354,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 1. Subtasks array is properly populated (not empty)
           // 2. All subtasks are actually completed (for 'done' and 'ai_review' statuses)
           const hasSubtasks = subtasks.length > 0;
-          const terminalStatuses: TaskStatus[] = ['human_review', 'pr_created', 'done'];
+          const terminalStatuses: TaskStatus[] = ['human_review', 'done'];
 
           // If task is currently in a terminal status, validate subtasks before allowing downgrade
           // This prevents flip-flop when plan file is written with incomplete data
@@ -328,8 +365,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
               if (newStatus === 'ai_review' && (!allCompleted || !hasSubtasks)) {
                 return true;
               }
-              // For done and pr_created, all subtasks must be completed
-              if ((newStatus === 'done' || newStatus === 'pr_created') && (!allCompleted || !hasSubtasks)) {
+              // For done, all subtasks must be completed
+              if (newStatus === 'done' && (!allCompleted || !hasSubtasks)) {
                 return true;
               }
               // For human_review with 'completed' reason, all subtasks must be done
@@ -350,7 +387,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           if (!isInActivePhase && !isInTerminalPhase && !isInTerminalStatus && !isExplicitHumanReview) {
             if (allCompleted && hasSubtasks) {
               // FIX (Flip-Flop Bug): Don't downgrade from terminal statuses to ai_review
-              // Once a task reaches human_review, pr_created, or done, it should stay there
+              // Once a task reaches human_review or done, it should stay there
               // unless explicitly changed (these are finalized workflow states)
               if (!terminalStatuses.includes(t.status)) {
                 status = 'ai_review';
@@ -565,11 +602,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         const emptyOrder = createEmptyTaskOrder();
         const validatedOrder: TaskOrderState = {
           backlog: isValidColumnArray(parsed.backlog) ? parsed.backlog : emptyOrder.backlog,
+          queue: isValidColumnArray(parsed.queue) ? parsed.queue : emptyOrder.queue,
           in_progress: isValidColumnArray(parsed.in_progress) ? parsed.in_progress : emptyOrder.in_progress,
           ai_review: isValidColumnArray(parsed.ai_review) ? parsed.ai_review : emptyOrder.ai_review,
           human_review: isValidColumnArray(parsed.human_review) ? parsed.human_review : emptyOrder.human_review,
-          pr_created: isValidColumnArray(parsed.pr_created) ? parsed.pr_created : emptyOrder.pr_created,
           done: isValidColumnArray(parsed.done) ? parsed.done : emptyOrder.done,
+          pr_created: isValidColumnArray(parsed.pr_created) ? parsed.pr_created : emptyOrder.pr_created,
           error: isValidColumnArray(parsed.error) ? parsed.error : emptyOrder.error
         };
 
@@ -618,6 +656,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   getTasksByStatus: (status) => {
     const state = get();
     return state.tasks.filter((t) => t.status === status);
+  },
+
+  registerTaskStatusChangeListener: (listener) => {
+    taskStatusChangeListeners.add(listener);
+    // Return cleanup function to unregister
+    return () => {
+      taskStatusChangeListeners.delete(listener);
+    };
   }
 }));
 
