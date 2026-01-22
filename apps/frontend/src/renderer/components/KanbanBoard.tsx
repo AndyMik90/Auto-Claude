@@ -796,11 +796,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   /**
    * Save queue settings (maxParallelTasks)
+   *
+   * Uses the stored ref value to ensure the save works even if tasks
+   * change while the modal is open.
    */
   const handleSaveQueueSettings = async (maxParallel: number) => {
-    if (!projectId) return;
+    const savedProjectId = queueSettingsProjectIdRef.current || projectId;
+    if (!savedProjectId) return;
 
-    const success = await updateProjectSettings(projectId, { maxParallelTasks: maxParallel });
+    const success = await updateProjectSettings(savedProjectId, { maxParallelTasks: maxParallel });
     if (success) {
       toast({
         title: t('queue.settings.saved'),
