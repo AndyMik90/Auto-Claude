@@ -42,11 +42,11 @@ export function QueueSettingsModal({
   const handleSave = () => {
     // Validate the input
     if (maxParallel < 1) {
-      setError(t('queue.settings.minValueError'));
+      setError(t('tasks:queue.settings.minValueError'));
       return;
     }
     if (maxParallel > 10) {
-      setError(t('queue.settings.maxValueError'));
+      setError(t('tasks:queue.settings.maxValueError'));
       return;
     }
 
@@ -75,16 +75,16 @@ export function QueueSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('queue.settings.title')}</DialogTitle>
+          <DialogTitle>{t('tasks:queue.settings.title')}</DialogTitle>
           <DialogDescription>
-            {t('queue.settings.description')}
+            {t('tasks:queue.settings.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="maxParallel">
-              {t('queue.settings.maxParallelLabel')}
+              {t('tasks:queue.settings.maxParallelLabel')}
             </Label>
             <Input
               id="maxParallel"
@@ -99,7 +99,7 @@ export function QueueSettingsModal({
               <p className="text-sm text-destructive">{error}</p>
             )}
             <p className="text-sm text-muted-foreground">
-              {t('queue.settings.hint')}
+              {t('tasks:queue.settings.hint')}
             </p>
           </div>
         </div>
