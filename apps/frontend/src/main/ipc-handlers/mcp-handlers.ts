@@ -199,7 +199,7 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       // Try to get error body for debugging
       try {
         const errorBody = await response.text();
-        appLog.error('[MCP Health] Error response:', errorBody.substring(0, 500));
+        appLog.debug('[MCP Health] Error response:', errorBody.substring(0, 500));
       } catch (e) {
         appLog.debug('[MCP Health] Failed to get error response text:', e);
       }
@@ -395,7 +395,7 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
       let errorBody = '';
       try {
         errorBody = await response.text();
-        appLog.error('[MCP Test] Error response body:', errorBody.substring(0, 500));
+        appLog.debug('[MCP Test] Error response body:', errorBody.substring(0, 500));
       } catch (e) {
         appLog.debug('[MCP Test] Failed to get error response text:', e);
       }
