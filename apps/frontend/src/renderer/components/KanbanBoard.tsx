@@ -489,6 +489,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   // Queue settings modal state
   const [showQueueSettings, setShowQueueSettings] = useState(false);
+  // Store projectId when modal opens to prevent modal from disappearing if tasks change
+  const queueSettingsProjectIdRef = useRef<string | null>(null);
 
   // Queue processing lock to prevent race conditions
   const isProcessingQueueRef = useRef(false);
@@ -794,11 +796,15 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   /**
    * Save queue settings (maxParallelTasks)
+   *
+   * Uses the stored ref value to ensure the save works even if tasks
+   * change while the modal is open.
    */
   const handleSaveQueueSettings = async (maxParallel: number) => {
-    if (!projectId) return;
+    const savedProjectId = queueSettingsProjectIdRef.current || projectId;
+    if (!savedProjectId) return;
 
-    const success = await updateProjectSettings(projectId, { maxParallelTasks: maxParallel });
+    const success = await updateProjectSettings(savedProjectId, { maxParallelTasks: maxParallel });
     if (success) {
       toast({
         title: t('queue.settings.saved'),
@@ -1112,7 +1118,12 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
               onQueueAll={status === 'backlog' ? handleQueueAll : undefined}
-              onQueueSettings={status === 'queue' ? () => setShowQueueSettings(true) : undefined}
+              onQueueSettings={status === 'queue' ? () => {
+                // Only open modal if we have a valid projectId
+                if (!projectId) return;
+                queueSettingsProjectIdRef.current = projectId;
+                setShowQueueSettings(true);
+              } : undefined}
               onArchiveAll={status === 'done' ? handleArchiveAll : undefined}
               maxParallelTasks={status === 'in_progress' ? maxParallelTasks : undefined}
               archivedCount={status === 'done' ? archivedCount : undefined}
@@ -1181,11 +1192,16 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       />
 
       {/* Queue Settings Modal */}
-      {projectId && (
+      {(queueSettingsProjectIdRef.current || projectId) && (
         <QueueSettingsModal
           open={showQueueSettings}
-          onOpenChange={setShowQueueSettings}
-          projectId={projectId}
+          onOpenChange={(open) => {
+            setShowQueueSettings(open);
+            if (!open) {
+              queueSettingsProjectIdRef.current = null;
+            }
+          }}
+          projectId={queueSettingsProjectIdRef.current || projectId || ''}
           currentMaxParallel={maxParallelTasks}
           onSave={handleSaveQueueSettings}
         />

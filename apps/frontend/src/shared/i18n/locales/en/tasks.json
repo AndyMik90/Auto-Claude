@@ -284,5 +284,22 @@
     "noTasksToSelect": "No tasks available to select",
     "confirmBulkAction": "Confirm bulk action for {{count}} tasks",
     "processingTasks": "Processing selected tasks..."
+  },
+  "screenshot": {
+    "title": "Capture Screenshot",
+    "description": "Select a screen or window to capture as a reference image",
+    "capture": "Capture",
+    "capturing": "Capturing...",
+    "noSources": "No screens or windows found",
+    "errors": {
+      "getSources": "Failed to get screenshot sources",
+      "fetchSources": "Failed to fetch screenshot sources",
+      "capture": "Failed to capture screenshot",
+      "captureFailed": "Failed to capture screenshot"
+    }
+  },
+  "referenceImages": {
+    "title": "Reference Images (optional)",
+    "description": "Add visual references like screenshots or designs to help the AI understand your requirements."
   }
 }
