@@ -286,7 +286,7 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
       console.warn('[getProfileEnv] Token expired, attempting to sync from system credentials');
       const synced = profileManager.syncProfileTokenFromSystem(profile.id);
       if (synced) {
-        console.warn('[getProfileEnv] Successfully synced fresh token from system credentials');
+        console.log('[getProfileEnv] Successfully synced fresh token from system credentials');
       } else {
         console.warn('[getProfileEnv] Failed to sync token - system credentials may also be expired');
       }
@@ -309,7 +309,7 @@ export function getProfileEnv(profileId?: string): Record<string, string> {
     console.warn('[getProfileEnv] No stored token, attempting to sync from system credentials');
     const synced = profileManager.syncProfileTokenFromSystem(profile.id);
     if (synced) {
-      console.warn('[getProfileEnv] Successfully synced token from system credentials');
+      console.log('[getProfileEnv] Successfully synced token from system credentials');
       const freshToken = profileManager.getProfileToken(profile.id);
       if (freshToken) {
         return {

@@ -236,11 +236,16 @@ export function getTokenFromSystemCredentials(configDir?: string): SystemCredent
  * Check if a token from system credentials is expired.
  *
  * @param expiresAt - The expiration timestamp in milliseconds
- * @returns true if the token is expired or will expire in the next 5 minutes
+ * @returns true if the token is expired or will expire in the next 5 minutes.
+ *          Returns false if no expiration is provided (backward compatibility
+ *          for tokens without expiration tracking, e.g., legacy or manually-set tokens).
  */
 export function isTokenExpired(expiresAt?: number): boolean {
   if (!expiresAt) {
-    // If no expiration, assume it's valid
+    // No expiration timestamp means either:
+    // 1. Legacy token without expiration tracking
+    // 2. Manually-set token without server-provided expiration
+    // Assume valid to maintain backward compatibility
     return false;
   }
 

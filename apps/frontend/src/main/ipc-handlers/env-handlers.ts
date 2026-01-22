@@ -231,8 +231,8 @@ export function registerEnvHandlers(
     const content = `# Auto Claude Framework Environment Variables
 # Managed by Auto Claude UI
 
-# Claude Code OAuth Token (passed via profile manager, not stored in .env)
-# If you need to override, uncomment and set the token below:
+# Claude Code OAuth Token (managed by profile manager, preserved if manually set)
+# The UI does not write tokens here; if you manually set one, it will be preserved:
 ${existingVars['CLAUDE_CODE_OAUTH_TOKEN'] ? `CLAUDE_CODE_OAUTH_TOKEN=${existingVars['CLAUDE_CODE_OAUTH_TOKEN']}` : '# CLAUDE_CODE_OAUTH_TOKEN='}
 
 # Model override (OPTIONAL)
