@@ -72,6 +72,10 @@ def apply_sdk_patch():
             # overwrite each other's environment variable values
             self._auto_claude_prompt_file = system_prompt_file
 
+            # Clear the environment variable after storing on instance
+            # This prevents subsequent client creations from using a stale value
+            os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)
+
             # Remove --system-prompt argument from command to avoid ARG_MAX
             # The prompt will be sent via stdin in patched_connect instead
             new_cmd = []

@@ -965,15 +965,8 @@ def create_client(
             print("   - CLAUDE.md: large prompt (using temp file)")
         print()
 
-        try:
-            # Create SDK client while holding the lock
-            # This ensures the env var is read by this thread's SDK client before another thread overwrites it
-            client = ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
-
-            return client
-        finally:
-            # Clean up environment variable to prevent subsequent client creations
-            # from using a stale temp file path from a previous call
-            # This is critical for correctness when create_client() is called
-            # multiple times in the same process (e.g., in agent loops)
-            os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)
+        # Create SDK client while holding the lock
+        # This ensures the env var is read by this thread's SDK client before another thread overwrites it
+        # Note: The env var is NOT cleared here because _build_command() is called later in connect()
+        # The monkey-patch in patched_connect() clears the env var after storing it on the instance
+        return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
