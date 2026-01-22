@@ -14,6 +14,10 @@ import { DailyPlaybook } from './pages/DailyPlaybook';
 import { MindMap } from './pages/MindMap';
 import { Settings } from './pages/Settings';
 import { DataQualityDashboard } from './pages/DataQualityDashboard';
+import { PastPerformance } from './pages/PastPerformance';
+import { PrimeOrgChart } from './pages/PrimeOrgChart';
+import { ContactOrgChartPage } from './pages/ContactOrgChartPage';
+import { PlacementsPage } from './pages/PlacementsPage';
 import { useNotionDashboard } from './hooks/useNotionData';
 import type { TabId } from './types';
 import type { NativeNodeType } from './configs/nativeNodeConfigs';
@@ -213,6 +217,14 @@ function App() {
             loading={loading}
           />
         );
+      case 'pastperformance':
+        return <PastPerformance loading={loading} />;
+      case 'primeorgchart':
+        return <PrimeOrgChart loading={loading} />;
+      case 'contactorgchart':
+        return <ContactOrgChartPage loading={loading} />;
+      case 'placements':
+        return <PlacementsPage loading={loading} />;
       case 'settings':
         return (
           <Settings

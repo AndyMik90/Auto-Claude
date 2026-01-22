@@ -16,6 +16,10 @@ import {
   ChevronRight,
   Sparkles,
   BarChart3,
+  Trophy,
+  GitBranch,
+  UserCheck,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type { TabId } from '../types';
 
@@ -39,6 +43,10 @@ const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ classN
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'events', label: 'BD Events', icon: Calendar },
   { id: 'opportunities', label: 'BD Opportunities', icon: Target },
+  { id: 'pastperformance', label: 'Past Performance', icon: Trophy },
+  { id: 'primeorgchart', label: 'Prime Org Chart', icon: GitBranch },
+  { id: 'contactorgchart', label: 'Contact Org Chart', icon: UserCheck },
+  { id: 'placements', label: 'Placements', icon: FileSpreadsheet },
   { id: 'enrichment', label: 'Auto-Enrichment', icon: Zap },
   { id: 'playbook', label: 'Daily Playbook', icon: CalendarCheck },
   { id: 'mindmap', label: 'Mind Map', icon: Network },

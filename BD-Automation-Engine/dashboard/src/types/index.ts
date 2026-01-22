@@ -141,6 +141,10 @@ export type TabId =
   | 'playbook'
   | 'mindmap'
   | 'dataquality'
+  | 'pastperformance'
+  | 'primeorgchart'
+  | 'contactorgchart'
+  | 'placements'
   | 'settings';
 
 export interface Tab {
@@ -180,3 +184,155 @@ export const TIER_COLORS: Record<ContactTier, string> = {
 
 // Contacts grouped by tier
 export type ContactsByTier = Record<number, Contact[]>;
+
+// =============================================================================
+// BULLHORN ETL TYPES
+// =============================================================================
+
+// Past Performance (from Bullhorn)
+export interface PastPerformance {
+  id: string;
+  prime_contractor: string;
+  total_jobs: number;
+  filled_jobs: number;
+  total_placements: number;
+  avg_bill_rate: number;
+  avg_pay_rate: number;
+  avg_margin: number;
+  fill_rate: number;
+  first_job_date: string | null;
+  last_job_date: string | null;
+  estimated_annual_revenue: number;
+  relationship_strength: 'Strategic' | 'Key Account' | 'Established' | 'Growing' | 'Emerging';
+  is_defense_prime: boolean;
+}
+
+// Prime Contractor Org Chart
+export interface PrimeOrgChartItem {
+  id: string;
+  name: string;
+  normalized_name: string;
+  category: string;
+  total_jobs: number;
+  total_placements: number;
+  total_contacts: number;
+  top_contacts: Array<{
+    name: string;
+    score: number;
+    tier: string;
+  }>;
+  programs: string[];
+  program_count: number;
+  is_defense_prime: boolean;
+  relationship_tier: 'Strategic' | 'Key Account' | 'Established' | 'Growing' | 'Emerging';
+}
+
+// Contact Org Chart (enhanced with scoring)
+export interface ContactOrgChartTier {
+  description: string;
+  contacts: ContactOrgChartItem[];
+  count: number;
+}
+
+export interface ContactOrgChartItem {
+  id: string;
+  name: string;
+  score: number;
+  tier: string;
+  tier_level: number;
+  placements: number;
+  activities: number;
+  primes: string[];
+  prime_count: number;
+  last_activity: string | null;
+  scoring_factors: string[];
+}
+
+export interface ContactOrgChart {
+  tiers: Record<string, ContactOrgChartTier>;
+  summary: {
+    total_contacts: number;
+    tier_distribution: Record<string, number>;
+  };
+}
+
+// Program Org Chart (enriched with placements)
+export interface ProgramOrgChartItem {
+  id: string;
+  name: string;
+  acronym: string;
+  agency: string;
+  prime_contractor: string;
+  program_type: string;
+  priority_level: string;
+  contract_value: string;
+  period_start: string;
+  period_end: string;
+  locations: string;
+  clearance: string;
+  typical_roles: string;
+  naics_code: string;
+  placement_count: number;
+  has_pts_history: boolean;
+  subcontractors: string;
+}
+
+// Placement (from Bullhorn)
+export interface Placement {
+  id: string;
+  prime_contractor: string;
+  job_title: string;
+  candidate: string;
+  status: string;
+  owner: string;
+  start_date: string | null;
+  end_date: string | null;
+  salary: number;
+  pay_rate: number;
+  bill_rate: number;
+  spread: number;
+  margin_percent: number;
+}
+
+// Enriched Correlation Summary
+export interface EnrichedCorrelationSummary {
+  generated_at: string;
+  data_sources: {
+    dashboard: {
+      jobs: number;
+      contacts: number;
+      programs: number;
+    };
+    bullhorn: {
+      placements: number;
+      contacts: number;
+      primes: number;
+      activities: number;
+    };
+    federal_programs: number;
+  };
+  financial_metrics: {
+    total_estimated_revenue: number;
+    defense_primes_revenue: number;
+    defense_share_percent: number;
+    avg_bill_rate: number;
+  };
+  contact_metrics: {
+    total_scored_contacts: number;
+    tier_distribution: Record<string, number>;
+    avg_score: number;
+  };
+  program_metrics: {
+    total_programs: number;
+    programs_with_placements: number;
+    total_program_links: number;
+  };
+  prime_metrics: {
+    total_primes: number;
+    defense_primes: number;
+    top_primes: Array<{
+      name: string;
+      placements: number;
+    }>;
+  };
+}

@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-01-21T23:42:45.817855",
+  "data_sources": {
+    "dashboard": {
+      "jobs": 968,
+      "contacts": 2473,
+      "programs": 401
+    },
+    "bullhorn": {
+      "placements": 616,
+      "contacts": 10000,
+      "primes": 41,
+      "activities": 40375
+    },
+    "federal_programs": 423
+  },
+  "financial_metrics": {
+    "total_estimated_revenue": 81784768.0,
+    "defense_primes_revenue": 61210094.4,
+    "defense_share_percent": 74.8,
+    "avg_bill_rate": 67.21
+  },
+  "contact_metrics": {
+    "total_scored_contacts": 5000,
+    "tier_distribution": {
+      "B - High Value": 3,
+      "C - Engaged": 104,
+      "D - Developing": 2169,
+      "E - New/Inactive": 2724
+    },
+    "avg_score": 14.9
+  },
+  "program_metrics": {
+    "total_programs": 423,
+    "programs_with_placements": 79,
+    "total_program_links": 1814
+  },
+  "prime_metrics": {
+    "total_primes": 41,
+    "defense_primes": 11,
+    "top_primes": [
+      {
+        "name": "Leidos",
+        "placements": 209
+      },
+      {
+        "name": "GDIT",
+        "placements": 111
+      },
+      {
+        "name": "General Dynamics IT",
+        "placements": 111
+      },
+      {
+        "name": "Peraton",
+        "placements": 72
+      },
+      {
+        "name": "Microsoft",
+        "placements": 61
+      },
+      {
+        "name": "DELL SERVICES FEDERAL GOVERNMENT, INC.",
+        "placements": 31
+      },
+      {
+        "name": "The Home Depot",
+        "placements": 19
+      },
+      {
+        "name": "Home Depot - SSC",
+        "placements": 19
+      },
+      {
+        "name": "Home Depot",
+        "placements": 19
+      },
+      {
+        "name": "Boeing",
+        "placements": 13
+      }
+    ]
+  }
+}
