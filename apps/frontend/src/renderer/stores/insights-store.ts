@@ -307,12 +307,17 @@ async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttac
     // Compress image before storing to reduce memory usage
     const compressed = await compressImage(dataUrl);
 
+    // Calculate compressed size from base64 string
+    // Base64 length to bytes: Math.ceil((b64Length * 3) / 4) minus padding
+    const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
+    const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
+
     attachments.push({
       id: crypto.randomUUID(),
       filename: file.name,
       mimeType: compressed.mimeType, // Use the actual output MIME type from compression
-      size: file.size,
-      data: getBase64FromDataUrl(compressed.dataUrl) // Store compressed base64 without prefix
+      size: compressedSize, // Track compressed size, not original file size
+      data: compressedBase64 // Store compressed base64 without prefix
     });
   }
 
@@ -334,10 +339,16 @@ async function ensureImageAttachmentsCompressed(attachments: ImageAttachment[]):
     // Compress to ensure consistent sizing and format
     const compressed = await compressImage(dataUrl);
 
+    // Calculate compressed size from base64 string
+    // Base64 length to bytes: Math.ceil((b64Length * 3) / 4) minus padding
+    const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
+    const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
+
     result.push({
       ...attachment,
       mimeType: compressed.mimeType,
-      data: getBase64FromDataUrl(compressed.dataUrl)
+      size: compressedSize,
+      data: compressedBase64
     });
   }
 
@@ -543,10 +554,11 @@ export function setupInsightsListeners(): () => void {
       switch (chunk.type) {
         case 'text':
           if (chunk.content) {
-            // Add separator between thoughts when detecting double newline
+            // Add separator between thoughts when detecting double newline followed by double newline
+            // Stricter heuristic: require last content to end with \n\n AND new content to start with \n\n
             const contentToAdd = chunk.content;
             const lastContent = store().streamingContent;
-            const needsSeparator = lastContent.endsWith('\n\n') && contentToAdd.startsWith('\n');
+            const needsSeparator = lastContent.endsWith('\n\n') && contentToAdd.startsWith('\n\n');
 
             store().appendStreamingContent(
               needsSeparator ? '\n\n---\n\n' + contentToAdd : contentToAdd

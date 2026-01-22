@@ -306,9 +306,9 @@ export function Insights({ projectId }: InsightsProps) {
    * Remove an image from the attachments
    */
   const handleRemoveImage = useCallback((imageId: string) => {
-    setImages(images.filter(img => img.id !== imageId));
+    setImages(prevImages => prevImages.filter(img => img.id !== imageId));
     setImageError(null);
-  }, [images]);
+  }, []);
 
   /**
    * Handle drag over textarea for image drops
