@@ -282,15 +282,35 @@ export function registerAgenteventsHandlers(
           }
         } else {
           notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          persistStatus("human_review");
-          // Include projectId for multi-project filtering (issue #723)
-          safeSendToRenderer(
-            getMainWindow,
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            "human_review" as TaskStatus,
-            projectId
-          );
+          // FIX (ACS-71, #1149): Only set human_review if subtasks exist
+          // If planning crashed before creating phases, don't set human_review
+          // This prevents tasks from getting stuck in "needs resume" state
+          const hasSubtasksOnFail = task.subtasks && task.subtasks.length > 0;
+          if (hasSubtasksOnFail) {
+            persistStatus("human_review");
+            // Include projectId for multi-project filtering (issue #723)
+            safeSendToRenderer(
+              getMainWindow,
+              IPC_CHANNELS.TASK_STATUS_CHANGE,
+              taskId,
+              "human_review" as TaskStatus,
+              projectId
+            );
+          } else {
+            // No subtasks - planning failed before creating phases
+            // Keep task in backlog so user can retry
+            console.warn(
+              `[Task ${taskId}] Process failed but no subtasks created - resetting to backlog`
+            );
+            persistStatus("backlog");
+            safeSendToRenderer(
+              getMainWindow,
+              IPC_CHANNELS.TASK_STATUS_CHANGE,
+              taskId,
+              "backlog" as TaskStatus,
+              projectId
+            );
+          }
         }
       }
     } catch (error) {
