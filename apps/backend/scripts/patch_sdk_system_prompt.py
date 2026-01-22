@@ -57,12 +57,21 @@ def apply_sdk_patch():
         CLAUDE_SYSTEM_PROMPT_FILE is set (to be sent via stdin instead).
 
         This avoids ARG_MAX limits by not passing large prompts as command-line args.
+
+        Also stores the prompt file path on the instance to avoid race conditions
+        when multiple clients are created concurrently.
         """
         cmd = original_build_command(self)
 
         # Check if CLAUDE_SYSTEM_PROMPT_FILE environment variable is set
+        # Store on instance to avoid race conditions with concurrent client creation
         system_prompt_file = os.environ.get("CLAUDE_SYSTEM_PROMPT_FILE")
         if system_prompt_file and Path(system_prompt_file).exists():
+            # Store on instance for later use in patched_connect
+            # This avoids race conditions where concurrent create_client() calls
+            # overwrite each other's environment variable values
+            self._auto_claude_prompt_file = system_prompt_file
+
             # Remove --system-prompt argument from command to avoid ARG_MAX
             # The prompt will be sent via stdin in patched_connect instead
             new_cmd = []
@@ -75,40 +84,47 @@ def apply_sdk_patch():
                     new_cmd.append(cmd[i])
                     i += 1
             cmd = new_cmd
+        else:
+            self._auto_claude_prompt_file = None
 
         return cmd
 
     async def patched_connect(self):
         """
-        Patched version of connect() that handles CLAUDE_SYSTEM_PROMPT_FILE.
+        Patched version of connect() that handles system prompt files.
 
-        When CLAUDE_SYSTEM_PROMPT_FILE is set, reads the system prompt from that file
-        and writes it to the subprocess stdin before any user messages, avoiding ARG_MAX limits.
+        Reads the system prompt from the file path stored on the instance
+        (by patched_build_command) and writes it to subprocess stdin before
+        any user messages, avoiding ARG_MAX limits.
+
+        The instance attribute approach avoids race conditions when multiple
+        clients are created concurrently.
 
         Raises:
             RuntimeError: If system prompt was expected but _stdin_stream is not available,
                           indicating SDK internals may have changed.
         """
-        # Check for CLAUDE_SYSTEM_PROMPT_FILE environment variable before starting
-        system_prompt_file = os.environ.get("CLAUDE_SYSTEM_PROMPT_FILE")
         system_prompt_content = None
-        prompt_expected = False
+
+        # Read from instance attribute set by patched_build_command
+        # This avoids race conditions with concurrent client creation
+        system_prompt_file = getattr(self, "_auto_claude_prompt_file", None)
 
         if system_prompt_file and Path(system_prompt_file).exists():
-            prompt_expected = True
             try:
                 with open(system_prompt_file, encoding="utf-8") as f:
                     system_prompt_content = f.read()
                 logger.info(
-                    f"Read system prompt from CLAUDE_SYSTEM_PROMPT_FILE ({len(system_prompt_content)} chars)"
+                    f"Read system prompt from file ({len(system_prompt_content)} chars)"
                 )
-                # Clear from environment so we don't process it again
-                del os.environ["CLAUDE_SYSTEM_PROMPT_FILE"]
             except OSError as e:
                 logger.error(
-                    f"Failed to read CLAUDE_SYSTEM_PROMPT_FILE {system_prompt_file}: {e}"
+                    f"Failed to read system prompt file {system_prompt_file}: {e}"
                 )
                 raise
+            finally:
+                # Clear the instance attribute after reading
+                self._auto_claude_prompt_file = None
 
         # Call original connect to start the subprocess
         await original_connect(self)
@@ -118,7 +134,7 @@ def apply_sdk_patch():
         if system_prompt_content:
             if not hasattr(self, "_stdin_stream"):
                 raise RuntimeError(
-                    "CLAUDE_SYSTEM_PROMPT_FILE was set but SubprocessCLITransport._stdin_stream "
+                    "System prompt file was set but SubprocessCLITransport._stdin_stream "
                     "not found after connect(). SDK internals may have changed. "
                     "This patch requires the _stdin_stream attribute to inject the system prompt. "
                     "Please report this issue at: https://github.com/AndyMik90/Auto-Claude/issues/384"
@@ -126,7 +142,7 @@ def apply_sdk_patch():
 
             if not self._stdin_stream:
                 raise RuntimeError(
-                    "CLAUDE_SYSTEM_PROMPT_FILE was set but _stdin_stream is None/empty. "
+                    "System prompt file was set but _stdin_stream is None/empty. "
                     "This may indicate the SDK changed its subprocess handling."
                 )
 

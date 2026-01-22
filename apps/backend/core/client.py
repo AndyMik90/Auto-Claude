@@ -51,6 +51,10 @@ _PROJECT_INDEX_CACHE: dict[str, tuple[dict[str, Any], dict[str, bool], float]] =
 _CACHE_TTL_SECONDS = 300  # 5 minute TTL
 _CACHE_LOCK = threading.Lock()  # Protects _PROJECT_INDEX_CACHE access
 
+# Lock for protecting CLAUDE_SYSTEM_PROMPT_FILE environment variable access
+# Prevents race conditions when multiple clients are created concurrently with large prompts
+_PROMPT_FILE_LOCK = threading.Lock()
+
 
 def _get_cached_project_data(
     project_dir: Path,
@@ -906,16 +910,6 @@ def create_client(
     # See: https://github.com/AndyMik90/Auto-Claude/issues/384
     system_prompt_value, _temp_prompt_file = _prepare_system_prompt(project_dir)
 
-    # Log when using temp file for large prompt
-    if _temp_prompt_file:
-        # Pass temp file path via environment variable since @filepath syntax
-        # is not supported by the CLI for --system-prompt
-        # Set in both os.environ (for monkey-patch) and sdk_env (for subprocess)
-        os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-        sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
-        print("   - CLAUDE.md: large prompt (using temp file)")
-    print()
-
     # Build options dict, conditionally including output_format
     options_kwargs: dict[str, Any] = {
         "model": model,
@@ -957,4 +951,22 @@ def create_client(
     if agents:
         options_kwargs["agents"] = agents
 
-    return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+    # Use lock to prevent race conditions when multiple clients are created concurrently
+    # The lock ensures that the environment variable is set and the SDK client is created atomically
+    # This prevents Thread B from overwriting the env var before Thread A's SDK reads it
+    with _PROMPT_FILE_LOCK:
+        # Log when using temp file for large prompt
+        if _temp_prompt_file:
+            # Pass temp file path via environment variable since @filepath syntax
+            # is not supported by the CLI for --system-prompt
+            # Set in both os.environ (for monkey-patch) and sdk_env (for subprocess)
+            os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            print("   - CLAUDE.md: large prompt (using temp file)")
+        print()
+
+        # Create SDK client while holding the lock
+        # This ensures the env var is read by this thread's SDK client before another thread overwrites it
+        client = ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+
+        return client
