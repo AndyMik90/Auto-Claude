@@ -551,6 +551,10 @@
     "step3": "Cliquez sur « Authentifier » pour terminer la connexion",
     "footer": "Le compte sera disponible une fois l'authentification terminée."
   },
+  "roadmapGeneration": {
+    "elapsed": "Écoulé : {{time}}",
+    "stillWorking": "Toujours en cours..."
+  },
   "auth": {
     "failure": {
       "title": "Authentification requise",

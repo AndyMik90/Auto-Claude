@@ -551,6 +551,10 @@
     "step3": "Click \"Authenticate\" to complete login",
     "footer": "The account will be available once you complete authentication."
   },
+  "roadmapGeneration": {
+    "elapsed": "Elapsed: {{time}}",
+    "stillWorking": "Still working..."
+  },
   "auth": {
     "failure": {
       "title": "Authentication Required",
