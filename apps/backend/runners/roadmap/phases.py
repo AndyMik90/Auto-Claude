@@ -431,7 +431,10 @@ Output the complete roadmap to roadmap.json.
 """
 
     def _validate_features(self, attempt: int) -> RoadmapPhaseResult | None:
-        """Validate the roadmap features file.
+        """Validate the roadmap features file and merge preserved features.
+
+        After successful validation, merges any preserved features from the
+        previous roadmap into the final roadmap.json.
 
         Returns RoadmapPhaseResult if validation succeeds, None otherwise.
         """
@@ -462,11 +465,33 @@ Output the complete roadmap to roadmap.json.
             )
 
             if not missing and feature_count >= 3:
+                # Merge preserved features into the roadmap
+                preserved_features = self._load_existing_features()
+                if preserved_features:
+                    new_features = data.get("features", [])
+                    merged_features = self._merge_features(new_features, preserved_features)
+                    data["features"] = merged_features
+
+                    # Write back the merged roadmap
+                    with open(self.roadmap_file, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=2)
+
+                    debug_success(
+                        "roadmap_phase",
+                        "Merged preserved features into roadmap.json",
+                        preserved_count=len(preserved_features),
+                        final_count=len(merged_features),
+                    )
+                    print_status(
+                        f"Merged {len(preserved_features)} preserved features",
+                        "success",
+                    )
+
                 debug_success(
                     "roadmap_phase",
                     "Created valid roadmap.json",
                     attempt=attempt + 1,
-                    feature_count=feature_count,
+                    feature_count=len(data.get("features", [])),
                 )
                 print_status("Created valid roadmap.json", "success")
                 return RoadmapPhaseResult(
