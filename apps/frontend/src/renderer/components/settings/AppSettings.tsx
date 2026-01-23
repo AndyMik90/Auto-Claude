@@ -7,7 +7,6 @@ import {
   Palette,
   Bot,
   FolderOpen,
-  Key,
   Package,
   Bell,
   Settings2,
@@ -20,7 +19,8 @@ import {
   Code,
   Bug,
   Server,
-  Terminal
+  Terminal,
+  Users
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -49,12 +49,12 @@ import { ThemeSettings } from './ThemeSettings';
 import { DisplaySettings } from './DisplaySettings';
 import { LanguageSettings } from './LanguageSettings';
 import { GeneralSettings } from './GeneralSettings';
-import { IntegrationSettings } from './IntegrationSettings';
 import { AdvancedSettings } from './AdvancedSettings';
 import { DevToolsSettings } from './DevToolsSettings';
 import { DebugSettings } from './DebugSettings';
 import { TerminalFontSettings } from './terminal-font-settings/TerminalFontSettings';
 import { ProfileList } from './ProfileList';
+import { AccountSettings } from './AccountSettings';
 import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { useProjectStore } from '../../stores/project-store';
@@ -69,7 +69,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'terminal-fonts' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'updates' | 'notifications' | 'debug';
+export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'terminal-fonts' | 'agent' | 'paths' | 'integrations' | 'accounts' | 'api-profiles' | 'updates' | 'notifications' | 'debug';
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -84,8 +84,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'terminal-fonts', icon: Terminal },
   { id: 'agent', icon: Bot },
   { id: 'paths', icon: FolderOpen },
-  { id: 'integrations', icon: Key },
-  { id: 'api-profiles', icon: Server },
+  { id: 'accounts', icon: Users },
   { id: 'updates', icon: Package },
   { id: 'notifications', icon: Bell },
   { id: 'debug', icon: Bug }
@@ -197,10 +196,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="agent" />;
       case 'paths':
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="paths" />;
-      case 'integrations':
-        return <IntegrationSettings settings={settings} onSettingsChange={setSettings} isOpen={open} />;
-      case 'api-profiles':
-        return <ProfileList />;
+      case 'accounts':
+        return <AccountSettings settings={settings} onSettingsChange={setSettings} isOpen={open} />;
       case 'updates':
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
       case 'notifications':
