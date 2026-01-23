@@ -440,17 +440,13 @@ export function registerTaskExecutionHandlers(
             console.log('[TASK_REVIEW] Discarded working tree changes in main');
           }
 
-          // Step 3: Clean untracked files that came from the merge
-          // IMPORTANT: Exclude .auto-claude directory to preserve specs and worktree data
-          const cleanResult = spawnSync(getToolPath('git'), ['clean', '-fd', '-e', '.auto-claude'], {
-            cwd: project.path,
-            encoding: 'utf-8',
-            stdio: 'pipe',
-            env: getIsolatedGitEnv()
-          });
-          if (cleanResult.status === 0) {
-            console.log('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude)');
-          }
+          // NOTE: We intentionally do NOT run 'git clean' here.
+          // The previous git clean -fd command was dangerous - it deleted ALL untracked files
+          // in the project, not just files from the merge. This caused data loss (issue #1477).
+          //
+          // If the merge added new files, they will remain as untracked files after checkout.
+          // This is a much safer behavior - users can manually review and delete them if needed.
+          // The worktree still contains all the changes, so nothing from the build is lost.
 
           console.log('[TASK_REVIEW] Main branch restored to pre-merge state');
         }
