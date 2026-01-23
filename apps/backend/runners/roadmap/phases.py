@@ -117,6 +117,9 @@ class DiscoveryPhase:
                 "discovery", True, [str(self.discovery_file)], [], 0
             )
 
+        # Provide intermediate progress status
+        print_status("Analyzing project...", "progress")
+
         errors = []
         for attempt in range(MAX_RETRIES):
             debug("roadmap_phase", f"Discovery attempt {attempt + 1}/{MAX_RETRIES}")
