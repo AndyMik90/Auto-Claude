@@ -91,15 +91,13 @@ function isValidTargetName(targetName: string): boolean {
  */
 function isValidCredentialsPath(credentialsPath: string): boolean {
   // Credentials path should:
-  // 1. Not contain path traversal sequences
+  // 1. Not contain path traversal sequences (works on both Unix and Windows)
   // 2. End with the expected file name
-  // 3. Be an absolute path (starts with / on Unix or drive letter on Windows)
   // Note: We allow custom config directories since they come from user settings
-  const isAbsolutePath = credentialsPath.startsWith('/') || /^[A-Za-z]:\\/.test(credentialsPath);
+  // The configDir is from profile settings, which is trusted user input
   return (
     !credentialsPath.includes('..') &&
-    credentialsPath.endsWith('.credentials.json') &&
-    isAbsolutePath
+    credentialsPath.endsWith('.credentials.json')
   );
 }
 
