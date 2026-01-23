@@ -102,5 +102,30 @@ export const workspaceMock = {
         { id: 'system', name: 'System Terminal', path: '', installed: true }
       ]
     }
+  }),
+
+  worktreeLaunchApp: async (_worktreePath: string, _autoInstall?: boolean) => ({
+    success: true,
+    data: { launched: true, command: 'npm run dev', depsInstalled: true, packageManager: 'npm', pid: 12345, projectType: 'node' }
+  }),
+
+  worktreeStopApp: async (_worktreePath: string) => ({
+    success: true,
+    data: { stopped: true, killed: 1 }
+  }),
+
+  worktreeAppStatus: async (_worktreePath: string) => ({
+    success: true,
+    data: { running: false, processes: [] }
+  }),
+
+  worktreeKillAll: async () => ({
+    success: true,
+    data: { killed: 0, errors: [] }
+  }),
+
+  worktreeInstallDeps: async (_worktreePath: string) => ({
+    success: true,
+    data: { installed: true, packageManager: 'npm' }
   })
 };
