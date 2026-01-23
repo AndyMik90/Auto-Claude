@@ -204,9 +204,9 @@ export function AuthStatusIndicator() {
                   <Shield className="h-3.5 w-3.5" />
                   <span className="font-semibold text-xs">{t('common:usage.authenticationDetails')}</span>
                 </div>
-                <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ml-[8px] ${ 
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ml-2 ${ 
                   isOAuth
-                    ? 'bg-orange-500/15 text-orange-500' 
+                    ? 'bg-orange-500/15 text-orange-500'
                     : 'bg-primary/15 text-primary'
                 }`}>
                   {isOAuth ? t('common:usage.oauth') : t('common:usage.apiProfile')}
