@@ -18,6 +18,7 @@
  */
 
 import { autoUpdater } from 'electron-updater';
+import type { UpdateInfo } from 'electron-updater';
 import { app, net } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
@@ -37,6 +38,44 @@ autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
 
 // Update channels: 'latest' for stable, 'beta' for pre-release
 type UpdateChannel = 'latest' | 'beta';
+
+// Store interval ID for cleanup during shutdown
+let periodicCheckIntervalId: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Convert releaseNotes from electron-updater to a markdown string.
+ * releaseNotes can be:
+ * - string: Return as-is
+ * - ReleaseNoteInfo[]: Convert to markdown with version headers
+ * - null/undefined: Return undefined
+ */
+function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | undefined {
+  if (!releaseNotes) {
+    return undefined;
+  }
+
+  // If it's already a string, return as-is
+  if (typeof releaseNotes === 'string') {
+    return releaseNotes;
+  }
+
+  // It's an array of ReleaseNoteInfo objects
+  // Format: [{ version: "1.0.0", note: "changes..." }, ...]
+  if (Array.isArray(releaseNotes)) {
+    const formattedNotes = releaseNotes
+      .filter(item => item.note) // Only include entries with notes
+      .map(item => {
+        // Each item has version and note properties
+        const versionHeader = item.version ? `## ${item.version}\n` : '';
+        return `${versionHeader}${item.note}`;
+      })
+      .join('\n\n');
+
+    return formattedNotes || undefined;
+  }
+
+  return undefined;
+}
 
 /**
  * Set the update channel for electron-updater.
@@ -104,7 +143,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_AVAILABLE, {
         version: info.version,
-        releaseNotes: info.releaseNotes,
+        releaseNotes: formatReleaseNotes(info.releaseNotes),
         releaseDate: info.releaseDate
       });
     }
@@ -114,18 +153,14 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   autoUpdater.on('update-downloaded', (info) => {
     console.warn('[app-updater] Update downloaded:', info.version);
     // Store downloaded update info so it persists across Settings page navigations
-    // releaseNotes can be string | ReleaseNoteInfo[] | null | undefined, only use if string
     downloadedUpdateInfo = {
       version: info.version,
-      releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
+      releaseNotes: formatReleaseNotes(info.releaseNotes),
       releaseDate: info.releaseDate
     };
     if (mainWindow) {
-      mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, {
-        version: info.version,
-        releaseNotes: info.releaseNotes,
-        releaseDate: info.releaseDate
-      });
+      // Reuse downloadedUpdateInfo instead of calling formatReleaseNotes again
+      mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_DOWNLOADED, downloadedUpdateInfo);
     }
   });
 
@@ -189,7 +224,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   const FOUR_HOURS = 4 * 60 * 60 * 1000;
   console.warn(`[app-updater] Periodic checks scheduled every ${FOUR_HOURS / 1000 / 60 / 60} hours`);
 
-  setInterval(() => {
+  periodicCheckIntervalId = setInterval(() => {
     console.warn('[app-updater] Performing periodic update check');
     autoUpdater.checkForUpdates().catch((error) => {
       console.error('[app-updater] ❌ Periodic update check failed:', error.message);
@@ -228,10 +263,9 @@ export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
       return null;
     }
 
-    // releaseNotes can be string | ReleaseNoteInfo[] | null | undefined, only use if string
     return {
       version: result.updateInfo.version,
-      releaseNotes: typeof result.updateInfo.releaseNotes === 'string' ? result.updateInfo.releaseNotes : undefined,
+      releaseNotes: formatReleaseNotes(result.updateInfo.releaseNotes),
       releaseDate: result.updateInfo.releaseDate
     };
   } catch (error) {
@@ -490,5 +524,16 @@ export async function downloadStableVersion(): Promise<void> {
   } finally {
     // Reset allowDowngrade to prevent unintended downgrades in normal update checks
     autoUpdater.allowDowngrade = false;
+  }
+}
+
+/**
+ * Stop periodic update checks - called during app shutdown
+ */
+export function stopPeriodicUpdates(): void {
+  if (periodicCheckIntervalId) {
+    clearInterval(periodicCheckIntervalId);
+    periodicCheckIntervalId = null;
+    console.warn('[app-updater] Periodic update checks stopped');
   }
 }

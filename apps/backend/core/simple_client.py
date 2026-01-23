@@ -21,13 +21,20 @@ Example usage:
     client = create_simple_client(agent_type="insights", cwd=project_dir)
 """
 
+import logging
 from pathlib import Path
 
 from agents.tools_pkg import get_agent_config, get_default_thinking_level
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
-from core.auth import get_sdk_env_vars, require_auth_token
-from core.client import find_claude_cli
+from core.auth import (
+    get_sdk_env_vars,
+    require_auth_token,
+    validate_token_not_encrypted,
+)
+from core.platform import validate_cli_path
 from phase_config import get_thinking_budget
+
+logger = logging.getLogger(__name__)
 
 
 def create_simple_client(
@@ -67,6 +74,12 @@ def create_simple_client(
     """
     # Get authentication
     oauth_token = require_auth_token()
+
+    # Validate token is not encrypted before passing to SDK
+    # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
+    # If we still have an encrypted token here, it means decryption failed or was skipped
+    validate_token_not_encrypted(oauth_token)
+
     import os
 
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
@@ -85,10 +98,8 @@ def create_simple_client(
         thinking_level = get_default_thinking_level(agent_type)
         max_thinking_tokens = get_thinking_budget(thinking_level)
 
-    # Find Claude CLI path (handles non-standard installations)
-    cli_path = find_claude_cli()
-
     # Build options dict
+    # Note: SDK bundles its own CLI, so no cli_path detection needed
     options_kwargs = {
         "model": model,
         "system_prompt": system_prompt,
@@ -102,8 +113,10 @@ def create_simple_client(
     if max_thinking_tokens is not None:
         options_kwargs["max_thinking_tokens"] = max_thinking_tokens
 
-    # Add CLI path if found
-    if cli_path:
-        options_kwargs["cli_path"] = cli_path
+    # Optional: Allow CLI path override via environment variable
+    env_cli_path = os.environ.get("CLAUDE_CLI_PATH")
+    if env_cli_path and validate_cli_path(env_cli_path):
+        options_kwargs["cli_path"] = env_cli_path
+        logger.info(f"Using CLAUDE_CLI_PATH override: {env_cli_path}")
 
     return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))

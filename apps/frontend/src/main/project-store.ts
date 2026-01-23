@@ -2,10 +2,12 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, TaskErrorInfo, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
-import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir } from '../shared/constants';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
+import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
+import { debugLog } from '../shared/utils/debug-logger';
+import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
 
 interface TabState {
   openProjectIds: string[];
@@ -255,17 +257,17 @@ export class ProjectStore {
       return cached.tasks;
     }
 
-    console.warn('[ProjectStore] getTasks called - will load from disk', {
+    debugLog('[ProjectStore] getTasks called - will load from disk', {
       projectId,
       reason: cached ? 'cache expired' : 'cache miss',
       cacheAge: cached ? now - cached.timestamp : 'N/A'
     });
     const project = this.getProject(projectId);
     if (!project) {
-      console.warn('[ProjectStore] Project not found for id:', projectId);
+      debugLog('[ProjectStore] Project not found for id:', projectId);
       return [];
     }
-    console.warn('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
+    debugLog('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
 
     const allTasks: Task[] = [];
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
@@ -384,7 +386,8 @@ export class ProjectStore {
 
         // Try to read implementation plan
         let plan: ImplementationPlan | null = null;
-        let parseError: TaskErrorInfo | null = null;
+        let hasJsonError = false;
+        let jsonErrorMessage = '';
         if (existsSync(planPath)) {
           console.warn(`[ProjectStore] Loading implementation_plan.json for spec: ${dir.name} from ${location}`);
           try {
@@ -398,15 +401,10 @@ export class ProjectStore {
               subtaskCount: plan?.phases?.flatMap(p => p.subtasks || []).length || 0
             });
           } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : String(err);
-            parseError = {
-              key: 'errors:task.parseImplementationPlan',
-              meta: {
-                specId: dir.name,
-                error: errorMessage.slice(0, 500)
-              }
-            };
-            console.error(`[ProjectStore] Failed to parse implementation_plan.json for ${dir.name}:`, errorMessage);
+            // Don't skip - create task with error indicator so user knows it exists
+            hasJsonError = true;
+            jsonErrorMessage = err instanceof Error ? err.message : String(err);
+            console.error(`[ProjectStore] JSON parse error for spec ${dir.name}:`, jsonErrorMessage);
           }
         } else {
           console.warn(`[ProjectStore] No implementation_plan.json found for spec: ${dir.name} at ${planPath}`);
@@ -464,21 +462,14 @@ export class ProjectStore {
         }
 
         // Determine task status and review reason from plan
-        // If there's a parse error, override to error status
-        let finalStatus: TaskStatus;
-        let finalDescription = description;
-        let finalReviewReason: ReviewReason | undefined = undefined;
-        let finalErrorInfo: TaskErrorInfo | undefined = undefined;
-
-        if (parseError) {
-          finalStatus = 'error';
-          finalErrorInfo = parseError;
-          console.error(`[ProjectStore] Creating error task for ${dir.name}:`, parseError);
-        } else {
-          const { status, reviewReason } = this.determineTaskStatusAndReason(plan, specPath, metadata);
-          finalStatus = status;
-          finalReviewReason = reviewReason;
-        }
+        // For JSON errors, store just the raw error - renderer will use i18n to format
+        const finalDescription = hasJsonError
+          ? `${JSON_ERROR_PREFIX}${jsonErrorMessage}`
+          : description;
+        // Tasks with JSON errors go to human_review with errors reason
+        const { status: finalStatus, reviewReason: finalReviewReason } = hasJsonError
+          ? { status: 'human_review' as TaskStatus, reviewReason: 'errors' as ReviewReason }
+          : this.determineTaskStatusAndReason(plan, specPath, metadata);
 
         // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
         const subtasks = plan?.phases?.flatMap((phase) => {
@@ -498,8 +489,9 @@ export class ProjectStore {
         const stagedAt = planWithStaged?.stagedAt;
 
         // Determine title - check if feature looks like a spec ID (e.g., "054-something-something")
-        let title = plan?.feature || plan?.title || dir.name;
-        const looksLikeSpecId = /^\d{3}-/.test(title);
+        // For JSON error tasks, use directory name with marker for i18n suffix
+        let title = hasJsonError ? `${dir.name}${JSON_ERROR_TITLE_SUFFIX}` : (plan?.feature || plan?.title || dir.name);
+        const looksLikeSpecId = /^\d{3}-/.test(title) && !hasJsonError;
         if (looksLikeSpecId && existsSync(specFilePath)) {
           try {
             const specContent = readFileSync(specFilePath, 'utf-8');
@@ -527,7 +519,6 @@ export class ProjectStore {
           logs: [],
           metadata,
           ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
-          ...(finalErrorInfo !== undefined && { errorInfo: finalErrorInfo }),
           stagedInMainProject,
           stagedAt,
           location, // Add location metadata (main vs worktree)
@@ -547,13 +538,18 @@ export class ProjectStore {
   /**
    * Determine task status and review reason based on plan and files.
    *
-   * This method calculates the correct status from subtask progress and QA state,
-   * providing backwards compatibility for existing tasks with incorrect status.
+   * PRIORITY ORDER (to prevent status flip-flop during execution):
+   * 1. Terminal statuses (done, pr_created, error) - ALWAYS respected
+   * 2. Active process statuses (planning, coding, in_progress) - respected during execution
+   * 3. Explicit human_review with reviewReason - respected to prevent recalculation
+   * 4. QA report file status
+   * 5. Calculated status from subtask analysis (fallback only)
    *
    * Review reasons:
    * - 'completed': All subtasks done, QA passed - ready for merge
    * - 'errors': Subtasks failed during execution - needs attention
    * - 'qa_rejected': QA found issues that need fixing
+   * - 'plan_review': Spec creation complete, awaiting user approval
    */
   private determineTaskStatusAndReason(
     plan: ImplementationPlan | null,
@@ -563,6 +559,135 @@ export class ProjectStore {
     // Handle both 'subtasks' and 'chunks' naming conventions, filter out undefined
     const allSubtasks = plan?.phases?.flatMap((p) => p.subtasks || (p as { chunks?: PlanSubtask[] }).chunks || []).filter(Boolean) || [];
 
+    // Status mapping from plan.status values to TaskStatus
+    const statusMap: Record<string, TaskStatus> = {
+      'pending': 'backlog',
+      'planning': 'in_progress',
+      'in_progress': 'in_progress',
+      'coding': 'in_progress',
+      'review': 'ai_review',
+      'completed': 'done',
+      'done': 'done',
+      'human_review': 'human_review',
+      'ai_review': 'ai_review',
+      'pr_created': 'pr_created',
+      'backlog': 'backlog',
+      'error': 'error'
+    };
+
+    // Terminal statuses that should NEVER be overridden by calculation
+    const TERMINAL_STATUSES = new Set<TaskStatus>(['done', 'pr_created', 'error']);
+
+    // ========================================================================
+    // STEP 1: Check for terminal statuses (highest priority - always respected)
+    // ========================================================================
+    if (plan?.status) {
+      const storedStatus = statusMap[plan.status];
+      if (storedStatus && TERMINAL_STATUSES.has(storedStatus)) {
+        debugLog('[determineTaskStatusAndReason] Terminal status respected:', {
+          planStatus: plan.status,
+          mappedStatus: storedStatus,
+          reason: 'Terminal statuses (done, pr_created, error) are never overridden'
+        });
+        return { status: storedStatus };
+      }
+    }
+
+    // ========================================================================
+    // STEP 2: Check for active process statuses during execution
+    // These prevent status flip-flop while backend is actively running
+    // ========================================================================
+    if (plan?.status) {
+      const storedStatus = statusMap[plan.status];
+      const rawStatus = plan.status as string;
+      const isActiveProcessStatus = rawStatus === 'planning' || rawStatus === 'coding' || rawStatus === 'in_progress';
+
+      // Check if this is a plan review stage (spec creation complete, awaiting approval)
+      const isPlanReviewStage = (plan as unknown as { planStatus?: string })?.planStatus === 'review';
+
+      // During active execution, respect the stored status to prevent jumping
+      if (isActiveProcessStatus && storedStatus === 'in_progress') {
+        debugLog('[determineTaskStatusAndReason] Active process status preserved:', {
+          planStatus: plan.status,
+          mappedStatus: storedStatus,
+          reason: 'Execution in progress - status recalculation blocked'
+        });
+        return { status: 'in_progress' };
+      }
+
+      // Plan review stage (human approval of spec before coding starts)
+      if (isPlanReviewStage && storedStatus === 'human_review') {
+        debugLog('[determineTaskStatusAndReason] Plan review stage detected:', {
+          planStatus: plan.status,
+          reason: 'Spec creation complete, awaiting user approval'
+        });
+        return { status: 'human_review', reviewReason: 'plan_review' };
+      }
+
+      // Explicit human_review status should be preserved unless we have evidence to change it
+      if (storedStatus === 'human_review') {
+        // Infer review reason from subtask/QA state
+        const hasFailedSubtasks = allSubtasks.some((s) => s.status === 'failed');
+        const allCompleted = allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed');
+        let reviewReason: ReviewReason | undefined;
+        if (hasFailedSubtasks) {
+          reviewReason = 'errors';
+        } else if (allCompleted) {
+          reviewReason = 'completed';
+        }
+        debugLog('[determineTaskStatusAndReason] Explicit human_review preserved:', {
+          planStatus: plan.status,
+          reviewReason,
+          hasFailedSubtasks,
+          allCompleted,
+          subtaskCount: allSubtasks.length
+        });
+        return { status: 'human_review', reviewReason };
+      }
+
+      // Explicit ai_review status should be preserved
+      if (storedStatus === 'ai_review') {
+        debugLog('[determineTaskStatusAndReason] Explicit ai_review preserved:', {
+          planStatus: plan.status,
+          subtaskCount: allSubtasks.length
+        });
+        return { status: 'ai_review' };
+      }
+    }
+
+    // ========================================================================
+    // STEP 3: Check QA report file for status info
+    // ========================================================================
+    const qaReportPath = path.join(specPath, AUTO_BUILD_PATHS.QA_REPORT);
+    if (existsSync(qaReportPath)) {
+      try {
+        const content = readFileSync(qaReportPath, 'utf-8');
+        if (content.includes('REJECTED') || content.includes('FAILED')) {
+          debugLog('[determineTaskStatusAndReason] QA report indicates rejection:', {
+            qaReportPath,
+            reason: 'QA rejected - needs human attention'
+          });
+          return { status: 'human_review', reviewReason: 'qa_rejected' };
+        }
+        if (content.includes('PASSED') || content.includes('APPROVED')) {
+          // QA passed - if all subtasks done, move to human_review
+          if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
+            debugLog('[determineTaskStatusAndReason] QA passed with all subtasks complete:', {
+              qaReportPath,
+              subtaskCount: allSubtasks.length
+            });
+            return { status: 'human_review', reviewReason: 'completed' };
+          }
+        }
+      } catch {
+        // Ignore read errors
+      }
+    }
+
+    // ========================================================================
+    // STEP 4: Calculate status from subtask analysis (fallback only)
+    // This is the lowest priority - only used when no explicit status is set
+    // ========================================================================
     let calculatedStatus: TaskStatus = 'backlog';
     let reviewReason: ReviewReason | undefined;
 
@@ -593,152 +718,22 @@ export class ProjectStore {
       }
     }
 
-    // FIRST: Check for explicit user-set status from plan (takes highest priority)
-    // This allows users to manually mark tasks as 'done' via drag-and-drop
-    if (plan?.status) {
-      const statusMap: Record<string, TaskStatus> = {
-        'pending': 'backlog',
-        'planning': 'in_progress', // Task is in planning phase (spec creation running)
-        'in_progress': 'in_progress',
-        'coding': 'in_progress', // Task is in coding phase
-        'review': 'ai_review',
-        'completed': 'done',
-        'done': 'done',
-        'human_review': 'human_review',
-        'ai_review': 'ai_review',
-        'pr_created': 'pr_created', // PR has been created for this task
-        'backlog': 'backlog',
-        'error': 'error' // Preserves error status from JSON parse failures
-      };
-      const storedStatus = statusMap[plan.status];
-
-      // If user explicitly marked as 'done', always respect that
-      if (storedStatus === 'done') {
-        return { status: 'done' };
-      }
-
-      // If task has a PR created, always respect that status
-      if (storedStatus === 'pr_created') {
-        return { status: 'pr_created' };
-      }
-
-      // If task has an error status, always respect that (from JSON parse failures)
-      if (storedStatus === 'error') {
-        return { status: 'error' };
-      }
-
-      // For other stored statuses, validate against calculated status
-      if (storedStatus) {
-        // Planning/coding status from the backend should be respected even if subtasks aren't in progress yet
-        // This happens when a task is in planning phase (creating spec) but no subtasks have been started
-        const isActiveProcessStatus = (plan.status as string) === 'planning' || (plan.status as string) === 'coding' || (plan.status as string) === 'in_progress';
-
-        // Check if this is a plan review (spec approval stage before coding starts)
-        // planStatus: "review" indicates spec creation is complete and awaiting user approval
-        const isPlanReviewStage = (plan as unknown as { planStatus?: string })?.planStatus === 'review';
-
-        // Determine if there is remaining work to do
-        // True if: no subtasks exist yet (planning in progress) OR some subtasks are incomplete
-        // This prevents 'in_progress' from overriding 'human_review' when all work is done
-        const hasRemainingWork = allSubtasks.length === 0 || allSubtasks.some((s) => s.status !== 'completed');
-
-        const isStoredStatusValid =
-          (storedStatus === calculatedStatus) || // Matches calculated
-          (storedStatus === 'human_review' && (calculatedStatus === 'ai_review' || calculatedStatus === 'in_progress')) || // Human review is more advanced than ai_review or in_progress (fixes status loop bug)
-          (storedStatus === 'human_review' && isPlanReviewStage) || // Plan review stage (awaiting spec approval)
-          (isActiveProcessStatus && storedStatus === 'in_progress' && hasRemainingWork); // Planning/coding phases should show as in_progress ONLY when there's remaining work
-
-        if (isStoredStatusValid) {
-          // Preserve reviewReason for human_review status
-          if (storedStatus === 'human_review' && !reviewReason) {
-            // Infer reason from subtask states or plan review stage
-            const hasFailedSubtasks = allSubtasks.some((s) => s.status === 'failed');
-            const allCompleted = allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed');
-            if (hasFailedSubtasks) {
-              reviewReason = 'errors';
-            } else if (allCompleted) {
-              reviewReason = 'completed';
-            } else if (isPlanReviewStage) {
-              reviewReason = 'plan_review';
-            }
-          }
-          return { status: storedStatus, reviewReason: storedStatus === 'human_review' ? reviewReason : undefined };
-        }
-      }
-    }
-
-    // SECOND: Check QA report file for additional status info
-    const qaReportPath = path.join(specPath, AUTO_BUILD_PATHS.QA_REPORT);
-    if (existsSync(qaReportPath)) {
-      try {
-        const content = readFileSync(qaReportPath, 'utf-8');
-        if (content.includes('REJECTED') || content.includes('FAILED')) {
-          return { status: 'human_review', reviewReason: 'qa_rejected' };
-        }
-        if (content.includes('PASSED') || content.includes('APPROVED')) {
-          // QA passed - if all subtasks done, move to human_review
-          if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
-            return { status: 'human_review', reviewReason: 'completed' };
-          }
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
+    // Log calculated status (fallback path - no explicit status was set)
+    debugLog('[determineTaskStatusAndReason] Status calculated from subtasks (fallback):', {
+      planStatus: plan?.status || 'none',
+      calculatedStatus,
+      reviewReason,
+      subtaskStats: {
+        total: allSubtasks.length,
+        completed: allSubtasks.filter((s) => s.status === 'completed').length,
+        inProgress: allSubtasks.filter((s) => s.status === 'in_progress').length,
+        failed: allSubtasks.filter((s) => s.status === 'failed').length,
+        pending: allSubtasks.filter((s) => s.status === 'pending').length
+      },
+      isManual: metadata?.sourceType === 'manual'
+    });
 
     return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
-  }
-
-  /**
-   * Validate taskId to prevent path traversal attacks
-   * Returns true if taskId is safe to use in path operations
-   */
-  private isValidTaskId(taskId: string): boolean {
-    // Reject empty, null/undefined, or strings with path traversal characters
-    if (!taskId || typeof taskId !== 'string') return false;
-    if (taskId.includes('/') || taskId.includes('\\')) return false;
-    if (taskId === '.' || taskId === '..') return false;
-    if (taskId.includes('\0')) return false; // Null byte injection
-    return true;
-  }
-
-  /**
-   * Find ALL spec paths for a task, checking main directory and worktrees
-   * A task can exist in multiple locations (main + worktree), so return all paths
-   */
-  private findAllSpecPaths(projectPath: string, specsBaseDir: string, taskId: string): string[] {
-    // Validate taskId to prevent path traversal
-    if (!this.isValidTaskId(taskId)) {
-      console.error(`[ProjectStore] findAllSpecPaths: Invalid taskId rejected: ${taskId}`);
-      return [];
-    }
-
-    const paths: string[] = [];
-
-    // 1. Check main specs directory
-    const mainSpecPath = path.join(projectPath, specsBaseDir, taskId);
-    if (existsSync(mainSpecPath)) {
-      paths.push(mainSpecPath);
-    }
-
-    // 2. Check worktrees
-    const worktreesDir = getTaskWorktreeDir(projectPath);
-    if (existsSync(worktreesDir)) {
-      try {
-        const worktrees = readdirSync(worktreesDir, { withFileTypes: true });
-        for (const worktree of worktrees) {
-          if (!worktree.isDirectory()) continue;
-          const worktreeSpecPath = path.join(worktreesDir, worktree.name, specsBaseDir, taskId);
-          if (existsSync(worktreeSpecPath)) {
-            paths.push(worktreeSpecPath);
-          }
-        }
-      } catch {
-        // Ignore errors reading worktrees
-      }
-    }
-
-    return paths;
   }
 
   /**
@@ -760,7 +755,7 @@ export class ProjectStore {
 
     for (const taskId of taskIds) {
       // Find ALL locations where this task exists (main + worktrees)
-      const specPaths = this.findAllSpecPaths(project.path, specsBaseDir, taskId);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, taskId);
 
       // If spec directory doesn't exist anywhere, skip gracefully
       if (specPaths.length === 0) {
@@ -823,7 +818,7 @@ export class ProjectStore {
 
     for (const taskId of taskIds) {
       // Find ALL locations where this task exists (main + worktrees)
-      const specPaths = this.findAllSpecPaths(project.path, specsBaseDir, taskId);
+      const specPaths = findAllSpecPaths(project.path, specsBaseDir, taskId);
 
       if (specPaths.length === 0) {
         console.warn(`[ProjectStore] unarchiveTasks: Spec directory not found for task ${taskId}`);

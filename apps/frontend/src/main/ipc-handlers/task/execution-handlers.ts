@@ -17,6 +17,7 @@ import {
 } from './plan-file-utils';
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
+import { getIsolatedGitEnv } from '../../utils/git-isolation';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -390,6 +391,7 @@ export function registerTaskExecutionHandlers(
           return { success: false, error: 'Failed to write QA report file' };
         }
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -398,25 +400,41 @@ export function registerTaskExecutionHandlers(
             'done'
           );
         }
+
+        // CRITICAL: Persist 'done' status to implementation_plan.json
+        // Without this, the old status would be shown after page refresh since
+        // getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'done', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted approved status (done) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist approved status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
+        }
       } else {
         // Reset and discard all changes from worktree merge in main
         // The worktree still has all changes, so nothing is lost
         if (hasWorktree) {
           // Step 1: Unstage all changes
-          const resetResult = spawnSync('git', ['reset', 'HEAD'], {
+          const resetResult = spawnSync(getToolPath('git'), ['reset', 'HEAD'], {
             cwd: project.path,
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: getIsolatedGitEnv()
           });
           if (resetResult.status === 0) {
             console.log('[TASK_REVIEW] Unstaged changes in main');
           }
 
           // Step 2: Discard all working tree changes (restore to pre-merge state)
-          const checkoutResult = spawnSync('git', ['checkout', '--', '.'], {
+          const checkoutResult = spawnSync(getToolPath('git'), ['checkout', '--', '.'], {
             cwd: project.path,
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: getIsolatedGitEnv()
           });
           if (checkoutResult.status === 0) {
             console.log('[TASK_REVIEW] Discarded working tree changes in main');
@@ -424,10 +442,11 @@ export function registerTaskExecutionHandlers(
 
           // Step 3: Clean untracked files that came from the merge
           // IMPORTANT: Exclude .auto-claude directory to preserve specs and worktree data
-          const cleanResult = spawnSync('git', ['clean', '-fd', '-e', '.auto-claude'], {
+          const cleanResult = spawnSync(getToolPath('git'), ['clean', '-fd', '-e', '.auto-claude'], {
             cwd: project.path,
             encoding: 'utf-8',
-            stdio: 'pipe'
+            stdio: 'pipe',
+            env: getIsolatedGitEnv()
           });
           if (cleanResult.status === 0) {
             console.log('[TASK_REVIEW] Cleaned untracked files in main (excluding .auto-claude)');
@@ -515,6 +534,7 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Starting QA process with projectPath:', qaProjectPath);
         agentManager.startQAProcess(taskId, qaProjectPath, task.specId);
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -522,6 +542,20 @@ export function registerTaskExecutionHandlers(
             taskId,
             'in_progress'
           );
+        }
+
+        // CRITICAL: Persist 'in_progress' status to implementation_plan.json
+        // Without this, the old status (e.g., 'human_review') would be shown after page refresh
+        // since getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'in_progress', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted rejected status (in_progress) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist rejected status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
         }
       }
 
@@ -569,7 +603,8 @@ export function registerTaskExecutionHandlers(
                 branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
                   cwd: worktreePath,
                   encoding: 'utf-8',
-                  timeout: 30000
+                  timeout: 30000,
+                  env: getIsolatedGitEnv()
                 }).trim();
               } catch (branchError) {
                 // If we can't get branch name, use the default pattern
@@ -582,7 +617,8 @@ export function registerTaskExecutionHandlers(
               execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
                 cwd: project.path,
                 encoding: 'utf-8',
-                timeout: 30000
+                timeout: 30000,
+                env: getIsolatedGitEnv()
               });
               console.warn(`[TASK_UPDATE_STATUS] Worktree removed: ${worktreePath}`);
 
@@ -591,7 +627,8 @@ export function registerTaskExecutionHandlers(
                 execFileSync(getToolPath('git'), ['branch', '-D', branch], {
                   cwd: project.path,
                   encoding: 'utf-8',
-                  timeout: 30000
+                  timeout: 30000,
+                  env: getIsolatedGitEnv()
                 });
                 console.warn(`[TASK_UPDATE_STATUS] Branch deleted: ${branch}`);
               } catch (branchDeleteError) {
@@ -957,6 +994,10 @@ export function registerTaskExecutionHandlers(
               };
             }
 
+            // CRITICAL: Invalidate cache AFTER file writes complete
+            // This ensures getTasks() returns fresh data reflecting the recovery
+            projectStore.invalidateTasksCache(project.id);
+
             return {
               success: true,
               data: {
@@ -1018,6 +1059,10 @@ export function registerTaskExecutionHandlers(
               error: 'Failed to write plan file during recovery'
             };
           }
+
+          // CRITICAL: Invalidate cache AFTER file writes complete
+          // This ensures getTasks() returns fresh data reflecting the recovery
+          projectStore.invalidateTasksCache(project.id);
         }
 
         // Stop file watcher if it was watching this task
@@ -1025,7 +1070,7 @@ export function registerTaskExecutionHandlers(
 
         // Auto-restart the task if requested
         let autoRestarted = false;
-        if (autoRestart && project) {
+        if (autoRestart) {
           // Check git status before auto-restarting
           const gitStatusForRestart = checkGitStatus(project.path);
           if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
@@ -1094,6 +1139,10 @@ export function registerTaskExecutionHandlers(
                   // The plan status will be updated by the agent when it starts
                 }
               }
+
+              // CRITICAL: Invalidate cache AFTER file writes complete
+              // This ensures getTasks() returns fresh data reflecting the restart status
+              projectStore.invalidateTasksCache(project.id);
             }
 
             // Start the task execution
