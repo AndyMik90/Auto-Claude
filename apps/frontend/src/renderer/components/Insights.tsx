@@ -238,10 +238,21 @@ export function Insights({ projectId }: InsightsProps) {
 
     setImageError(null);
 
-    // Process image items (will be limited during state update)
+    // Upfront slot check for performance: avoid processing images we can't use.
+    // Note: This uses images.length which may be slightly stale, but the functional
+    // setImages below provides atomic correctness even in concurrent scenarios.
+    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+    if (remainingSlots <= 0) {
+      setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+      return;
+    }
+
+    // Process image items (limit upfront to avoid extra base64/thumbnail work)
     const newImages: ImageAttachment[] = [];
 
     for (const item of imageItems) {
+      // Stop processing if we've filled available slots
+      if (newImages.length >= remainingSlots) break;
       const file = item.getAsFile();
       if (!file) continue;
 
@@ -308,7 +319,7 @@ export function Insights({ projectId }: InsightsProps) {
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
-  }, [t]);
+  }, [images.length, t]);
 
   /**
    * Remove an image from the attachments
@@ -363,10 +374,31 @@ export function Insights({ projectId }: InsightsProps) {
 
       setImageError(null);
 
-      // Process image files (will be limited during state update)
+      // Upfront slot check for performance: avoid processing images we can't use.
+      // Note: This uses images.length which may be slightly stale, but the functional
+      // setImages below provides atomic correctness even in concurrent scenarios.
+      const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+      if (remainingSlots <= 0) {
+        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+        return;
+      }
+
+      // Process image files (limit upfront to avoid extra base64/thumbnail work)
       const newImages: ImageAttachment[] = [];
 
       for (const file of imageFiles) {
+        // Stop processing if we've filled available slots
+        if (newImages.length >= remainingSlots) break;
+
+        // Check file size for large file warning
+        if (file.size > MAX_IMAGE_SIZE) {
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          setImageError(
+            t('tasks:images.largeFileWarning', { name: file.name, size: sizeMB })
+          );
+          // Still allow the upload, just warn
+        }
+
         // Validate image type
         if (!isValidImageMimeType(file.type)) {
           setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
@@ -413,7 +445,7 @@ export function Insights({ projectId }: InsightsProps) {
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [status.phase, t]
+    [images.length, status.phase, t]
   );
 
   const handleNewSession = async () => {
