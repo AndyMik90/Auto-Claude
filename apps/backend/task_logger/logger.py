@@ -319,12 +319,11 @@ class TaskLogger:
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
         # Sanitize content and detail before storage
-        if content or detail:
-            if content:
-                content = strip_ansi_codes(content)
+        if content:
+            content = strip_ansi_codes(content)
 
-            if detail:
-                detail = strip_ansi_codes(detail)
+        if detail:
+            detail = strip_ansi_codes(detail)
 
         entry = LogEntry(
             timestamp=self._timestamp(),
@@ -498,9 +497,6 @@ class TaskLogger:
         content = f"[{tool_name}] {status}"
         if display_result:
             content += f": {display_result}"
-
-        if content:
-            content = strip_ansi_codes(content)
 
         # Sanitize before truncating detail
         stored_detail = strip_ansi_codes(detail) if detail else None
