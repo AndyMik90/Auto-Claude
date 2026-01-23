@@ -713,7 +713,8 @@
       "duplicateName": "A preset with this name already exists",
       "saved": "Preset \"{{name}}\" saved",
       "deleted": "Preset \"{{name}}\" deleted",
-      "unknownFont": "Unknown"
+      "unknownFont": "Unknown",
+      "applyFailed": "Failed to apply preset \"{{name}}\""
     },
     "livePreview": {
       "title": "Live Preview",

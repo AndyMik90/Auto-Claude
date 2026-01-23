@@ -29,8 +29,18 @@ export function TerminalFontSettings() {
   const { t } = useTranslation('settings');
   const { toast } = useToast();
 
-  // Get current settings from store (triggers re-render on changes)
-  const settings = useTerminalFontSettingsStore();
+  // Get current settings from store using selector to exclude action functions
+  const settings = useTerminalFontSettingsStore((state) => ({
+    fontFamily: state.fontFamily,
+    fontSize: state.fontSize,
+    fontWeight: state.fontWeight,
+    lineHeight: state.lineHeight,
+    letterSpacing: state.letterSpacing,
+    cursorStyle: state.cursorStyle,
+    cursorBlink: state.cursorBlink,
+    cursorAccentColor: state.cursorAccentColor,
+    scrollback: state.scrollback,
+  }));
 
   // Get action methods from store
   const updateSettings = useTerminalFontSettingsStore((state) => state.applySettings);

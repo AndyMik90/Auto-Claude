@@ -7,6 +7,16 @@ import { Label } from '../../ui/label';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
 import { useTerminalFontSettingsStore } from '../../../stores/terminal-font-settings-store';
 import { getOS } from '../../../lib/os-detection';
+import {
+  isValidFontSize,
+  isValidFontWeight,
+  isValidLineHeight,
+  isValidLetterSpacing,
+  isValidScrollback,
+  isValidCursorStyle,
+  isValidHexColor,
+  isValidFontFamily,
+} from '../../../lib/terminal-font-constants';
 
 interface PresetsPanelProps {
   currentSettings: TerminalFontSettings;
@@ -55,21 +65,40 @@ interface CustomPreset {
 
 /**
  * Validates that a value has the required structure of a CustomPreset
+ * including validation of nested settings values
  */
 function isValidCustomPreset(value: unknown): value is CustomPreset {
   if (!value || typeof value !== 'object') {
     return false;
   }
   const obj = value as Record<string, unknown>;
+
+  // Validate structure
+  if (
+    typeof obj.id !== 'string' ||
+    obj.id.length === 0 ||
+    typeof obj.name !== 'string' ||
+    obj.name.length === 0 ||
+    typeof obj.settings !== 'object' ||
+    obj.settings === null ||
+    typeof obj.createdAt !== 'number' ||
+    obj.createdAt <= 0
+  ) {
+    return false;
+  }
+
+  // Validate settings values
+  const settings = obj.settings as Record<string, unknown>;
   return (
-    typeof obj.id === 'string' &&
-    obj.id.length > 0 &&
-    typeof obj.name === 'string' &&
-    obj.name.length > 0 &&
-    typeof obj.settings === 'object' &&
-    obj.settings !== null &&
-    typeof obj.createdAt === 'number' &&
-    obj.createdAt > 0
+    isValidFontFamily(settings.fontFamily) &&
+    isValidFontSize(typeof settings.fontSize === 'number' ? settings.fontSize : 0) &&
+    isValidFontWeight(typeof settings.fontWeight === 'number' ? settings.fontWeight : 0) &&
+    isValidLineHeight(typeof settings.lineHeight === 'number' ? settings.lineHeight : 0) &&
+    isValidLetterSpacing(typeof settings.letterSpacing === 'number' ? settings.letterSpacing : 0) &&
+    isValidScrollback(typeof settings.scrollback === 'number' ? settings.scrollback : 0) &&
+    isValidCursorStyle(settings.cursorStyle as string) &&
+    typeof settings.cursorBlink === 'boolean' &&
+    isValidHexColor(settings.cursorAccentColor as string)
   );
 }
 
@@ -171,7 +200,18 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
   // Handle applying a custom preset
   const handleApplyCustomPreset = (preset: CustomPreset) => {
     // Apply all settings from the preset using the store's applySettings method
-    applySettings(preset.settings);
+    const success = applySettings(preset.settings);
+
+    // Show error toast if application failed
+    if (!success) {
+      toast({
+        variant: 'destructive',
+        title: t('terminalFonts.presets.applyFailed', {
+          defaultValue: 'Failed to apply preset "{{name}}"',
+          name: preset.name,
+        }),
+      });
+    }
   };
 
   // Handle deleting a custom preset
