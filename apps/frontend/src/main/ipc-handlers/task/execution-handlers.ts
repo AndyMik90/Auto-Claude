@@ -667,6 +667,10 @@ export function registerTaskExecutionHandlers(
 
       // Validate status transition - 'human_review' requires actual work to have been done
       // This prevents tasks from being incorrectly marked as ready for review when execution failed
+      //
+      // STATUS CONTRACT: All methodologies (native, BMAD, future plugins) write to
+      // implementation_plan.json with standard status fields. We check this file to
+      // determine if the task is actually ready for review.
       if (status === 'human_review') {
         const specsBaseDirForValidation = getSpecsDir(project.autoBuildPath);
         const specDirForValidation = path.join(
@@ -674,24 +678,56 @@ export function registerTaskExecutionHandlers(
           specsBaseDirForValidation,
           task.specId
         );
-        const specFilePath = path.join(specDirForValidation, AUTO_BUILD_PATHS.SPEC_FILE);
+        const planPath = path.join(specDirForValidation, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
 
-        // Check if spec.md exists and has meaningful content (at least 100 chars)
-        const MIN_SPEC_CONTENT_LENGTH = 100;
-        let specContent = '';
+        let canTransition = false;
+        let currentStatus = '';
+
+        // Check implementation_plan.json status (works for ALL methodologies)
         try {
-          if (existsSync(specFilePath)) {
-            specContent = readFileSync(specFilePath, 'utf-8');
+          if (existsSync(planPath)) {
+            const planContent = readFileSync(planPath, 'utf-8');
+            const plan = JSON.parse(planContent);
+            currentStatus = plan.status || '';
+
+            // Allow transition if:
+            // 1. Status is already ai_review or human_review (methodology marked as ready)
+            // 2. QA signoff exists with approved status
+            // 3. For BMAD: methodology wrote human_review status directly
+            if (
+              currentStatus === 'ai_review' ||
+              currentStatus === 'human_review' ||
+              (plan.qa_signoff && plan.qa_signoff.status === 'approved')
+            ) {
+              canTransition = true;
+              console.log(`[TASK_UPDATE_STATUS] Task ${taskId} validated for human_review transition (status: ${currentStatus}, methodology: ${plan.methodology || 'native'})`);
+            }
           }
-        } catch {
-          // Ignore read errors - treat as empty spec
+        } catch (e) {
+          console.warn(`[TASK_UPDATE_STATUS] Error reading plan: ${e}`);
         }
 
-        if (!specContent || specContent.length < MIN_SPEC_CONTENT_LENGTH) {
-          console.warn(`[TASK_UPDATE_STATUS] Blocked attempt to set status 'human_review' for task ${taskId}. No spec has been created yet.`);
+        // Fallback: Check for spec.md (legacy support for manual task creation)
+        if (!canTransition) {
+          const specFilePath = path.join(specDirForValidation, AUTO_BUILD_PATHS.SPEC_FILE);
+          try {
+            if (existsSync(specFilePath)) {
+              const specContent = readFileSync(specFilePath, 'utf-8');
+              if (specContent && specContent.length >= 100) {
+                canTransition = true;
+                console.log(`[TASK_UPDATE_STATUS] Task ${taskId} validated via spec.md fallback`);
+              }
+            }
+          } catch {
+            // Ignore
+          }
+        }
+
+        if (!canTransition) {
+          console.warn(`[TASK_UPDATE_STATUS] Blocked human_review transition for task ${taskId}. Current status: ${currentStatus || 'none'}`);
           return {
             success: false,
-            error: "Cannot move to human review - no spec has been created yet. The task must complete processing before review."
+            error: "Cannot move to human review - the task must complete processing first. Wait for the AI to finish or check if it encountered an error."
           };
         }
       }

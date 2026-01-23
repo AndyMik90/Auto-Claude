@@ -236,6 +236,40 @@ class ProgressStatus(Enum):
     FAILED = "failed"
 
 
+class TaskStatus(Enum):
+    """Task status values for frontend kanban board.
+
+    This is the STATUS CONTRACT that ALL methodologies must use to communicate
+    task state to the frontend. Methodologies write these values to
+    implementation_plan.json for the frontend to read.
+
+    The frontend uses these values to place tasks in the correct column:
+    - backlog: Task is waiting to start
+    - in_progress: Task is actively being worked on
+    - ai_review: All work complete, waiting for AI/QA validation
+    - human_review: AI approved, waiting for human review
+    - done: Task is complete and approved
+    """
+
+    BACKLOG = "backlog"
+    IN_PROGRESS = "in_progress"
+    AI_REVIEW = "ai_review"
+    HUMAN_REVIEW = "human_review"
+    DONE = "done"
+
+
+class PlanStatus(Enum):
+    """Plan status values for tracking methodology progress.
+
+    Complements TaskStatus with more granular progress information.
+    """
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    REVIEW = "review"
+    COMPLETED = "completed"
+
+
 # =============================================================================
 # Supporting Dataclasses
 # =============================================================================
@@ -468,6 +502,73 @@ class MethodologyInfo:
     execution_modes: list[str] = field(default_factory=list)
     is_verified: bool = False
     install_path: str = ""
+
+
+# =============================================================================
+# Task Status Contract (Required for Frontend Integration)
+# =============================================================================
+
+
+@dataclass
+class TaskStatusContract:
+    """Status contract that ALL methodologies must write to implementation_plan.json.
+
+    This is the UNIFIED STATUS INTERFACE for the frontend. Every methodology
+    (native, BMAD, and future plugins) MUST write these fields to
+    implementation_plan.json for proper frontend kanban integration.
+
+    The frontend reads ONLY these fields for status transitions - it does NOT
+    care about methodology-specific fields like subtasks, phases, artifacts, etc.
+
+    Attributes:
+        status: Task status for kanban column (backlog, in_progress, ai_review, human_review, done)
+        plan_status: Granular progress status (pending, in_progress, review, completed)
+        methodology: Name of the methodology running this task
+        updated_at: ISO timestamp of last update
+        feature: Task name/description (used as fallback title)
+        qa_signoff: Optional QA approval info (required for human_review transition)
+
+    Usage:
+        All methodologies should call write_task_status() at key transitions:
+        - When starting: status=in_progress
+        - When work complete, awaiting validation: status=ai_review
+        - When AI/QA approved: status=human_review, qa_signoff={status: approved}
+        - When human approved: status=done
+
+    Example:
+        from methodologies.status_writer import write_task_status
+
+        # In your methodology when work completes:
+        write_task_status(
+            spec_dir=self.spec_dir,
+            status=TaskStatus.HUMAN_REVIEW,
+            plan_status=PlanStatus.REVIEW,
+            methodology="bmad",
+            feature="My Feature",
+            qa_signoff={"status": "approved", "methodology": "bmad"}
+        )
+    """
+
+    status: TaskStatus
+    plan_status: PlanStatus
+    methodology: str
+    updated_at: str  # ISO format timestamp
+    feature: str = ""  # Task name/description
+    qa_signoff: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {
+            "status": self.status.value,
+            "planStatus": self.plan_status.value,
+            "methodology": self.methodology,
+            "updated_at": self.updated_at,
+        }
+        if self.feature:
+            result["feature"] = self.feature
+        if self.qa_signoff:
+            result["qa_signoff"] = self.qa_signoff
+        return result
 
 
 # =============================================================================

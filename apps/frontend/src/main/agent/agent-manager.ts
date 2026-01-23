@@ -178,6 +178,11 @@ export class AgentManager extends EventEmitter {
       args.push('--methodology', metadata.methodology);
     }
 
+    // Pass complexity level if specified (maps to BMAD tracks: quick→QUICK_FLOW, standard→BMAD_METHOD, complex→ENTERPRISE)
+    if (metadata?.executionComplexity && metadata.executionComplexity !== 'auto') {
+      args.push('--complexity', metadata.executionComplexity);
+    }
+
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch);
 

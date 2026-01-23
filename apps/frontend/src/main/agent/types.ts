@@ -99,6 +99,9 @@ export interface SpecCreationMetadata {
   useWorktree?: boolean; // If false, use --direct mode (no worktree isolation)
   // Methodology plugin name (e.g., 'native', 'bmad')
   methodology?: string;
+  // Task execution complexity (auto, quick, standard, complex)
+  // Maps to BMAD tracks: quick→QUICK_FLOW, standard→BMAD_METHOD, complex→ENTERPRISE
+  executionComplexity?: 'auto' | 'quick' | 'standard' | 'complex';
 }
 
 export interface IdeationProgressData {

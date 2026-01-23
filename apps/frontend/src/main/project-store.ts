@@ -175,7 +175,6 @@ export class ProjectStore {
         : null,
       tabOrder: tabState.tabOrder.filter(id => validProjectIds.includes(id))
     };
-    console.log('[ProjectStore] Saving tab state:', this.data.tabState);
     this.save();
   }
 
@@ -253,7 +252,6 @@ export class ProjectStore {
     const now = Date.now();
 
     if (cached && (now - cached.timestamp) < this.CACHE_TTL_MS) {
-      console.debug('[ProjectStore] Returning cached tasks for project:', projectId, '(age:', now - cached.timestamp, 'ms)');
       return cached.tasks;
     }
 
@@ -275,13 +273,11 @@ export class ProjectStore {
     // 1. Scan main project specs directory (source of truth for task existence)
     const mainSpecsDir = path.join(project.path, specsBaseDir);
     const mainSpecIds = new Set<string>();
-    console.warn('[ProjectStore] Main specsDir:', mainSpecsDir, 'exists:', existsSync(mainSpecsDir));
     if (existsSync(mainSpecsDir)) {
       const mainTasks = this.loadTasksFromSpecsDir(mainSpecsDir, project.path, 'main', projectId, specsBaseDir);
       allTasks.push(...mainTasks);
       // Track which specs exist in main project
       mainTasks.forEach(t => mainSpecIds.add(t.specId));
-      console.warn('[ProjectStore] Loaded', mainTasks.length, 'tasks from main project');
     }
 
     // 2. Scan worktree specs directories
@@ -306,8 +302,6 @@ export class ProjectStore {
             // Only include worktree tasks if the spec exists in main project
             const validWorktreeTasks = worktreeTasks.filter(t => mainSpecIds.has(t.specId));
             allTasks.push(...validWorktreeTasks);
-            const skipped = worktreeTasks.length - validWorktreeTasks.length;
-            console.debug('[ProjectStore] Loaded', validWorktreeTasks.length, 'tasks from worktree:', worktree.name, skipped > 0 ? `(skipped ${skipped} orphaned)` : '');
           }
         }
       } catch (error) {
@@ -325,11 +319,6 @@ export class ProjectStore {
     }
 
     const tasks = Array.from(taskMap.values());
-    console.warn('[ProjectStore] Scan complete - found', tasks.length, 'unique tasks', {
-      mainTasks: allTasks.filter(t => t.location === 'main').length,
-      worktreeTasks: allTasks.filter(t => t.location === 'worktree').length,
-      deduplicated: allTasks.length - tasks.length
-    });
 
     // Update cache
     this.tasksCache.set(projectId, { tasks, timestamp: now });
@@ -343,7 +332,6 @@ export class ProjectStore {
    */
   invalidateTasksCache(projectId: string): void {
     this.tasksCache.delete(projectId);
-    console.debug('[ProjectStore] Invalidated tasks cache for project:', projectId);
   }
 
   /**
@@ -352,7 +340,6 @@ export class ProjectStore {
    */
   clearTasksCache(): void {
     this.tasksCache.clear();
-    console.debug('[ProjectStore] Cleared all tasks cache');
   }
 
   /**
@@ -389,25 +376,14 @@ export class ProjectStore {
         let hasJsonError = false;
         let jsonErrorMessage = '';
         if (existsSync(planPath)) {
-          console.warn(`[ProjectStore] Loading implementation_plan.json for spec: ${dir.name} from ${location}`);
           try {
             const content = readFileSync(planPath, 'utf-8');
             plan = JSON.parse(content);
-            console.warn(`[ProjectStore] Loaded plan for ${dir.name}:`, {
-              hasDescription: !!plan?.description,
-              hasFeature: !!plan?.feature,
-              status: plan?.status,
-              phaseCount: plan?.phases?.length || 0,
-              subtaskCount: plan?.phases?.flatMap(p => p.subtasks || []).length || 0
-            });
           } catch (err) {
             // Don't skip - create task with error indicator so user knows it exists
             hasJsonError = true;
             jsonErrorMessage = err instanceof Error ? err.message : String(err);
-            console.error(`[ProjectStore] JSON parse error for spec ${dir.name}:`, jsonErrorMessage);
           }
-        } else {
-          console.warn(`[ProjectStore] No implementation_plan.json found for spec: ${dir.name} at ${planPath}`);
         }
 
         // PRIORITY 1: Read description from implementation_plan.json (user's original)

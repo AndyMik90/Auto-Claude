@@ -374,8 +374,8 @@ Examples:
     parser.add_argument(
         "--complexity",
         type=str,
-        choices=["simple", "standard", "complex"],
-        help="Override automatic complexity detection",
+        choices=["quick", "simple", "standard", "complex"],
+        help="Override automatic complexity detection (quick/simple → Quick Flow, standard → BMad Method, complex → Enterprise)",
     )
     parser.add_argument(
         "--project-dir",
