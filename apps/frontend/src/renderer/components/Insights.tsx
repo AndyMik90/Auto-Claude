@@ -426,7 +426,6 @@ export function Insights({ projectId }: InsightsProps) {
     if (sessionId !== session?.id) {
       // Store current state for potential restoration
       const currentImages = images;
-      const currentError = imageError;
 
       // Clear pending images before switching to prevent sending them to wrong session
       setImages([]);
