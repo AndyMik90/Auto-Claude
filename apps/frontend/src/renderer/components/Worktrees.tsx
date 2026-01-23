@@ -664,7 +664,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
           if (result.data.success && result.data.prUrl && !result.data.alreadyExists) {
             // Update task in store
             useTaskStore.getState().updateTask(prTask.id, {
-              status: 'pr_created',
+              status: 'done',
               metadata: { ...prTask.metadata, prUrl: result.data.prUrl }
             });
           }
@@ -1072,7 +1072,7 @@ export function Worktrees({ projectId }: WorktreesProps) {
                               {t('common:buttons.createPR')}
                             </Button>
                           )}
-                          {task?.status === 'pr_created' && task.metadata?.prUrl && (
+                          {task?.status === 'done' && task.metadata?.prUrl && (
                             <Button
                               variant="info"
                               size="sm"

@@ -1465,9 +1465,9 @@ async function updateTaskStatusAfterPRCreation(
 
   // Await status persistence to ensure completion before resolving
   try {
-    const persisted = await persistPlanStatus(planPath, 'pr_created');
+    const persisted = await persistPlanStatus(planPath, 'done');
     result.mainProjectStatus = persisted;
-    debug('Main project status persisted to pr_created:', persisted);
+    debug('Main project status persisted to done:', persisted);
   } catch (err) {
     debug('Failed to persist main project status:', err);
   }
@@ -1484,9 +1484,9 @@ async function updateTaskStatusAfterPRCreation(
     const worktreeMetadataPath = path.join(worktreePath, specsBaseDir, specId, 'task_metadata.json');
 
     try {
-      const persisted = await persistPlanStatus(worktreePlanPath, 'pr_created');
+      const persisted = await persistPlanStatus(worktreePlanPath, 'done');
       result.worktreeStatus = persisted;
-      debug('Worktree status persisted to pr_created:', persisted);
+      debug('Worktree status persisted to done:', persisted);
     } catch (err) {
       debug('Failed to persist worktree status:', err);
     }

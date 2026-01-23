@@ -188,7 +188,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
         // Update single task in store with new status and prUrl (more efficient than reloading all tasks)
         if (result.data.success && result.data.prUrl && !result.data.alreadyExists) {
           useTaskStore.getState().updateTask(task.id, {
-            status: 'pr_created',
+            status: 'done',
             metadata: { ...task.metadata, prUrl: result.data.prUrl }
           });
         }
@@ -221,7 +221,6 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
     if (isStuck) return 'warning';
     switch (status) {
       case 'done':
-      case 'pr_created':
         return 'success';
       case 'human_review':
         return 'purple';
@@ -295,16 +294,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       );
     }
 
-    if (task.status === 'done') {
-      return (
-        <div className="completion-state text-sm flex items-center gap-2 text-success">
-          <CheckCircle2 className="h-5 w-5" />
-          <span className="font-medium">{t('tasks:status.complete')}</span>
-        </div>
-      );
-    }
-
-    if (task.status === 'pr_created') {
+    if (task.status === 'done' && task.metadata?.prUrl) {
       return (
         <div className="flex items-center gap-4">
           <div className="completion-state text-sm flex items-center gap-2 text-success">
@@ -321,6 +311,15 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
               <span className="font-medium">{t(TASK_STATUS_LABELS[task.status])}</span>
             </button>
           )}
+        </div>
+      );
+    }
+
+    if (task.status === 'done') {
+      return (
+        <div className="completion-state text-sm flex items-center gap-2 text-success">
+          <CheckCircle2 className="h-5 w-5" />
+          <span className="font-medium">{t('tasks:status.complete')}</span>
         </div>
       );
     }
