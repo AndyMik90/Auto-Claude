@@ -167,7 +167,8 @@
     "thumbnailAlt": "Message attachment: {{filename}}",
     "countIndicator": "{{count}} image attached ({{remaining}} remaining)",
     "countIndicator_plural": "{{count}} images attached ({{remaining}} remaining)",
-    "largeFileWarning": "\"{{name}}\" is {{size}}MB. Large images may cause performance issues."
+    "largeFileWarning": "\"{{name}}\" is {{size}}MB. Large images may cause performance issues.",
+    "screenshotFilename": "screenshot-{{timestamp}}.{{ext}}"
   },
   "notifications": {
     "backgroundTaskTitle": "Task continues in background",

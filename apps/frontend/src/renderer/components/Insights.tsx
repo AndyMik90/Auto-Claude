@@ -192,9 +192,10 @@ export function Insights({ projectId }: InsightsProps) {
     try {
       await sendMessage(projectId, currentMessage, undefined, currentImages);
     } catch (error) {
-      // Restore user input on error
-      setInputValue(currentMessage);
-      setImages(currentImages);
+      // Restore user input on error, but only if UI is still empty
+      // This prevents clobbering a new draft if the user typed while send was in-flight
+      setInputValue(prev => (prev === '' ? currentMessage : prev));
+      setImages(prev => (prev.length === 0 ? currentImages : prev));
       if (error instanceof SessionImageLimitError) {
         setImageError(t('tasks:insights.sessionImageLimitError', {
           remaining: error.remaining,
@@ -283,7 +284,8 @@ export function Insights({ projectId }: InsightsProps) {
           'image/webp': 'webp',
         };
         const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
-        const baseFilename = `screenshot-${Date.now()}.${extension}`;
+        const timestamp = Date.now();
+        const baseFilename = t('tasks:images.screenshotFilename', { timestamp, ext: extension });
         // Resolve filename to avoid duplicates within the current batch
         const resolvedFilename = resolveFilename(baseFilename, newImages.map(img => img.filename));
 
@@ -841,14 +843,26 @@ function MessageBubble({
                 title={image.filename}
                 onClick={() => {
                   // Open full-size image in new tab
-                  const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
-                  window.open(fullSizeUrl, '_blank');
+                  // Guard against missing data - fallback to thumbnail or skip if neither available
+                  if (image.data) {
+                    const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                    window.open(fullSizeUrl, '_blank');
+                  } else if (image.thumbnail) {
+                    // Fallback to thumbnail if full-size data is missing
+                    window.open(image.thumbnail, '_blank');
+                  }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
-                    window.open(fullSizeUrl, '_blank');
+                    // Guard against missing data - fallback to thumbnail or skip if neither available
+                    if (image.data) {
+                      const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                      window.open(fullSizeUrl, '_blank');
+                    } else if (image.thumbnail) {
+                      // Fallback to thumbnail if full-size data is missing
+                      window.open(image.thumbnail, '_blank');
+                    }
                   }
                 }}
                 aria-label={t('tasks:images.viewFullSizeAriaLabel', { filename: image.filename })}

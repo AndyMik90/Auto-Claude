@@ -166,7 +166,8 @@
     "thumbnailAlt": "Pièce jointe : {{filename}}",
     "countIndicator": "{{count}} image jointe ({{remaining}} restante)",
     "countIndicator_plural": "{{count}} images jointes ({{remaining}} restantes)",
-    "largeFileWarning": "\"{{name}}\" fait {{size}}Mo. Les images volumineuses peuvent causer des problèmes de performance."
+    "largeFileWarning": "\"{{name}}\" fait {{size}}Mo. Les images volumineuses peuvent causer des problèmes de performance.",
+    "screenshotFilename": "capture-{{timestamp}}.{{ext}}"
   },
   "notifications": {
     "backgroundTaskTitle": "La tâche continue en arrière-plan",
