@@ -1,0 +1,132 @@
+{
+  "title": "Analytiques",
+  "description": "Suivez et analysez les modèles d'utilisation de toutes les fonctionnalités",
+  "dateFilter": {
+    "label": "Période",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "last7Days": "7 derniers jours",
+    "thisMonth": "Ce mois-ci",
+    "lastMonth": "Le mois dernier",
+    "last6Months": "6 derniers mois",
+    "thisYear": "Cette année",
+    "allTime": "Tout le temps"
+  },
+  "features": {
+    "overview": "Vue d'ensemble",
+    "kanban": "Tableau Kanban",
+    "insights": "Insights",
+    "roadmap": "Feuille de route",
+    "ideation": "Idéation",
+    "changelog": "Journal des modifications",
+    "githubPRs": "PRs GitHub"
+  },
+  "metrics": {
+    "tokenUsage": {
+      "title": "Utilisation des tokens",
+      "description": "Total des tokens consommés pour toutes les tâches",
+      "total": "Tokens totaux",
+      "average": "Moyenne par tâche",
+      "byPhase": "Tokens par phase"
+    },
+    "duration": {
+      "title": "Durée des tâches",
+      "description": "Temps passé sur les tâches du début à la fin",
+      "total": "Temps total",
+      "average": "Durée moyenne",
+      "byPhase": "Durée par phase"
+    },
+    "successRate": {
+      "title": "Taux de réussite",
+      "description": "État d'achèvement des tâches",
+      "rate": "Taux de réussite",
+      "total": "Tâches totales",
+      "successful": "Réussies",
+      "failed": "Échouées",
+      "inProgress": "En cours"
+    }
+  },
+  "outcomes": {
+    "done": "Terminé",
+    "prCreated": "PR créée",
+    "staged": "Préparé",
+    "error": "Erreur",
+    "inProgress": "En cours",
+    "merged": "Fusionné"
+  },
+  "phases": {
+    "planning": "Planification",
+    "coding": "Codage",
+    "validation": "Validation",
+    "reviewing": "Révision",
+    "fixing": "Correction"
+  },
+  "drillDown": {
+    "levels": {
+      "app": "Application",
+      "feature": "Fonctionnalité",
+      "task": "Tâche",
+      "phase": "Phase",
+      "subagent": "Sous-agent"
+    },
+    "backToOverview": "Retour à la vue d'ensemble",
+    "backTo": "Retour à {{level}}",
+    "viewDetails": "Voir les détails",
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire"
+  },
+  "charts": {
+    "tokens": "Tokens",
+    "duration": "Durée",
+    "tasks": "Tâches",
+    "noData": "Aucune donnée à afficher"
+  },
+  "empty": {
+    "title": "Aucune donnée analytique",
+    "description": "Les analytiques apparaîtront ici lorsque vous commencerez à exécuter des tâches",
+    "noDataForPeriod": "Aucune donnée disponible pour la période sélectionnée",
+    "noDataForFeature": "Aucune donnée disponible pour cette fonctionnalité",
+    "tokenTrackingNotEnabled": "Suivi des tokens pas encore activé",
+    "tokenTrackingDescription": "Le suivi de l'utilisation des tokens sera disponible dans une mise à jour future"
+  },
+  "loading": {
+    "title": "Chargement des analytiques...",
+    "aggregating": "Agrégation des données..."
+  },
+  "errors": {
+    "loadFailed": "Échec du chargement des données analytiques",
+    "aggregationFailed": "Échec de l'agrégation des métriques",
+    "retry": "Réessayer"
+  },
+  "labels": {
+    "tokens": "tokens",
+    "tasks": "tâches",
+    "hours": "heures",
+    "minutes": "minutes",
+    "seconds": "secondes",
+    "percentage": "{{value}} %",
+    "of": "sur",
+    "total": "Total",
+    "average": "Moyenne",
+    "count": "Nombre"
+  },
+  "tooltips": {
+    "tokenUsage": "Total des tokens consommés par les modèles IA lors de l'exécution des tâches",
+    "duration": "Temps écoulé du début à la fin de la tâche",
+    "successRate": "Pourcentage de tâches terminées avec succès (terminées, PR créée ou préparées)",
+    "drillDown": "Cliquez pour voir le détail"
+  },
+  "summary": {
+    "title": "Résumé",
+    "totalTasks": "Tâches totales",
+    "totalTokens": "Tokens totaux",
+    "averageDuration": "Durée moyenne",
+    "successRate": "Taux de réussite",
+    "periodComparison": "vs période précédente"
+  },
+  "actions": {
+    "refresh": "Actualiser les données",
+    "export": "Exporter",
+    "filter": "Filtrer"
+  }
+}
