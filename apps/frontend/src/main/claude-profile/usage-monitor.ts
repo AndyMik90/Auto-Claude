@@ -272,12 +272,40 @@ export class UsageMonitor extends EventEmitter {
     // Fall back to OAuth profile
     const profileManager = getClaudeProfileManager();
     const activeProfile = profileManager.getActiveProfile();
-    if (activeProfile?.oauthToken) {
+    if (activeProfile) {
+      // Check if token is expired - if so, try to sync from system credentials first
+      if (profileManager.isActiveTokenExpired()) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Token expired, attempting to sync from system credentials');
+        }
+        const synced = profileManager.syncProfileTokenFromSystem(activeProfile.id);
+        if (synced) {
+          console.log('[UsageMonitor] Successfully synced fresh token from system credentials');
+        } else if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Failed to sync token from system credentials');
+        }
+      }
+
       const decryptedToken = profileManager.getProfileToken(activeProfile.id);
       if (this.isDebug && decryptedToken) {
         console.warn('[UsageMonitor:TRACE] Using OAuth profile credential:', activeProfile.name);
       }
-      return decryptedToken;
+      if (decryptedToken) {
+        return decryptedToken;
+      }
+
+      // No stored token - try to sync from system credentials
+      if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] No stored token, attempting to sync from system credentials');
+      }
+      const synced = profileManager.syncProfileTokenFromSystem(activeProfile.id);
+      if (synced) {
+        console.log('[UsageMonitor] Successfully synced token from system credentials');
+        const freshToken = profileManager.getProfileToken(activeProfile.id);
+        if (freshToken) {
+          return freshToken;
+        }
+      }
     }
 
     // No credential available
