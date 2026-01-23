@@ -357,10 +357,13 @@ class FeaturesPhase:
         errors = []
         for attempt in range(MAX_RETRIES):
             debug("roadmap_phase", f"Features attempt {attempt + 1}/{MAX_RETRIES}")
-            print_status(
-                f"Running feature generation agent (attempt {attempt + 1})...",
-                "progress",
-            )
+            if attempt > 0:
+                print_status(
+                    f"Retrying feature generation (attempt {attempt + 1})...",
+                    "progress",
+                )
+
+            print_status("Generating features...", "progress")
 
             context = self._build_context()
             success, output = await self.agent_executor.run_agent(
@@ -369,6 +372,8 @@ class FeaturesPhase:
             )
 
             if success and self.roadmap_file.exists():
+                print_status("Prioritizing features...", "progress")
+                print_status("Creating roadmap file...", "progress")
                 validation_result = self._validate_features(attempt)
                 if validation_result is not None:
                     return validation_result
