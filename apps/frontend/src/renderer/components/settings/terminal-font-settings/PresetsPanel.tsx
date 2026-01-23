@@ -241,6 +241,16 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
   // Get current OS name for reset button label
   const currentOS = getOS();
 
+  // Map OS value to localized label
+  const osLabel =
+    currentOS === 'windows'
+      ? t('common:os.windows', { defaultValue: 'Windows' })
+      : currentOS === 'macos'
+        ? t('common:os.macos', { defaultValue: 'macOS' })
+        : currentOS === 'linux'
+          ? t('common:os.linux', { defaultValue: 'Linux' })
+          : t('common:os.unknown', { defaultValue: 'your OS' });
+
   return (
     <div className="space-y-6">
         {/* Built-in Presets */}
@@ -299,7 +309,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                 'border-border hover:border-primary/50 hover:bg-accent/50 text-sm font-medium'
               )}
               title={t('settings:terminalFonts.presets.resetToOS', {
-                os: currentOS === 'windows' ? 'Windows' : currentOS === 'macos' ? 'macOS' : 'Linux',
+                os: osLabel,
                 defaultValue: 'Reset to {{os}} defaults',
               })}
             >
@@ -329,6 +339,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
           <div className="flex items-center gap-2 max-w-md pt-1">
             <input
               type="text"
+              id="newPresetNameInput"
               value={newPresetName}
               onChange={(e) => setNewPresetName(e.target.value)}
               onKeyDown={(e) => {
@@ -338,6 +349,9 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
               }}
               placeholder={t('settings:terminalFonts.presets.presetNamePlaceholder', {
                 defaultValue: 'Preset name...',
+              })}
+              aria-label={t('settings:terminalFonts.presets.presetNameLabel', {
+                defaultValue: 'Preset name',
               })}
               className={cn(
                 'flex-1 h-10 px-3 rounded-lg',
@@ -385,7 +399,12 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">{preset.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {preset.settings.fontFamily[0] ?? t('settings:terminalFonts.presets.unknownFont', { defaultValue: 'Unknown' })}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
+                      {t('settings:terminalFonts.presets.summary', {
+                        font: preset.settings.fontFamily[0] ?? t('settings:terminalFonts.presets.unknownFont', { defaultValue: 'Unknown' }),
+                        size: preset.settings.fontSize,
+                        cursor: preset.settings.cursorStyle,
+                        defaultValue: '{{font}}, {{size}}px, {{cursor}} cursor',
+                      })}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

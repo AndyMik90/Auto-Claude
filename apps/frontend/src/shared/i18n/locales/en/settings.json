@@ -799,7 +799,8 @@
       "decreaseScrollback": "Decrease scrollback by {{step}}",
       "increaseScrollback": "Increase scrollback by {{step}}",
       "lines": "lines",
-      "kValue": "{{value}}K"
+      "kValue": "{{value}}K",
+      "scrollbackValue": "{{value}} lines"
     },
     "presets": {
       "title": "Quick Presets",
@@ -829,7 +830,9 @@
       "saved": "Preset \"{{name}}\" saved",
       "deleted": "Preset \"{{name}}\" deleted",
       "unknownFont": "Unknown",
-      "applyFailed": "Failed to apply preset \"{{name}}\""
+      "applyFailed": "Failed to apply preset \"{{name}}\"",
+      "presetNameLabel": "Preset name",
+      "summary": "{{font}}, {{size}}px, {{cursor}} cursor"
     },
     "livePreview": {
       "title": "Live Preview",

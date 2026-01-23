@@ -94,6 +94,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
                 type="button"
                 key={preset.value}
                 onClick={() => handlePresetChange(preset.value)}
+                aria-pressed={isSelected}
                 className={cn(
                   'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -173,7 +174,10 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
           aria-valuemin={SCROLLBACK_MIN}
           aria-valuemax={SCROLLBACK_MAX}
           aria-valuenow={settings.scrollback}
-          aria-valuetext={`${formatScrollback(settings.scrollback)} ${t('terminalFonts.performanceConfig.lines', { defaultValue: 'lines' })}`}
+          aria-valuetext={t('terminalFonts.performanceConfig.scrollbackValue', {
+            defaultValue: '{{value}} lines',
+            value: formatScrollback(settings.scrollback),
+          })}
           className={cn(...SLIDER_INPUT_CLASSES)}
         />
         <div className="flex justify-between text-xs text-muted-foreground">

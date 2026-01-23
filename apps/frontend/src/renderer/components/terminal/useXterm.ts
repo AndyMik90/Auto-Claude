@@ -6,6 +6,7 @@ import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
 import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
+import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -101,18 +102,9 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     xterm.open(terminalRef.current);
 
     // Platform detection for copy/paste shortcuts
-    // macOS uses system Cmd+V, no custom handler needed
-    const getPlatform = (): string => {
-      // Prefer navigator.userAgentData.platform (modern, non-deprecated)
-      if (navigator.userAgentData?.platform) {
-        return navigator.userAgentData.platform.toLowerCase();
-      }
-      // Fallback to navigator.platform (deprecated but widely supported)
-      return navigator.platform.toLowerCase();
-    };
-    const platform = getPlatform();
-    const isWindows = platform.includes('win');
-    const isLinux = platform.includes('linux');
+    // Use existing os-detection module instead of custom implementation
+    const isWindows = checkIsWindows();
+    const isLinux = checkIsLinux();
 
     // Helper function to handle copy to clipboard
     // Returns true if selection exists and copy was attempted, false if no selection
@@ -182,8 +174,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
       // Handle CTRL+SHIFT+C copy (Linux only - alternative to CTRL+C)
       // NOTE: Check Linux-specific shortcuts BEFORE regular shortcuts to prevent unreachable code
-      const isLinuxCopyShortcut = event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c') && event.type === 'keydown';
-      if (isLinuxCopyShortcut && isLinux) {
+      const platformIsLinuxCopyShortcut = event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c') && event.type === 'keydown';
+      if (platformIsLinuxCopyShortcut && isLinux) {
         if (handleCopyToClipboard()) {
           return false; // Prevent xterm from handling (copy performed)
         }
@@ -192,8 +184,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       }
 
       // Handle CTRL+SHIFT+V paste (Linux only - alternative to CTRL+V)
-      const isLinuxPasteShortcut = event.ctrlKey && event.shiftKey && (event.key === 'V' || event.key === 'v') && event.type === 'keydown';
-      if (isLinuxPasteShortcut && isLinux) {
+      const platformIsLinuxPasteShortcut = event.ctrlKey && event.shiftKey && (event.key === 'V' || event.key === 'v') && event.type === 'keydown';
+      if (platformIsLinuxPasteShortcut && isLinux) {
         event.preventDefault(); // Prevent browser's default paste behavior
         handlePasteFromClipboard();
         return false; // Prevent xterm from sending literal ^V

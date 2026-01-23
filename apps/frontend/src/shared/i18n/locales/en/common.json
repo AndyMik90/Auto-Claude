@@ -88,6 +88,12 @@
     "delete": "Delete",
     "settings": "Settings"
   },
+  "os": {
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+    "unknown": "your OS"
+  },
   "labels": {
     "loading": "Loading...",
     "error": "Error",
