@@ -296,7 +296,11 @@ async function compressImage(
         mimeType: outputMimeType
       });
     };
-    img.onerror = reject;
+    img.onerror = () => {
+      // Clean up image object to prevent memory leak
+      img.src = '';
+      reject(new Error('Failed to load image'));
+    };
     img.src = dataUrl;
   });
 }
@@ -323,13 +327,16 @@ async function convertFilesToImageAttachments(files: File[]): Promise<ImageAttac
     const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
     const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
 
-    attachments.push({
+    const attachment: ImageAttachment = {
       id: crypto.randomUUID(),
       filename: file.name,
       mimeType: compressed.mimeType, // Use the actual output MIME type from compression
       size: compressedSize, // Track compressed size, not original file size
       data: compressedBase64 // Store compressed base64 without prefix
-    });
+    };
+    // Mark as compressed to avoid re-compression
+    (attachment as ImageAttachment & { _compressed?: boolean })._compressed = true;
+    attachments.push(attachment);
   }
 
   return attachments;
@@ -344,23 +351,31 @@ async function ensureImageAttachmentsCompressed(attachments: ImageAttachment[]):
   const result: ImageAttachment[] = [];
 
   for (const attachment of attachments) {
-    // Reconstruct data URL from attachment
-    const dataUrl = `data:${attachment.mimeType};base64,${attachment.data}`;
+    // Check if already compressed (has the _compressed flag)
+    const isCompressed = (attachment as ImageAttachment & { _compressed?: boolean })._compressed;
 
-    // Compress to ensure consistent sizing and format
-    const compressed = await compressImage(dataUrl);
+    if (isCompressed) {
+      // Already compressed, just copy as-is
+      result.push(attachment);
+    } else {
+      // Reconstruct data URL from attachment
+      const dataUrl = `data:${attachment.mimeType};base64,${attachment.data}`;
 
-    // Calculate compressed size from base64 string
-    // Base64 length to bytes: Math.ceil((b64Length * 3) / 4) minus padding
-    const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
-    const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
+      // Compress to ensure consistent sizing and format
+      const compressed = await compressImage(dataUrl);
 
-    result.push({
-      ...attachment,
-      mimeType: compressed.mimeType,
-      size: compressedSize,
-      data: compressedBase64
-    });
+      // Calculate compressed size from base64 string
+      // Base64 length to bytes: Math.ceil((b64Length * 3) / 4) minus padding
+      const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
+      const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
+
+      result.push({
+        ...attachment,
+        mimeType: compressed.mimeType,
+        size: compressedSize,
+        data: compressedBase64
+      });
+    }
   }
 
   return result;
@@ -498,6 +513,8 @@ export async function switchSession(projectId: string, sessionId: string): Promi
     useInsightsStore.getState().clearToolsUsed();
     useInsightsStore.getState().setCurrentTool(null);
     useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
+  } else {
+    throw new Error(result.error || 'Failed to switch session');
   }
 }
 

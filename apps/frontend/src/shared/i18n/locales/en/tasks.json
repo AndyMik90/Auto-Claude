@@ -218,7 +218,8 @@
     "suggestionImprovements": "Suggest improvements for code quality",
     "suggestionFeatures": "What features could I add next?",
     "suggestionSecurity": "Are there any security concerns?",
-    "sessionImageLimitError": "Session image limit reached. Can only add {{remaining}} more image{{plural}}. Start a new conversation for more."
+    "sessionImageLimitError": "Session image limit reached. Can only add {{remaining}} more image{{plural}}. Start a new conversation for more.",
+    "sessionSwitchError": "Failed to switch sessions. Please try again."
   },
   "review": {
     "mergeTooltip": "Merges changes from the task's worktree branch back to your base branch. AI will resolve any conflicts. You can then choose whether to keep or remove the worktree."

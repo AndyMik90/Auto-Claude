@@ -434,6 +434,8 @@ export function Insights({ projectId }: InsightsProps) {
         // Restore state on failure
         setImages(currentImages);
         setImageError(currentError);
+        // Show error message to user
+        setImageError(error instanceof Error ? error.message : t('tasks:insights.sessionSwitchError'));
       }
     }
   };
