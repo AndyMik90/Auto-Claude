@@ -218,7 +218,7 @@
     "suggestionImprovements": "Suggérer des améliorations pour la qualité du code",
     "suggestionFeatures": "Quelles fonctionnalités puis-je ajouter ensuite ?",
     "suggestionSecurity": "Y a-t-il des préoccupations de sécurité ?",
-    "sessionImageLimitError": "Limite d'images de session atteinte. Vous pouvez uniquement ajouter {{remaining}} image{{plural}} supplémentaire{{plural}}. Commencez une nouvelle conversation pour en ajouter plus.",
+    "sessionImageLimitError": "Limite d'images de session atteinte. Vous pouvez uniquement ajouter {{remaining}} image{{plural}} supplémentaire. Commencez une nouvelle conversation pour en ajouter plus.",
     "sessionSwitchError": "Échec du changement de session. Veuillez réessayer."
   },
   "review": {

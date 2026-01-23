@@ -480,8 +480,9 @@ export function Insights({ projectId }: InsightsProps) {
       try {
         await switchSession(projectId, sessionId);
       } catch (error) {
-        // Restore state on failure
-        setImages(currentImages);
+        // Restore state on failure, but only if user hasn't added new images
+        // This prevents overwriting new images pasted during the async switchSession call
+        setImages(prev => (prev.length === 0 ? currentImages : prev));
         // Show error message to user
         console.error('[Insights] switchSession failed:', error);
         setImageError(t('tasks:insights.sessionSwitchError'));
@@ -704,7 +705,7 @@ export function Insights({ projectId }: InsightsProps) {
                   {image.thumbnail ? (
                     <img
                       src={image.thumbnail}
-                      alt={image.filename}
+                      alt={t('tasks:images.thumbnailAlt', { filename: image.filename })}
                       className="w-full h-full object-cover"
                     />
                   ) : (
