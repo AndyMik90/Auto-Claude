@@ -87,7 +87,8 @@
     "noDataForPeriod": "No data available for the selected period",
     "noDataForFeature": "No data available for this feature",
     "tokenTrackingNotEnabled": "No token usage recorded",
-    "tokenTrackingDescription": "Token data will appear here as tasks are completed"
+    "tokenTrackingDescription": "Token data will appear here as tasks are completed",
+    "noTasks": "No tasks found for this filter"
   },
   "loading": {
     "title": "Loading analytics...",
@@ -140,5 +141,17 @@
     "refresh": "Refresh Data",
     "export": "Export",
     "filter": "Filter"
+  },
+  "sorting": {
+    "showing": "{{count}} tasks",
+    "sortBy": "Sort by",
+    "dateNewest": "Date (Newest)",
+    "dateOldest": "Date (Oldest)",
+    "tokensHighest": "Tokens (Highest)",
+    "tokensLowest": "Tokens (Lowest)",
+    "durationSlowest": "Duration (Slowest)",
+    "durationFastest": "Duration (Fastest)",
+    "costHighest": "Cost (Highest)",
+    "costLowest": "Cost (Lowest)"
   }
 }

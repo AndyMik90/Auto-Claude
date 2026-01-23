@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 import {
   BarChart3,
   RefreshCw,
@@ -10,7 +11,8 @@ import {
   XCircle,
   TrendingUp,
   Activity,
-  DollarSign
+  DollarSign,
+  Coins
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -25,8 +27,9 @@ import {
 import { DateFilterBar } from './analytics/DateFilterBar';
 import { FeatureTabs } from './analytics/FeatureTabs';
 import { MetricCard } from './analytics/MetricCard';
+import { TaskListWithSorting } from './analytics/TaskListWithSorting';
+import { formatTokenCount } from './analytics/TokenUsageChart';
 import type { DateFilter, FeatureType, FeatureMetrics } from '../../shared/types';
-import { formatCost, formatTokenCount } from '../../shared/constants/pricing';
 
 interface AnalyticsProps {
   projectId: string;
@@ -109,6 +112,20 @@ export function Analytics({ projectId }: AnalyticsProps) {
     activeFeature === 'overview' || !summary
       ? null
       : summary.byFeature[activeFeature] || null;
+
+  // Get filtered tasks for current feature
+  const featureTasks = useMemo(() => {
+    if (activeFeature === 'overview' || !summary) return [];
+    return summary.tasks.filter((task) => task.feature === activeFeature);
+  }, [summary, activeFeature]);
+
+  // Calculate feature-level cost from tasks
+  const featureCost = useMemo(() => {
+    return featureTasks.reduce((sum, task) => {
+      const cost = task.costDetails?.actualCostUsd || task.costDetails?.estimatedApiCostUsd || 0;
+      return sum + cost;
+    }, 0);
+  }, [featureTasks]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -359,7 +376,7 @@ export function Analytics({ projectId }: AnalyticsProps) {
                   {currentFeatureMetrics && currentFeatureMetrics.taskCount > 0 ? (
                     <>
                       {/* Feature Metrics */}
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                         <MetricCard
                           label={t('analytics:labels.tasks')}
                           value={currentFeatureMetrics.taskCount}
@@ -369,6 +386,18 @@ export function Analytics({ projectId }: AnalyticsProps) {
                           label={t('analytics:summary.averageDuration')}
                           value={formatDuration(currentFeatureMetrics.averageDurationMs)}
                           icon={<Clock className="h-4 w-4" />}
+                        />
+                        <MetricCard
+                          label={t('analytics:metrics.tokenUsage.total')}
+                          value={formatTokenCount(currentFeatureMetrics.tokenCount)}
+                          icon={<Coins className="h-4 w-4" />}
+                          tooltip={t('analytics:tooltips.tokenUsage')}
+                        />
+                        <MetricCard
+                          label={t('analytics:labels.actualCost')}
+                          value={`$${featureCost.toFixed(2)}`}
+                          icon={<DollarSign className="h-4 w-4" />}
+                          tooltip={t('analytics:tooltips.cost')}
                         />
                         <MetricCard
                           label={t('analytics:metrics.successRate.successful')}
@@ -384,23 +413,8 @@ export function Analytics({ projectId }: AnalyticsProps) {
                         />
                       </div>
 
-                      {/* Task List for this Feature */}
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">
-                            {t('analytics:labels.tasks')}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {summary.tasks
-                              .filter((task) => task.feature === activeFeature)
-                              .map((task) => (
-                                <TaskRow key={task.taskId} task={task} t={t} />
-                              ))}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      {/* Task List for this Feature with Sorting */}
+                      <TaskListWithSorting tasks={featureTasks} />
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-16">
@@ -494,86 +508,3 @@ function FeatureMetricsCard({ feature, metrics, onClick }: FeatureMetricsCardPro
   );
 }
 
-/**
- * Task row component for the feature-specific task list
- */
-interface TaskRowProps {
-  task: {
-    taskId: string;
-    title: string;
-    totalTokens: number;
-    totalDurationMs: number;
-    outcome: string;
-    createdAt: string;
-    tokenDetails?: {
-      inputTokens: number;
-      outputTokens: number;
-    };
-    costDetails?: {
-      actualCostUsd?: number;
-      estimatedApiCostUsd?: number;
-      model?: string;
-    };
-  };
-  t: (key: string) => string;
-}
-
-function TaskRow({ task, t }: TaskRowProps) {
-  const outcomeColors: Record<string, string> = {
-    done: 'text-green-600 dark:text-green-400',
-    pr_created: 'text-blue-600 dark:text-blue-400',
-    staged: 'text-purple-600 dark:text-purple-400',
-    error: 'text-red-600 dark:text-red-400',
-    in_progress: 'text-yellow-600 dark:text-yellow-400'
-  };
-
-  const outcomeLabels: Record<string, string> = {
-    done: t('analytics:outcomes.done'),
-    pr_created: t('analytics:outcomes.prCreated'),
-    staged: t('analytics:outcomes.staged'),
-    error: t('analytics:outcomes.error'),
-    in_progress: t('analytics:outcomes.inProgress')
-  };
-
-  // Build sublabel with date and optional token/cost info
-  const dateStr = new Date(task.createdAt).toLocaleDateString();
-
-  // Format duration - show "< 1s" for very short durations, hide if 0
-  const durationStr = task.totalDurationMs > 0
-    ? (task.totalDurationMs < 1000 ? '< 1s' : formatDuration(task.totalDurationMs))
-    : null;
-
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-border p-3">
-      <div className="min-w-0 flex-1">
-        <h5 className="truncate font-medium text-foreground">{task.title}</h5>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{dateStr}</span>
-          {task.totalTokens > 0 && (
-            <>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="text-primary/70">{formatTokenCount(task.totalTokens)} tokens</span>
-            </>
-          )}
-          {task.costDetails?.actualCostUsd && task.costDetails.actualCostUsd > 0 && (
-            <>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="text-green-600 dark:text-green-400">{formatCost(task.costDetails.actualCostUsd)}</span>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-3 text-sm shrink-0">
-        {durationStr && (
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>{durationStr}</span>
-          </div>
-        )}
-        <span className={cn('font-medium', outcomeColors[task.outcome])}>
-          {outcomeLabels[task.outcome] || task.outcome}
-        </span>
-      </div>
-    </div>
-  );
-}

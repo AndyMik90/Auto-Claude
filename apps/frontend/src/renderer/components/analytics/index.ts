@@ -66,3 +66,7 @@ export {
   getBreadcrumbPath,
 } from './DrillDownView';
 export type { DrillDownViewProps } from './DrillDownView';
+
+// Task List with Sorting
+export { TaskListWithSorting } from './TaskListWithSorting';
+export type { SortField, SortDirection, SortOption } from './TaskListWithSorting';

@@ -87,7 +87,8 @@
     "noDataForPeriod": "Aucune donnée disponible pour la période sélectionnée",
     "noDataForFeature": "Aucune donnée disponible pour cette fonctionnalité",
     "tokenTrackingNotEnabled": "Aucune utilisation de tokens enregistrée",
-    "tokenTrackingDescription": "Les données de tokens apparaîtront ici lorsque des tâches seront terminées"
+    "tokenTrackingDescription": "Les données de tokens apparaîtront ici lorsque des tâches seront terminées",
+    "noTasks": "Aucune tâche trouvée pour ce filtre"
   },
   "loading": {
     "title": "Chargement des analytiques...",
@@ -140,5 +141,17 @@
     "refresh": "Actualiser les données",
     "export": "Exporter",
     "filter": "Filtrer"
+  },
+  "sorting": {
+    "showing": "{{count}} tâches",
+    "sortBy": "Trier par",
+    "dateNewest": "Date (Plus récent)",
+    "dateOldest": "Date (Plus ancien)",
+    "tokensHighest": "Tokens (Plus élevé)",
+    "tokensLowest": "Tokens (Plus bas)",
+    "durationSlowest": "Durée (Plus lent)",
+    "durationFastest": "Durée (Plus rapide)",
+    "costHighest": "Coût (Plus élevé)",
+    "costLowest": "Coût (Plus bas)"
   }
 }
