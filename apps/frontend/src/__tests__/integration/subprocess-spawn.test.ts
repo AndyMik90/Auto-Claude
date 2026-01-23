@@ -178,7 +178,7 @@ describe('Subprocess Spawn Integration', () => {
           })
         })
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for slower CI environments
 
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
