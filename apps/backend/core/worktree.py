@@ -391,6 +391,34 @@ class WorktreeManager:
         result = self._run_git(["rev-parse", "--verify", branch_name])
         return result.returncode == 0
 
+    def _worktree_is_registered(self, worktree_path: Path) -> bool:
+        """
+        Check if a worktree path is registered with git.
+
+        This determines if git tracks the worktree even if the directory exists.
+        Useful for detecting orphaned worktree directories that need cleanup.
+
+        Args:
+            worktree_path: The path to the worktree directory to check.
+
+        Returns:
+            True if the worktree is registered with git, False otherwise.
+        """
+        result = self._run_git(["worktree", "list", "--porcelain"])
+        if result.returncode != 0:
+            return False
+
+        # Parse porcelain output to get registered worktree paths
+        # Format: "worktree /path/to/worktree" for each worktree
+        registered_paths = set()
+        for line in result.stdout.split("\n"):
+            if line.startswith("worktree "):
+                registered_paths.add(Path(line.split(" ", 1)[1]))
+
+        # Resolve the path to handle any symlinks or relative paths
+        resolved_path = worktree_path.resolve()
+        return resolved_path in registered_paths or worktree_path in registered_paths
+
     def _get_worktree_stats(self, spec_name: str) -> dict:
         """Get diff statistics for a worktree."""
         worktree_path = self.get_worktree_path(spec_name)
