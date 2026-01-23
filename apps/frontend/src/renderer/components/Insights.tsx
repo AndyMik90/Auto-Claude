@@ -201,7 +201,8 @@ export function Insights({ projectId }: InsightsProps) {
           plural: error.remaining !== 1 ? 's' : ''
         }));
       } else {
-        setImageError(error instanceof Error ? error.message : t('tasks:feedback.processingError'));
+        console.error('[Insights] sendMessage failed:', error);
+        setImageError(t('tasks:feedback.processingError'));
       }
     }
   };
@@ -235,20 +236,12 @@ export function Insights({ projectId }: InsightsProps) {
     // Prevent default paste when we have images
     e.preventDefault();
 
-    // Check if we can add more images
-    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
-    if (remainingSlots <= 0) {
-      setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
-      return;
-    }
-
     setImageError(null);
 
-    // Process image items
+    // Process image items (will be limited during state update)
     const newImages: ImageAttachment[] = [];
-    const existingFilenames = images.map(img => img.filename);
 
-    for (const item of imageItems.slice(0, remainingSlots)) {
+    for (const item of imageItems) {
       const file = item.getAsFile();
       if (!file) continue;
 
@@ -280,10 +273,8 @@ export function Insights({ projectId }: InsightsProps) {
         };
         const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
         const baseFilename = `screenshot-${Date.now()}.${extension}`;
-        const resolvedFilename = resolveFilename(baseFilename, [
-          ...existingFilenames,
-          ...newImages.map(img => img.filename)
-        ]);
+        // Resolve filename to avoid duplicates within the current batch
+        const resolvedFilename = resolveFilename(baseFilename, newImages.map(img => img.filename));
 
         newImages.push({
           id: generateImageId(),
@@ -300,12 +291,24 @@ export function Insights({ projectId }: InsightsProps) {
     }
 
     if (newImages.length > 0) {
-      setImages(prevImages => [...prevImages, ...newImages]);
+      setImages(prevImages => {
+        const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
+        if (remaining <= 0) {
+          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+          return prevImages;
+        }
+        // Only add as many images as we have slots for
+        const toAdd = newImages.slice(0, remaining);
+        if (toAdd.length < newImages.length) {
+          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+        }
+        return [...prevImages, ...toAdd];
+      });
       // Show success feedback
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
     }
-  }, [images, t]);
+  }, [t]);
 
   /**
    * Remove an image from the attachments
@@ -358,20 +361,12 @@ export function Insights({ projectId }: InsightsProps) {
 
       if (imageFiles.length === 0) return;
 
-      // Check if we can add more images
-      const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
-      if (remainingSlots <= 0) {
-        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
-        return;
-      }
-
       setImageError(null);
 
-      // Process image files
+      // Process image files (will be limited during state update)
       const newImages: ImageAttachment[] = [];
-      const existingFilenames = images.map(img => img.filename);
 
-      for (const file of imageFiles.slice(0, remainingSlots)) {
+      for (const file of imageFiles) {
         // Validate image type
         if (!isValidImageMimeType(file.type)) {
           setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
@@ -382,11 +377,8 @@ export function Insights({ projectId }: InsightsProps) {
           const dataUrl = await blobToBase64(file);
           const thumbnail = await createThumbnail(dataUrl);
 
-          // Resolve filename to avoid duplicates
-          const resolvedFilename = resolveFilename(file.name, [
-            ...existingFilenames,
-            ...newImages.map(img => img.filename)
-          ]);
+          // Resolve filename to avoid duplicates within the current batch
+          const resolvedFilename = resolveFilename(file.name, newImages.map(img => img.filename));
 
           newImages.push({
             id: generateImageId(),
@@ -403,13 +395,25 @@ export function Insights({ projectId }: InsightsProps) {
       }
 
       if (newImages.length > 0) {
-        setImages(prevImages => [...prevImages, ...newImages]);
+        setImages(prevImages => {
+          const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
+          if (remaining <= 0) {
+            setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+            return prevImages;
+          }
+          // Only add as many images as we have slots for
+          const toAdd = newImages.slice(0, remaining);
+          if (toAdd.length < newImages.length) {
+            setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+          }
+          return [...prevImages, ...toAdd];
+        });
         // Show success feedback
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
       }
     },
-    [status.phase, images, t]
+    [status.phase, t]
   );
 
   const handleNewSession = async () => {
@@ -433,9 +437,9 @@ export function Insights({ projectId }: InsightsProps) {
       } catch (error) {
         // Restore state on failure
         setImages(currentImages);
-        setImageError(currentError);
         // Show error message to user
-        setImageError(error instanceof Error ? error.message : t('tasks:insights.sessionSwitchError'));
+        console.error('[Insights] switchSession failed:', error);
+        setImageError(t('tasks:insights.sessionSwitchError'));
       }
     }
   };
