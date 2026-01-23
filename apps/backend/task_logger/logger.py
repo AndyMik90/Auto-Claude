@@ -7,6 +7,7 @@ from pathlib import Path
 
 from core.debug import debug, debug_error, debug_info, debug_success, is_debug_enabled
 
+from .ansi import strip_ansi_codes
 from .models import LogEntry, LogEntryType, LogPhase
 from .storage import LogStorage
 from .streaming import emit_marker
@@ -161,8 +162,6 @@ class TaskLogger:
         # Add phase start entry
         phase_message = message or f"Starting {phase_key} phase"
         if phase_message:
-            from .ansi import strip_ansi_codes
-
             phase_message = strip_ansi_codes(phase_message)
         entry = LogEntry(
             timestamp=self._timestamp(),
@@ -208,8 +207,6 @@ class TaskLogger:
             message or f"{'Completed' if success else 'Failed'} {phase_key} phase"
         )
         if phase_message:
-            from .ansi import strip_ansi_codes
-
             phase_message = strip_ansi_codes(phase_message)
 
         entry = LogEntry(
@@ -252,8 +249,6 @@ class TaskLogger:
         """
         # Sanitize content to remove ANSI escape codes before storage
         if content:
-            from .ansi import strip_ansi_codes
-
             content = strip_ansi_codes(content)
 
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
@@ -325,8 +320,6 @@ class TaskLogger:
 
         # Sanitize content and detail before storage
         if content or detail:
-            from .ansi import strip_ansi_codes
-
             if content:
                 content = strip_ansi_codes(content)
 
@@ -391,8 +384,6 @@ class TaskLogger:
 
         # Sanitize subphase before use
         if subphase:
-            from .ansi import strip_ansi_codes
-
             subphase = strip_ansi_codes(subphase)
 
         entry = LogEntry(
@@ -440,8 +431,6 @@ class TaskLogger:
 
         # Sanitize tool_input before use
         if tool_input:
-            from .ansi import strip_ansi_codes
-
             tool_input = strip_ansi_codes(tool_input)
 
         # Truncate long inputs for display (increased limit to avoid hiding critical info)
@@ -506,7 +495,6 @@ class TaskLogger:
             display_result = display_result[:297] + "..."
 
         # Sanitize all string fields before storage
-        from .ansi import strip_ansi_codes
 
         if display_result:
             display_result = strip_ansi_codes(display_result)
