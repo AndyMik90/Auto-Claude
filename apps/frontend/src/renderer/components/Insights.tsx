@@ -304,19 +304,25 @@ export function Insights({ projectId }: InsightsProps) {
     }
 
     if (newImages.length > 0) {
+      // Track whether we hit the limit to set error after state update (keep updater pure)
+      let hitLimit = false;
       setImages(prevImages => {
         const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
         if (remaining <= 0) {
-          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+          hitLimit = true;
           return prevImages;
         }
         // Only add as many images as we have slots for
         const toAdd = newImages.slice(0, remaining);
         if (toAdd.length < newImages.length) {
-          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+          hitLimit = true;
         }
         return [...prevImages, ...toAdd];
       });
+      // Set error outside the updater (React requires state updaters to be pure)
+      if (hitLimit) {
+        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+      }
       // Show success feedback
       setPasteSuccess(true);
       setTimeout(() => setPasteSuccess(false), 2000);
@@ -429,19 +435,25 @@ export function Insights({ projectId }: InsightsProps) {
       }
 
       if (newImages.length > 0) {
+        // Track whether we hit the limit to set error after state update (keep updater pure)
+        let hitLimit = false;
         setImages(prevImages => {
           const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
           if (remaining <= 0) {
-            setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+            hitLimit = true;
             return prevImages;
           }
           // Only add as many images as we have slots for
           const toAdd = newImages.slice(0, remaining);
           if (toAdd.length < newImages.length) {
-            setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+            hitLimit = true;
           }
           return [...prevImages, ...toAdd];
         });
+        // Set error outside the updater (React requires state updaters to be pure)
+        if (hitLimit) {
+          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+        }
         // Show success feedback
         setPasteSuccess(true);
         setTimeout(() => setPasteSuccess(false), 2000);
