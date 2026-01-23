@@ -89,7 +89,47 @@ export class ClaudeProfileManager {
       this.data = loadedData;
     }
 
+    // Run one-time migration to fix corrupted emails
+    // This repairs emails that were truncated due to ANSI escape codes in terminal output
+    this.migrateCorruptedEmails();
+
     this.initialized = true;
+  }
+
+  /**
+   * One-time migration to fix emails that were corrupted by ANSI escape codes
+   * during terminal output parsing.
+   *
+   * This reads the authoritative email from Claude's config file (.claude.json)
+   * for each profile and updates any that differ from what we have stored.
+   */
+  private migrateCorruptedEmails(): void {
+    let needsSave = false;
+
+    for (const profile of this.data.profiles) {
+      if (!profile.configDir) {
+        continue;
+      }
+
+      // Import dynamically to avoid circular dependency issues
+      const { getEmailFromConfigDir } = require('./claude-profile/profile-utils');
+      const configEmail = getEmailFromConfigDir(profile.configDir);
+
+      if (configEmail && profile.email !== configEmail) {
+        console.warn('[ClaudeProfileManager] Migrating corrupted email for profile:', {
+          profileId: profile.id,
+          oldEmail: profile.email,
+          newEmail: configEmail
+        });
+        profile.email = configEmail;
+        needsSave = true;
+      }
+    }
+
+    if (needsSave) {
+      this.save();
+      console.warn('[ClaudeProfileManager] Email migration complete');
+    }
   }
 
   /**
@@ -105,6 +145,18 @@ export class ClaudeProfileManager {
   private load(): ProfileStoreData {
     const loadedData = loadProfileStore(this.storePath);
     if (loadedData) {
+      if (process.env.DEBUG === 'true') {
+        console.warn('[ClaudeProfileManager] Loaded profiles:', {
+          count: loadedData.profiles.length,
+          activeProfileId: loadedData.activeProfileId,
+          profiles: loadedData.profiles.map(p => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            isDefault: p.isDefault
+          }))
+        });
+      }
       return loadedData;
     }
 
@@ -177,6 +229,24 @@ export class ClaudeProfileManager {
   }
 
   /**
+   * Get unified account priority order
+   * Returns array of account IDs in priority order (first = highest priority)
+   * IDs are prefixed: 'oauth-{profileId}' for OAuth, 'api-{profileId}' for API profiles
+   */
+  getAccountPriorityOrder(): string[] {
+    return this.data.accountPriorityOrder || [];
+  }
+
+  /**
+   * Set unified account priority order
+   * @param order Array of account IDs in priority order
+   */
+  setAccountPriorityOrder(order: string[]): void {
+    this.data.accountPriorityOrder = order;
+    this.save();
+  }
+
+  /**
    * Get a specific profile by ID
    */
   getProfile(profileId: string): ClaudeProfile | undefined {
@@ -192,11 +262,35 @@ export class ClaudeProfileManager {
       // Fallback to default
       const defaultProfile = this.data.profiles.find(p => p.isDefault);
       if (defaultProfile) {
+        if (process.env.DEBUG === 'true') {
+          console.warn('[ClaudeProfileManager] getActiveProfile - using default:', {
+            id: defaultProfile.id,
+            name: defaultProfile.name,
+            email: defaultProfile.email
+          });
+        }
         return defaultProfile;
       }
       // If somehow no default exists, return first profile
-      return this.data.profiles[0];
+      const fallback = this.data.profiles[0];
+      if (process.env.DEBUG === 'true') {
+        console.warn('[ClaudeProfileManager] getActiveProfile - using fallback:', {
+          id: fallback.id,
+          name: fallback.name,
+          email: fallback.email
+        });
+      }
+      return fallback;
     }
+
+    if (process.env.DEBUG === 'true') {
+      console.warn('[ClaudeProfileManager] getActiveProfile:', {
+        id: active.id,
+        name: active.name,
+        email: active.email
+      });
+    }
+
     return active;
   }
 
@@ -278,9 +372,19 @@ export class ClaudeProfileManager {
    * Set the active profile
    */
   setActiveProfile(profileId: string): boolean {
+    const previousProfileId = this.data.activeProfileId;
     const profile = this.getProfile(profileId);
     if (!profile) {
+      console.warn('[ClaudeProfileManager] setActiveProfile failed - profile not found:', { profileId });
       return false;
+    }
+
+    if (process.env.DEBUG === 'true') {
+      console.warn('[ClaudeProfileManager] setActiveProfile:', {
+        from: previousProfileId,
+        to: profileId,
+        profileName: profile.name
+      });
     }
 
     this.data.activeProfileId = profileId;
@@ -362,39 +466,40 @@ export class ClaudeProfileManager {
 
   /**
    * Get environment variables for spawning processes with the active profile.
-   * Sets CLAUDE_CONFIG_DIR to point Claude CLI to the profile's config directory.
-   * Claude CLI handles token storage in the system Keychain.
    *
-   * IMPORTANT: When CLAUDE_CONFIG_DIR is set, we do NOT set CLAUDE_CODE_OAUTH_TOKEN
-   * because Claude Code prioritizes CLAUDE_CODE_OAUTH_TOKEN over Keychain lookup.
-   * The OAuth token alone doesn't contain subscription tier info (like "max"),
-   * causing Claude Code to show "Claude API" instead of "Claude Max".
-   * By only setting CLAUDE_CONFIG_DIR, Claude Code reads from the Keychain which
-   * has the full credential object including subscriptionType and rateLimitTier.
+   * IMPORTANT: Always uses CLAUDE_CONFIG_DIR to let Claude CLI read fresh tokens from Keychain.
+   * We NEVER use cached OAuth tokens (CLAUDE_CODE_OAUTH_TOKEN) because:
+   * 1. OAuth tokens expire in 8-12 hours
+   * 2. Claude CLI's token refresh mechanism works (updates Keychain)
+   * 3. Cached tokens don't benefit from Claude CLI's automatic refresh
+   * 4. CLAUDE_CODE_OAUTH_TOKEN doesn't include subscription tier info
+   *
+   * By using CLAUDE_CONFIG_DIR, Claude CLI reads fresh tokens from Keychain each time,
+   * which includes any refreshed tokens and full credential metadata.
+   *
+   * See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
    */
   getActiveProfileEnv(): Record<string, string> {
     const profile = this.getActiveProfile();
     const env: Record<string, string> = {};
 
-    // For non-default profiles, set CLAUDE_CONFIG_DIR
-    // Claude CLI will use credentials stored in that directory's Keychain
-    if (profile?.configDir && !profile.isDefault) {
+    // Default profile: Claude CLI uses ~/.claude implicitly (no env var needed)
+    if (profile?.isDefault) {
+      console.warn('[ClaudeProfileManager] Using default profile (Claude CLI uses ~/.claude)');
+      return env;
+    }
+
+    // Non-default profiles: set CLAUDE_CONFIG_DIR to point Claude CLI to profile's config
+    // Claude CLI will read fresh tokens from Keychain, benefiting from auto-refresh
+    if (profile?.configDir) {
       // Expand ~ to home directory for the environment variable
       const expandedConfigDir = profile.configDir.startsWith('~')
         ? profile.configDir.replace(/^~/, require('os').homedir())
         : profile.configDir;
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
-      console.warn('[ClaudeProfileManager] Using configDir for profile:', profile.name, expandedConfigDir);
-      // DO NOT set CLAUDE_CODE_OAUTH_TOKEN here - let Claude Code use Keychain
-      // credentials which include subscription tier info. See comment above.
-    } else if (profile?.oauthToken) {
-      // Only use stored OAuth token for default profile (no configDir)
-      // This is a legacy path for backward compatibility
-      const decryptedToken = decryptToken(profile.oauthToken);
-      if (decryptedToken) {
-        env.CLAUDE_CODE_OAUTH_TOKEN = decryptedToken;
-        console.warn('[ClaudeProfileManager] Using stored OAuth token for profile:', profile.name);
-      }
+      console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
+    } else {
+      console.warn('[ClaudeProfileManager] Profile has no configDir configured:', profile?.name);
     }
 
     return env;
@@ -413,6 +518,71 @@ export class ClaudeProfileManager {
     profile.usage = usage;
     this.save();
     return usage;
+  }
+
+  /**
+   * Update usage data for a profile from API response (percentages directly)
+   * This is called by the usage monitor after fetching usage via the API
+   */
+  updateProfileUsageFromAPI(profileId: string, sessionPercent: number, weeklyPercent: number): ClaudeUsageData | null {
+    const profile = this.getProfile(profileId);
+    if (!profile) {
+      return null;
+    }
+
+    // Preserve existing reset times if available, otherwise use empty string
+    const existingUsage = profile.usage;
+    const usage: ClaudeUsageData = {
+      sessionUsagePercent: sessionPercent,
+      sessionResetTime: existingUsage?.sessionResetTime ?? '',
+      weeklyUsagePercent: weeklyPercent,
+      weeklyResetTime: existingUsage?.weeklyResetTime ?? '',
+      opusUsagePercent: existingUsage?.opusUsagePercent,
+      lastUpdated: new Date()
+    };
+    profile.usage = usage;
+    this.save();
+    return usage;
+  }
+
+  /**
+   * Batch update usage data for multiple profiles from API responses.
+   * Updates all profiles in memory first, then saves once to avoid race conditions.
+   *
+   * @param updates - Array of { profileId, sessionPercent, weeklyPercent } objects
+   * @returns Number of profiles successfully updated
+   */
+  batchUpdateProfileUsageFromAPI(
+    updates: Array<{ profileId: string; sessionPercent: number; weeklyPercent: number }>
+  ): number {
+    let updatedCount = 0;
+
+    for (const { profileId, sessionPercent, weeklyPercent } of updates) {
+      const profile = this.getProfile(profileId);
+      if (!profile) {
+        continue;
+      }
+
+      // Preserve existing reset times if available
+      const existingUsage = profile.usage;
+      const usage: ClaudeUsageData = {
+        sessionUsagePercent: sessionPercent,
+        sessionResetTime: existingUsage?.sessionResetTime ?? '',
+        weeklyUsagePercent: weeklyPercent,
+        weeklyResetTime: existingUsage?.weeklyResetTime ?? '',
+        opusUsagePercent: existingUsage?.opusUsagePercent,
+        lastUpdated: new Date()
+      };
+      profile.usage = usage;
+      updatedCount++;
+    }
+
+    // Single save after all updates
+    if (updatedCount > 0) {
+      this.save();
+    }
+
+    return updatedCount;
   }
 
   /**

@@ -128,23 +128,30 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
 }
 
 /**
- * Check if a profile has a valid OAuth token.
- * Token is valid for 1 year from creation.
+ * Check if a profile has a valid OAuth token stored in the profile.
+ *
+ * DEPRECATED: This function checks for CACHED OAuth tokens which we no longer store.
+ * OAuth tokens expire in 8-12 hours, not 1 year. We now use CLAUDE_CONFIG_DIR
+ * to let Claude CLI read fresh tokens from Keychain on each invocation.
+ *
+ * This function is kept for backwards compatibility with existing profiles that
+ * have oauthToken stored. For these profiles, we return true (assuming token might
+ * still be valid) and let the actual API call determine if re-auth is needed.
+ *
+ * New profiles will NOT have oauthToken stored (per the auth flow changes).
+ * Use isProfileAuthenticated() to check for configDir-based credentials instead.
+ *
+ * See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
  */
 export function hasValidToken(profile: ClaudeProfile): boolean {
   if (!profile?.oauthToken) {
     return false;
   }
 
-  // Check if token is expired (1 year validity)
-  if (profile.tokenCreatedAt) {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    if (new Date(profile.tokenCreatedAt) < oneYearAgo) {
-      return false;
-    }
-  }
-
+  // For legacy profiles with stored oauthToken, return true.
+  // The actual token validity is determined by the Keychain (via CLAUDE_CONFIG_DIR).
+  // We keep this for backwards compat to avoid breaking existing profiles during migration.
+  console.warn('[hasValidToken] DEPRECATED: Profile has cached oauthToken. Using CLAUDE_CONFIG_DIR for fresh tokens.');
   return true;
 }
 
@@ -157,4 +164,58 @@ export function expandHomePath(path: string): string {
     return path.replace(/^~/, home);
   }
   return path;
+}
+
+/**
+ * Get the email address from a profile's Claude config file (.claude.json).
+ *
+ * This reads the email directly from Claude's config file, which is the authoritative
+ * source for the user's email. This is more reliable than parsing terminal output
+ * which may contain ANSI escape codes that corrupt the email.
+ *
+ * @param configDir - The profile's config directory (e.g., ~/.claude or ~/.claude-profiles/work)
+ * @returns The email address if found, null otherwise
+ */
+export function getEmailFromConfigDir(configDir?: string): string | null {
+  if (!configDir) {
+    return null;
+  }
+
+  // Expand ~ to home directory
+  const expandedConfigDir = expandHomePath(configDir);
+
+  // Check .claude.json (primary config file)
+  const claudeJsonPath = join(expandedConfigDir, '.claude.json');
+  if (existsSync(claudeJsonPath)) {
+    try {
+      const content = readFileSync(claudeJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check for oauthAccount.emailAddress (modern Claude Code CLI format)
+      if (data?.oauthAccount?.emailAddress && typeof data.oauthAccount.emailAddress === 'string') {
+        return data.oauthAccount.emailAddress;
+      }
+    } catch (error) {
+      console.warn(`[profile-utils] Failed to read email from ${claudeJsonPath}:`, error);
+    }
+  }
+
+  // Fallback: check .credentials.json (used on some Linux setups)
+  const credentialsJsonPath = join(expandedConfigDir, '.credentials.json');
+  if (existsSync(credentialsJsonPath)) {
+    try {
+      const content = readFileSync(credentialsJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check claudeAiOauth.email or emailAddress
+      const email = data?.claudeAiOauth?.email || data?.claudeAiOauth?.emailAddress || data?.email;
+      if (email && typeof email === 'string') {
+        return email;
+      }
+    } catch (error) {
+      console.warn(`[profile-utils] Failed to read email from ${credentialsJsonPath}:`, error);
+    }
+  }
+
+  return null;
 }
