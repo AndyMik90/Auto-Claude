@@ -489,15 +489,10 @@ class TaskLogger:
         """
         phase_key = (phase or self.current_phase or LogPhase.CODING).value
 
-        # Truncate long results for display (increased limit to avoid hiding critical info)
-        display_result = result
+        # Sanitize before truncation to avoid cutting ANSI sequences mid-stream
+        display_result = strip_ansi_codes(result) if result else None
         if display_result and len(display_result) > 300:
             display_result = display_result[:297] + "..."
-
-        # Sanitize all string fields before storage
-
-        if display_result:
-            display_result = strip_ansi_codes(display_result)
 
         status = "Done" if success else "Error"
         content = f"[{tool_name}] {status}"
@@ -507,16 +502,14 @@ class TaskLogger:
         if content:
             content = strip_ansi_codes(content)
 
-        # Truncate detail for storage (max 10KB to avoid bloating JSON)
-        stored_detail = detail
+        # Sanitize before truncating detail
+        stored_detail = strip_ansi_codes(detail) if detail else None
         if stored_detail and len(stored_detail) > 10240:
+            original_len = len(detail)
             stored_detail = (
                 stored_detail[:10240]
-                + f"\n\n... [truncated - full output was {len(detail)} chars]"
+                + f"\n\n... [truncated - full output was {original_len} chars]"
             )
-
-        if stored_detail:
-            stored_detail = strip_ansi_codes(stored_detail)
 
         entry = LogEntry(
             timestamp=self._timestamp(),
