@@ -481,6 +481,9 @@ export const IPC_CHANNELS = {
   INSIGHTS_STATUS: 'insights:status',
   INSIGHTS_ERROR: 'insights:error',
 
+  // Analytics operations
+  ANALYTICS_GET: 'analytics:get',
+
   // File explorer operations
   FILE_EXPLORER_LIST: 'fileExplorer:list',
   FILE_EXPLORER_READ: 'fileExplorer:read',
