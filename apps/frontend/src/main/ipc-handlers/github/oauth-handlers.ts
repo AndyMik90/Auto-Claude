@@ -26,6 +26,50 @@ function sendDeviceCodeToRenderer(deviceCode: string, authUrl: string, browserOp
   }
 }
 
+/**
+ * Payload for GitHub auth change event
+ */
+interface GitHubAuthChangedPayload {
+  oldUsername: string | null;
+  newUsername: string;
+  timestamp: Date;
+}
+
+/**
+ * Send auth change notification to all renderer windows
+ * This notifies the UI that GitHub authentication has changed (e.g., account swap)
+ */
+function sendAuthChangedToRenderer(oldUsername: string | null, newUsername: string): void {
+  debugLog('Sending auth changed event to renderer windows', { oldUsername, newUsername });
+  const windows = BrowserWindow.getAllWindows();
+  const payload: GitHubAuthChangedPayload = {
+    oldUsername,
+    newUsername,
+    timestamp: new Date()
+  };
+  for (const win of windows) {
+    win.webContents.send(IPC_CHANNELS.GITHUB_AUTH_CHANGED, payload);
+  }
+}
+
+/**
+ * Get current GitHub username from gh CLI
+ * Returns null if not authenticated or on error
+ */
+function getCurrentGitHubUsername(): string | null {
+  try {
+    const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      env: getAugmentedEnv()
+    }).trim();
+    return username || null;
+  } catch {
+    // Not authenticated or gh CLI error
+    return null;
+  }
+}
+
 // Debug logging helper
 const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
@@ -230,12 +274,20 @@ interface GitHubAuthStartResult {
  * Start GitHub OAuth flow using gh CLI
  * This will extract the device code from gh CLI output and open the browser
  * using Electron's shell.openExternal (bypasses macOS child process restrictions)
+ *
+ * Detects account changes and emits GITHUB_AUTH_CHANGED event when the authenticated
+ * account differs from the previous one (or when going from unauthenticated to authenticated).
  */
 export function registerStartGhAuth(): void {
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_START_AUTH,
     async (): Promise<IPCResult<GitHubAuthStartResult>> => {
       debugLog('startGitHubAuth handler called');
+
+      // Capture current username before auth to detect account changes
+      const usernameBeforeAuth = getCurrentGitHubUsername();
+      debugLog('Username before auth:', usernameBeforeAuth || '(not authenticated)');
+
       return new Promise((resolve) => {
         try {
           // Use gh auth login with web flow and repo scope
@@ -319,6 +371,19 @@ export function registerStartGhAuth(): void {
             debugLog('Full stderr:', errorOutput);
 
             if (code === 0) {
+              // Check for auth change after successful authentication
+              const usernameAfterAuth = getCurrentGitHubUsername();
+              debugLog('Username after auth:', usernameAfterAuth || '(unknown)');
+
+              // Emit auth changed event if account changed (or went from unauthenticated to authenticated)
+              if (usernameAfterAuth && usernameAfterAuth !== usernameBeforeAuth) {
+                debugLog('GitHub account changed detected', {
+                  from: usernameBeforeAuth || '(none)',
+                  to: usernameAfterAuth
+                });
+                sendAuthChangedToRenderer(usernameBeforeAuth, usernameAfterAuth);
+              }
+
               // Success case - include fallbackUrl if browser failed to open
               // so the user can manually navigate if needed
               resolve({
