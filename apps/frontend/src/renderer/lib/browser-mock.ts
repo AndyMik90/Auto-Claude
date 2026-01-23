@@ -318,6 +318,16 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  // Screenshot capture operations
+  getSources: async () => ({
+    success: true,
+    data: []
+  }),
+  capture: async (_options: { sourceId: string }) => ({
+    success: false,
+    error: 'Screenshot capture not available in browser mode'
+  }),
+
   // Debug Operations
   getDebugInfo: async () => ({
     systemInfo: {
