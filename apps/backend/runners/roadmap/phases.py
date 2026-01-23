@@ -289,6 +289,52 @@ class FeaturesPhase:
             )
             return []
 
+    def _merge_features(
+        self, new_features: list[dict], preserved: list[dict]
+    ) -> list[dict]:
+        """Merge new AI-generated features with preserved features.
+
+        Preserved features take priority - if a new feature has the same ID
+        as a preserved feature, the new feature is skipped.
+
+        Args:
+            new_features: List of newly generated features from AI
+            preserved: List of features to preserve from existing roadmap
+
+        Returns:
+            Merged list with preserved features first, then non-conflicting new features
+        """
+        if not preserved:
+            debug("roadmap_phase", "No preserved features, returning new features only")
+            return new_features
+
+        preserved_ids = {f.get("id") for f in preserved if f.get("id")}
+
+        # Start with all preserved features
+        merged = list(preserved)
+        added_count = 0
+        skipped_count = 0
+
+        # Add new features that don't conflict with preserved ones
+        for feature in new_features:
+            feature_id = feature.get("id")
+            if feature_id and feature_id in preserved_ids:
+                debug_detailed(
+                    "roadmap_phase",
+                    "Skipping duplicate feature",
+                    feature_id=feature_id,
+                )
+                skipped_count += 1
+            else:
+                merged.append(feature)
+                added_count += 1
+
+        debug(
+            "roadmap_phase",
+            f"Merged features: {len(preserved)} preserved, {added_count} new added, {skipped_count} duplicates skipped",
+        )
+        return merged
+
     async def execute(self) -> RoadmapPhaseResult:
         """Generate and prioritize features for the roadmap."""
         debug("roadmap_phase", "Starting phase: features")
