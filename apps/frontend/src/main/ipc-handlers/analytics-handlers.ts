@@ -1,4 +1,6 @@
 import { ipcMain } from "electron";
+import * as fs from "fs";
+import * as path from "path";
 import { IPC_CHANNELS } from "../../shared/constants";
 import type {
   IPCResult,
@@ -14,6 +16,142 @@ import type {
   AnalyticsPhase,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
+
+/**
+ * Interface for subtask data from implementation_plan.json
+ */
+interface ImplementationSubtask {
+  id: string;
+  description: string;
+  status: string;
+  started_at?: string;
+  completed_at?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_cost_usd?: number;
+}
+
+/**
+ * Interface for phase data from implementation_plan.json
+ */
+interface ImplementationPhase {
+  id: string;
+  name: string;
+  subtasks: ImplementationSubtask[];
+}
+
+/**
+ * Interface for implementation plan JSON
+ */
+interface ImplementationPlan {
+  feature: string;
+  phases: ImplementationPhase[];
+}
+
+/**
+ * Load implementation plan from disk
+ */
+function loadImplementationPlan(projectPath: string, specId: string): ImplementationPlan | null {
+  try {
+    const planPath = path.join(projectPath, ".auto-claude", "specs", specId, "implementation_plan.json");
+    if (!fs.existsSync(planPath)) {
+      return null;
+    }
+    const content = fs.readFileSync(planPath, "utf-8");
+    return JSON.parse(content) as ImplementationPlan;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract token usage from implementation plan
+ * Returns total input/output tokens and per-phase metrics
+ */
+function extractTokenUsageFromPlan(plan: ImplementationPlan | null): {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCostUsd: number | null;
+  phases: PhaseMetrics[];
+} {
+  if (!plan) {
+    return {
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCostUsd: null,
+      phases: [],
+    };
+  }
+
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCostUsd: number | null = null;
+  const phases: PhaseMetrics[] = [];
+
+  for (const phase of plan.phases) {
+    let phaseInputTokens = 0;
+    let phaseOutputTokens = 0;
+    let phaseCostUsd: number | null = null;
+    let phaseStartedAt: string | undefined;
+    let phaseCompletedAt: string | undefined;
+
+    for (const subtask of phase.subtasks) {
+      phaseInputTokens += subtask.input_tokens || 0;
+      phaseOutputTokens += subtask.output_tokens || 0;
+
+      if (subtask.total_cost_usd !== undefined) {
+        phaseCostUsd = (phaseCostUsd || 0) + subtask.total_cost_usd;
+      }
+
+      // Track earliest start and latest completion for phase timing
+      if (subtask.started_at) {
+        if (!phaseStartedAt || subtask.started_at < phaseStartedAt) {
+          phaseStartedAt = subtask.started_at;
+        }
+      }
+      if (subtask.completed_at) {
+        if (!phaseCompletedAt || subtask.completed_at > phaseCompletedAt) {
+          phaseCompletedAt = subtask.completed_at;
+        }
+      }
+    }
+
+    totalInputTokens += phaseInputTokens;
+    totalOutputTokens += phaseOutputTokens;
+    if (phaseCostUsd !== null) {
+      totalCostUsd = (totalCostUsd || 0) + phaseCostUsd;
+    }
+
+    // Calculate phase duration
+    let durationMs = 0;
+    if (phaseStartedAt && phaseCompletedAt) {
+      durationMs = new Date(phaseCompletedAt).getTime() - new Date(phaseStartedAt).getTime();
+      durationMs = Math.max(0, durationMs);
+    }
+
+    // Map phase name to analytics phase type
+    const phaseName = phase.name.toLowerCase();
+    let analyticsPhase: AnalyticsPhase = "coding"; // default
+    if (phaseName.includes("plan")) {
+      analyticsPhase = "planning";
+    } else if (phaseName.includes("valid") || phaseName.includes("qa") || phaseName.includes("test")) {
+      analyticsPhase = "validation";
+    }
+
+    // Only add phase if it has data and a valid start time
+    if ((phaseInputTokens > 0 || phaseOutputTokens > 0 || durationMs > 0) && phaseStartedAt) {
+      phases.push({
+        phase: analyticsPhase,
+        tokenCount: phaseInputTokens + phaseOutputTokens,
+        durationMs,
+        startedAt: phaseStartedAt,
+        completedAt: phaseCompletedAt,
+      });
+    }
+  }
+
+  return { totalInputTokens, totalOutputTokens, totalCostUsd, phases };
+}
 
 /**
  * Get date range based on predefined filter
@@ -143,22 +281,27 @@ function calculateDurationMs(createdAt: Date, updatedAt: Date): number {
 }
 
 /**
- * Extract phase metrics from task (MVP: placeholder data)
- * Token usage is not currently tracked, so we return empty phases
- * Duration is estimated from task timestamps
+ * Extract phase metrics from task using implementation plan data
+ * Falls back to basic task timestamps if plan is not available
  */
-function extractPhaseMetrics(task: Task): PhaseMetrics[] {
-  // MVP: Return empty phases since we don't have detailed phase timing
-  // In the future, this can be populated from implementation_plan.json
-  const phases: PhaseMetrics[] = [];
+function extractPhaseMetrics(task: Task, projectPath: string): PhaseMetrics[] {
+  // Try to load implementation plan for detailed phase data
+  const plan = loadImplementationPlan(projectPath, task.specId);
+  const planData = extractTokenUsageFromPlan(plan);
 
-  // If task has execution progress, we can at least note which phase it was in
+  // If we have phase data from the plan, use it
+  if (planData.phases.length > 0) {
+    return planData.phases;
+  }
+
+  // Fallback: If task has execution progress, create a basic phase entry
+  const phases: PhaseMetrics[] = [];
   if (task.executionProgress?.phase) {
     const phase = task.executionProgress.phase as AnalyticsPhase;
     if (["planning", "coding", "validation"].includes(phase)) {
       phases.push({
         phase: phase as AnalyticsPhase,
-        tokenCount: 0, // Token tracking not yet implemented
+        tokenCount: 0,
         durationMs: calculateDurationMs(
           new Date(task.createdAt),
           new Date(task.updatedAt)
@@ -173,22 +316,47 @@ function extractPhaseMetrics(task: Task): PhaseMetrics[] {
 }
 
 /**
- * Convert Task to TaskAnalytics
+ * Convert Task to TaskAnalytics with token usage from implementation plan
  */
-function taskToAnalytics(task: Task): TaskAnalytics {
+function taskToAnalytics(task: Task, projectPath: string): TaskAnalytics {
   const durationMs = calculateDurationMs(
     new Date(task.createdAt),
     new Date(task.updatedAt)
   );
+
+  // Load implementation plan for token usage
+  const plan = loadImplementationPlan(projectPath, task.specId);
+  const planData = extractTokenUsageFromPlan(plan);
+  const totalTokens = planData.totalInputTokens + planData.totalOutputTokens;
+
+  // Get phases with timing data
+  const phases = extractPhaseMetrics(task, projectPath);
+
+  // Calculate actual duration from phase data if available
+  let actualDurationMs = durationMs;
+  if (phases.length > 0) {
+    const firstPhaseStart = phases.find(p => p.startedAt)?.startedAt;
+    const lastPhaseEnd = phases.reduce((latest, p) => {
+      if (p.completedAt && (!latest || p.completedAt > latest)) {
+        return p.completedAt;
+      }
+      return latest;
+    }, undefined as string | undefined);
+
+    if (firstPhaseStart && lastPhaseEnd) {
+      actualDurationMs = new Date(lastPhaseEnd).getTime() - new Date(firstPhaseStart).getTime();
+      actualDurationMs = Math.max(0, actualDurationMs);
+    }
+  }
 
   return {
     taskId: task.id,
     specId: task.specId,
     title: task.title,
     feature: getFeatureType(task),
-    totalTokens: 0, // Token tracking not yet implemented
-    totalDurationMs: durationMs,
-    phases: extractPhaseMetrics(task),
+    totalTokens,
+    totalDurationMs: actualDurationMs,
+    phases,
     outcome: getTaskOutcome(task),
     createdAt: task.createdAt.toISOString(),
     completedAt: task.status === "done" || task.status === "pr_created" || task.status === "error"
@@ -217,7 +385,8 @@ function createEmptyFeatureMetrics(feature: FeatureType): FeatureMetrics {
 function aggregateAnalytics(
   tasks: Task[],
   filter: DateFilter,
-  dateRange: DateRange
+  dateRange: DateRange,
+  projectPath: string
 ): AnalyticsSummary {
   // Filter tasks by date range
   const filteredTasks = tasks.filter((task) => {
@@ -225,8 +394,8 @@ function aggregateAnalytics(
     return taskDate >= dateRange.start && taskDate <= dateRange.end;
   });
 
-  // Convert to TaskAnalytics
-  const taskAnalytics = filteredTasks.map(taskToAnalytics);
+  // Convert to TaskAnalytics with project path for implementation plan lookups
+  const taskAnalytics = filteredTasks.map(task => taskToAnalytics(task, projectPath));
 
   // Initialize feature metrics
   const features: FeatureType[] = ["kanban", "insights", "roadmap", "ideation", "changelog", "github-prs"];
@@ -320,8 +489,8 @@ export function registerAnalyticsHandlers(): void {
         // Calculate date range from filter
         const dateRange = getDateRange(filter);
 
-        // Aggregate analytics
-        const summary = aggregateAnalytics(tasks, filter, dateRange);
+        // Aggregate analytics with project path for implementation plan lookups
+        const summary = aggregateAnalytics(tasks, filter, dateRange, project.path);
 
         return { success: true, data: summary };
       } catch (error) {

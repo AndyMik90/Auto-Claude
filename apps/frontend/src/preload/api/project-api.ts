@@ -11,7 +11,9 @@ import type {
   InfrastructureStatus,
   GraphitiValidationResult,
   GraphitiConnectionTestResult,
-  GitStatus
+  GitStatus,
+  DateFilter,
+  AnalyticsSummary
 } from '../../shared/types';
 
 // Tab state interface (persisted in main process)
@@ -43,6 +45,9 @@ export interface ProjectAPI {
   getMemoryStatus: (projectId: string) => Promise<IPCResult<unknown>>;
   searchMemories: (projectId: string, query: string) => Promise<IPCResult<unknown>>;
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<unknown>>;
+
+  // Analytics Operations
+  getAnalytics: (projectId: string, filter: DateFilter) => Promise<IPCResult<AnalyticsSummary>>;
 
   // Environment Configuration
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;
@@ -185,6 +190,10 @@ export const createProjectAPI = (): ProjectAPI => ({
 
   getRecentMemories: (projectId: string, limit?: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.CONTEXT_GET_MEMORIES, projectId, limit),
+
+  // Analytics Operations
+  getAnalytics: (projectId: string, filter: DateFilter): Promise<IPCResult<AnalyticsSummary>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ANALYTICS_GET, projectId, filter),
 
   // Environment Configuration
   getProjectEnv: (projectId: string): Promise<IPCResult<ProjectEnvConfig>> =>

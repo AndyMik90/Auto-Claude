@@ -86,8 +86,8 @@
     "description": "Analytics will appear here once you start running tasks",
     "noDataForPeriod": "No data available for the selected period",
     "noDataForFeature": "No data available for this feature",
-    "tokenTrackingNotEnabled": "Token tracking not yet enabled",
-    "tokenTrackingDescription": "Token usage tracking will be available in a future update"
+    "tokenTrackingNotEnabled": "No token usage recorded",
+    "tokenTrackingDescription": "Token data will appear here as tasks are completed"
   },
   "loading": {
     "title": "Loading analytics...",

@@ -419,7 +419,7 @@ async def run_autonomous_agent(
 
         # Run session with async context manager
         async with client:
-            status, response = await run_agent_session(
+            status, response, session_usage = await run_agent_session(
                 client, prompt, spec_dir, verbose, phase=current_log_phase
             )
 
@@ -477,6 +477,7 @@ async def run_autonomous_agent(
                 linear_enabled=linear_is_enabled,
                 status_manager=status_manager,
                 source_spec_dir=source_spec_dir,
+                session_usage=session_usage,
             )
 
             # Check for stuck subtasks

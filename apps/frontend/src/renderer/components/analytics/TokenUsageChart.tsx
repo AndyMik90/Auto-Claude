@@ -54,8 +54,9 @@ export interface TokenUsageChartProps {
  *
  * Hierarchy: App → Feature → Task → Phase
  *
- * MVP Implementation: Shows 'Token tracking not yet enabled' placeholder
- * since token data is not yet collected from the backend.
+ * Shows token usage data from implementation plans. If no token data exists
+ * (e.g., for tasks completed before token tracking was enabled), shows a
+ * placeholder message indicating that data will appear as new tasks complete.
  *
  * @example
  * ```tsx
@@ -113,8 +114,8 @@ export function TokenUsageChart({
     }
   };
 
-  // Check if token tracking is enabled (MVP: always false)
-  const isTokenTrackingEnabled = data !== null && data.totalTokens > 0;
+  // Check if there's any token data to display
+  const hasTokenData = data !== null && data.totalTokens > 0;
 
   // Render loading state
   if (isLoading) {
@@ -146,8 +147,8 @@ export function TokenUsageChart({
     );
   }
 
-  // Render not-yet-enabled placeholder (MVP)
-  if (!isTokenTrackingEnabled) {
+  // Render empty state when no token data exists yet
+  if (!hasTokenData) {
     return (
       <Card className={cn('h-full', className)}>
         <CardHeader className="pb-3">
@@ -216,7 +217,7 @@ export function TokenUsageChart({
 }
 
 /**
- * Placeholder component for when token tracking is not yet enabled
+ * Placeholder component for when no token data has been recorded yet
  */
 function TokenTrackingPlaceholder() {
   const { t } = useTranslation(['analytics']);

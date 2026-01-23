@@ -7,6 +7,7 @@ memory updates, recovery tracking, and Linear integration.
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
@@ -41,9 +42,21 @@ from .utils import (
     get_latest_commit,
     load_implementation_plan,
     sync_spec_to_source,
+    update_subtask_token_usage,
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SessionUsage:
+    """Token usage data from a session."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_cost_usd: float | None = None
+    duration_ms: int = 0
+    num_turns: int = 0
 
 
 async def post_session_processing(
@@ -57,6 +70,7 @@ async def post_session_processing(
     linear_enabled: bool = False,
     status_manager: StatusManager | None = None,
     source_spec_dir: Path | None = None,
+    session_usage: SessionUsage | None = None,
 ) -> bool:
     """
     Process session results and update memory automatically.
@@ -74,6 +88,7 @@ async def post_session_processing(
         linear_enabled: Whether Linear integration is enabled
         status_manager: Optional status manager for ccstatusline
         source_spec_dir: Original spec directory (for syncing back from worktree)
+        session_usage: Token usage data from the session (if available)
 
     Returns:
         True if subtask was completed successfully
@@ -105,6 +120,20 @@ async def post_session_processing(
 
     print_key_value("Subtask status", subtask_status)
     print_key_value("New commits", str(new_commits))
+
+    # Save token usage to subtask in implementation plan
+    if session_usage and (session_usage.input_tokens > 0 or session_usage.output_tokens > 0):
+        update_subtask_token_usage(
+            spec_dir=spec_dir,
+            subtask_id=subtask_id,
+            input_tokens=session_usage.input_tokens,
+            output_tokens=session_usage.output_tokens,
+            total_cost_usd=session_usage.total_cost_usd,
+        )
+        total_tokens = session_usage.input_tokens + session_usage.output_tokens
+        print_key_value("Token usage", f"{total_tokens:,} tokens")
+        if session_usage.total_cost_usd is not None:
+            print_key_value("Estimated cost", f"${session_usage.total_cost_usd:.4f}")
 
     if subtask_status == "completed":
         # Success! Record the attempt and good commit
@@ -317,7 +346,7 @@ async def run_agent_session(
     spec_dir: Path,
     verbose: bool = False,
     phase: LogPhase = LogPhase.CODING,
-) -> tuple[str, str]:
+) -> tuple[str, str, SessionUsage]:
     """
     Run a single agent session using Claude Agent SDK.
 
@@ -329,10 +358,10 @@ async def run_agent_session(
         phase: Current execution phase for logging
 
     Returns:
-        (status, response_text) where status is:
-        - "continue" if agent should continue working
-        - "complete" if all subtasks complete
-        - "error" if an error occurred
+        (status, response_text, usage) where:
+        - status is "continue", "complete", or "error"
+        - response_text is the agent's text output
+        - usage contains token counts and cost data
     """
     debug_section("session", f"Agent Session - {phase.value}")
     debug(
@@ -350,6 +379,7 @@ async def run_agent_session(
     current_tool = None
     message_count = 0
     tool_count = 0
+    session_usage = SessionUsage()  # Track token usage
 
     try:
         # Send the query
@@ -518,7 +548,39 @@ async def run_agent_session(
 
                         current_tool = None
 
+            # Handle ResultMessage (session completion with usage data)
+            elif msg_type == "ResultMessage":
+                # Extract usage data from SDK response
+                if hasattr(msg, "usage") and msg.usage:
+                    usage_data = msg.usage
+                    session_usage.input_tokens = usage_data.get("input_tokens", 0)
+                    session_usage.output_tokens = usage_data.get("output_tokens", 0)
+                if hasattr(msg, "total_cost_usd") and msg.total_cost_usd is not None:
+                    session_usage.total_cost_usd = msg.total_cost_usd
+                if hasattr(msg, "duration_ms"):
+                    session_usage.duration_ms = msg.duration_ms
+                if hasattr(msg, "num_turns"):
+                    session_usage.num_turns = msg.num_turns
+
+                debug(
+                    "session",
+                    "ResultMessage received",
+                    input_tokens=session_usage.input_tokens,
+                    output_tokens=session_usage.output_tokens,
+                    total_cost=session_usage.total_cost_usd,
+                    duration_ms=session_usage.duration_ms,
+                )
+
         print("\n" + "-" * 70 + "\n")
+
+        # Log usage summary if available
+        if session_usage.input_tokens > 0 or session_usage.output_tokens > 0:
+            print(
+                f"Token usage: {session_usage.input_tokens:,} input, "
+                f"{session_usage.output_tokens:,} output"
+            )
+            if session_usage.total_cost_usd is not None:
+                print(f"Estimated cost: ${session_usage.total_cost_usd:.4f}")
 
         # Check if build is complete
         if is_build_complete(spec_dir):
@@ -528,8 +590,10 @@ async def run_agent_session(
                 message_count=message_count,
                 tool_count=tool_count,
                 response_length=len(response_text),
+                input_tokens=session_usage.input_tokens,
+                output_tokens=session_usage.output_tokens,
             )
-            return "complete", response_text
+            return "complete", response_text, session_usage
 
         debug_success(
             "session",
@@ -537,8 +601,10 @@ async def run_agent_session(
             message_count=message_count,
             tool_count=tool_count,
             response_length=len(response_text),
+            input_tokens=session_usage.input_tokens,
+            output_tokens=session_usage.output_tokens,
         )
-        return "continue", response_text
+        return "continue", response_text, session_usage
 
     except Exception as e:
         debug_error(
@@ -551,4 +617,4 @@ async def run_agent_session(
         print(f"Error during agent session: {e}")
         if task_logger:
             task_logger.log_error(f"Session error: {e}", phase)
-        return "error", str(e)
+        return "error", str(e), session_usage

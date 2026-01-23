@@ -86,8 +86,8 @@
     "description": "Les analytiques apparaîtront ici lorsque vous commencerez à exécuter des tâches",
     "noDataForPeriod": "Aucune donnée disponible pour la période sélectionnée",
     "noDataForFeature": "Aucune donnée disponible pour cette fonctionnalité",
-    "tokenTrackingNotEnabled": "Suivi des tokens pas encore activé",
-    "tokenTrackingDescription": "Le suivi de l'utilisation des tokens sera disponible dans une mise à jour future"
+    "tokenTrackingNotEnabled": "Aucune utilisation de tokens enregistrée",
+    "tokenTrackingDescription": "Les données de tokens apparaîtront ici lorsque des tâches seront terminées"
   },
   "loading": {
     "title": "Chargement des analytiques...",
