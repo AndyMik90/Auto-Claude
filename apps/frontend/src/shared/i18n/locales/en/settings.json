@@ -712,7 +712,8 @@
       "noCustomPresets": "No custom presets yet. Save your current configuration to get started.",
       "duplicateName": "A preset with this name already exists",
       "saved": "Preset \"{{name}}\" saved",
-      "deleted": "Preset \"{{name}}\" deleted"
+      "deleted": "Preset \"{{name}}\" deleted",
+      "unknownFont": "Unknown"
     },
     "livePreview": {
       "title": "Live Preview",

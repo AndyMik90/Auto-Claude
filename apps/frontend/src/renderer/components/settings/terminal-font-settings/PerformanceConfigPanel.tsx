@@ -132,6 +132,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
                 title={t('terminalFonts.performanceConfig.decreaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
+                aria-label={t('terminalFonts.performanceConfig.decreaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -146,6 +147,7 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
                   'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent'
                 )}
                 title={t('terminalFonts.performanceConfig.increaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
+                aria-label={t('terminalFonts.performanceConfig.increaseScrollback', { step: formatScrollback(SCROLLBACK_STEP) })}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

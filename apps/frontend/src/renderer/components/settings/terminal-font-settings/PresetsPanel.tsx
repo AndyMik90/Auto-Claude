@@ -247,7 +247,8 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                 'border-border hover:border-primary/50 hover:bg-accent/50 text-sm font-medium'
               )}
               title={t('settings:terminalFonts.presets.resetToOS', {
-                defaultValue: `Reset to ${currentOS === 'windows' ? 'Windows' : currentOS === 'macos' ? 'macOS' : 'Linux'} defaults`,
+                os: currentOS === 'windows' ? 'Windows' : currentOS === 'macos' ? 'macOS' : 'Linux',
+                defaultValue: 'Reset to {{os}} defaults',
               })}
             >
               <RotateCcw className="h-4 w-4" />
@@ -332,7 +333,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">{preset.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {preset.settings.fontFamily[0] ?? 'Unknown'}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
+                      {preset.settings.fontFamily[0] ?? t('settings:terminalFonts.presets.unknownFont', { defaultValue: 'Unknown' })}, {preset.settings.fontSize}px, {preset.settings.cursorStyle} cursor
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
