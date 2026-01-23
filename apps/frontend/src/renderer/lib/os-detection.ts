@@ -5,6 +5,16 @@
  * Uses navigator.userAgentData.platform (modern) with fallback to navigator.platform.
  */
 
+// Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
+interface NavigatorUAData {
+  platform: string;
+}
+declare global {
+  interface Navigator {
+    userAgentData?: NavigatorUAData;
+  }
+}
+
 export type Platform = 'windows' | 'macos' | 'linux' | 'unknown';
 
 /**

@@ -8,16 +8,6 @@ import { registerOutputCallback, unregisterOutputCallback } from '../../stores/t
 import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
 import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
 
-// Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
-interface NavigatorUAData {
-  platform: string;
-}
-declare global {
-  interface Navigator {
-    userAgentData?: NavigatorUAData;
-  }
-}
-
 interface UseXtermOptions {
   terminalId: string;
   onCommandEnter?: (command: string) => void;
@@ -45,6 +35,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
   // Get font settings from store
+  // Note: We subscribe to the entire store here for initial terminal creation.
+  // The subscription effect below handles reactive updates for font changes.
   const fontSettings = useTerminalFontSettingsStore();
 
   // Initialize xterm.js UI
@@ -289,15 +281,17 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     return () => {
       // Cleanup handled by parent component
     };
-  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]); // Don't include fontSettings - subscription handles updates
+  }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
 
   // Subscribe to font settings changes and update terminal reactively
+  // This effect runs after xterm is created and re-runs when terminalId changes,
+  // ensuring the subscription always uses the latest xterm instance
   useEffect(() => {
     const xterm = xtermRef.current;
     if (!xterm) return;
 
     // Update terminal options when font settings change
-    const updateTerminalOptions = (settings: typeof fontSettings) => {
+    const updateTerminalOptions = (settings: ReturnType<typeof useTerminalFontSettingsStore.getState>) => {
       xterm.options.cursorBlink = settings.cursorBlink;
       xterm.options.cursorStyle = settings.cursorStyle;
       xterm.options.fontSize = settings.fontSize;
@@ -315,11 +309,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       xterm.refresh(0, xterm.rows - 1);
     };
 
-    // Apply current settings on mount
-    updateTerminalOptions(fontSettings);
-
-    // Subscribe to store changes - this effect runs once per terminal instance
-    // and the subscription handles all future updates without re-creating the effect
+    // Subscribe to store changes - when terminalId changes, this effect re-runs,
+    // cleaning up the old subscription and creating a new one for the new xterm instance
     const unsubscribe = useTerminalFontSettingsStore.subscribe(
       () => {
         // Get latest settings from store
@@ -331,7 +322,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     );
 
     return unsubscribe;
-  }, []); // Empty dependency array - subscription handles all updates
+  }, [terminalId]); // Only terminalId needed - re-subscribe when terminal changes
 
   // Register xterm write callback with terminal-store for global output listener
   // This allows the global listener to write directly to xterm when terminal is visible
