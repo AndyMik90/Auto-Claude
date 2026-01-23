@@ -345,6 +345,9 @@ export class UsageMonitor extends EventEmitter {
 
     // Parallel fetch for all inactive profiles that need fresh data
     if (profilesToFetch.length > 0) {
+      // Collect usage updates for batch save (avoids race condition with concurrent saves)
+      const usageUpdates: Array<{ profileId: string; sessionPercent: number; weeklyPercent: number }> = [];
+
       const fetchPromises = profilesToFetch.map(async ({ profile, index }) => {
         const inactiveUsage = await this.fetchUsageForInactiveProfile(profile);
         const rateLimitStatus = isProfileRateLimited(profile);
@@ -355,12 +358,43 @@ export class UsageMonitor extends EventEmitter {
         if (inactiveUsage) {
           sessionPercent = inactiveUsage.sessionPercent;
           weeklyPercent = inactiveUsage.weeklyPercent;
-          // Save to profile for persistence
-          profileManager.updateProfileUsageFromAPI(profile.id, sessionPercent, weeklyPercent);
+          // Collect update for batch save (don't save here to avoid race condition)
+          return {
+            index,
+            update: { profileId: profile.id, sessionPercent, weeklyPercent },
+            profile,
+            inactiveUsage,
+            rateLimitStatus
+          };
         } else {
           // Fallback to cached profile data if API fetch failed
           sessionPercent = profile.usage?.sessionUsagePercent ?? 0;
           weeklyPercent = profile.usage?.weeklyUsagePercent ?? 0;
+          return {
+            index,
+            update: null, // No update needed for fallback
+            profile,
+            inactiveUsage,
+            rateLimitStatus,
+            sessionPercent,
+            weeklyPercent
+          };
+        }
+      });
+
+      // Wait for all fetches to complete in parallel
+      const fetchResults = await Promise.all(fetchPromises);
+
+      // Collect all updates and build summaries
+      for (const result of fetchResults) {
+        const { index, update, profile, inactiveUsage, rateLimitStatus } = result;
+
+        // Get percentages from either the update or the fallback values
+        const sessionPercent = update?.sessionPercent ?? result.sessionPercent ?? 0;
+        const weeklyPercent = update?.weeklyPercent ?? result.weeklyPercent ?? 0;
+
+        if (update) {
+          usageUpdates.push(update);
         }
 
         const summary: ProfileUsageSummary = {
@@ -384,13 +418,12 @@ export class UsageMonitor extends EventEmitter {
         };
 
         this.allProfilesUsageCache.set(profile.id, { usage: summary, fetchedAt: now });
-        return { index, summary };
-      });
-
-      // Wait for all fetches to complete in parallel
-      const fetchResults = await Promise.all(fetchPromises);
-      for (const { index, summary } of fetchResults) {
         profileResults[index] = summary;
+      }
+
+      // Batch save all usage updates at once (single disk write, no race condition)
+      if (usageUpdates.length > 0) {
+        profileManager.batchUpdateProfileUsageFromAPI(usageUpdates);
       }
     }
 

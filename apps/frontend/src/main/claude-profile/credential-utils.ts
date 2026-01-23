@@ -67,6 +67,42 @@ const ERROR_CACHE_TTL_MS = 10 * 1000;
 const MACOS_KEYCHAIN_TIMEOUT_MS = 5000;
 const WINDOWS_CREDMAN_TIMEOUT_MS = 10000;
 
+// Defense-in-depth: Pattern for valid credential target names
+// Matches "Claude Code-credentials" or "Claude Code-credentials-{8 hex chars}"
+const VALID_TARGET_NAME_PATTERN = /^Claude Code-credentials(-[a-f0-9]{8})?$/;
+
+/**
+ * Validate that a credential target name matches the expected format.
+ * Defense-in-depth check to prevent injection attacks.
+ *
+ * @param targetName - The target name to validate
+ * @returns true if valid, false otherwise
+ */
+function isValidTargetName(targetName: string): boolean {
+  return VALID_TARGET_NAME_PATTERN.test(targetName);
+}
+
+/**
+ * Validate that a credentials path is within expected boundaries.
+ * Defense-in-depth check to prevent path traversal attacks.
+ *
+ * @param credentialsPath - The path to validate
+ * @returns true if valid, false otherwise
+ */
+function isValidCredentialsPath(credentialsPath: string): boolean {
+  // Credentials path should:
+  // 1. Not contain path traversal sequences
+  // 2. End with the expected file name
+  // 3. Be an absolute path (starts with / on Unix or drive letter on Windows)
+  // Note: We allow custom config directories since they come from user settings
+  const isAbsolutePath = credentialsPath.startsWith('/') || /^[A-Za-z]:\\/.test(credentialsPath);
+  return (
+    !credentialsPath.includes('..') &&
+    credentialsPath.endsWith('.credentials.json') &&
+    isAbsolutePath
+  );
+}
+
 /**
  * Calculate the credential storage identifier suffix for a config directory.
  * Claude Code uses SHA256 hash of the config dir path, taking first 8 hex chars.
@@ -327,6 +363,16 @@ function getCredentialsFromLinuxFile(configDir?: string, forceRefresh = false): 
     }
   }
 
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux] Invalid credentials path rejected:', { credentialsPath });
+    }
+    const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
+    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+    return invalidResult;
+  }
+
   // Check if credentials file exists
   if (!existsSync(credentialsPath)) {
     if (isDebug) {
@@ -424,6 +470,16 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
       }
       return cached.credentials;
     }
+  }
+
+  // Defense-in-depth: Validate target name format before using in PowerShell
+  if (!isValidTargetName(targetName)) {
+    const invalidResult = { token: null, email: null, error: 'Invalid credential target name format' };
+    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows] Invalid target name rejected:', { targetName });
+    }
+    return invalidResult;
   }
 
   // Find PowerShell executable

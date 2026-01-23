@@ -546,6 +546,46 @@ export class ClaudeProfileManager {
   }
 
   /**
+   * Batch update usage data for multiple profiles from API responses.
+   * Updates all profiles in memory first, then saves once to avoid race conditions.
+   *
+   * @param updates - Array of { profileId, sessionPercent, weeklyPercent } objects
+   * @returns Number of profiles successfully updated
+   */
+  batchUpdateProfileUsageFromAPI(
+    updates: Array<{ profileId: string; sessionPercent: number; weeklyPercent: number }>
+  ): number {
+    let updatedCount = 0;
+
+    for (const { profileId, sessionPercent, weeklyPercent } of updates) {
+      const profile = this.getProfile(profileId);
+      if (!profile) {
+        continue;
+      }
+
+      // Preserve existing reset times if available
+      const existingUsage = profile.usage;
+      const usage: ClaudeUsageData = {
+        sessionUsagePercent: sessionPercent,
+        sessionResetTime: existingUsage?.sessionResetTime ?? '',
+        weeklyUsagePercent: weeklyPercent,
+        weeklyResetTime: existingUsage?.weeklyResetTime ?? '',
+        opusUsagePercent: existingUsage?.opusUsagePercent,
+        lastUpdated: new Date()
+      };
+      profile.usage = usage;
+      updatedCount++;
+    }
+
+    // Single save after all updates
+    if (updatedCount > 0) {
+      this.save();
+    }
+
+    return updatedCount;
+  }
+
+  /**
    * Record a rate limit event for a profile
    */
   recordRateLimitEvent(profileId: string, resetTimeStr: string): ClaudeRateLimitEvent {
