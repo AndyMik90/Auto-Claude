@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot } from '../../shared/types';
+import type { IPCResult, TerminalCreateOptions, ClaudeProfile, ClaudeProfileSettings, ClaudeUsageSnapshot, AllProfilesUsage } from '../../shared/types';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import { TerminalManager } from '../terminal-manager';
@@ -10,7 +10,7 @@ import { terminalNameGenerator } from '../terminal-name-generator';
 import { readSettingsFileAsync } from '../settings-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { migrateSession } from '../claude-profile/session-utils';
-import { DEFAULT_CLAUDE_CONFIG_DIR } from '../claude-profile/profile-utils';
+import { DEFAULT_CLAUDE_CONFIG_DIR, createProfileDirectory } from '../claude-profile/profile-utils';
 import { isValidConfigDir } from '../utils/config-path-validator';
 
 
@@ -142,9 +142,17 @@ export function registerTerminalHandlers(
           profile.id = profileManager.generateProfileId(profile.name);
         }
 
-        // Security: Validate configDir path to prevent path traversal attacks
-        // Only validate non-default profiles with custom configDir
-        if (!profile.isDefault && profile.configDir) {
+        // For non-default profiles, ensure configDir is ALWAYS set
+        // This is critical for the CLAUDE_CONFIG_DIR-based auth flow
+        // See: docs/LONG_LIVED_AUTH_PLAN.md for context
+        if (!profile.isDefault) {
+          if (!profile.configDir) {
+            // Auto-create a configDir in ~/.claude-profiles/{profile-name}/
+            console.warn('[CLAUDE_PROFILE_SAVE] Profile missing configDir, creating one:', profile.name);
+            profile.configDir = await createProfileDirectory(profile.name);
+          }
+
+          // Security: Validate configDir path to prevent path traversal attacks
           if (!isValidConfigDir(profile.configDir)) {
             return {
               success: false,
@@ -152,7 +160,7 @@ export function registerTerminalHandlers(
             };
           }
 
-          // Ensure config directory exists for non-default profiles
+          // Ensure config directory exists
           const { mkdirSync, existsSync } = await import('fs');
           if (!existsSync(profile.configDir)) {
             mkdirSync(profile.configDir, { recursive: true });
@@ -395,6 +403,40 @@ export function registerTerminalHandlers(
     }
   );
 
+  // Get account priority order
+  ipcMain.handle(
+    IPC_CHANNELS.ACCOUNT_PRIORITY_GET,
+    async (): Promise<IPCResult<string[]>> => {
+      try {
+        const profileManager = getClaudeProfileManager();
+        const order = profileManager.getAccountPriorityOrder();
+        return { success: true, data: order };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get account priority order'
+        };
+      }
+    }
+  );
+
+  // Set account priority order
+  ipcMain.handle(
+    IPC_CHANNELS.ACCOUNT_PRIORITY_SET,
+    async (_, order: string[]): Promise<IPCResult> => {
+      try {
+        const profileManager = getClaudeProfileManager();
+        profileManager.setAccountPriorityOrder(order);
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to set account priority order'
+        };
+      }
+    }
+  );
+
   // Fetch usage by sending /usage command to terminal
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_PROFILE_FETCH_USAGE,
@@ -493,6 +535,23 @@ export function registerTerminalHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get current usage'
+        };
+      }
+    }
+  );
+
+  // Request all profiles usage immediately (for startup/refresh)
+  ipcMain.handle(
+    IPC_CHANNELS.ALL_PROFILES_USAGE_REQUEST,
+    async (): Promise<IPCResult<AllProfilesUsage | null>> => {
+      try {
+        const monitor = getUsageMonitor();
+        const allProfilesUsage = await monitor.getAllProfilesUsage();
+        return { success: true, data: allProfilesUsage };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get all profiles usage'
         };
       }
     }
@@ -674,6 +733,11 @@ export function initializeUsageMonitorForwarding(mainWindow: BrowserWindow): voi
   // Forward usage updates to renderer
   monitor.on('usage-updated', (usage: ClaudeUsageSnapshot) => {
     mainWindow.webContents.send(IPC_CHANNELS.USAGE_UPDATED, usage);
+  });
+
+  // Forward all profiles usage updates to renderer (for multi-profile display)
+  monitor.on('all-profiles-usage-updated', (allProfilesUsage: AllProfilesUsage) => {
+    mainWindow.webContents.send(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, allProfilesUsage);
   });
 
   // Forward proactive swap notifications to renderer
