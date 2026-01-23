@@ -54,6 +54,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       cursorBlink: fontSettings.cursorBlink,
       cursorStyle: fontSettings.cursorStyle,
       fontSize: fontSettings.fontSize,
+      fontWeight: fontSettings.fontWeight,
       fontFamily: fontSettings.fontFamily.join(', '),
       lineHeight: fontSettings.lineHeight,
       letterSpacing: fontSettings.letterSpacing,
@@ -308,6 +309,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       xterm.options.cursorBlink = settings.cursorBlink;
       xterm.options.cursorStyle = settings.cursorStyle;
       xterm.options.fontSize = settings.fontSize;
+      xterm.options.fontWeight = settings.fontWeight;
       xterm.options.fontFamily = settings.fontFamily.join(', ');
       xterm.options.lineHeight = settings.lineHeight;
       xterm.options.letterSpacing = settings.letterSpacing;

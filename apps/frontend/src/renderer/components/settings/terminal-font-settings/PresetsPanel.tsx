@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Monitor, RotateCcw, Save, Trash2, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../../hooks/use-toast';
@@ -124,6 +124,10 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
   // State for new preset name input
   const [newPresetName, setNewPresetName] = useState('');
 
+  // Track whether initial load from localStorage is complete
+  // This prevents the save effect from clearing localStorage on mount
+  const isLoadedRef = useRef(false);
+
   // Load custom presets from localStorage on mount
   useEffect(() => {
     try {
@@ -141,11 +145,19 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
     } catch {
       // If localStorage is unavailable or corrupted, start with empty list
       setCustomPresets([]);
+    } finally {
+      // Mark as loaded after initial load completes
+      isLoadedRef.current = true;
     }
   }, []);
 
   // Save custom presets to localStorage whenever they change
+  // Skip the initial save to prevent clearing localStorage before load completes
   useEffect(() => {
+    // Skip save on mount - only save after initial load is complete
+    if (!isLoadedRef.current) {
+      return;
+    }
     try {
       if (customPresets.length > 0) {
         localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(customPresets));

@@ -24,26 +24,37 @@ interface PerformanceConfigPanelProps {
 export function PerformanceConfigPanel({ settings, onSettingChange }: PerformanceConfigPanelProps) {
   const { t } = useTranslation('settings');
 
+  // Format scrollback value for display (e.g., 10000 -> "10K")
+  const formatScrollback = (value: number): string => {
+    if (value >= 1000) {
+      return t('terminalFonts.performanceConfig.kValue', {
+        defaultValue: '{{value}}K',
+        value: value / 1000,
+      });
+    }
+    return value.toString();
+  };
+
   // Preset scrollback values with labels (defined inside component to access t())
   const scrollbackPresets = [
     {
       value: 1000,
-      label: '1K',
+      label: formatScrollback(1000),
       description: t('terminalFonts.performanceConfig.presetMinimal', { defaultValue: 'Minimal' }),
     },
     {
       value: 10000,
-      label: '10K',
+      label: formatScrollback(10000),
       description: t('terminalFonts.performanceConfig.presetStandard', { defaultValue: 'Standard' }),
     },
     {
       value: 50000,
-      label: '50K',
+      label: formatScrollback(50000),
       description: t('terminalFonts.performanceConfig.presetExtended', { defaultValue: 'Extended' }),
     },
     {
       value: 100000,
-      label: '100K',
+      label: formatScrollback(100000),
       description: t('terminalFonts.performanceConfig.presetMaximum', { defaultValue: 'Maximum' }),
     },
   ] as const;
@@ -60,14 +71,6 @@ export function PerformanceConfigPanel({ settings, onSettingChange }: Performanc
   // Handle preset button clicks - apply immediately
   const handlePresetChange = (newScrollback: number) => {
     onSettingChange('scrollback', newScrollback);
-  };
-
-  // Format scrollback value for display (e.g., 10000 -> "10K")
-  const formatScrollback = (value: number): string => {
-    if (value >= 1000) {
-      return `${value / 1000}K`;
-    }
-    return value.toString();
   };
 
   return (
