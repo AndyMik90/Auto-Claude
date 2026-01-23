@@ -161,8 +161,7 @@ class TaskLogger:
 
         # Add phase start entry
         phase_message = message or f"Starting {phase_key} phase"
-        if phase_message:
-            phase_message = strip_ansi_codes(phase_message)
+        phase_message = strip_ansi_codes(phase_message)
         entry = LogEntry(
             timestamp=self._timestamp(),
             type=LogEntryType.PHASE_START.value,
@@ -176,8 +175,7 @@ class TaskLogger:
         self._debug_log(phase_message, LogEntryType.PHASE_START, phase_key)
 
         # Also print the message (sanitized)
-        if phase_message:
-            print(phase_message, flush=True)
+        print(phase_message, flush=True)
 
     def end_phase(
         self, phase: LogPhase, success: bool = True, message: str | None = None
@@ -206,8 +204,7 @@ class TaskLogger:
         phase_message = (
             message or f"{'Completed' if success else 'Failed'} {phase_key} phase"
         )
-        if phase_message:
-            phase_message = strip_ansi_codes(phase_message)
+        phase_message = strip_ansi_codes(phase_message)
 
         entry = LogEntry(
             timestamp=self._timestamp(),
@@ -223,8 +220,7 @@ class TaskLogger:
         self._debug_log(phase_message, entry_type, phase_key)
 
         # Print the message (sanitized)
-        if phase_message:
-            print(phase_message, flush=True)
+        print(phase_message, flush=True)
 
         if phase == self.current_phase:
             self.current_phase = None
