@@ -213,6 +213,82 @@ class FeaturesPhase:
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
 
+    def _load_existing_features(self) -> list[dict]:
+        """Load features from existing roadmap that should be preserved.
+
+        Preserves features that meet any of these criteria:
+        - status is 'planned', 'in_progress', or 'done'
+        - has a linked_spec_id (converted to task)
+        - source.provider is 'internal' (user-added)
+
+        Returns:
+            List of feature dictionaries to preserve, empty list if no roadmap exists
+            or on error.
+        """
+        if not self.roadmap_file.exists():
+            debug("roadmap_phase", "No existing roadmap.json to load features from")
+            return []
+
+        try:
+            with open(self.roadmap_file, encoding="utf-8") as f:
+                data = json.load(f)
+
+            features = data.get("features", [])
+            preserved = []
+
+            for feature in features:
+                # Check if feature should be preserved
+                status = feature.get("status")
+                has_linked_spec = bool(feature.get("linked_spec_id"))
+                source = feature.get("source", {})
+                is_internal = (
+                    isinstance(source, dict) and source.get("provider") == "internal"
+                )
+
+                if status in ("planned", "in_progress", "done"):
+                    preserved.append(feature)
+                    debug_detailed(
+                        "roadmap_phase",
+                        f"Preserving feature due to status: {status}",
+                        feature_id=feature.get("id"),
+                    )
+                elif has_linked_spec:
+                    preserved.append(feature)
+                    debug_detailed(
+                        "roadmap_phase",
+                        "Preserving feature due to linked_spec_id",
+                        feature_id=feature.get("id"),
+                        linked_spec_id=feature.get("linked_spec_id"),
+                    )
+                elif is_internal:
+                    preserved.append(feature)
+                    debug_detailed(
+                        "roadmap_phase",
+                        "Preserving feature due to internal source",
+                        feature_id=feature.get("id"),
+                    )
+
+            debug(
+                "roadmap_phase",
+                f"Loaded {len(preserved)} features to preserve from existing roadmap",
+            )
+            return preserved
+
+        except json.JSONDecodeError as e:
+            debug_error(
+                "roadmap_phase",
+                "Failed to parse existing roadmap.json",
+                error=str(e),
+            )
+            return []
+        except (KeyError, TypeError) as e:
+            debug_error(
+                "roadmap_phase",
+                "Error reading features from roadmap.json",
+                error=str(e),
+            )
+            return []
+
     async def execute(self) -> RoadmapPhaseResult:
         """Generate and prioritize features for the roadmap."""
         debug("roadmap_phase", "Starting phase: features")
