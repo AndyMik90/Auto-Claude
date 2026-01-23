@@ -1712,3 +1712,251 @@ body {
 [data-ui-scale="190"] { font-size: 30.4px; }
 [data-ui-scale="195"] { font-size: 31.2px; }
 [data-ui-scale="200"] { font-size: 32px; }
+
+/* ============================================
+   Kanban Column Resize/Collapse Styles
+   ============================================ */
+
+/* Resize handle on right edge of columns */
+.kanban-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.15s ease;
+  z-index: 10;
+}
+
+.kanban-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 2px;
+  height: 24px;
+  transform: translateY(-50%);
+  background: var(--border);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.kanban-resize-handle:hover::after {
+  opacity: 1;
+  background: var(--muted-foreground);
+}
+
+.kanban-resize-handle:hover {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 216, 118, 0.1) 100%
+  );
+}
+
+:root .kanban-resize-handle:hover {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(165, 166, 106, 0.1) 100%
+  );
+}
+
+/* Active resize handle state */
+.kanban-resize-handle.active,
+.kanban-resize-handle:active {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 216, 118, 0.2) 100%
+  );
+}
+
+.kanban-resize-handle.active::after,
+.kanban-resize-handle:active::after {
+  opacity: 1;
+  background: var(--primary);
+}
+
+/* Body state during column resize */
+.kanban-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.kanban-resizing * {
+  cursor: col-resize !important;
+}
+
+/* Collapsed column styling */
+.kanban-column-collapsed {
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  overflow: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed column title - rotated vertically */
+.kanban-column-collapsed-title {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: calc(100% - 80px);
+  padding: 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+/* Collapsed column header wrapper */
+.kanban-column-collapsed-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  padding: 0.75rem 0;
+  gap: 0.75rem;
+}
+
+/* Collapsed column badge count */
+.kanban-column-collapsed-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  border-radius: var(--radius-full);
+  background: var(--secondary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* Locked column indicator */
+.kanban-column-locked .kanban-resize-handle {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.kanban-column-locked .kanban-resize-handle::after {
+  opacity: 0.3;
+  background: var(--muted-foreground);
+}
+
+.kanban-column-locked .kanban-resize-handle:hover {
+  background: transparent;
+}
+
+/* Lock indicator icon styling */
+.kanban-lock-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  transition: all 0.15s ease;
+}
+
+.kanban-lock-indicator:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+.kanban-lock-indicator.locked {
+  color: var(--primary);
+}
+
+/* Column transition for smooth resize */
+.kanban-column-transition {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Disable transition during active resize */
+.kanban-column-no-transition {
+  transition: none !important;
+}
+
+/* Expand button for collapsed columns */
+.kanban-column-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kanban-column-expand-btn:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Collapse button in column header */
+.kanban-column-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kanban-column-collapse-btn:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+/* Collapsed column drop zone enhancement */
+.kanban-column-collapsed.drop-zone-highlight {
+  background: linear-gradient(
+    to bottom,
+    rgba(214, 216, 118, 0.15),
+    rgba(214, 216, 118, 0.05)
+  );
+  border-color: var(--primary);
+}
+
+:root .kanban-column-collapsed.drop-zone-highlight {
+  background: linear-gradient(
+    to bottom,
+    rgba(165, 166, 106, 0.15),
+    rgba(165, 166, 106, 0.05)
+  );
+}
+
+/* Reduced motion: disable column transitions */
+@media (prefers-reduced-motion: reduce) {
+  .kanban-column-collapsed,
+  .kanban-column-transition,
+  .kanban-resize-handle,
+  .kanban-resize-handle::after,
+  .kanban-column-expand-btn,
+  .kanban-column-collapse-btn,
+  .kanban-lock-indicator {
+    transition: none !important;
+  }
+}
