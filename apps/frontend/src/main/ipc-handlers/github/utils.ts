@@ -29,6 +29,15 @@ function getTokenFromGhCli(): string | null {
 }
 
 /**
+ * Get a fresh GitHub token for subprocess use
+ * Always fetches fresh from gh CLI - no caching to ensure account changes are reflected
+ * @returns The current GitHub token or null if not authenticated
+ */
+export async function getGitHubTokenForSubprocess(): Promise<string | null> {
+  return getTokenFromGhCli();
+}
+
+/**
  * Get GitHub configuration from project environment file
  * Falls back to gh CLI token if GITHUB_TOKEN not in .env
  */
