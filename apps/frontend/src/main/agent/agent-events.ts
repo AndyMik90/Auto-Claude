@@ -171,23 +171,78 @@ export class AgentEvents {
 
   /**
    * Parse roadmap progress from log output
+   * Provides granular progress updates (8+ intermediate points) for better UX feedback
    */
   parseRoadmapProgress(log: string, currentPhase: string, currentProgress: number): { phase: string; progress: number } {
     let phase = currentPhase;
     let progress = currentProgress;
 
+    // Phase 1: Project Analysis (10-25%)
     if (log.includes('PROJECT ANALYSIS')) {
       phase = 'analyzing';
+      progress = 10;
+    } else if (log.includes('Copied existing project_index')) {
+      phase = 'analyzing';
+      progress = 15;
+    } else if (log.includes('Running project analyzer')) {
+      phase = 'analyzing';
       progress = 20;
-    } else if (log.includes('PROJECT DISCOVERY')) {
+    } else if (log.includes('project_index.json already exists')) {
+      phase = 'analyzing';
+      progress = 22;
+    } else if (log.includes('Created project_index')) {
+      phase = 'analyzing';
+      progress = 25;
+    }
+
+    // Phase 2: Discovery (30-50%)
+    else if (log.includes('PROJECT DISCOVERY')) {
+      phase = 'discovering';
+      progress = 30;
+    } else if (log.includes('Analyzing project')) {
+      phase = 'discovering';
+      progress = 35;
+    } else if (log.includes('Running discovery agent')) {
       phase = 'discovering';
       progress = 40;
-    } else if (log.includes('FEATURE GENERATION')) {
+    } else if (log.includes('Discovery attempt')) {
+      phase = 'discovering';
+      progress = 45;
+    } else if (log.includes('roadmap_discovery.json')) {
+      phase = 'discovering';
+      progress = 50;
+    }
+
+    // Phase 3: Feature Generation (55-95%)
+    else if (log.includes('FEATURE GENERATION')) {
       phase = 'generating';
-      progress = 70;
-    } else if (log.includes('ROADMAP GENERATED')) {
+      progress = 55;
+    } else if (log.includes('Generating features')) {
+      phase = 'generating';
+      progress = 60;
+    } else if (log.includes('Features attempt')) {
+      phase = 'generating';
+      progress = 65;
+    } else if (log.includes('Prioritizing features')) {
+      phase = 'generating';
+      progress = 75;
+    } else if (log.includes('Creating roadmap file')) {
+      phase = 'generating';
+      progress = 85;
+    } else if (log.includes('Created valid roadmap')) {
+      phase = 'generating';
+      progress = 90;
+    }
+
+    // Complete
+    else if (log.includes('ROADMAP GENERATED')) {
       phase = 'complete';
       progress = 100;
+    }
+
+    // Ensure progress only moves forward, never backward
+    if (progress < currentProgress) {
+      progress = currentProgress;
     }
 
     return { phase, progress };
