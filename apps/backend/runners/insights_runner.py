@@ -188,7 +188,9 @@ Current question: {message}"""
             options_kwargs["permissionMode"] = "bypassPermissions"
             options_kwargs["allowDangerouslySkipPermissions"] = True
         else:
-            debug("insights_runner", "Standard mode - using acceptEdits permission mode")
+            debug(
+                "insights_runner", "Standard mode - using acceptEdits permission mode"
+            )
             options_kwargs["permissionMode"] = "acceptEdits"
 
         # Create Claude SDK client with appropriate settings for insights
@@ -228,7 +230,10 @@ Current question: {message}"""
                             )
 
                 # Print the chunk to stdout for the frontend to capture
-                print(json.dumps({"type": "chunk", "data": chunk.model_dump()}), flush=True)
+                print(
+                    json.dumps({"type": "chunk", "data": chunk.model_dump()}),
+                    flush=True,
+                )
 
             # Send task suggestions if any were found
             if task_suggestions:
@@ -238,9 +243,7 @@ Current question: {message}"""
                     count=len(task_suggestions),
                 )
                 print(
-                    json.dumps(
-                        {"type": "task_suggestions", "data": task_suggestions}
-                    ),
+                    json.dumps({"type": "task_suggestions", "data": task_suggestions}),
                     flush=True,
                 )
 
