@@ -388,18 +388,44 @@ class FeaturesPhase:
         return RoadmapPhaseResult("features", False, [], errors, MAX_RETRIES)
 
     def _build_context(self) -> str:
-        """Build context string for the features agent."""
+        """Build context string for the features agent.
+
+        If there are preserved features from an existing roadmap, includes them
+        in the context so the AI agent can generate complementary features
+        without duplicating existing ones.
+        """
+        # Load any preserved features to inform the AI
+        preserved_features = self._load_existing_features()
+
+        # Build preserved features section if any exist
+        preserved_section = ""
+        if preserved_features:
+            preserved_ids = [f.get("id", "unknown") for f in preserved_features]
+            preserved_titles = [f.get("title", "Untitled") for f in preserved_features]
+            preserved_info = "\n".join(
+                f"  - {fid}: {title}"
+                for fid, title in zip(preserved_ids, preserved_titles)
+            )
+            preserved_section = f"""
+**EXISTING FEATURES TO PRESERVE** (DO NOT regenerate these):
+The following {len(preserved_features)} features already exist and will be preserved.
+Generate NEW features that complement these, do not duplicate them:
+{preserved_info}
+
+"""
+
         return f"""
 **Discovery File**: {self.discovery_file}
 **Project Index**: {self.project_index_file}
 **Output File**: {self.roadmap_file}
-
+{preserved_section}
 Based on the discovery data:
 1. Generate features that address user pain points
 2. Prioritize using MoSCoW framework
 3. Organize into phases
 4. Create milestones
 5. Map dependencies
+{f"6. Do NOT generate features with the same IDs as preserved features listed above" if preserved_features else ""}
 
 Output the complete roadmap to roadmap.json.
 """
