@@ -11,13 +11,24 @@ interface LivePreviewTerminalProps {
 /**
  * Debounce helper function
  * Prevents excessive updates when settings change rapidly (e.g., dragging slider)
+ * Returns an object with the debounced function and a cancel method
  */
-function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  ms: number
+): { fn: T; cancel: () => void } {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: unknown[]) => {
+  const debouncedFn = ((...args: unknown[]) => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
   }) as T;
+  const cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+  return { fn: debouncedFn, cancel };
 }
 
 /**
@@ -50,8 +61,8 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
-  // Create persistent debounced update function
-  const debouncedUpdateRef = useRef<ReturnType<typeof debounce<() => void>> | null>(null);
+  // Create persistent debounced update function with cancel method
+  const debouncedUpdateRef = useRef<ReturnType<typeof debounce> | null>(null);
 
   /**
    * Sample terminal output to demonstrate font rendering
@@ -171,6 +182,7 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
   /**
    * Initialize the debounced update function once
    * Uses settingsRef to avoid stale closure - reads current settings at execution time
+   * Cancels any pending debounced calls on unmount
    */
   useEffect(() => {
     if (!debouncedUpdateRef.current) {
@@ -205,6 +217,12 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
           }
         }
       }, 300); // 300ms debounce
+
+      // Cleanup: cancel any pending debounced call on unmount
+      return () => {
+        debouncedUpdateRef.current?.cancel();
+        debouncedUpdateRef.current = null;
+      };
     }
   }, []);
 
@@ -214,7 +232,7 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
    */
   useEffect(() => {
     if (xtermRef.current && debouncedUpdateRef.current) {
-      debouncedUpdateRef.current();
+      debouncedUpdateRef.current.fn();
     }
   }, [settings]); // Re-run when settings change
 
@@ -234,10 +252,13 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
       }
     }, 100); // 100ms debounce for resize
 
-    const resizeObserver = new ResizeObserver(handleResize);
+    const resizeObserver = new ResizeObserver(handleResize.fn);
     resizeObserver.observe(terminalRef.current);
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      resizeObserver.disconnect();
+      handleResize.cancel(); // Cancel pending debounced resize calls
+    };
   }, []);
 
   return (

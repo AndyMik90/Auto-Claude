@@ -54,6 +54,26 @@ interface CustomPreset {
 }
 
 /**
+ * Validates that a value has the required structure of a CustomPreset
+ */
+function isValidCustomPreset(value: unknown): value is CustomPreset {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.id === 'string' &&
+    obj.id.length > 0 &&
+    typeof obj.name === 'string' &&
+    obj.name.length > 0 &&
+    typeof obj.settings === 'object' &&
+    obj.settings !== null &&
+    typeof obj.createdAt === 'number' &&
+    obj.createdAt > 0
+  );
+}
+
+/**
  * Presets panel for quick application of pre-configured terminal font settings.
  * Provides:
  * - Built-in presets (VS Code, IntelliJ, macOS Terminal, Ubuntu Terminal)
@@ -80,8 +100,14 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
     try {
       const stored = localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as CustomPreset[];
-        setCustomPresets(parsed);
+        const parsed = JSON.parse(stored);
+        // Validate structure before setting state - filter out invalid entries
+        if (Array.isArray(parsed)) {
+          const validPresets = parsed.filter(isValidCustomPreset);
+          setCustomPresets(validPresets);
+        } else {
+          setCustomPresets([]);
+        }
       }
     } catch {
       // If localStorage is unavailable or corrupted, start with empty list
