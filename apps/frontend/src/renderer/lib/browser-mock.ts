@@ -234,6 +234,17 @@ const browserMockAPI: ElectronAPI = {
     onAnalyzePreviewError: () => () => {}
   },
 
+  // Azure DevOps API
+  azureDevOps: {
+    getConfig: async () => ({ success: false, error: 'Not available in browser mock' }),
+    getIterations: async () => ({ success: false, error: 'Not available in browser mock' }),
+    getCurrentIteration: async () => ({ success: false, error: 'Not available in browser mock' }),
+    getWorkItemsForIteration: async () => ({ success: false, error: 'Not available in browser mock' }),
+    getWorkItem: async () => ({ success: false, error: 'Not available in browser mock' }),
+    getAreas: async () => ({ success: false, error: 'Not available in browser mock' }),
+    checkConnection: async () => ({ success: false, error: 'Not available in browser mock' })
+  },
+
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,

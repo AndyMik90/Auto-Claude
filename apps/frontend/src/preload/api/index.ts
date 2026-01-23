@@ -8,6 +8,7 @@ import type { IdeationAPI } from './modules/ideation-api';
 import type { InsightsAPI } from './modules/insights-api';
 import { AppUpdateAPI, createAppUpdateAPI } from './app-update-api';
 import { GitHubAPI, createGitHubAPI } from './modules/github-api';
+import { AzureDevOpsAPI, createAzureDevOpsAPI } from './modules/azure-devops-api';
 import type { GitLabAPI } from './modules/gitlab-api';
 import { DebugAPI, createDebugAPI } from './modules/debug-api';
 import { ClaudeCodeAPI, createClaudeCodeAPI } from './modules/claude-code-api';
@@ -30,6 +31,7 @@ export interface ElectronAPI extends
   McpAPI,
   ProfileAPI {
   github: GitHubAPI;
+  azureDevOps: AzureDevOpsAPI;
 }
 
 export const createElectronAPI = (): ElectronAPI => ({
@@ -44,7 +46,8 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createClaudeCodeAPI(),
   ...createMcpAPI(),
   ...createProfileAPI(),
-  github: createGitHubAPI()
+  github: createGitHubAPI(),
+  azureDevOps: createAzureDevOpsAPI()
 });
 
 // Export individual API creators for potential use in tests or specialized contexts
@@ -59,6 +62,7 @@ export {
   createAppUpdateAPI,
   createProfileAPI,
   createGitHubAPI,
+  createAzureDevOpsAPI,
   createDebugAPI,
   createClaudeCodeAPI,
   createMcpAPI
@@ -77,6 +81,7 @@ export type {
   ProfileAPI,
   GitHubAPI,
   GitLabAPI,
+  AzureDevOpsAPI,
   DebugAPI,
   ClaudeCodeAPI,
   McpAPI

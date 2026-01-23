@@ -34,6 +34,8 @@ if _ENV_FILE.exists():
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # Configure logging
 logging.basicConfig(
@@ -155,6 +157,33 @@ app.include_router(git_router, prefix="/api", tags=["git"])
 app.include_router(source_env_router, prefix="/api", tags=["source-env"])
 app.include_router(ollama_router, prefix="/api", tags=["ollama"])
 app.include_router(roadmap_router, prefix="/api", tags=["roadmap"])
+
+# Mount static files for web UI
+_STATIC_DIR = Path(__file__).parent / "static"
+if _STATIC_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=_STATIC_DIR / "assets"), name="assets")
+    
+    @app.get("/")
+    async def serve_spa():
+        """Serve the web UI SPA."""
+        index_file = _STATIC_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"message": "Auto Claude API is running. Web UI not found."}
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa_catchall(full_path: str):
+        """Catch-all route for SPA - return index.html for all non-API routes."""
+        # Don't intercept API routes - return 404
+        if full_path.startswith("api/") or full_path.startswith("ws/"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not Found")
+        
+        # Serve index.html for all other routes (SPA routing)
+        index_file = _STATIC_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"detail": "Not Found"}
 
 
 @app.get("/api/health")

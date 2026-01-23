@@ -43,6 +43,8 @@ export const IPC_CHANNELS = {
   TASK_ARCHIVE: 'task:archive',
   TASK_UNARCHIVE: 'task:unarchive',
   TASK_CLEAR_STAGED_STATE: 'task:clearStagedState',
+  TASK_GIT_CHANGES: 'task:gitChanges',
+  TASK_FILE_DIFF: 'task:fileDiff',
 
   // Task events (main -> renderer)
   TASK_PROGRESS: 'task:progress',
@@ -287,6 +289,15 @@ export const IPC_CHANNELS = {
   // GitLab MR Review operations
   GITLAB_MR_GET_DIFF: 'gitlab:mr:getDiff',
   GITLAB_MR_REVIEW: 'gitlab:mr:review',
+
+  // Azure DevOps integration
+  AZURE_DEVOPS_GET_CONFIG: 'azureDevOps:getConfig',
+  AZURE_DEVOPS_CHECK_CONNECTION: 'azureDevOps:checkConnection',
+  AZURE_DEVOPS_GET_ITERATIONS: 'azureDevOps:getIterations',
+  AZURE_DEVOPS_GET_CURRENT_ITERATION: 'azureDevOps:getCurrentIteration',
+  AZURE_DEVOPS_GET_WORK_ITEMS: 'azureDevOps:getWorkItems',
+  AZURE_DEVOPS_GET_WORK_ITEM: 'azureDevOps:getWorkItem',
+  AZURE_DEVOPS_GET_AREAS: 'azureDevOps:getAreas',
   GITLAB_MR_REVIEW_CANCEL: 'gitlab:mr:reviewCancel',
   GITLAB_MR_GET_REVIEW: 'gitlab:mr:getReview',
   GITLAB_MR_FOLLOWUP_REVIEW: 'gitlab:mr:followupReview',

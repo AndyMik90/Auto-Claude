@@ -19,12 +19,16 @@ services:
       - GIT_DISCOVERY_ACROSS_FILESYSTEM=1
     env_file:
       - .env.docker
+    environment:
+      # Use SSH_PRIVATE_KEY env variable for git operations instead of mounting host SSH directory
+      # Set SSH_PRIVATE_KEY in .env.docker with your private key content
+      - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-}
     volumes:
       # Mount the code directory with full read-write access
       - ./code:/home/code:rw
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import httpx; resp = httpx.get('http://localhost:8000/api/health'); resp.raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -49,7 +53,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

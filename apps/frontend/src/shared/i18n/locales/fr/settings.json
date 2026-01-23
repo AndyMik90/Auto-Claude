@@ -348,6 +348,13 @@
       "integrationDescription": "Se connecter à GitLab pour le suivi des issues",
       "syncDescription": "Synchroniser avec GitLab Issues"
     },
+    "azure-devops": {
+      "title": "Azure DevOps",
+      "description": "Synchronisation tableau Azure DevOps",
+      "integrationTitle": "Intégration Azure DevOps",
+      "integrationDescription": "Se connecter à Azure DevOps pour le suivi des éléments de travail",
+      "syncDescription": "Synchroniser avec les tableaux Azure DevOps"
+    },
     "memory": {
       "title": "Mémoire",
       "description": "Backend mémoire Graphiti",

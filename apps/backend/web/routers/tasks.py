@@ -256,8 +256,8 @@ async def list_tasks(project_id: str) -> dict:
             
             if completed == len(subtasks):
                 # All subtasks completed - check QA status
-                qa_signoff = plan.get("qa_signoff", {}) if plan else {}
-                if qa_signoff.get("status") == "approved":
+                qa_signoff = plan.get("qa_signoff") if plan else None
+                if qa_signoff and qa_signoff.get("status") == "approved":
                     frontend_status = "human_review"
                     review_reason = "completed"
                 else:

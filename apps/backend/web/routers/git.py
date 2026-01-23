@@ -54,15 +54,42 @@ async def get_git_branches(path: str) -> dict:
     if not project_path.exists():
         return {"success": False, "error": "Path does not exist"}
     
+    # Fetch from remote to get latest branches
+    fetch_success, _, fetch_err = run_git_command(
+        ["fetch", "--all", "--prune"],
+        str(project_path),
+        timeout=60  # Longer timeout for fetch
+    )
+    if not fetch_success:
+        logger.warning(f"Git fetch failed: {fetch_err}")
+        # Continue anyway - we'll still show local branches
+    
+    # Get all branches including remotes
     success, stdout, stderr = run_git_command(
-        ["branch", "--list", "--format=%(refname:short)"],
+        ["branch", "--all", "--format=%(refname:short)"],
         str(project_path)
     )
     
     if not success:
         return {"success": False, "error": stderr or "Failed to list branches"}
     
-    branches = [b.strip() for b in stdout.split("\n") if b.strip()]
+    branches = []
+    seen = set()
+    for b in stdout.split("\n"):
+        b = b.strip()
+        if not b:
+            continue
+        # Remove 'origin/' prefix for remote branches
+        if b.startswith("remotes/origin/"):
+            b = b.replace("remotes/origin/", "")
+        # Skip HEAD pointer
+        if "HEAD" in b:
+            continue
+        # Deduplicate
+        if b not in seen:
+            seen.add(b)
+            branches.append(b)
+    
     return {"success": True, "data": branches}
 
 

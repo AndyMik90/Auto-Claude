@@ -141,6 +141,8 @@ class PushAndCreatePRResult(TypedDict, total=False):
     error: str
     message: str
 
+from core.git_executable import run_git
+
 
 class WorktreeError(Exception):
     """Error during worktree operations."""
@@ -190,8 +192,9 @@ class WorktreeManager:
 
         Priority order:
         1. DEFAULT_BRANCH environment variable
-        2. Auto-detect main/master (if they exist)
-        3. Fall back to current branch (with warning)
+        2. Current branch if it's not main/master
+        3. Auto-detect main/master (if they exist)
+        4. Fall back to current branch
 
         Returns:
             The detected base branch name
@@ -211,7 +214,12 @@ class WorktreeManager:
                     f"Warning: DEFAULT_BRANCH '{env_branch}' not found, auto-detecting..."
                 )
 
-        # 2. Auto-detect main/master
+        # 2. Prefer current branch if it's not main/master
+        current = self._get_current_branch()
+        if current not in {"main", "master"}:
+            return current
+
+        # 3. Auto-detect main/master
         for branch in ["main", "master"]:
             result = run_git(
                 ["rev-parse", "--verify", branch],
@@ -220,8 +228,7 @@ class WorktreeManager:
             if result.returncode == 0:
                 return branch
 
-        # 3. Fall back to current branch with warning
-        current = self._get_current_branch()
+        # 4. Fall back to current branch
         print("Warning: Could not find 'main' or 'master' branch.")
         print(f"Warning: Using current branch '{current}' as base for worktree.")
         print("Tip: Set DEFAULT_BRANCH=your-branch in .env to avoid this.")
@@ -590,7 +597,11 @@ class WorktreeManager:
         self._run_git(["worktree", "prune"])
 
     def merge_worktree(
-        self, spec_name: str, delete_after: bool = False, no_commit: bool = False
+        self,
+        spec_name: str,
+        delete_after: bool = False,
+        no_commit: bool = False,
+        base_branch: str | None = None,
     ) -> bool:
         """
         Merge a spec's worktree branch back to base branch.
@@ -608,12 +619,14 @@ class WorktreeManager:
             print(f"No worktree found for spec: {spec_name}")
             return False
 
+        target_branch = base_branch or info.base_branch
+
         if no_commit:
             print(
-                f"Merging {info.branch} into {self.base_branch} (staged, not committed)..."
+                f"Merging {info.branch} into {target_branch} (staged, not committed)..."
             )
         else:
-            print(f"Merging {info.branch} into {self.base_branch}...")
+            print(f"Merging {info.branch} into {target_branch}...")
 
         # Switch to base branch in main project, but skip if already on it
         # This avoids triggering git hooks unnecessarily
@@ -643,7 +656,7 @@ class WorktreeManager:
             # --no-commit stages the merge but doesn't create the commit
             merge_args.append("--no-commit")
         else:
-            merge_args.extend(["-m", f"auto-claude: Merge {info.branch}"])
+            merge_args.extend(["-m", f"auto-claude: Merge {info.branch} into {target_branch}"])
 
         result = self._run_git(merge_args)
 
@@ -749,14 +762,17 @@ class WorktreeManager:
 
         return branches
 
-    def get_changed_files(self, spec_name: str) -> list[tuple[str, str]]:
+    def get_changed_files(
+        self, spec_name: str, base_branch: str | None = None
+    ) -> list[tuple[str, str]]:
         """Get list of changed files in a spec's worktree."""
         worktree_path = self.get_worktree_path(spec_name)
         if not worktree_path.exists():
             return []
 
+        diff_base = base_branch or self.base_branch
         result = self._run_git(
-            ["diff", "--name-status", f"{self.base_branch}...HEAD"], cwd=worktree_path
+            ["diff", "--name-status", f"{diff_base}...HEAD"], cwd=worktree_path
         )
 
         files = []
@@ -769,9 +785,11 @@ class WorktreeManager:
 
         return files
 
-    def get_change_summary(self, spec_name: str) -> dict:
+    def get_change_summary(
+        self, spec_name: str, base_branch: str | None = None
+    ) -> dict:
         """Get a summary of changes in a worktree."""
-        files = self.get_changed_files(spec_name)
+        files = self.get_changed_files(spec_name, base_branch=base_branch)
 
         new_files = sum(1 for status, _ in files if status == "A")
         modified_files = sum(1 for status, _ in files if status == "M")

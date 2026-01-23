@@ -19,6 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from workspace import get_existing_build_worktree
+
 from .logging_utils import (
     dump_diagnostic_info,
     log_file_operation,
@@ -166,9 +168,6 @@ def load_plan_from_spec(
     Returns:
         Tuple of (plan_dict, subtasks_list)
     """
-    # Import here to avoid circular imports
-    from workspace import get_existing_build_worktree
-    
     func_name = "load_plan_from_spec"
     timestamp = datetime.utcnow().isoformat()
     

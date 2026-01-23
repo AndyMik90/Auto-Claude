@@ -1,0 +1,37 @@
+# Build stage
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (use npm install since lock file may be out of sync)
+RUN npm install --ignore-scripts
+
+# Copy source code
+COPY . .
+
+# Build the web version
+RUN npm run build:web
+
+# Production stage - serve static files with nginx
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist-web /usr/share/nginx/html
+
+# Copy env-config.js template for runtime substitution
+COPY public/env-config.js /usr/share/nginx/html/env-config.js
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Expose port 80
+EXPOSE 80
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
