@@ -434,12 +434,47 @@ def _get_token_from_windows_credential_files() -> str | None:
         return None
 
 
+def _get_token_from_linux_credential_files() -> str | None:
+    """Get token from Linux credential files.
+
+    Claude Code on Linux may store credentials in ~/.claude/.credentials.json
+    as a fallback when Secret Service is not available.
+
+    Returns:
+        Token string if found, None otherwise
+    """
+    try:
+        cred_paths = [
+            os.path.expanduser("~/.claude/.credentials.json"),
+            os.path.expanduser("~/.claude/credentials.json"),
+            os.path.expanduser("~/.config/claude/.credentials.json"),
+        ]
+
+        for cred_path in cred_paths:
+            if os.path.exists(cred_path):
+                with open(cred_path, encoding="utf-8") as f:
+                    data = json.load(f)
+                    token = data.get("claudeAiOauth", {}).get("accessToken")
+                    if token and (
+                        token.startswith("sk-ant-oat01-") or token.startswith("enc:")
+                    ):
+                        return token
+
+        return None
+
+    except (json.JSONDecodeError, KeyError, FileNotFoundError, Exception):
+        return None
+
+
 def _get_token_from_linux_secret_service() -> str | None:
     """Get token from Linux Secret Service API via DBus.
 
     Claude Code on Linux stores credentials in the Secret Service API
     using the 'org.freedesktop.secrets' collection. This implementation
     uses the secretstorage library which communicates via DBus.
+
+    Falls back to reading from ~/.claude/.credentials.json if Secret Service
+    is not available or doesn't contain the token.
 
     The credential is stored with:
     - Label: "Claude Code-credentials"
@@ -448,8 +483,14 @@ def _get_token_from_linux_secret_service() -> str | None:
     Returns:
         Token string if found, None otherwise
     """
+    # First try credential files (most reliable on Linux)
+    token = _get_token_from_linux_credential_files()
+    if token:
+        return token
+
+    # Fall back to Secret Service API
     if secretstorage is None:
-        # secretstorage not installed, fall back to env var
+        # secretstorage not installed
         return None
 
     try:
@@ -506,7 +547,7 @@ def _get_token_from_linux_secret_service() -> str | None:
         AttributeError,
         TypeError,
     ):
-        # Any error with secret-service, fall back to env var
+        # Any error with secret-service
         return None
 
 
