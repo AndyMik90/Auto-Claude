@@ -204,8 +204,9 @@ function updateTray(): void {
 /**
  * Initialize the system tray
  */
-export function initializeTray(getMainWindow: () => BrowserWindow | null): Tray {
-  mainWindowGetter = getMainWindow;
+export function initializeTray(getMainWindow: () => BrowserWindow | null): Tray | null {
+  try {
+    mainWindowGetter = getMainWindow;
 
   // Create tray with initial icon
   const image = createTrayImage('idle');
@@ -234,8 +235,12 @@ export function initializeTray(getMainWindow: () => BrowserWindow | null): Tray 
     });
   }
 
-  console.log('[tray] System tray initialized');
-  return tray;
+    console.log('[tray] System tray initialized');
+    return tray;
+  } catch (error) {
+    console.error('[tray] Failed to initialize system tray:', error);
+    return null;
+  }
 }
 
 /**
