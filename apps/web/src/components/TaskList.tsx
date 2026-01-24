@@ -29,10 +29,22 @@ import { ipc } from '../lib/ipc-abstraction';
 interface TaskCreateDialogProps {
   projectId: string;
   onCreated?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TaskCreateDialog({ projectId, onCreated }: TaskCreateDialogProps) {
-  const [open, setOpen] = useState(false);
+export function TaskCreateDialog({ projectId, onCreated, open: controlledOpen, onOpenChange }: TaskCreateDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use controlled open state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (newOpen: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
+  };
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
