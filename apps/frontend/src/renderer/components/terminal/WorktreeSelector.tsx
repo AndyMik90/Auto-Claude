@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FolderGit, Plus, ChevronDown, Loader2, Trash2, ListTodo } from 'lucide-react';
+import { FolderGit, Plus, ChevronDown, Loader2, Trash2, ListTodo, GitFork } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { TerminalWorktreeConfig, WorktreeListItem } from '../../../shared/types';
+import type { TerminalWorktreeConfig, WorktreeListItem, OtherWorktreeInfo } from '../../../shared/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
 } from '../ui/alert-dialog';
 import { cn } from '../../lib/utils';
-import { ScrollArea } from '../ui/scroll-area';
 import { useProjectStore } from '../../stores/project-store';
 
 interface WorktreeSelectorProps {
@@ -44,6 +43,7 @@ export function WorktreeSelector({
   const { t } = useTranslation(['terminal', 'common']);
   const [worktrees, setWorktrees] = useState<TerminalWorktreeConfig[]>([]);
   const [taskWorktrees, setTaskWorktrees] = useState<WorktreeListItem[]>([]);
+  const [otherWorktrees, setOtherWorktrees] = useState<OtherWorktreeInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [deleteWorktree, setDeleteWorktree] = useState<TerminalWorktreeConfig | null>(null);
@@ -59,10 +59,11 @@ export function WorktreeSelector({
     if (!projectPath) return;
     setIsLoading(true);
     try {
-      // Fetch terminal worktrees and task worktrees in parallel
-      const [terminalResult, taskResult] = await Promise.all([
+      // Fetch terminal worktrees, task worktrees, and other worktrees in parallel
+      const [terminalResult, taskResult, otherResult] = await Promise.all([
         window.electronAPI.listTerminalWorktrees(projectPath),
         project?.id ? window.electronAPI.listWorktrees(project.id) : Promise.resolve(null),
+        window.electronAPI.listOtherWorktrees(projectPath),
       ]);
 
       // Process terminal worktrees
@@ -85,6 +86,17 @@ export function WorktreeSelector({
         // Clear task worktrees when project is null or fetch failed
         setTaskWorktrees([]);
       }
+
+      // Process other worktrees
+      if (otherResult?.success && otherResult.data) {
+        // Filter out current worktree if it matches
+        const availableOtherWorktrees = currentWorktree
+          ? otherResult.data.filter((wt) => wt.path !== currentWorktree.worktreePath)
+          : otherResult.data;
+        setOtherWorktrees(availableOtherWorktrees);
+      } else {
+        setOtherWorktrees([]);
+      }
     } catch (err) {
       console.error('Failed to fetch worktrees:', err);
     } finally {
@@ -101,6 +113,20 @@ export function WorktreeSelector({
       baseBranch: taskWt.baseBranch,
       hasGitBranch: true,
       // Note: This represents when the worktree was attached to this terminal, not when it was originally created
+      createdAt: new Date().toISOString(),
+      terminalId,
+    };
+    onSelectWorktree(config);
+  };
+
+  // Convert other worktree to terminal worktree config for selection
+  const selectOtherWorktree = (otherWt: OtherWorktreeInfo) => {
+    const config: TerminalWorktreeConfig = {
+      name: otherWt.displayName,
+      worktreePath: otherWt.path,
+      branchName: otherWt.branch ?? '',
+      baseBranch: '', // Unknown for external worktrees
+      hasGitBranch: otherWt.branch !== null,
       createdAt: new Date().toISOString(),
       terminalId,
     };
@@ -173,8 +199,8 @@ export function WorktreeSelector({
         {/* Fixed separator between "Create New" and scrollable content */}
         <DropdownMenuSeparator />
 
-        {/* Scrollable content */}
-        <ScrollArea className="max-h-[300px]">
+        {/* Scrollable content with native browser scrolling */}
+        <div className="max-h-[300px] overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-2">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -252,9 +278,38 @@ export function WorktreeSelector({
                   ))}
                 </>
               )}
+
+              {/* Other Worktrees Section */}
+              {otherWorktrees.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {t('terminal:worktree.otherWorktrees')}
+                  </div>
+                  {otherWorktrees.map((wt) => (
+                    <DropdownMenuItem
+                      key={wt.path}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        selectOtherWorktree(wt);
+                      }}
+                      className="text-xs group"
+                    >
+                      <GitFork className="h-3 w-3 mr-2 text-purple-500/70 shrink-0" />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate font-medium">{wt.displayName}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {wt.branch !== null ? wt.branch : `${wt.commitSha} ${t('terminal:worktree.detached')}`}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
             </>
           )}
-        </ScrollArea>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
 

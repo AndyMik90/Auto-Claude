@@ -2,11 +2,10 @@ import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
+import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { minimatch } = require('minimatch');
+import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -20,6 +19,8 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
+import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { killProcessGracefully } from '../../platform';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -951,7 +952,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1021,7 +1022,7 @@ function isAppInstalled(
   for (const checkPath of specificPaths) {
     const expandedPath = checkPath
       .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+      .replace('~', homedir());
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {
@@ -1465,9 +1466,9 @@ async function updateTaskStatusAfterPRCreation(
 
   // Await status persistence to ensure completion before resolving
   try {
-    const persisted = await persistPlanStatus(planPath, 'pr_created');
+    const persisted = await persistPlanStatus(planPath, 'done');
     result.mainProjectStatus = persisted;
-    debug('Main project status persisted to pr_created:', persisted);
+    debug('Main project status persisted to done:', persisted);
   } catch (err) {
     debug('Failed to persist main project status:', err);
   }
@@ -1484,9 +1485,9 @@ async function updateTaskStatusAfterPRCreation(
     const worktreeMetadataPath = path.join(worktreePath, specsBaseDir, specId, 'task_metadata.json');
 
     try {
-      const persisted = await persistPlanStatus(worktreePlanPath, 'pr_created');
+      const persisted = await persistPlanStatus(worktreePlanPath, 'done');
       result.worktreeStatus = persisted;
-      debug('Worktree status persisted to pr_created:', persisted);
+      debug('Worktree status persisted to done:', persisted);
     } catch (err) {
       debug('Failed to persist worktree status:', err);
     }
@@ -1608,7 +1609,7 @@ async function withRetry<T>(
       onRetry?.(attempt, error);
 
       // Wait before retry (exponential backoff)
-      await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)));
+      await new Promise(r => setTimeout(r, baseDelayMs * 2 ** (attempt - 1)));
     }
   }
 
@@ -1892,9 +1893,10 @@ export function registerWorktreeHandlers(
 
         // Check if changes are already staged (for stage-only mode)
         if (options?.noCommit) {
-          const stagedResult = spawnSync('git', ['diff', '--staged', '--name-only'], {
+          const stagedResult = spawnSync(getToolPath('git'), ['diff', '--staged', '--name-only'], {
             cwd: project.path,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv()
           });
 
           if (stagedResult.status === 0 && stagedResult.stdout?.trim()) {
@@ -1984,17 +1986,16 @@ export function registerWorktreeHandlers(
           const mergeProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
             env: {
-              ...process.env,
-              ...pythonEnv, // Include bundled packages PYTHONPATH
-              ...profileEnv, // Include active Claude profile OAuth token
+              ...getIsolatedGitEnv(),
+              ...pythonEnv,
+              ...profileEnv,
               PYTHONUNBUFFERED: '1',
               PYTHONUTF8: '1',
-              // Utility feature settings for merge resolver
               UTILITY_MODEL: utilitySettings.model,
               UTILITY_MODEL_ID: utilitySettings.modelId,
               UTILITY_THINKING_BUDGET: utilitySettings.thinkingBudget === null ? '' : (utilitySettings.thinkingBudget?.toString() || '')
             },
-            stdio: ['ignore', 'pipe', 'pipe'] // Don't connect stdin to avoid blocking
+            stdio: ['ignore', 'pipe', 'pipe']
           });
 
           let stdout = '';
@@ -2006,27 +2007,11 @@ export function registerWorktreeHandlers(
               debug('TIMEOUT: Merge process exceeded', MERGE_TIMEOUT_MS, 'ms, killing...');
               resolved = true;
 
-              // Platform-specific process termination
-              if (process.platform === 'win32') {
-                // On Windows, .kill() without signal terminates the process tree
-                // SIGTERM/SIGKILL are not supported the same way on Windows
-                try {
-                  mergeProcess.kill();
-                } catch {
-                  // Process may already be dead
-                }
-              } else {
-                // On Unix-like systems, use SIGTERM first, then SIGKILL as fallback
-                mergeProcess.kill('SIGTERM');
-                // Give it a moment to clean up, then force kill
-                setTimeout(() => {
-                  try {
-                    mergeProcess.kill('SIGKILL');
-                  } catch {
-                    // Process may already be dead
-                  }
-                }, 5000);
-              }
+              // Platform-specific process termination with fallback
+              killProcessGracefully(mergeProcess, {
+                debugPrefix: '[MERGE]',
+                debug: isDebugMode
+              });
 
               // Check if merge might have succeeded before the hang
               // Look for success indicators in the output
@@ -2482,7 +2467,7 @@ export function registerWorktreeHandlers(
           const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
           const previewProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
-            env: { ...process.env, ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' }
+            env: { ...getIsolatedGitEnv(), ...previewPythonEnv, ...previewProfileEnv, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1', DEBUG: 'true' }
           });
 
           let stdout = '';
@@ -3010,7 +2995,7 @@ export function registerWorktreeHandlers(
           const createPRProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
             cwd: sourcePath,
             env: {
-              ...process.env,
+              ...getIsolatedGitEnv(),
               ...pythonEnv,
               ...profileEnv,
               GITHUB_CLI_PATH: ghCliPath,
@@ -3030,35 +3015,10 @@ export function registerWorktreeHandlers(
               resolved = true;
 
               // Platform-specific process termination with fallback
-              if (process.platform === 'win32') {
-                try {
-                  createPRProcess.kill();
-                  // Fallback: forcefully kill with taskkill if process ignores initial kill
-                  if (createPRProcess.pid) {
-                    setTimeout(() => {
-                      try {
-                        spawn('taskkill', ['/pid', createPRProcess.pid!.toString(), '/f', '/t'], {
-                          stdio: 'ignore',
-                          detached: true
-                        }).unref();
-                      } catch {
-                        // Process may already be dead
-                      }
-                    }, 5000);
-                  }
-                } catch {
-                  // Process may already be dead
-                }
-              } else {
-                createPRProcess.kill('SIGTERM');
-                setTimeout(() => {
-                  try {
-                    createPRProcess.kill('SIGKILL');
-                  } catch {
-                    // Process may already be dead
-                  }
-                }, 5000);
-              }
+              killProcessGracefully(createPRProcess, {
+                debugPrefix: '[PR_CREATION]',
+                debug: isDebugMode
+              });
 
               resolve({
                 success: false,

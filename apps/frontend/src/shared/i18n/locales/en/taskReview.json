@@ -22,10 +22,6 @@
     "fileRenamesDetected": "{{count}} file rename detected - AI will handle the merge.",
     "fileRenamesDetected_other": "{{count}} file renames detected - AI will handle the merge.",
     "filesRenamedOrMoved": "Files may have been renamed or moved - AI will handle the merge.",
-    "status": {
-      "branchDiverged": "Branch Diverged",
-      "aiWillResolve": "AI will resolve"
-    },
     "buttons": {
       "stageWithAIMerge": "Stage with AI Merge",
       "mergeWithAI": "Merge with AI",
@@ -67,17 +63,21 @@
       "prTitle": "Leave empty to use the task title"
     }
   },
-  "staged": {
-    "title": "Changes Staged Successfully",
-    "aiCommitMessage": "AI-generated commit message",
-    "copied": "Copied!",
-    "copy": "Copy",
-    "commitPlaceholder": "Commit message...",
-    "editHint": "Edit as needed, then copy and use with",
-    "nextSteps": "Next steps:",
-    "step1": "Open your project in your IDE or terminal",
-    "step2": "Review the staged changes with",
-    "step2And": "and",
-    "step3": "Commit when ready:"
+  "bulkPR": {
+    "title": "Create Pull Requests",
+    "description": "Create pull requests for {{count}} selected tasks",
+    "creating": "Creating PR {{current}} of {{total}}...",
+    "creatingPR": "Creating PR {{current}} of {{total}}",
+    "resultsDescription": "{{success}} succeeded, {{failed}} failed",
+    "tasksToProcess": "Tasks to process",
+    "targetBranchHint": "Leave empty to use each task's default branch. This will be applied to all PRs.",
+    "createAll": "Create {{count}} PRs",
+    "completed": "completed",
+    "succeeded": "succeeded",
+    "failed": "failed",
+    "skipped": "skipped",
+    "alreadyExisted": "already existed",
+    "noWorktree": "No worktree found for this task",
+    "resultsDescriptionWithSkipped": "{{success}} succeeded, {{skipped}} skipped, {{failed}} failed"
   }
 }

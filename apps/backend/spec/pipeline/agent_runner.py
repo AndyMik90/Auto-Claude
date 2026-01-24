@@ -12,7 +12,6 @@ from ui.capabilities import configure_safe_encoding
 
 configure_safe_encoding()
 
-from core.client import create_client
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
@@ -20,6 +19,10 @@ from task_logger import (
     LogPhase,
     TaskLogger,
 )
+
+# Lazy import create_client to avoid circular import with core.client
+# The import chain: spec.pipeline -> agent_runner -> core.client -> agents.tools_pkg -> spec.validate_pkg
+# By deferring the import, we break the circular dependency.
 
 
 class AgentRunner:
@@ -82,7 +85,7 @@ class AgentRunner:
             return False, f"Prompt not found: {prompt_path}"
 
         # Load prompt
-        prompt = prompt_path.read_text()
+        prompt = prompt_path.read_text(encoding="utf-8")
         debug_detailed(
             "agent_runner",
             "Loaded prompt file",
@@ -116,6 +119,9 @@ class AgentRunner:
             "Creating Claude SDK client...",
             thinking_budget=thinking_budget,
         )
+        # Lazy import to avoid circular import with core.client
+        from core.client import create_client
+
         client = create_client(
             self.project_dir,
             self.spec_dir,

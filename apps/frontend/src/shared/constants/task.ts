@@ -9,8 +9,8 @@
 
 // Task status columns in Kanban board order
 export const TASK_STATUS_COLUMNS = [
-  'error',
   'backlog',
+  'queue',
   'in_progress',
   'ai_review',
   'human_review',
@@ -21,26 +21,30 @@ export type TaskStatusColumn = typeof TASK_STATUS_COLUMNS[number];
 
 // Status label translation keys (use with t() from react-i18next)
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_LABELS: Record<TaskStatusColumn | 'pr_created', string> = {
-  error: 'columns.error',
+// Note: error maps to 'human_review' column in Kanban view (errors need human attention)
+export const TASK_STATUS_LABELS: Record<TaskStatusColumn | 'pr_created' | 'error', string> = {
   backlog: 'columns.backlog',
+  queue: 'columns.queue',
   in_progress: 'columns.in_progress',
   ai_review: 'columns.ai_review',
   human_review: 'columns.human_review',
   done: 'columns.done',
-  pr_created: 'columns.pr_created'
+  pr_created: 'columns.pr_created',
+  error: 'columns.error'
 };
 
 // Status colors for UI
 // Note: pr_created maps to 'done' column in Kanban view (see KanbanBoard.tsx)
-export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created', string> = {
-  error: 'bg-destructive/10 text-destructive',
+// Note: error maps to 'human_review' column in Kanban view (errors need human attention)
+export const TASK_STATUS_COLORS: Record<TaskStatusColumn | 'pr_created' | 'error', string> = {
   backlog: 'bg-muted text-muted-foreground',
+  queue: 'bg-cyan-500/10 text-cyan-400',
   in_progress: 'bg-info/10 text-info',
   ai_review: 'bg-warning/10 text-warning',
   human_review: 'bg-purple-500/10 text-purple-400',
   done: 'bg-success/10 text-success',
-  pr_created: 'bg-info/10 text-info'
+  pr_created: 'bg-info/10 text-info',
+  error: 'bg-destructive/10 text-destructive'
 };
 
 // ============================================
@@ -221,3 +225,21 @@ export const ALLOWED_IMAGE_TYPES_DISPLAY = 'PNG, JPEG, GIF, WebP, SVG';
 
 // Attachments directory name within spec folder
 export const ATTACHMENTS_DIR = 'attachments';
+
+// ============================================
+// JSON Error Markers
+// ============================================
+
+/**
+ * Marker prefix for task descriptions that failed JSON parsing.
+ * Format: __JSON_ERROR__:<error message>
+ * Used in project-store.ts when loading tasks with malformed implementation_plan.json
+ */
+export const JSON_ERROR_PREFIX = '__JSON_ERROR__:';
+
+/**
+ * Marker suffix for task titles that have JSON parsing errors.
+ * Appended to spec directory name, replaced with i18n suffix at render time.
+ * Used in project-store.ts when loading tasks with malformed implementation_plan.json
+ */
+export const JSON_ERROR_TITLE_SUFFIX = '__JSON_ERROR_SUFFIX__';

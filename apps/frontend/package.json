@@ -1,6 +1,6 @@
 {
   "name": "auto-claude-ui",
-  "version": "2.7.4",
+  "version": "2.7.5",
   "type": "module",
   "description": "Desktop UI for Auto Claude autonomous coding framework",
   "homepage": "https://github.com/AndyMik90/Auto-Claude",
@@ -31,11 +31,11 @@
     "python:download": "node scripts/download-python.cjs",
     "python:download:all": "node scripts/download-python.cjs --all",
     "python:verify": "node scripts/verify-python-bundling.cjs",
-    "package": "npm run python:download && electron-vite build && electron-builder --publish never",
-    "package:mac": "npm run python:download && electron-vite build && electron-builder --mac --publish never",
-    "package:win": "npm run python:download && electron-vite build && electron-builder --win --publish never",
-    "package:linux": "npm run python:download && electron-vite build && electron-builder --linux --publish never",
-    "package:flatpak": "npm run python:download && electron-vite build && electron-builder --linux flatpak --publish never",
+    "package": "node scripts/package-with-python.cjs",
+    "package:mac": "node scripts/package-with-python.cjs --mac",
+    "package:win": "node scripts/package-with-python.cjs --win",
+    "package:linux": "node scripts/package-with-python.cjs --linux",
+    "package:flatpak": "node scripts/package-with-python.cjs --linux flatpak",
     "start:packaged:mac": "open dist/mac-arm64/Auto-Claude.app || open dist/mac/Auto-Claude.app",
     "start:packaged:win": "start \"\" \"dist\\win-unpacked\\Auto-Claude.exe\"",
     "start:packaged:linux": "./dist/linux-unpacked/auto-claude",
@@ -43,8 +43,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -101,12 +102,13 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.11",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@electron/rebuild": "^4.0.2",
-    "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.1.17",
+    "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
     "@types/minimatch": "^5.1.2",
@@ -119,29 +121,26 @@
     "autoprefixer": "^10.4.22",
     "cross-env": "^10.1.0",
     "electron": "39.2.7",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.4.0",
     "electron-vite": "^5.0.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "globals": "^17.0.0",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.1",
     "vite": "^7.2.7",
     "vitest": "^4.0.16"
   },
   "overrides": {
     "electron-builder-squirrel-windows": "^26.0.12",
-    "dmg-builder": "^26.0.12"
+    "dmg-builder": "^26.0.12",
+    "@electron/rebuild": "4.0.2"
   },
   "build": {
     "appId": "com.autoclaude.ui",
     "productName": "Auto-Claude",
+    "npmRebuild": false,
     "artifactName": "${productName}-${version}-${platform}-${arch}.${ext}",
     "publish": [
       {
@@ -157,6 +156,9 @@
     "files": [
       "out/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "out/main/node_modules/@lydell/node-pty-*/**"
     ],
     "extraResources": [
       {
@@ -236,8 +238,8 @@
     }
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix"
+    "*.{ts,tsx,js,jsx,json}": [
+      "biome check --write --no-errors-on-unmatched"
     ]
   }
 }

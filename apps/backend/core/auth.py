@@ -7,9 +7,29 @@ for custom API endpoints.
 """
 
 import json
+import logging
 import os
-import platform
+import shutil
 import subprocess
+from typing import TYPE_CHECKING
+
+from core.platform import (
+    is_linux,
+    is_macos,
+    is_windows,
+)
+
+logger = logging.getLogger(__name__)
+
+# Optional import for Linux secret-service support
+# secretstorage provides access to the Freedesktop.org Secret Service API via DBus
+if TYPE_CHECKING:
+    import secretstorage
+else:
+    try:
+        import secretstorage  # type: ignore[import-untyped]
+    except ImportError:
+        secretstorage = None  # type: ignore[assignment]
 
 # Priority order for auth token resolution
 # NOTE: We intentionally do NOT fall back to ANTHROPIC_API_KEY.
@@ -38,7 +58,292 @@ SDK_ENV_VARS = [
     "API_TIMEOUT_MS",
     # Windows-specific: Git Bash path for Claude Code CLI
     "CLAUDE_CODE_GIT_BASH_PATH",
+    # Claude CLI path override (allows frontend to pass detected CLI path to SDK)
+    "CLAUDE_CLI_PATH",
+    # Profile's custom config directory (for multi-profile token storage)
+    "CLAUDE_CONFIG_DIR",
 ]
+
+
+def is_encrypted_token(token: str | None) -> bool:
+    """
+    Check if a token is encrypted (has "enc:" prefix).
+
+    Args:
+        token: Token string to check (can be None)
+
+    Returns:
+        True if token starts with "enc:", False otherwise
+    """
+    return bool(token and token.startswith("enc:"))
+
+
+def validate_token_not_encrypted(token: str) -> None:
+    """
+    Validate that a token is not in encrypted format.
+
+    This function should be called before passing a token to the Claude Agent SDK
+    to ensure proper error messages when decryption has failed.
+
+    Args:
+        token: Token string to validate
+
+    Raises:
+        ValueError: If token is in encrypted format (enc:...)
+    """
+    if is_encrypted_token(token):
+        raise ValueError(
+            "Authentication token is in encrypted format and cannot be used.\n\n"
+            "The token decryption process failed or was not attempted.\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file\n\n"
+            "Note: Encrypted tokens require the Claude Code CLI to be installed\n"
+            "and properly configured with system keychain access."
+        )
+
+
+def decrypt_token(encrypted_token: str) -> str:
+    """
+    Decrypt Claude Code encrypted token.
+
+    NOTE: This implementation currently relies on the system keychain (macOS Keychain,
+    Linux Secret Service, Windows Credential Manager) to provide already-decrypted tokens.
+    Encrypted tokens in the CLAUDE_CODE_OAUTH_TOKEN environment variable are NOT supported
+    and will fail with NotImplementedError.
+
+    For encrypted token support, users should:
+    1. Run: claude setup-token (stores decrypted token in system keychain)
+    2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file
+
+    Claude Code CLI stores OAuth tokens in encrypted format with "enc:" prefix.
+    This function attempts to decrypt the token using platform-specific methods.
+
+    Cross-platform token decryption approaches:
+    - macOS: Token stored in Keychain with encryption key
+    - Linux: Token stored in Secret Service API with encryption key
+    - Windows: Token stored in Credential Manager or .credentials.json
+
+    Args:
+        encrypted_token: Token with 'enc:' prefix from Claude Code CLI
+
+    Returns:
+        Decrypted token in format 'sk-ant-oat01-...'
+
+    Raises:
+        ValueError: If token format is invalid or decryption fails
+    """
+    # Validate encrypted token format
+    if not isinstance(encrypted_token, str):
+        raise ValueError(
+            f"Invalid token type. Expected string, got: {type(encrypted_token).__name__}"
+        )
+
+    if not encrypted_token.startswith("enc:"):
+        raise ValueError(
+            "Invalid encrypted token format. Token must start with 'enc:' prefix."
+        )
+
+    # Remove 'enc:' prefix to get encrypted data
+    encrypted_data = encrypted_token[4:]
+
+    if not encrypted_data:
+        raise ValueError("Empty encrypted token data after 'enc:' prefix")
+
+    # Basic validation of encrypted data format
+    # Encrypted data should be a reasonable length (at least 10 chars)
+    if len(encrypted_data) < 10:
+        raise ValueError(
+            "Encrypted token data is too short. The token may be corrupted."
+        )
+
+    # Check for obviously invalid characters that suggest corruption
+    # Accepts both standard base64 (+/) and URL-safe base64 (-_) to be permissive
+    if not all(c.isalnum() or c in "+-_/=" for c in encrypted_data):
+        raise ValueError(
+            "Encrypted token contains invalid characters. "
+            "Expected base64-encoded data. The token may be corrupted."
+        )
+
+    # Attempt platform-specific decryption
+    try:
+        if is_macos():
+            return _decrypt_token_macos(encrypted_data)
+        elif is_linux():
+            return _decrypt_token_linux(encrypted_data)
+        elif is_windows():
+            return _decrypt_token_windows(encrypted_data)
+        else:
+            raise ValueError("Unsupported platform for token decryption")
+
+    except NotImplementedError as e:
+        # Decryption not implemented - log warning and provide guidance
+        logger.warning(
+            "Token decryption failed: %s. Users must use plaintext tokens.", str(e)
+        )
+        raise ValueError(
+            f"Encrypted token decryption is not yet implemented: {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token (without 'enc:' prefix)\n"
+            "  2. Or re-authenticate with: claude setup-token"
+        )
+    except ValueError:
+        # Re-raise ValueError as-is (already has good error message)
+        raise
+    except FileNotFoundError as e:
+        # File-related errors (missing credentials file, missing binary)
+        raise ValueError(
+            f"Failed to decrypt token - required file not found: {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except PermissionError as e:
+        # Permission errors (can't access keychain, credential manager, etc.)
+        raise ValueError(
+            f"Failed to decrypt token - permission denied: {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Grant keychain/credential manager access to this application\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except subprocess.TimeoutExpired:
+        # Timeout during decryption process
+        raise ValueError(
+            "Failed to decrypt token - operation timed out.\n\n"
+            "This may indicate a problem with system keychain access.\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except Exception as e:
+        # Catch-all for other errors - provide helpful error message
+        error_type = type(e).__name__
+        raise ValueError(
+            f"Failed to decrypt token ({error_type}): {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file\n\n"
+            "Note: Encrypted tokens (enc:...) require the Claude Code CLI to be installed\n"
+            "and properly configured with system keychain access."
+        )
+
+
+def _decrypt_token_macos(encrypted_data: str) -> str:
+    """
+    Decrypt token on macOS using Keychain.
+
+    Args:
+        encrypted_data: Encrypted token data (without 'enc:' prefix)
+
+    Returns:
+        Decrypted token
+
+    Raises:
+        ValueError: If decryption fails or Claude CLI not available
+    """
+    # Verify Claude CLI is installed (required for future decryption implementation)
+    if not shutil.which("claude"):
+        raise ValueError(
+            "Claude Code CLI not found. Please install it from https://code.claude.com"
+        )
+
+    # The Claude Code CLI handles token decryption internally when it runs
+    # We can trigger this by running a simple command that requires authentication
+    # and capturing the decrypted token from the environment it sets up
+    #
+    # However, there's no direct CLI command to decrypt tokens.
+    # The SDK should handle this automatically when it receives encrypted tokens.
+    raise NotImplementedError(
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
+    )
+
+
+def _decrypt_token_linux(encrypted_data: str) -> str:
+    """
+    Decrypt token on Linux using Secret Service API.
+
+    Args:
+        encrypted_data: Encrypted token data (without 'enc:' prefix)
+
+    Returns:
+        Decrypted token
+
+    Raises:
+        ValueError: If decryption fails or dependencies not available
+    """
+    # Linux token decryption requires secretstorage library
+    if secretstorage is None:
+        raise ValueError(
+            "secretstorage library not found. Install it with: pip install secretstorage"
+        )
+
+    # Similar to macOS, the actual decryption mechanism isn't publicly documented
+    # The Claude Agent SDK should handle this automatically
+    raise NotImplementedError(
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
+    )
+
+
+def _decrypt_token_windows(encrypted_data: str) -> str:
+    """
+    Decrypt token on Windows using Credential Manager.
+
+    Args:
+        encrypted_data: Encrypted token data (without 'enc:' prefix)
+
+    Returns:
+        Decrypted token
+
+    Raises:
+        ValueError: If decryption fails
+    """
+    # Windows token decryption from Credential Manager or .credentials.json
+    # The Claude Agent SDK should handle this automatically
+    raise NotImplementedError(
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
+    )
+
+
+def _try_decrypt_token(token: str | None) -> str | None:
+    """
+    Attempt to decrypt an encrypted token, returning original if decryption fails.
+
+    This helper centralizes the decrypt-or-return-as-is logic used when resolving
+    tokens from various sources (env vars, config dir, keychain).
+
+    Args:
+        token: Token string (may be encrypted with "enc:" prefix, plaintext, or None)
+
+    Returns:
+        - Decrypted token if successfully decrypted
+        - Original token if decryption fails (allows client validation to report error)
+        - Original token if not encrypted
+        - None if token is None
+    """
+    if not token:
+        return None
+
+    if is_encrypted_token(token):
+        try:
+            return decrypt_token(token)
+        except ValueError:
+            # Decryption failed - return encrypted token so client validation
+            # (validate_token_not_encrypted) can provide specific error message.
+            return token
+
+    return token
 
 
 def get_token_from_keychain() -> str | None:
@@ -48,20 +353,18 @@ def get_token_from_keychain() -> str | None:
     Reads Claude Code credentials from:
     - macOS: Keychain
     - Windows: Credential Manager
-    - Linux: Not yet supported (use env var)
+    - Linux: Secret Service API (via dbus/secretstorage)
 
     Returns:
         Token string if found, None otherwise
     """
-    system = platform.system()
-
-    if system == "Darwin":
+    if is_macos():
         return _get_token_from_macos_keychain()
-    elif system == "Windows":
+    elif is_windows():
         return _get_token_from_windows_credential_files()
     else:
-        # Linux: secret-service not yet implemented
-        return None
+        # Linux: use secret-service API via DBus
+        return _get_token_from_linux_secret_service()
 
 
 def _get_token_from_macos_keychain() -> str | None:
@@ -131,59 +434,216 @@ def _get_token_from_windows_credential_files() -> str | None:
         return None
 
 
-def get_auth_token() -> str | None:
-    """
-    Get authentication token from environment variables or system credential store.
+def _get_token_from_linux_secret_service() -> str | None:
+    """Get token from Linux Secret Service API via DBus.
 
-    Checks multiple sources in priority order:
-    1. CLAUDE_CODE_OAUTH_TOKEN (env var)
-    2. ANTHROPIC_AUTH_TOKEN (CCR/proxy env var for enterprise setups)
-    3. System credential store (macOS Keychain, Windows Credential Manager)
+    Claude Code on Linux stores credentials in the Secret Service API
+    using the 'org.freedesktop.secrets' collection. This implementation
+    uses the secretstorage library which communicates via DBus.
 
-    NOTE: ANTHROPIC_API_KEY is intentionally NOT supported to prevent
-    silent billing to user's API credits when OAuth is misconfigured.
+    The credential is stored with:
+    - Label: "Claude Code-credentials"
+    - Attributes: {application: "claude-code"}
 
     Returns:
         Token string if found, None otherwise
     """
-    # First check environment variables
+    if secretstorage is None:
+        # secretstorage not installed, fall back to env var
+        return None
+
+    try:
+        # Get the default collection (typically "login" keyring)
+        # secretstorage handles DBus communication internally
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            # DBus not available or secret-service not running
+            return None
+
+        if collection.is_locked():
+            # Try to unlock the collection (may prompt user for password)
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                # User cancelled or unlock failed
+                return None
+
+        # Search for items with our application attribute
+        items = collection.search_items({"application": "claude-code"})
+
+        for item in items:
+            # Check if this is the Claude Code credentials item
+            label = item.get_label()
+            # Use exact match for "Claude Code-credentials" to avoid false positives
+            if label == "Claude Code-credentials":
+                # Get the secret (stored as JSON string)
+                secret = item.get_secret()
+                if not secret:
+                    continue
+
+                try:
+                    # Explicitly decode bytes to string if needed
+                    if isinstance(secret, bytes):
+                        secret = secret.decode("utf-8")
+                    data = json.loads(secret)
+                    token = data.get("claudeAiOauth", {}).get("accessToken")
+
+                    if token and token.startswith("sk-ant-oat01-"):
+                        return token
+                except json.JSONDecodeError:
+                    continue
+
+        return None
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        KeyError,
+        AttributeError,
+        TypeError,
+    ):
+        # Any error with secret-service, fall back to env var
+        return None
+
+
+def _get_token_from_config_dir(config_dir: str) -> str | None:
+    """
+    Read token from a custom config directory's credentials file.
+
+    Claude Code stores credentials in .credentials.json within the config directory.
+    This function reads from a profile's custom configDir instead of the default location.
+
+    Args:
+        config_dir: Path to the config directory (e.g., ~/.auto-claude/profiles/work)
+
+    Returns:
+        Token string if found, None otherwise
+    """
+    # Expand ~ if present
+    expanded_dir = os.path.expanduser(config_dir)
+
+    # Claude stores credentials in these files within the config dir
+    cred_files = [
+        os.path.join(expanded_dir, ".credentials.json"),
+        os.path.join(expanded_dir, "credentials.json"),
+    ]
+
+    for cred_path in cred_files:
+        if os.path.exists(cred_path):
+            try:
+                with open(cred_path, encoding="utf-8") as f:
+                    data = json.load(f)
+
+                # Try both credential structures
+                oauth_data = data.get("claudeAiOauth") or data.get("oauthAccount") or {}
+                token = oauth_data.get("accessToken")
+
+                # Accept both plaintext tokens (sk-ant-oat01-) and encrypted tokens (enc:)
+                if token and (
+                    token.startswith("sk-ant-oat01-") or token.startswith("enc:")
+                ):
+                    logger.debug(f"Found token in {cred_path}")
+                    return token
+            except (json.JSONDecodeError, KeyError, Exception) as e:
+                logger.debug(f"Failed to read {cred_path}: {e}")
+                continue
+
+    return None
+
+
+def get_auth_token(config_dir: str | None = None) -> str | None:
+    """
+    Get authentication token from environment variables or credential store.
+
+    Args:
+        config_dir: Optional custom config directory (profile's configDir).
+                   If provided, reads credentials from this directory.
+                   If None, checks CLAUDE_CONFIG_DIR env var, then uses default locations.
+
+    Checks multiple sources in priority order:
+    1. CLAUDE_CODE_OAUTH_TOKEN (env var)
+    2. ANTHROPIC_AUTH_TOKEN (CCR/proxy env var for enterprise setups)
+    3. Custom config directory (config_dir param or CLAUDE_CONFIG_DIR env var)
+    4. System credential store (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+
+    NOTE: ANTHROPIC_API_KEY is intentionally NOT supported to prevent
+    silent billing to user's API credits when OAuth is misconfigured.
+
+    If the token has an "enc:" prefix (encrypted format), it will be automatically
+    decrypted before being returned.
+
+    Returns:
+        Token string if found, None otherwise
+    """
+    # First check environment variables (highest priority)
     for var in AUTH_TOKEN_ENV_VARS:
         token = os.environ.get(var)
         if token:
-            return token
+            return _try_decrypt_token(token)
 
-    # Fallback to system credential store
-    return get_token_from_keychain()
+    # Check CLAUDE_CONFIG_DIR environment variable (profile's custom config directory)
+    env_config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    effective_config_dir = config_dir or env_config_dir
+
+    # If a custom config directory is specified, read from there
+    if effective_config_dir:
+        token = _get_token_from_config_dir(effective_config_dir)
+        if token:
+            return _try_decrypt_token(token)
+
+    # Fallback to system credential store (default locations)
+    return _try_decrypt_token(get_token_from_keychain())
 
 
-def get_auth_token_source() -> str | None:
-    """Get the name of the source that provided the auth token."""
+def get_auth_token_source(config_dir: str | None = None) -> str | None:
+    """
+    Get the name of the source that provided the auth token.
+
+    Args:
+        config_dir: Optional custom config directory (profile's configDir).
+                   If provided, checks this directory for credentials.
+                   If None, checks CLAUDE_CONFIG_DIR env var.
+    """
     # Check environment variables first
     for var in AUTH_TOKEN_ENV_VARS:
         if os.environ.get(var):
             return var
 
+    # Check if token came from custom config directory (profile's configDir)
+    env_config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    effective_config_dir = config_dir or env_config_dir
+    if effective_config_dir and _get_token_from_config_dir(effective_config_dir):
+        return "CLAUDE_CONFIG_DIR"
+
     # Check if token came from system credential store
     if get_token_from_keychain():
-        system = platform.system()
-        if system == "Darwin":
+        if is_macos():
             return "macOS Keychain"
-        elif system == "Windows":
+        elif is_windows():
             return "Windows Credential Files"
         else:
-            return "System Credential Store"
+            return "Linux Secret Service"
 
     return None
 
 
-def require_auth_token() -> str:
+def require_auth_token(config_dir: str | None = None) -> str:
     """
     Get authentication token or raise ValueError.
+
+    Args:
+        config_dir: Optional custom config directory (profile's configDir).
+                   If provided, reads credentials from this directory.
+                   If None, checks CLAUDE_CONFIG_DIR env var, then uses default locations.
 
     Raises:
         ValueError: If no auth token is found in any supported source
     """
-    token = get_auth_token()
+    token = get_auth_token(config_dir)
     if not token:
         error_msg = (
             "No OAuth token found.\n\n"
@@ -191,27 +651,33 @@ def require_auth_token() -> str:
             "Direct API keys (ANTHROPIC_API_KEY) are not supported.\n\n"
         )
         # Provide platform-specific guidance
-        system = platform.system()
-        if system == "Darwin":
+        if is_macos():
             error_msg += (
                 "To authenticate:\n"
-                "  1. Run: claude setup-token\n"
-                "  2. The token will be saved to macOS Keychain automatically\n\n"
-                "Or set CLAUDE_CODE_OAUTH_TOKEN in your .env file."
+                "  1. Run: claude\n"
+                "  2. Type: /login\n"
+                "  3. Press Enter to open browser\n"
+                "  4. Complete OAuth login in browser\n\n"
+                "The token will be saved to macOS Keychain automatically."
             )
-        elif system == "Windows":
+        elif is_windows():
             error_msg += (
                 "To authenticate:\n"
-                "  1. Run: claude setup-token\n"
-                "  2. The token should be saved to Windows Credential Manager\n\n"
-                "If auto-detection fails, set CLAUDE_CODE_OAUTH_TOKEN in your .env file.\n"
-                "Check: %LOCALAPPDATA%\\Claude\\credentials.json"
+                "  1. Run: claude\n"
+                "  2. Type: /login\n"
+                "  3. Press Enter to open browser\n"
+                "  4. Complete OAuth login in browser\n\n"
+                "The token will be saved to Windows Credential Manager."
             )
         else:
+            # Linux
             error_msg += (
                 "To authenticate:\n"
-                "  1. Run: claude setup-token\n"
-                "  2. Set CLAUDE_CODE_OAUTH_TOKEN in your .env file"
+                "  1. Run: claude\n"
+                "  2. Type: /login\n"
+                "  3. Press Enter to open browser\n"
+                "  4. Complete OAuth login in browser\n\n"
+                "Or set CLAUDE_CODE_OAUTH_TOKEN in your .env file."
             )
         raise ValueError(error_msg)
     return token
@@ -228,7 +694,7 @@ def _find_git_bash_path() -> str | None:
     Returns:
         Full path to bash.exe if found, None otherwise
     """
-    if platform.system() != "Windows":
+    if not is_windows():
         return None
 
     # If already set in environment, use that
@@ -316,7 +782,7 @@ def get_sdk_env_vars() -> dict[str, str]:
 
     # On Windows, auto-detect git-bash path if not already set
     # Claude Code CLI requires bash.exe to run on Windows
-    if platform.system() == "Windows" and "CLAUDE_CODE_GIT_BASH_PATH" not in env:
+    if is_windows() and "CLAUDE_CODE_GIT_BASH_PATH" not in env:
         bash_path = _find_git_bash_path()
         if bash_path:
             env["CLAUDE_CODE_GIT_BASH_PATH"] = bash_path
@@ -388,3 +854,181 @@ def ensure_claude_code_oauth_token() -> None:
     token = get_auth_token()
     if token:
         os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = token
+
+
+def trigger_login() -> bool:
+    """
+    Trigger Claude Code OAuth login flow.
+
+    Opens the Claude Code CLI and sends /login command to initiate
+    browser-based OAuth authentication. The token is automatically
+    saved to the system credential store (macOS Keychain, Windows
+    Credential Manager).
+
+    Returns:
+        True if login was successful, False otherwise
+    """
+    if is_macos():
+        return _trigger_login_macos()
+    elif is_windows():
+        return _trigger_login_windows()
+    else:
+        # Linux: fall back to manual instructions
+        print("\nTo authenticate, run 'claude' and type '/login'")
+        return False
+
+
+def _trigger_login_macos() -> bool:
+    """Trigger login on macOS using expect."""
+    import shutil
+    import tempfile
+
+    # Check if expect is available
+    if not shutil.which("expect"):
+        print("\nTo authenticate, run 'claude' and type '/login'")
+        return False
+
+    # Create expect script
+    expect_script = """#!/usr/bin/expect -f
+set timeout 120
+spawn claude
+expect {
+    -re ".*" {
+        send "/login\\r"
+        expect {
+            "Press Enter" {
+                send "\\r"
+            }
+            -re ".*login.*" {
+                send "\\r"
+            }
+            timeout {
+                send "\\r"
+            }
+        }
+    }
+}
+# Keep running until user completes login or exits
+interact
+"""
+
+    # Use TemporaryDirectory context manager for automatic cleanup
+    # This prevents information leakage about authentication activity
+    # Directory created with mode 0o700 (owner read/write/execute only)
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Ensure directory has owner-only permissions
+            os.chmod(temp_dir, 0o700)
+
+            # Write expect script to temp file in our private directory
+            script_path = os.path.join(temp_dir, "login.exp")
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(expect_script)
+
+            # Set script permissions to owner-only (0o700)
+            os.chmod(script_path, 0o700)
+
+            print("\n" + "=" * 60)
+            print("CLAUDE CODE LOGIN")
+            print("=" * 60)
+            print("\nOpening Claude Code for authentication...")
+            print("A browser window will open for OAuth login.")
+            print("After completing login in the browser, press Ctrl+C to exit.\n")
+
+            # Run expect script
+            subprocess.run(
+                ["expect", script_path],
+                timeout=300,  # 5 minute timeout
+            )
+
+            # Verify token was saved
+            token = get_token_from_keychain()
+            if token:
+                print("\n✓ Login successful! Token saved to macOS Keychain.")
+                return True
+            else:
+                print(
+                    "\n✗ Login may not have completed. Try running 'claude' and type '/login'"
+                )
+                return False
+
+    except subprocess.TimeoutExpired:
+        print("\nLogin timed out. Try running 'claude' manually and type '/login'")
+        return False
+    except KeyboardInterrupt:
+        # User pressed Ctrl+C - check if login completed
+        token = get_token_from_keychain()
+        if token:
+            print("\n✓ Login successful! Token saved to macOS Keychain.")
+            return True
+        return False
+    except Exception as e:
+        print(f"\nLogin failed: {e}")
+        print("Try running 'claude' manually and type '/login'")
+        return False
+
+
+def _trigger_login_windows() -> bool:
+    """Trigger login on Windows."""
+    # Windows doesn't have expect by default, so we use a simpler approach
+    # that just launches claude and tells the user what to type
+    print("\n" + "=" * 60)
+    print("CLAUDE CODE LOGIN")
+    print("=" * 60)
+    print("\nLaunching Claude Code...")
+    print("Please type '/login' and press Enter.")
+    print("A browser window will open for OAuth login.\n")
+
+    try:
+        # Launch claude interactively
+        subprocess.run(["claude"], timeout=300)
+
+        # Verify token was saved
+        token = _get_token_from_windows_credential_files()
+        if token:
+            print("\n✓ Login successful!")
+            return True
+        else:
+            print("\n✗ Login may not have completed.")
+            return False
+
+    except Exception as e:
+        print(f"\nLogin failed: {e}")
+        return False
+
+
+def ensure_authenticated() -> str:
+    """
+    Ensure the user is authenticated, prompting for login if needed.
+
+    Checks for existing token and triggers login flow if not found.
+
+    Returns:
+        The authentication token
+
+    Raises:
+        ValueError: If authentication fails after login attempt
+    """
+    # First check if already authenticated
+    token = get_auth_token()
+    if token:
+        return token
+
+    # No token found - trigger login
+    print("\nNo OAuth token found. Starting login flow...")
+
+    if trigger_login():
+        # Re-check for token after login
+        token = get_auth_token()
+        if token:
+            return token
+
+    # Login failed or was cancelled
+    raise ValueError(
+        "Authentication required.\n\n"
+        "To authenticate:\n"
+        "  1. Run: claude\n"
+        "  2. Type: /login\n"
+        "  3. Press Enter to open browser\n"
+        "  4. Complete OAuth login in browser"
+    )
