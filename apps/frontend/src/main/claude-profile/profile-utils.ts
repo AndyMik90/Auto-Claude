@@ -94,6 +94,7 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
     join(configDir, 'credentials'),
     join(configDir, 'credentials.json'),
     join(configDir, '.credentials'),
+    join(configDir, '.credentials.json'),  // Linux: Claude CLI stores OAuth tokens here
     join(configDir, 'settings.json'),  // Often contains auth tokens
   ];
 
