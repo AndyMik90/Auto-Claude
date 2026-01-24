@@ -706,9 +706,12 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         const content = readFileSync(progressPath, "utf-8");
         const rawData = JSON.parse(content);
 
-        // Validate required fields exist
-        if (!rawData.phase || typeof rawData.progress !== 'number') {
-          debugLog("[Roadmap Handler] Invalid progress file structure, ignoring:", { projectId });
+        // Valid phase values that the frontend expects
+        const validPhases = ['idle', 'analyzing', 'discovering', 'generating', 'complete', 'error'];
+
+        // Validate required fields exist and phase is valid
+        if (!rawData.phase || typeof rawData.progress !== 'number' || !validPhases.includes(rawData.phase)) {
+          debugLog("[Roadmap Handler] Invalid progress file structure or phase, ignoring:", { projectId, phase: rawData.phase });
           return { success: true, data: null };
         }
 
