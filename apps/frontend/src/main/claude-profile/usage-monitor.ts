@@ -535,8 +535,17 @@ export class UsageMonitor extends EventEmitter {
             tokenFingerprint: getCredentialFingerprint(tokenResult.token)
           });
           wasRefreshed = true;
-          // Token was refreshed successfully - clear from needsReauth if present
-          this.needsReauthProfiles.delete(profile.id);
+
+          // Check if token refresh succeeded but persistence failed
+          // The token works for this session but will be lost on restart
+          if (tokenResult.persistenceFailed) {
+            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + profile.name +
+              ' - user should re-authenticate to avoid auth errors on next restart');
+            this.needsReauthProfiles.add(profile.id);
+          } else {
+            // Token was refreshed and persisted successfully - clear from needsReauth if present
+            this.needsReauthProfiles.delete(profile.id);
+          }
         }
 
         token = tokenResult.token;
@@ -724,6 +733,17 @@ export class UsageMonitor extends EventEmitter {
           this.debugLog('[UsageMonitor] Proactively refreshed token for profile: ' + activeProfile.name, {
             tokenFingerprint: getCredentialFingerprint(tokenResult.token)
           });
+
+          // Check if token refresh succeeded but persistence failed
+          // The token works for this session but will be lost on restart
+          if (tokenResult.persistenceFailed) {
+            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + activeProfile.name +
+              ' - user should re-authenticate to avoid auth errors on next restart');
+            this.needsReauthProfiles.add(activeProfile.id);
+          } else {
+            // Token was refreshed and persisted successfully - clear from needsReauth if present
+            this.needsReauthProfiles.delete(activeProfile.id);
+          }
         }
 
         if (tokenResult.token) {
@@ -1012,6 +1032,18 @@ export class UsageMonitor extends EventEmitter {
             this.debugLog('[UsageMonitor] Token refresh successful for profile: ' + profileId, {
               tokenFingerprint: getCredentialFingerprint(refreshResult.token)
             });
+
+            // Check if token refresh succeeded but persistence failed
+            // The token works for this session but will be lost on restart
+            if (refreshResult.persistenceFailed) {
+              console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + profileId +
+                ' - user should re-authenticate to avoid auth errors on next restart');
+              this.needsReauthProfiles.add(profileId);
+            } else {
+              // Token was refreshed and persisted successfully - clear from needsReauth if present
+              this.needsReauthProfiles.delete(profileId);
+            }
+
             // Token was refreshed - don't mark as failed, let next poll use the new token
             return;
           }
