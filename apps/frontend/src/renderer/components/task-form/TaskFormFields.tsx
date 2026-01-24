@@ -157,6 +157,49 @@ export function TaskFormFields({
     prevImagesLengthRef.current = images.length;
   }, [images.length]);
 
+  // Track images we've attempted to load thumbnails for to prevent infinite loops
+  const loadedThumbnailsRef = useRef<Set<string>>(new Set());
+
+  // Load thumbnails for images that have path but no thumbnail (fix placeholder bug)
+  // This handles the case when TaskFormFields mounts with persisted images from disk
+  useEffect(() => {
+    const loadMissingThumbnails = async () => {
+      // Find images that have path but no thumbnail and haven't been attempted yet
+      const imagesToLoad = images.filter(
+        img => img.path && !img.thumbnail && !loadedThumbnailsRef.current.has(img.id)
+      );
+
+      if (imagesToLoad.length === 0) return;
+
+      // Mark these as attempted before loading to prevent re-entry
+      imagesToLoad.forEach(img => loadedThumbnailsRef.current.add(img.id));
+
+      const updatedImages = [...images];
+      let hasUpdates = false;
+
+      for (const image of imagesToLoad) {
+        try {
+          const result = await window.electronAPI.loadImageThumbnail(image.path!);
+          if (result.success && result.data?.thumbnail) {
+            const idx = updatedImages.findIndex(img => img.id === image.id);
+            if (idx !== -1) {
+              updatedImages[idx] = { ...updatedImages[idx], thumbnail: result.data.thumbnail };
+              hasUpdates = true;
+            }
+          }
+        } catch {
+          // Silently fail for individual images - they'll show placeholder
+        }
+      }
+
+      if (hasUpdates) {
+        onImagesChange(updatedImages);
+      }
+    };
+
+    loadMissingThumbnails();
+  }, [images, onImagesChange]);
+
   // Use the shared image upload hook with translated error messages
   const {
     isDragOver,
