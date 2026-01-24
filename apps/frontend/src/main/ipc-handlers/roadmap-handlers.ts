@@ -14,6 +14,7 @@ import type {
   RoadmapFeature,
   RoadmapFeatureStatus,
   RoadmapGenerationStatus,
+  PersistedRoadmapProgress,
   Task,
   TaskMetadata,
   CompetitorAnalysis,
@@ -685,16 +686,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
     async (
       _,
       projectId: string
-    ): Promise<
-      IPCResult<{
-        phase: string;
-        progress: number;
-        message: string;
-        startedAt?: string;
-        lastActivityAt?: string;
-        isRunning: boolean;
-      } | null>
-    > => {
+    ): Promise<IPCResult<PersistedRoadmapProgress | null>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: "Project not found" };
@@ -714,14 +706,19 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         const content = readFileSync(progressPath, "utf-8");
         const rawData = JSON.parse(content);
 
+        // Validate required fields exist
+        if (!rawData.phase || typeof rawData.progress !== 'number') {
+          debugLog("[Roadmap Handler] Invalid progress file structure, ignoring:", { projectId });
+          return { success: true, data: null };
+        }
+
         // Transform snake_case to camelCase for frontend
-        const progressData = {
+        const progressData: PersistedRoadmapProgress = {
           phase: rawData.phase,
           progress: rawData.progress,
-          message: rawData.message,
+          message: rawData.message || '',
           startedAt: rawData.started_at,
           lastActivityAt: rawData.last_update_at,
-          isRunning: rawData.is_running,
         };
 
         debugLog("[Roadmap Handler] Loaded progress checkpoint:", { projectId, phase: progressData.phase });

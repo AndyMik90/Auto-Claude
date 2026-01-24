@@ -183,3 +183,15 @@ export interface RoadmapGenerationStatus {
   startedAt?: Date;
   lastActivityAt?: Date;
 }
+
+/**
+ * Serialized version of RoadmapGenerationStatus for IPC transport.
+ * Timestamps are ISO strings since Date objects serialize as strings in JSON.
+ */
+export interface PersistedRoadmapProgress {
+  phase: RoadmapGenerationStatus['phase'];
+  progress: number;
+  message: string;
+  startedAt?: string;
+  lastActivityAt?: string;
+}

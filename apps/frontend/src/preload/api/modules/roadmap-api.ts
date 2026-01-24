@@ -3,6 +3,7 @@ import type {
   Roadmap,
   RoadmapFeatureStatus,
   RoadmapGenerationStatus,
+  PersistedRoadmapProgress,
   Task,
   IPCResult
 } from '../../../shared/types';
@@ -31,7 +32,7 @@ export interface RoadmapAPI {
 
   // Progress persistence
   saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus) => Promise<IPCResult>;
-  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<RoadmapGenerationStatus | null>>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
   clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
   // Event Listeners
@@ -89,7 +90,7 @@ export const createRoadmapAPI = (): RoadmapAPI => ({
   saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.ROADMAP_PROGRESS_SAVE, projectId, status),
 
-  loadRoadmapProgress: (projectId: string): Promise<IPCResult<RoadmapGenerationStatus | null>> =>
+  loadRoadmapProgress: (projectId: string): Promise<IPCResult<PersistedRoadmapProgress | null>> =>
     invokeIpc(IPC_CHANNELS.ROADMAP_PROGRESS_LOAD, projectId),
 
   clearRoadmapProgress: (projectId: string): Promise<IPCResult> =>

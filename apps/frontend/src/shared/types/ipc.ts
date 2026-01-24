@@ -106,7 +106,8 @@ import type {
 import type {
   Roadmap,
   RoadmapFeatureStatus,
-  RoadmapGenerationStatus
+  RoadmapGenerationStatus,
+  PersistedRoadmapProgress
 } from './roadmap';
 import type {
   LinearTeam,
@@ -378,7 +379,7 @@ export interface ElectronAPI {
 
   // Roadmap progress persistence
   saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus) => Promise<IPCResult>;
-  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<RoadmapGenerationStatus | null>>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
   clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
   // Roadmap event listeners
