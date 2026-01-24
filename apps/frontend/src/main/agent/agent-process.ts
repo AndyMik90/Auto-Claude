@@ -563,16 +563,23 @@ export class AgentProcessManager {
     }
 
     // Update the tracked process with the actual spawned ChildProcess
-    // First check if the task was killed during async setup - if so, terminate the new process
-    if (!this.state.hasProcess(taskId)) {
+    this.state.updateProcess(taskId, { process: childProcess });
+
+    // Check if this spawn was killed during async setup (before spawn() completed).
+    // If so, terminate the newly created process immediately to prevent orphaned processes.
+    // Note: wasSpawnKilled() is checked AFTER updateProcess() because killProcess()
+    // marks the spawn as killed before deleting the tracking entry.
+    const currentSpawnId = this.state.getProcess(taskId)?.spawnId ?? spawnId;
+    if (this.state.wasSpawnKilled(currentSpawnId)) {
       console.log(`[AgentProcess] Task ${taskId} was killed during spawn setup. Terminating newly created process.`);
       killProcessGracefully(childProcess, {
         debugPrefix: '[AgentProcess]',
         debug: process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development'
       });
+      this.state.deleteProcess(taskId);
+      this.state.clearKilledSpawn(currentSpawnId);
       return; // Do not proceed with this spawn
     }
-    this.state.updateProcess(taskId, { process: childProcess });
 
     let currentPhase: ExecutionProgressData['phase'] = isSpecRunner ? 'planning' : 'planning';
     let phaseProgress = 0;
@@ -770,8 +777,8 @@ export class AgentProcessManager {
     this.state.markSpawnAsKilled(agentProcess.spawnId);
 
     // If process hasn't been spawned yet (still in async setup phase, before spawn() returns),
-    // just remove from tracking. The spawnProcess() function will check after spawn() and
-    // terminate the child process if it was killed during setup (see hasProcess check).
+    // just remove from tracking. The spawn() call will still complete, but the spawned process
+    // will be terminated by the post-spawn wasSpawnKilled() check (see spawnProcess() after updateProcess).
     if (!agentProcess.process) {
       this.state.deleteProcess(taskId);
       return true;
@@ -803,8 +810,8 @@ export class AgentProcessManager {
         }
 
         // If process hasn't been spawned yet (still in async setup phase before spawn() returns),
-        // just resolve immediately. The spawnProcess() function will check after spawn() and
-        // terminate the child process if it was killed during setup (see hasProcess check).
+        // just resolve immediately. The spawn() call will still complete, but the spawned process
+        // will be terminated by the post-spawn wasSpawnKilled() check (see spawnProcess() after updateProcess).
         if (!agentProcess.process) {
           this.killProcess(taskId);
           resolve();
