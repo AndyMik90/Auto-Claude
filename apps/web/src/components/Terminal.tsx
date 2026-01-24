@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { ipc } from '../lib/ipc-abstraction';
+
+// Minimum dimensions to prevent PTY creation with invalid sizes
+const MIN_COLS = 10;
+const MIN_ROWS = 3;
 
 export interface TerminalProps {
   id: string;
@@ -11,15 +15,60 @@ export interface TerminalProps {
 }
 
 /**
+ * Handle interface exposed by Terminal component for external control.
+ * Used by parent components to trigger operations like refitting the terminal
+ * after container size changes.
+ */
+export interface TerminalHandle {
+  /** Refit the terminal to its container size */
+  fit: () => void;
+}
+
+/**
  * Terminal component with xterm.js
  *
  * Connects to backend PTY session via WebSocket/IPC abstraction
  */
-export function Terminal({ id, cwd, onClose }: TerminalProps) {
+export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal({ id, cwd, onClose }, ref) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  // Fit terminal to container with validation
+  const fit = useCallback(() => {
+    const fitAddon = fitAddonRef.current;
+    const terminal = xtermRef.current;
+
+    if (!fitAddon || !terminal) return;
+
+    try {
+      fitAddon.fit();
+
+      // Validate dimensions before sending resize
+      const cols = terminal.cols;
+      const rows = terminal.rows;
+
+      if (cols >= MIN_COLS && rows >= MIN_ROWS) {
+        // Send resize to backend PTY
+        if (ipc.isConnected()) {
+          ipc.send('terminal', {
+            type: 'resize',
+            rows,
+            cols,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Terminal] Failed to fit terminal:', error);
+    }
+  }, []);
+
+  // Expose fit method to parent components via ref
+  // This allows external triggering of terminal resize (e.g., after layout changes)
+  useImperativeHandle(ref, () => ({
+    fit,
+  }), [fit]);
 
   // Initialize xterm.js
   useEffect(() => {
@@ -114,28 +163,10 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
 
   // Handle window resize
   useEffect(() => {
-    if (!isReady || !fitAddonRef.current || !xtermRef.current) return;
+    if (!isReady) return;
 
     const handleResize = () => {
-      const fitAddon = fitAddonRef.current;
-      const terminal = xtermRef.current;
-
-      if (!fitAddon || !terminal) return;
-
-      try {
-        fitAddon.fit();
-
-        // Send resize to backend PTY
-        if (ipc.isConnected()) {
-          ipc.send('terminal', {
-            type: 'resize',
-            rows: terminal.rows,
-            cols: terminal.cols,
-          });
-        }
-      } catch (error) {
-        console.error('[Terminal] Failed to resize:', error);
-      }
+      fit();
     };
 
     window.addEventListener('resize', handleResize);
@@ -143,11 +174,30 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [isReady, id]);
+  }, [isReady, fit]);
+
+  // Handle container resize using ResizeObserver
+  // This detects size changes from layout changes, not just window resize
+  useEffect(() => {
+    if (!isReady || !terminalRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Use requestAnimationFrame to debounce rapid resize events
+      requestAnimationFrame(() => {
+        fit();
+      });
+    });
+
+    resizeObserver.observe(terminalRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [isReady, fit]);
 
   return (
     <div className="h-full w-full bg-[#1e1e1e]">
       <div ref={terminalRef} className="h-full w-full" />
     </div>
   );
-}
+});
