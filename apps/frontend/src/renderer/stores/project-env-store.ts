@@ -7,6 +7,9 @@ interface ProjectEnvState {
   projectId: string | null;
   isLoading: boolean;
   error: string | null;
+  // Track the current pending request to handle race conditions
+  // Stored in state so it's properly reset on HMR and managed alongside other state
+  currentRequestId: number;
 
   // Actions
   setEnvConfig: (projectId: string | null, config: ProjectEnvConfig | null) => void;
@@ -15,10 +18,8 @@ interface ProjectEnvState {
   clearEnvConfig: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  incrementRequestId: () => number;
 }
-
-// Track the current pending request to handle race conditions
-let currentRequestId = 0;
 
 export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
   // Initial state
@@ -26,6 +27,7 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
   projectId: null,
   isLoading: false,
   error: null,
+  currentRequestId: 0,
 
   // Actions
   // setEnvConfig clears error - used for successful config loads
@@ -56,7 +58,13 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  setError: (error) => set({ error })
+  setError: (error) => set({ error }),
+
+  incrementRequestId: () => {
+    const newId = get().currentRequestId + 1;
+    set({ currentRequestId: newId });
+    return newId;
+  }
 }));
 
 /**
@@ -68,7 +76,7 @@ export async function loadProjectEnvConfig(projectId: string): Promise<ProjectEn
   const store = useProjectEnvStore.getState();
 
   // Increment request ID to track this specific request
-  const requestId = ++currentRequestId;
+  const requestId = store.incrementRequestId();
 
   store.setLoading(true);
   store.setError(null);
@@ -77,7 +85,7 @@ export async function loadProjectEnvConfig(projectId: string): Promise<ProjectEn
     const result = await window.electronAPI.getProjectEnv(projectId);
 
     // Check if this request is still the current one (handle race conditions)
-    if (requestId !== currentRequestId) {
+    if (requestId !== useProjectEnvStore.getState().currentRequestId) {
       // A newer request was made, ignore this result
       return null;
     }
@@ -93,7 +101,7 @@ export async function loadProjectEnvConfig(projectId: string): Promise<ProjectEn
     }
   } catch (error) {
     // Check if this request is still the current one
-    if (requestId !== currentRequestId) {
+    if (requestId !== useProjectEnvStore.getState().currentRequestId) {
       return null;
     }
 
@@ -103,7 +111,7 @@ export async function loadProjectEnvConfig(projectId: string): Promise<ProjectEn
     return null;
   } finally {
     // Only update loading state if this is still the current request
-    if (requestId === currentRequestId) {
+    if (requestId === useProjectEnvStore.getState().currentRequestId) {
       store.setLoading(false);
     }
   }
