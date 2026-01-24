@@ -3,9 +3,7 @@
  * Detects rate limit errors in stdout/stderr output and provides context.
  */
 
-import { BrowserWindow } from 'electron';
 import { getClaudeProfileManager } from './claude-profile-manager';
-import { IPC_CHANNELS } from '../shared/constants/ipc';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 
 /**

@@ -23,12 +23,6 @@ import { join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
 /**
- * Default Claude config directory (used to identify default profile)
- * Must match DEFAULT_CLAUDE_CONFIG_DIR in profile-utils.ts
- */
-const DEFAULT_CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
-
-/**
  * Create a safe fingerprint of a token for debug logging.
  * Shows first 8 and last 4 characters, hiding the sensitive middle portion.
  * This is NOT for authentication - only for human-readable debug identification.

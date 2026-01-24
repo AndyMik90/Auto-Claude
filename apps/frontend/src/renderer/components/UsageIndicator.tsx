@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info, LogIn } from 'lucide-react';
+import { Activity, TrendingUp, AlertCircle, Clock, ChevronRight, Info, LogIn } from 'lucide-react';
 import {
   Popover,
   PopoverContent,

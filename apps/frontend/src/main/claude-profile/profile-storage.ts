@@ -109,9 +109,15 @@ function migrateProfileToIsolatedDirectory(profile: ClaudeProfile): string {
   }
 
   // Write a marker file with our profile ID for collision detection
+  // Use 'wx' flag to atomically create file only if it doesn't exist (avoids TOCTOU race)
   const markerFile = join(isolatedDir, '.profile-id');
-  if (!existsSync(markerFile)) {
-    writeFileSync(markerFile, profile.id, 'utf-8');
+  try {
+    writeFileSync(markerFile, profile.id, { encoding: 'utf-8', flag: 'wx' });
+  } catch (err) {
+    // EEXIST means file already exists, which is fine - we already own this directory
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') {
+      console.warn('[ProfileStorage] Failed to write marker file:', err);
+    }
   }
 
   console.warn(`[ProfileStorage] Migrated profile "${profile.name}" from ~/.claude to ${isolatedDir}`);
