@@ -760,6 +760,10 @@ def _collect_all_rules(
     rules = []
 
     for rule_path in rules_dir.rglob("*.md"):
+        # Skip symlinks to prevent traversal outside project directory
+        if rule_path.is_symlink():
+            logger.warning(f"Skipping symlink rule file: {rule_path}")
+            continue
         try:
             content = rule_path.read_text(encoding="utf-8")
             paths, skills, rule_content = _parse_rule_frontmatter(content)
