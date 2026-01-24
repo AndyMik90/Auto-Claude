@@ -46,13 +46,13 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
-import { DEFAULT_APP_SETTINGS } from '../shared/constants';
+import { DEFAULT_APP_SETTINGS, IPC_CHANNELS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
-import { initializeClaudeProfileManager } from './claude-profile-manager';
-import type { AppSettings } from '../shared/types';
+import { initializeClaudeProfileManager, getClaudeProfileManager } from './claude-profile-manager';
+import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Window sizing constants
@@ -404,6 +404,36 @@ app.whenReady().then(() => {
         const usageMonitor = getUsageMonitor();
         usageMonitor.start();
         console.warn('[main] Usage monitor initialized and started (after profile load)');
+
+        // Check for migrated profiles that need re-authentication
+        // These profiles were moved from shared ~/.claude to isolated directories
+        // and need new credentials since they now use a different keychain entry
+        const profileManager = getClaudeProfileManager();
+        const migratedProfileIds = profileManager.getMigratedProfileIds();
+        const activeProfile = profileManager.getActiveProfile();
+
+        if (migratedProfileIds.length > 0) {
+          console.warn('[main] Found migrated profiles that need re-authentication:', migratedProfileIds);
+
+          // If the active profile was migrated, show auth failure modal immediately
+          if (migratedProfileIds.includes(activeProfile.id)) {
+            // Wait for renderer to be ready before sending the event
+            mainWindow.webContents.once('did-finish-load', () => {
+              // Small delay to ensure stores are initialized
+              setTimeout(() => {
+                const authFailureInfo: AuthFailureInfo = {
+                  profileId: activeProfile.id,
+                  profileName: activeProfile.name,
+                  failureType: 'missing',
+                  message: `Profile "${activeProfile.name}" was migrated to an isolated directory and needs re-authentication.`,
+                  detectedAt: new Date()
+                };
+                console.warn('[main] Sending auth failure for migrated active profile:', activeProfile.name);
+                mainWindow?.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+              }, 1000);
+            });
+          }
+        }
       }
     })
     .catch((error) => {

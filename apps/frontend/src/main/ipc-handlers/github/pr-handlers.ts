@@ -1265,7 +1265,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             html_url: string;
           }>;
 
-          debugLog("Fetched PRs", { count: prs.length, page, samplePr: prs[0] });
+          debugLog("Fetched PRs", { count: prs.length, page });
           return prs.map((pr) => ({
             number: pr.number,
             title: pr.title,

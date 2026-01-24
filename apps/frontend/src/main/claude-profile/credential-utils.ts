@@ -23,6 +23,12 @@ import { join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
 /**
+ * Default Claude config directory (used to identify default profile)
+ * Must match DEFAULT_CLAUDE_CONFIG_DIR in profile-utils.ts
+ */
+const DEFAULT_CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
+
+/**
  * Create a safe fingerprint of a token for debug logging.
  * Shows first 8 and last 4 characters, hiding the sensitive middle portion.
  * This is NOT for authentication - only for human-readable debug identification.
@@ -47,6 +53,24 @@ export interface PlatformCredentials {
 
 // Legacy alias for backwards compatibility
 export type KeychainCredentials = PlatformCredentials;
+
+/**
+ * Full OAuth credentials including refresh token and expiry info
+ * Used for token refresh operations
+ */
+export interface FullOAuthCredentials extends PlatformCredentials {
+  refreshToken: string | null;
+  expiresAt: number | null;  // Unix timestamp in ms when access token expires
+  scopes: string[] | null;
+}
+
+/**
+ * Result of updating credentials in the keychain/credential store
+ */
+export interface UpdateCredentialsResult {
+  success: boolean;
+  error?: string;
+}
 
 /**
  * Cache for credentials to avoid repeated blocking calls
@@ -115,14 +139,29 @@ export function calculateConfigDirHash(configDir: string): string {
 /**
  * Get the Keychain service name for a config directory (macOS).
  *
- * @param configDir - Optional CLAUDE_CONFIG_DIR path. If not provided, returns default service name.
+ * All profiles use hash-based keychain entries for isolation.
+ * This prevents interference with external Claude Code CLI which uses
+ * "Claude Code-credentials" (no hash) for ~/.claude.
+ *
+ * @param configDir - CLAUDE_CONFIG_DIR path. Required for isolation.
  * @returns The Keychain service name (e.g., "Claude Code-credentials-d74c9506")
  */
 export function getKeychainServiceName(configDir?: string): string {
+  // No configDir provided - this should not happen with isolated profiles
+  // Fall back to unhashed name for backwards compatibility during migration
   if (!configDir) {
+    console.warn('[CredentialUtils] getKeychainServiceName called without configDir - using legacy fallback');
     return 'Claude Code-credentials';
   }
-  const hash = calculateConfigDirHash(configDir);
+
+  // Normalize the configDir: expand ~ and resolve to absolute path
+  const normalizedConfigDir = configDir.startsWith('~')
+    ? join(homedir(), configDir.slice(1))
+    : configDir;
+
+  // ALL profiles now use hash-based keychain entries for isolation
+  // This prevents interference with external Claude Code CLI
+  const hash = calculateConfigDirHash(normalizedConfigDir);
   return `Claude Code-credentials-${hash}`;
 }
 
@@ -187,6 +226,44 @@ function extractCredentials(data: { claudeAiOauth?: { accessToken?: string; emai
   const email = data?.claudeAiOauth?.email || data?.claudeAiOauth?.emailAddress || data?.email || null;
 
   return { token, email };
+}
+
+/**
+ * Extract full credentials including refresh token and expiry from validated credential data
+ */
+function extractFullCredentials(data: {
+  claudeAiOauth?: {
+    accessToken?: string;
+    email?: string;
+    emailAddress?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    scopes?: string[];
+  };
+  email?: string
+}): {
+  token: string | null;
+  email: string | null;
+  refreshToken: string | null;
+  expiresAt: number | null;
+  scopes: string[] | null;
+} {
+  // Extract OAuth token from nested structure
+  const token = data?.claudeAiOauth?.accessToken || null;
+
+  // Extract email (might be in different locations depending on Claude Code version)
+  const email = data?.claudeAiOauth?.email || data?.claudeAiOauth?.emailAddress || data?.email || null;
+
+  // Extract refresh token
+  const refreshToken = data?.claudeAiOauth?.refreshToken || null;
+
+  // Extract expiry timestamp (Unix timestamp in ms)
+  const expiresAt = data?.claudeAiOauth?.expiresAt || null;
+
+  // Extract scopes (array of strings)
+  const scopes = data?.claudeAiOauth?.scopes || null;
+
+  return { token, email, refreshToken, expiresAt, scopes };
 }
 
 /**
@@ -688,3 +765,591 @@ export function clearKeychainCache(configDir?: string): void {
  * Alias for clearKeychainCache for semantic clarity
  */
 export const clearCredentialCache = clearKeychainCache;
+
+// =============================================================================
+// Extended Credential Operations (Token Refresh Support)
+// =============================================================================
+
+/**
+ * Retrieve full credentials (including refresh token) from macOS Keychain
+ */
+function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCredentials {
+  const serviceName = getKeychainServiceName(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Locate the security executable
+  let securityPath: string | null = null;
+  const candidatePaths = ['/usr/bin/security', '/bin/security'];
+
+  for (const candidate of candidatePaths) {
+    if (existsSync(candidate)) {
+      securityPath = candidate;
+      break;
+    }
+  }
+
+  if (!securityPath) {
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'macOS security command not found' };
+  }
+
+  try {
+    // Query macOS Keychain for Claude Code credentials
+    const result = execFileSync(
+      securityPath,
+      ['find-generic-password', '-s', serviceName, '-w'],
+      {
+        encoding: 'utf-8',
+        timeout: MACOS_KEYCHAIN_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    const credentialsJson = result.trim();
+    if (!credentialsJson) {
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Parse JSON response
+    let data: unknown;
+    try {
+      data = JSON.parse(credentialsJson);
+    } catch {
+      console.warn('[CredentialUtils:macOS:Full] Failed to parse Keychain JSON for service:', serviceName);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:macOS:Full] Invalid Keychain data structure for service:', serviceName);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:macOS:Full] Invalid token format for service:', serviceName);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:macOS:Full] Retrieved full credentials from Keychain for service:', serviceName, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    // Check for exit code 44 (errSecItemNotFound) which indicates item not found
+    if (error && typeof error === 'object' && 'status' in error && error.status === 44) {
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[CredentialUtils:macOS:Full] Keychain access failed for service:', serviceName, errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Keychain access failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Retrieve full credentials (including refresh token) from Linux .credentials.json file
+ */
+function getFullCredentialsFromLinuxFile(configDir?: string): FullOAuthCredentials {
+  const credentialsPath = getLinuxCredentialsPath(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Full] Invalid credentials path rejected:', { credentialsPath });
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
+  }
+
+  // Check if credentials file exists
+  if (!existsSync(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Full] Credentials file not found:', credentialsPath);
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+  }
+
+  try {
+    const content = readFileSync(credentialsPath, 'utf-8');
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.warn('[CredentialUtils:Linux:Full] Failed to parse credentials JSON:', credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Linux:Full] Invalid credentials data structure:', credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Linux:Full] Invalid token format in:', credentialsPath);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Full] Retrieved full credentials from file:', credentialsPath, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[CredentialUtils:Linux:Full] Failed to read credentials file:', credentialsPath, errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
+  }
+}
+
+/**
+ * Retrieve full credentials (including refresh token) from Windows Credential Manager
+ */
+function getFullCredentialsFromWindowsCredentialManager(configDir?: string): FullOAuthCredentials {
+  const targetName = getWindowsCredentialTarget(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate target name format before using in PowerShell
+  if (!isValidTargetName(targetName)) {
+    const invalidResult = { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credential target name format' };
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Full] Invalid target name rejected:', { targetName });
+    }
+    return invalidResult;
+  }
+
+  // Find PowerShell executable
+  const psPath = findPowerShellPath();
+  if (!psPath) {
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'PowerShell not found' };
+  }
+
+  try {
+    // PowerShell script to read from Credential Manager (same as basic credentials)
+    const psScript = `
+      $ErrorActionPreference = 'Stop'
+      Add-Type -AssemblyName System.Runtime.WindowsRuntime
+
+      # Use CredRead from advapi32.dll to read generic credentials
+      $sig = @'
+      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+      public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
+
+      [DllImport("advapi32.dll", SetLastError = true)]
+      public static extern bool CredFree(IntPtr cred);
+'@
+      Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
+
+      $credPtr = [IntPtr]::Zero
+      # CRED_TYPE_GENERIC = 1
+      $success = [Win32.Credential]::CredRead("${targetName.replace(/"/g, '`"')}", 1, 0, [ref]$credPtr)
+
+      if ($success) {
+        try {
+          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][System.Management.Automation.PSCredential].Assembly.GetType('Microsoft.PowerShell.Commands.CREDENTIAL'))
+
+          # Read the credential blob (password field)
+          $blobSize = $cred.CredentialBlobSize
+          if ($blobSize -gt 0) {
+            $blob = [byte[]]::new($blobSize)
+            [Runtime.InteropServices.Marshal]::Copy($cred.CredentialBlob, $blob, 0, $blobSize)
+            $password = [System.Text.Encoding]::Unicode.GetString($blob)
+            Write-Output $password
+          }
+        } finally {
+          [Win32.Credential]::CredFree($credPtr) | Out-Null
+        }
+      } else {
+        # Credential not found - this is expected if user hasn't authenticated
+        Write-Output ""
+      }
+    `;
+
+    const result = execFileSync(
+      psPath,
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+      {
+        encoding: 'utf-8',
+        timeout: WINDOWS_CREDMAN_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    const credentialsJson = result.trim();
+    if (!credentialsJson) {
+      if (isDebug) {
+        console.warn('[CredentialUtils:Windows:Full] Credential not found for target:', targetName);
+      }
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Parse JSON response
+    let data: unknown;
+    try {
+      data = JSON.parse(credentialsJson);
+    } catch {
+      console.warn('[CredentialUtils:Windows:Full] Failed to parse credential JSON for target:', targetName);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Windows:Full] Invalid credential data structure for target:', targetName);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Windows:Full] Invalid token format for target:', targetName);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Full] Retrieved full credentials from Credential Manager for target:', targetName, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[CredentialUtils:Windows:Full] Credential Manager access failed for target:', targetName, errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Credential Manager access failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Get full credentials including refresh token and expiry from platform-specific secure storage.
+ * This is an extended version of getCredentialsFromKeychain that returns all credential data
+ * needed for token refresh operations.
+ *
+ * @param configDir - Optional config directory for profile-specific credentials
+ * @returns Full credentials including refresh token and expiry information
+ */
+export function getFullCredentialsFromKeychain(configDir?: string): FullOAuthCredentials {
+  if (isMacOS()) {
+    return getFullCredentialsFromMacOSKeychain(configDir);
+  }
+
+  if (isLinux()) {
+    return getFullCredentialsFromLinuxFile(configDir);
+  }
+
+  if (isWindows()) {
+    return getFullCredentialsFromWindowsCredentialManager(configDir);
+  }
+
+  // Unknown platform - return empty
+  return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Unsupported platform: ${process.platform}` };
+}
+
+/**
+ * Update credentials in macOS Keychain with new tokens
+ */
+function updateMacOSKeychainCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const serviceName = getKeychainServiceName(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Locate the security executable
+  let securityPath: string | null = null;
+  const candidatePaths = ['/usr/bin/security', '/bin/security'];
+
+  for (const candidate of candidatePaths) {
+    if (existsSync(candidate)) {
+      securityPath = candidate;
+      break;
+    }
+  }
+
+  if (!securityPath) {
+    return { success: false, error: 'macOS security command not found' };
+  }
+
+  try {
+    // Read existing credentials to preserve email
+    const existing = getFullCredentialsFromMacOSKeychain(configDir);
+
+    // Build new credential JSON with all fields
+    const newCredentialData = {
+      claudeAiOauth: {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiresAt: credentials.expiresAt,
+        scopes: credentials.scopes || existing.scopes || [],
+        email: existing.email || undefined,
+        emailAddress: existing.email || undefined
+      },
+      email: existing.email || undefined
+    };
+
+    const credentialsJson = JSON.stringify(newCredentialData);
+
+    // Use -U flag to update existing or add if not exists
+    execFileSync(
+      securityPath,
+      ['add-generic-password', '-U', '-s', serviceName, '-a', 'claude-ai-oauth', '-w', credentialsJson],
+      {
+        encoding: 'utf-8',
+        timeout: MACOS_KEYCHAIN_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:macOS:Update] Successfully updated Keychain credentials for service:', serviceName);
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[CredentialUtils:macOS:Update] Failed to update Keychain credentials:', errorMessage);
+    return { success: false, error: `Keychain update failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Update credentials in Linux .credentials.json file with new tokens
+ */
+function updateLinuxFileCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const credentialsPath = getLinuxCredentialsPath(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Import writeFileSync dynamically to avoid issues
+  const { writeFileSync } = require('fs');
+
+  // Defense-in-depth: Validate credentials path
+  if (!isValidCredentialsPath(credentialsPath)) {
+    return { success: false, error: 'Invalid credentials path' };
+  }
+
+  try {
+    // Read existing credentials to preserve email and other fields
+    const existing = getFullCredentialsFromLinuxFile(configDir);
+
+    // Build new credential JSON with all fields
+    const newCredentialData = {
+      claudeAiOauth: {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiresAt: credentials.expiresAt,
+        scopes: credentials.scopes || existing.scopes || [],
+        email: existing.email || undefined,
+        emailAddress: existing.email || undefined
+      },
+      email: existing.email || undefined
+    };
+
+    const credentialsJson = JSON.stringify(newCredentialData, null, 2);
+
+    // Write to file with secure permissions (0600)
+    writeFileSync(credentialsPath, credentialsJson, { mode: 0o600, encoding: 'utf-8' });
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Update] Successfully updated credentials file:', credentialsPath);
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[CredentialUtils:Linux:Update] Failed to update credentials file:', errorMessage);
+    return { success: false, error: `File update failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Update credentials in Windows Credential Manager with new tokens
+ */
+function updateWindowsCredentialManagerCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const targetName = getWindowsCredentialTarget(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate target name format
+  if (!isValidTargetName(targetName)) {
+    return { success: false, error: 'Invalid credential target name format' };
+  }
+
+  // Find PowerShell executable
+  const psPath = findPowerShellPath();
+  if (!psPath) {
+    return { success: false, error: 'PowerShell not found' };
+  }
+
+  try {
+    // Read existing credentials to preserve email
+    const existing = getFullCredentialsFromWindowsCredentialManager(configDir);
+
+    // Build new credential JSON with all fields
+    const newCredentialData = {
+      claudeAiOauth: {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiresAt: credentials.expiresAt,
+        scopes: credentials.scopes || existing.scopes || [],
+        email: existing.email || undefined,
+        emailAddress: existing.email || undefined
+      },
+      email: existing.email || undefined
+    };
+
+    const credentialsJson = JSON.stringify(newCredentialData);
+    // Escape single quotes in JSON for PowerShell
+    const escapedJson = credentialsJson.replace(/'/g, "''");
+
+    // PowerShell script to write to Credential Manager
+    const psScript = `
+      $ErrorActionPreference = 'Stop'
+
+      # Use CredWrite from advapi32.dll to write generic credentials
+      $sig = @'
+      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      public struct CREDENTIAL {
+        public int Flags;
+        public int Type;
+        public string TargetName;
+        public string Comment;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+        public int CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public int Persist;
+        public int AttributeCount;
+        public IntPtr Attributes;
+        public string TargetAlias;
+        public string UserName;
+      }
+
+      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+      public static extern bool CredWrite(ref CREDENTIAL credential, int flags);
+'@
+      Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
+
+      $json = '${escapedJson}'
+      $jsonBytes = [System.Text.Encoding]::Unicode.GetBytes($json)
+      $jsonPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($jsonBytes.Length)
+      [System.Runtime.InteropServices.Marshal]::Copy($jsonBytes, 0, $jsonPtr, $jsonBytes.Length)
+
+      try {
+        $cred = New-Object Win32.Credential+CREDENTIAL
+        $cred.Type = 1  # CRED_TYPE_GENERIC
+        $cred.TargetName = "${targetName.replace(/"/g, '`"')}"
+        $cred.CredentialBlob = $jsonPtr
+        $cred.CredentialBlobSize = $jsonBytes.Length
+        $cred.Persist = 2  # CRED_PERSIST_LOCAL_MACHINE
+        $cred.UserName = "claude-ai-oauth"
+
+        $success = [Win32.Credential]::CredWrite([ref]$cred, 0)
+        if (-not $success) {
+          throw "CredWrite failed"
+        }
+        Write-Output "SUCCESS"
+      } finally {
+        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($jsonPtr)
+      }
+    `;
+
+    const result = execFileSync(
+      psPath,
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+      {
+        encoding: 'utf-8',
+        timeout: WINDOWS_CREDMAN_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    if (result.trim() !== 'SUCCESS') {
+      return { success: false, error: 'Credential Manager update failed' };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Update] Successfully updated Credential Manager for target:', targetName);
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[CredentialUtils:Windows:Update] Failed to update Credential Manager:', errorMessage);
+    return { success: false, error: `Credential Manager update failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Update credentials in the platform-specific secure storage with new tokens.
+ * Called after a successful OAuth token refresh to persist the new tokens.
+ *
+ * CRITICAL: This must be called immediately after token refresh because the old tokens
+ * are revoked by Anthropic as soon as new tokens are issued.
+ *
+ * @param configDir - Config directory for the profile (undefined for default profile)
+ * @param credentials - New credentials to store
+ * @returns Result indicating success or failure
+ */
+export function updateKeychainCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  if (isMacOS()) {
+    return updateMacOSKeychainCredentials(configDir, credentials);
+  }
+
+  if (isLinux()) {
+    return updateLinuxFileCredentials(configDir, credentials);
+  }
+
+  if (isWindows()) {
+    return updateWindowsCredentialManagerCredentials(configDir, credentials);
+  }
+
+  return { success: false, error: `Unsupported platform: ${process.platform}` };
+}

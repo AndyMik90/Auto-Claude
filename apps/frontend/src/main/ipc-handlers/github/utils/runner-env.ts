@@ -1,6 +1,6 @@
 import { getOAuthModeClearVars } from '../../../agent/env-utils';
 import { getAPIProfileEnv } from '../../../services/profile';
-import { getProfileEnv } from '../../../rate-limit-detector';
+import { getBestAvailableProfileEnv } from '../../../rate-limit-detector';
 import { pythonEnvManager } from '../../../python-env-manager';
 
 /**
@@ -26,13 +26,15 @@ export async function getRunnerEnv(
   const pythonEnv = pythonEnvManager.getPythonEnv();
   const apiProfileEnv = await getAPIProfileEnv();
   const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
-  const profileEnv = getProfileEnv();
+  // Get best available Claude profile environment (automatically handles rate limits)
+  const profileResult = getBestAvailableProfileEnv();
+  const profileEnv = profileResult.env;
 
   return {
     ...pythonEnv,  // Python environment including PYTHONPATH (fixes #139)
     ...apiProfileEnv,
     ...oauthModeClearVars,
-    ...profileEnv,  // OAuth token from profile manager (fixes #563)
+    ...profileEnv,  // OAuth token from profile manager (fixes #563, rate-limit aware)
     ...extraEnv,
   };
 }

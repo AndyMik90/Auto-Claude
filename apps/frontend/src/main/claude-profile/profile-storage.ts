@@ -3,9 +3,17 @@
  * Handles persistence of profile data to disk
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { readFile } from 'fs/promises';
+import { homedir } from 'os';
+import { join } from 'path';
 import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
+
+/**
+ * Directory constants for profile isolation
+ */
+const DEFAULT_CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
+const CLAUDE_PROFILES_DIR = join(homedir(), '.claude-profiles');
 
 export const STORE_VERSION = 3;  // Bumped for encrypted token storage
 
@@ -31,6 +39,51 @@ export interface ProfileStoreData {
   autoSwitch?: ClaudeAutoSwitchSettings;
   /** Unified priority order for both OAuth and API profiles */
   accountPriorityOrder?: string[];
+  /**
+   * Profile IDs that were migrated from shared ~/.claude to isolated directories.
+   * These profiles need re-authentication since their credentials are in the old location.
+   * Cleared after successful re-authentication.
+   */
+  migratedProfileIds?: string[];
+}
+
+/**
+ * Check if a profile uses the legacy shared ~/.claude directory
+ */
+function usesLegacySharedDirectory(profile: ClaudeProfile): boolean {
+  if (!profile.configDir) return false;
+
+  // Normalize paths for comparison
+  const normalizedConfigDir = profile.configDir.startsWith('~')
+    ? join(homedir(), profile.configDir.slice(1))
+    : profile.configDir;
+
+  return normalizedConfigDir === DEFAULT_CLAUDE_CONFIG_DIR;
+}
+
+/**
+ * Migrate a profile from shared ~/.claude to isolated ~/.claude-profiles/{name}
+ * Returns the new configDir path
+ */
+function migrateProfileToIsolatedDirectory(profile: ClaudeProfile): string {
+  // Generate isolated directory name from profile name
+  const sanitizedName = profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'primary';
+  const isolatedDir = join(CLAUDE_PROFILES_DIR, sanitizedName);
+
+  // Ensure the profiles directory exists
+  if (!existsSync(CLAUDE_PROFILES_DIR)) {
+    mkdirSync(CLAUDE_PROFILES_DIR, { recursive: true });
+  }
+
+  // Create the profile directory if it doesn't exist
+  if (!existsSync(isolatedDir)) {
+    mkdirSync(isolatedDir, { recursive: true });
+  }
+
+  console.warn(`[ProfileStorage] Migrated profile "${profile.name}" from ~/.claude to ${isolatedDir}`);
+  console.warn('[ProfileStorage] NOTE: Credentials remain at ~/.claude - user should re-authenticate in Settings > Accounts');
+
+  return isolatedDir;
 }
 
 /**
@@ -47,6 +100,9 @@ function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStore
   }
 
   if (data.version === STORE_VERSION) {
+    // Track profiles that were migrated in this session
+    const newlyMigratedProfileIds: string[] = [];
+
     // Parse dates and migrate profile data
     const profiles = data.profiles as ClaudeProfile[];
     data.profiles = profiles.map((p: ClaudeProfile) => {
@@ -61,8 +117,23 @@ function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStore
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { oauthToken: _, tokenCreatedAt: __, ...profileWithoutToken } = p;
 
+      // MIGRATION: Move profiles from shared ~/.claude to isolated directories
+      // This prevents interference with external Claude Code CLI usage
+      let configDir = profileWithoutToken.configDir;
+      if (usesLegacySharedDirectory(p)) {
+        configDir = migrateProfileToIsolatedDirectory(p);
+        // Track this profile as newly migrated (needs re-authentication)
+        newlyMigratedProfileIds.push(p.id);
+        console.warn('[ProfileStorage] Profile isolation migration:', {
+          profileName: p.name,
+          oldConfigDir: p.configDir,
+          newConfigDir: configDir
+        });
+      }
+
       return {
         ...profileWithoutToken,
+        configDir,  // Use migrated configDir
         createdAt: new Date(p.createdAt),
         lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
         usage: p.usage ? {
@@ -76,6 +147,14 @@ function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStore
         }))
       };
     });
+
+    // Merge newly migrated profiles with any existing migratedProfileIds
+    const existingMigrated = (data.migratedProfileIds as string[] | undefined) || [];
+    const allMigratedIds = [...new Set([...existingMigrated, ...newlyMigratedProfileIds])];
+    if (allMigratedIds.length > 0) {
+      data.migratedProfileIds = allMigratedIds;
+    }
+
     return data as unknown as ProfileStoreData;
   }
 

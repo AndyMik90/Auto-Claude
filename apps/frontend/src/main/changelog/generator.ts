@@ -11,7 +11,7 @@ import type {
 import { buildChangelogPrompt, buildGitPrompt, createGenerationScript } from './formatter';
 import { extractChangelog } from './parser';
 import { getCommits, getBranchDiffCommits } from './git-integration';
-import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { parsePythonCommand } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 
@@ -251,12 +251,15 @@ export class ChangelogGenerator extends EventEmitter {
     // even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
 
-    // Get active Claude profile environment (OAuth token preferred, falls back to CLAUDE_CONFIG_DIR)
-    const profileEnv = getProfileEnv();
+    // Get best available Claude profile environment (automatically handles rate limits)
+    const profileResult = getBestAvailableProfileEnv();
+    const profileEnv = profileResult.env;
     this.debug('Active profile environment', {
       hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
       hasConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR,
-      authMethod: profileEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'oauth-token' : (profileEnv.CLAUDE_CONFIG_DIR ? 'config-dir' : 'default')
+      authMethod: profileEnv.CLAUDE_CODE_OAUTH_TOKEN ? 'oauth-token' : (profileEnv.CLAUDE_CONFIG_DIR ? 'config-dir' : 'default'),
+      wasSwapped: profileResult.wasSwapped,
+      selectedProfile: profileResult.profileName
     });
 
     const spawnEnv: Record<string, string> = {
