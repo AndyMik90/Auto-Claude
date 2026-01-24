@@ -2583,22 +2583,44 @@ export function registerWorktreeHandlers(
 
         try {
           // Get the branch name before removing
-          const branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          // Use expected pattern as default to avoid deleting wrong branch
+          const expectedBranch = `auto-claude/${task.specId}`;
+          let branch = expectedBranch;
+          try {
+            const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
+            }).trim();
+            // Only use detected branch if it matches expected pattern (auto-claude/)
+            // This prevents deleting wrong branch when worktree is corrupted/orphaned
+            // and git rev-parse walks up to main project's current branch
+            if (detectedBranch === expectedBranch || detectedBranch.startsWith('auto-claude/')) {
+              branch = detectedBranch;
+            } else {
+              console.warn(`[TASK_WORKTREE_DISCARD] Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}', using fallback`);
+            }
+          } catch {
+            // Use expected pattern as fallback
+            console.warn(`[TASK_WORKTREE_DISCARD] Could not get branch name, using fallback pattern: ${expectedBranch}`);
+          }
 
           // Remove the worktree
           execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
             cwd: project.path,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv(),
+            timeout: 30000
           });
 
           // Delete the branch
           try {
             execFileSync(getToolPath('git'), ['branch', '-D', branch], {
               cwd: project.path,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
             });
           } catch {
             // Branch might already be deleted or not exist

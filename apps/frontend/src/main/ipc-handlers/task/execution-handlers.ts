@@ -597,18 +597,28 @@ export function registerTaskExecutionHandlers(
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
               // Get the branch name before removing the worktree
-              let branch = '';
+              // Use expected pattern as default to avoid deleting wrong branch
+              const expectedBranch = `auto-claude/${task.specId}`;
+              let branch = expectedBranch;
               let usingFallbackBranch = false;
               try {
-                branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+                const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
                   cwd: worktreePath,
                   encoding: 'utf-8',
                   timeout: 30000,
                   env: getIsolatedGitEnv()
                 }).trim();
+                // Only use detected branch if it matches expected pattern (auto-claude/)
+                // This prevents deleting wrong branch when worktree is corrupted/orphaned
+                // and git rev-parse walks up to main project's current branch
+                if (detectedBranch === expectedBranch || detectedBranch.startsWith('auto-claude/')) {
+                  branch = detectedBranch;
+                } else {
+                  console.warn(`[TASK_UPDATE_STATUS] Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}', using fallback: ${expectedBranch}`);
+                  usingFallbackBranch = true;
+                }
               } catch (branchError) {
                 // If we can't get branch name, use the default pattern
-                branch = `auto-claude/${task.specId}`;
                 usingFallbackBranch = true;
                 console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
               }
