@@ -119,6 +119,10 @@ export const IPC_CHANNELS = {
   CLAUDE_PROFILE_FETCH_USAGE: 'claude:fetchUsage',
   CLAUDE_PROFILE_GET_BEST_PROFILE: 'claude:getBestProfile',
 
+  // Account priority order (unified OAuth + API profile ordering)
+  ACCOUNT_PRIORITY_GET: 'account:priorityGet',
+  ACCOUNT_PRIORITY_SET: 'account:prioritySet',
+
   // SDK/CLI rate limit event (for non-terminal Claude invocations)
   CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
   // Auth failure event (401 errors requiring re-authentication)
@@ -129,6 +133,8 @@ export const IPC_CHANNELS = {
   // Usage monitoring (proactive account switching)
   USAGE_UPDATED: 'claude:usageUpdated',  // Event: usage data updated (main -> renderer)
   USAGE_REQUEST: 'claude:usageRequest',  // Request current usage snapshot
+  ALL_PROFILES_USAGE_REQUEST: 'claude:allProfilesUsageRequest',  // Request all profiles usage immediately
+  ALL_PROFILES_USAGE_UPDATED: 'claude:allProfilesUsageUpdated',  // Event: all profiles usage data (main -> renderer)
   PROACTIVE_SWAP_NOTIFICATION: 'claude:proactiveSwapNotification',  // Event: proactive swap occurred
 
   // Settings
@@ -532,5 +538,9 @@ export const IPC_CHANNELS = {
   // Sentry error reporting
   SENTRY_STATE_CHANGED: 'sentry:state-changed',  // Notify main process when setting changes
   GET_SENTRY_DSN: 'sentry:get-dsn',              // Get DSN from main process (env var)
-  GET_SENTRY_CONFIG: 'sentry:get-config'         // Get full Sentry config (DSN + sample rates)
+  GET_SENTRY_CONFIG: 'sentry:get-config',        // Get full Sentry config (DSN + sample rates)
+
+  // Screenshot capture
+  SCREENSHOT_GET_SOURCES: 'screenshot:getSources',  // Get available screens/windows
+  SCREENSHOT_CAPTURE: 'screenshot:capture'          // Capture screenshot from source
 } as const;

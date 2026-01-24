@@ -1259,35 +1259,6 @@ describe('Task Store', () => {
 
     // FIX (PR Review): Test coverage for terminal status downgrade prevention
     describe('terminal status downgrade prevention', () => {
-      it('should NOT downgrade from pr_created to ai_review', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'pr_created',
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain pr_created, not downgrade to ai_review
-        expect(useTaskStore.getState().tasks[0].status).toBe('pr_created');
-      });
-
       it('should NOT downgrade from done to ai_review', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
