@@ -71,18 +71,20 @@ ChannelHandler = Callable[[WebSocketServerProtocol, Any], Awaitable[Optional[Dic
 # Origin Validation
 # ============================================================================
 
-async def validate_origin(path: str, request_headers) -> Optional[Tuple[int, Dict[str, str], bytes]]:
+async def validate_origin(request) -> Optional[Tuple[int, Dict[str, str], bytes]]:
     """
     Validate WebSocket connection origin against allowed CORS origins.
 
+    Compatible with websockets v16.0 API.
+
     Args:
-        path: WebSocket path
-        request_headers: HTTP request headers
+        request: websockets.Request object (v16.0+ API)
 
     Returns:
         None if origin is allowed, (status, headers, body) tuple to reject
     """
-    origin = request_headers.get("Origin")
+    # Access headers via request.headers (v16.0 API)
+    origin = request.headers.get("Origin")
 
     # Parse allowed origins from environment variable
     allowed_origins = [o.strip() for o in cors_origins.split(",")]
