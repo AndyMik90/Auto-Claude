@@ -40,7 +40,7 @@ export function getPlatform(): string {
  */
 export function isWindows(): boolean {
   const platform = getPlatform();
-  return platform.includes('win');
+  return platform.startsWith('win');
 }
 
 /**
