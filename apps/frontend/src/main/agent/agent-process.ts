@@ -543,17 +543,35 @@ export class AgentProcessManager {
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
-      cwd,
-      env: {
-        ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
-        ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
-        ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
-        ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
-      }
-    });
+    let childProcess;
+    try {
+      childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+        cwd,
+        env: {
+          ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
+          ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
+          ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
+          ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
+        }
+      });
+    } catch (err) {
+      // spawn() failed synchronously (e.g., command not found, permission denied)
+      // Clean up tracking entry and propagate error
+      this.state.deleteProcess(taskId);
+      this.emitter.emit('error', taskId, err instanceof Error ? err.message : String(err));
+      throw err;
+    }
 
     // Update the tracked process with the actual spawned ChildProcess
+    // First check if the task was killed during async setup - if so, terminate the new process
+    if (!this.state.hasProcess(taskId)) {
+      console.log(`[AgentProcess] Task ${taskId} was killed during spawn setup. Terminating newly created process.`);
+      killProcessGracefully(childProcess, {
+        debugPrefix: '[AgentProcess]',
+        debug: process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development'
+      });
+      return; // Do not proceed with this spawn
+    }
     this.state.updateProcess(taskId, { process: childProcess });
 
     let currentPhase: ExecutionProgressData['phase'] = isSpecRunner ? 'planning' : 'planning';
@@ -752,7 +770,8 @@ export class AgentProcessManager {
     this.state.markSpawnAsKilled(agentProcess.spawnId);
 
     // If process hasn't been spawned yet (still in async setup phase, before spawn() returns),
-    // just remove from tracking - this is safe because the spawn() call will be abandoned
+    // just remove from tracking. The spawnProcess() function will check after spawn() and
+    // terminate the child process if it was killed during setup (see hasProcess check).
     if (!agentProcess.process) {
       this.state.deleteProcess(taskId);
       return true;
@@ -784,7 +803,8 @@ export class AgentProcessManager {
         }
 
         // If process hasn't been spawned yet (still in async setup phase before spawn() returns),
-        // just resolve immediately - the spawn will be abandoned
+        // just resolve immediately. The spawnProcess() function will check after spawn() and
+        // terminate the child process if it was killed during setup (see hasProcess check).
         if (!agentProcess.process) {
           this.killProcess(taskId);
           resolve();
