@@ -622,6 +622,10 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
 
   // ============================================
   // Roadmap Progress Persistence
+  // Note: SAVE and CLEAR handlers are exposed for API completeness and future use.
+  // Currently, progress is saved internally by agent-queue.ts and cleared when
+  // generation completes. The LOAD handler is used by the renderer to restore
+  // persisted progress state on app restart or project switch.
   // ============================================
 
   ipcMain.handle(

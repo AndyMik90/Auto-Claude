@@ -97,14 +97,14 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
       return {
         generationStatus: {
           ...status,
-          // Set startedAt when transitioning from idle to active, preserve existing otherwise
+          // Set startedAt when transitioning from idle to active, but preserve passed timestamp if provided (for restoring persisted state)
           startedAt: isStartingGeneration
-            ? now
+            ? (status.startedAt ?? now)
             : isStoppingGeneration
               ? undefined
               : status.startedAt ?? state.generationStatus.startedAt,
-          // Always update lastActivityAt on any status change (unless going idle)
-          lastActivityAt: isStoppingGeneration ? undefined : now
+          // Update lastActivityAt on any status change, but preserve passed timestamp if provided (for restoring persisted state)
+          lastActivityAt: isStoppingGeneration ? undefined : (status.lastActivityAt ?? now)
         }
       };
     }),
