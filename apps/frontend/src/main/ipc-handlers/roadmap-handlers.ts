@@ -634,14 +634,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
     async (
       _,
       projectId: string,
-      progressData: {
-        phase: string;
-        progress: number;
-        message: string;
-        startedAt?: string;
-        lastActivityAt?: string;
-        isRunning: boolean;
-      }
+      progressData: PersistedRoadmapProgress
     ): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
@@ -657,6 +650,9 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
           mkdirSync(roadmapDir, { recursive: true });
         }
 
+        // Derive isRunning from phase (active phases are running)
+        const isRunning = progressData.phase !== 'idle' && progressData.phase !== 'complete' && progressData.phase !== 'error';
+
         // Transform camelCase to snake_case for JSON file
         const fileData = {
           phase: progressData.phase,
@@ -664,7 +660,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
           message: progressData.message,
           started_at: progressData.startedAt || new Date().toISOString(),
           last_update_at: progressData.lastActivityAt || new Date().toISOString(),
-          is_running: progressData.isRunning,
+          is_running: isRunning,
         };
 
         writeFileSync(progressPath, JSON.stringify(fileData, null, 2));

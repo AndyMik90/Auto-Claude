@@ -31,7 +31,7 @@ export interface RoadmapAPI {
   ) => Promise<IPCResult<Task>>;
 
   // Progress persistence
-  saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus) => Promise<IPCResult>;
+  saveRoadmapProgress: (projectId: string, progress: PersistedRoadmapProgress) => Promise<IPCResult>;
   loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
   clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
@@ -87,8 +87,8 @@ export const createRoadmapAPI = (): RoadmapAPI => ({
     invokeIpc(IPC_CHANNELS.ROADMAP_CONVERT_TO_SPEC, projectId, featureId),
 
   // Progress persistence
-  saveRoadmapProgress: (projectId: string, status: RoadmapGenerationStatus): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.ROADMAP_PROGRESS_SAVE, projectId, status),
+  saveRoadmapProgress: (projectId: string, progress: PersistedRoadmapProgress): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.ROADMAP_PROGRESS_SAVE, projectId, progress),
 
   loadRoadmapProgress: (projectId: string): Promise<IPCResult<PersistedRoadmapProgress | null>> =>
     invokeIpc(IPC_CHANNELS.ROADMAP_PROGRESS_LOAD, projectId),

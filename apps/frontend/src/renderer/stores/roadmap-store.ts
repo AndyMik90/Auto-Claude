@@ -278,12 +278,20 @@ export async function loadRoadmap(projectId: string): Promise<void> {
     if (progressResult.success && progressResult.data) {
       // Restore full progress state including timestamps
       const persistedProgress = progressResult.data;
+
+      // Helper to safely parse date strings (returns undefined for invalid dates)
+      const parseDate = (dateStr: string | undefined): Date | undefined => {
+        if (!dateStr) return undefined;
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? undefined : date;
+      };
+
       store.setGenerationStatus({
         phase: persistedProgress.phase !== 'idle' ? persistedProgress.phase : 'analyzing',
         progress: persistedProgress.progress,
         message: persistedProgress.message || 'Roadmap generation in progress...',
-        startedAt: persistedProgress.startedAt ? new Date(persistedProgress.startedAt) : new Date(),
-        lastActivityAt: persistedProgress.lastActivityAt ? new Date(persistedProgress.lastActivityAt) : new Date()
+        startedAt: parseDate(persistedProgress.startedAt) ?? new Date(),
+        lastActivityAt: parseDate(persistedProgress.lastActivityAt) ?? new Date()
       });
     } else {
       // Fallback: generation is running but no persisted progress found
