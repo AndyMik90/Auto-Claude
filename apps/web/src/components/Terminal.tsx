@@ -62,7 +62,6 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
     terminal.onData((data) => {
       if (ipc.isConnected()) {
         ipc.send('terminal', {
-          id,
           type: 'input',
           data,
         });
@@ -87,17 +86,18 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
     const cols = terminal.cols;
 
     // Start PTY session on backend
+    // Note: Backend creates one PTY per WebSocket connection, not per terminal ID
     ipc.send('terminal', {
-      id,
       type: 'start',
       rows,
       cols,
-      cwd: cwd || process.env.HOME || '/tmp',
     });
 
     // Listen for terminal output from backend
     const handleOutput = (data: any) => {
-      if (data.id === id && data.type === 'output' && terminal) {
+      // Backend sends: {type: 'output', data: '...'}
+      // No terminal ID is included since backend manages one PTY per WebSocket
+      if (data.type === 'output' && terminal) {
         terminal.write(data.data);
       }
     };
@@ -107,13 +107,8 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
     return () => {
       ipc.off('terminal', handleOutput);
 
-      // Cleanup PTY session on unmount
-      if (ipc.isConnected()) {
-        ipc.send('terminal', {
-          id,
-          type: 'exit',
-        });
-      }
+      // Note: PTY cleanup happens automatically when WebSocket disconnects
+      // The backend destroys the PTY session on connection close
     };
   }, [isReady, id, cwd]);
 
@@ -133,7 +128,6 @@ export function Terminal({ id, cwd, onClose }: TerminalProps) {
         // Send resize to backend PTY
         if (ipc.isConnected()) {
           ipc.send('terminal', {
-            id,
             type: 'resize',
             rows: terminal.rows,
             cols: terminal.cols,
