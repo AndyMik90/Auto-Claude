@@ -291,6 +291,9 @@ async function compressImage(
         outputMimeType = inputMimeType; // Preserve original format for transparency
       }
 
+      // Clean up image object to prevent memory leak (consistent with error path)
+      img.src = '';
+
       resolve({
         dataUrl: canvas.toDataURL(outputMimeType, quality),
         mimeType: outputMimeType
@@ -477,8 +480,7 @@ export async function sendMessage(
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process with optional image attachments
-  // TODO: Type assertion until IPC backend handler is updated to accept images parameter
-  (window.electronAPI.sendInsightsMessage as any)(
+  window.electronAPI.sendInsightsMessage(
     projectId,
     message,
     configToUse,
