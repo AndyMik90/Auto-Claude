@@ -2585,7 +2585,7 @@ export function registerWorktreeHandlers(
           // Get the branch name before removing
           // Use shared utility to validate detected branch matches expected pattern
           // This prevents deleting wrong branch when worktree is corrupted/orphaned
-          const { branch } = detectWorktreeBranch(
+          const { branch, usingFallback } = detectWorktreeBranch(
             worktreePath,
             task.specId,
             { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
@@ -2607,8 +2607,13 @@ export function registerWorktreeHandlers(
               env: getIsolatedGitEnv(),
               timeout: 30000
             });
-          } catch {
+          } catch (branchDeleteError) {
             // Branch might already be deleted or not exist
+            if (usingFallback) {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+            } else {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`, branchDeleteError);
+            }
           }
 
           // Only send status change to backlog if not skipped

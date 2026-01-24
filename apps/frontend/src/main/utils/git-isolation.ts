@@ -13,6 +13,9 @@
  * Backend equivalent: apps/backend/core/git_executable.py:get_isolated_git_env()
  */
 
+import { execFileSync } from 'child_process';
+import { getToolPath } from '../cli-tool-manager';
+
 /**
  * Git environment variables that can cause cross-contamination between worktrees.
  *
@@ -153,9 +156,6 @@ export function detectWorktreeBranch(
   let usingFallback = false;
 
   try {
-    const { execFileSync } = require('child_process');
-    const { getToolPath } = require('../cli-tool-manager');
-
     const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: worktreePath,
       encoding: 'utf-8',
@@ -163,13 +163,14 @@ export function detectWorktreeBranch(
       env: getIsolatedGitEnv()
     }).trim();
 
-    // Only use detected branch if it matches expected pattern (auto-claude/)
+    // Only use detected branch if it EXACTLY matches the expected branch
     // This prevents deleting wrong branch when worktree is corrupted/orphaned
-    // and git rev-parse walks up to main project's current branch
-    if (detectedBranch === expectedBranch || detectedBranch.startsWith('auto-claude/')) {
+    // and git rev-parse walks up to main project's current branch OR returns
+    // a different task's auto-claude branch
+    if (detectedBranch === expectedBranch) {
       branch = detectedBranch;
     } else {
-      console.warn(`${logPrefix} Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}', using fallback: ${expectedBranch}`);
+      console.warn(`${logPrefix} Detected branch '${detectedBranch}' doesn't match expected branch '${expectedBranch}', using fallback: ${expectedBranch}`);
       usingFallback = true;
     }
   } catch (branchError) {
