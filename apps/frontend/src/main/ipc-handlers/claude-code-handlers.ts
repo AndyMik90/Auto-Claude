@@ -215,11 +215,36 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
 
 /**
  * Fetch the latest version of Claude Code from npm registry
+ * @param currentInstalled - Optional currently installed version. If provided and newer than
+ *                           cached latest, cache will be invalidated and fresh data fetched.
+ *                           This handles the case where CLI was updated while app was running.
  */
-async function fetchLatestVersion(): Promise<string> {
+async function fetchLatestVersion(currentInstalled?: string | null): Promise<string> {
   // Check cache first
   if (cachedLatestVersion && Date.now() - cachedLatestVersion.timestamp < CACHE_DURATION_MS) {
-    return cachedLatestVersion.version;
+    const cachedVersion = cachedLatestVersion.version;
+
+    // Invalidate cache if installed version is newer than cached latest
+    // This handles the case where CLI was updated while app was running
+    if (currentInstalled && cachedVersion) {
+      try {
+        const cleanInstalled = currentInstalled.replace(/^v/, '');
+        const cleanCached = cachedVersion.replace(/^v/, '');
+        if (semver.valid(cleanInstalled) && semver.valid(cleanCached) &&
+            semver.gt(cleanInstalled, cleanCached)) {
+          console.warn('[Claude Code] Installed version newer than cached latest, invalidating cache');
+          cachedLatestVersion = null;
+          // Fall through to fetch fresh from npm
+        } else {
+          return cachedVersion;
+        }
+      } catch {
+        // If semver comparison fails, return cached version
+        return cachedVersion;
+      }
+    } else {
+      return cachedVersion;
+    }
   }
 
   try {
@@ -919,10 +944,11 @@ export function registerClaudeCodeHandlers(): void {
         console.warn('[Claude Code] Installed version:', installed);
 
         // Fetch latest version from npm
+        // Pass installed version to invalidate cache if installed > cached (handles CLI update while app running)
         let latest: string;
         try {
           console.warn('[Claude Code] Fetching latest version from npm...');
-          latest = await fetchLatestVersion();
+          latest = await fetchLatestVersion(installed);
           console.warn('[Claude Code] Latest version:', latest);
         } catch (error) {
           console.warn('[Claude Code] Failed to fetch latest version, continuing with unknown:', error);
