@@ -179,7 +179,11 @@
     "fineTuneDescription": "Adjust from 75% to 200% in 5% increments",
     "default": "Default",
     "comfortable": "Comfortable",
-    "large": "Large"
+    "large": "Large",
+    "resetToDefault": "Reset to default (100%)",
+    "decreaseScale": "Decrease scale by {{step}}%",
+    "increaseScale": "Increase scale by {{step}}%",
+    "applyScaleChanges": "Apply scale changes"
   },
   "general": {
     "otherAgentSettings": "Other Agent Settings",
@@ -233,7 +237,27 @@
     "dark": "Dark",
     "system": "System",
     "colorTheme": "Color Theme",
-    "colorThemeDescription": "Choose your preferred color palette"
+    "colorThemeDescription": "Choose your preferred color palette",
+    "themes": {
+      "default": "Default",
+      "dusk": "Dusk",
+      "lime": "Lime",
+      "ocean": "Ocean",
+      "retro": "Retro",
+      "neo": "Neo",
+      "forest": "Forest"
+    },
+    "themeDescriptions": {
+      "default": "Oscura-inspired with pale yellow accent",
+      "dusk": "Warmer variant with slightly lighter dark mode",
+      "lime": "Fresh, energetic lime with purple accents",
+      "ocean": "Calm, professional blue tones",
+      "retro": "Warm, nostalgic amber vibes",
+      "neo": "Modern cyberpunk pink/magenta",
+      "forest": "Natural, earthy green tones"
+    },
+    "backgroundColorTitle": "Background color",
+    "accentColorTitle": "Accent color"
   },
   "devtools": {
     "title": "Developer Tools",
@@ -693,7 +717,12 @@
     "errorCommandRequired": "Command is required for command-based servers",
     "errorUrlRequired": "URL is required for HTTP-based servers",
     "testConnection": "Test",
+    "testConnectionTitle": "Test Connection",
     "testing": "Testing...",
+    "edit": "Edit",
+    "editTitle": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete",
     "authToken": "Authentication Token",
     "authTokenPlaceholder": "Paste your API token or PAT here",
     "authTokenHint": "Used as Bearer token in the Authorization header",

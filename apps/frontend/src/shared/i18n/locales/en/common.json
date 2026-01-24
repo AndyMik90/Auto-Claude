@@ -52,7 +52,11 @@
     "hideTokenEntryAriaLabel": "Hide token entry",
     "enterTokenManuallyAriaLabel": "Enter token manually",
     "renameProfileAriaLabel": "Rename profile",
-    "deleteProfileAriaLabel": "Delete profile"
+    "deleteProfileAriaLabel": "Delete profile",
+    "copyToClipboard": "Copy to clipboard",
+    "recommendedAriaLabel": "Recommended",
+    "claudeUsageStatusAriaLabel": "Claude usage status",
+    "investigateIssueAriaLabel": "Investigate issue"
   },
   "buttons": {
     "save": "Save",
@@ -79,10 +83,13 @@
     "add": "Add",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "discardBuild": "Discard build"
   },
   "labels": {
     "loading": "Loading...",
+    "loadingImage": "Loading image...",
+    "loadingCommits": "Loading commits...",
     "error": "Error",
     "success": "Success",
     "initializing": "Initializing...",
@@ -196,7 +203,27 @@
       "whatHappenedDesc": "The {{source}} operation was stopped because your Claude account ({{account}}) reached its usage limit.",
       "switchRetryOrAdd": "You can switch to another account and retry, or add more accounts above.",
       "addOrWait": "Add another Claude account above to continue working, or wait for the limit to reset.",
-      "close": "Close"
+      "close": "Close",
+      "profileLabel": "Profile: {{name}}",
+      "recommendedProfile": "Recommended: <strong>{{name}}</strong> has more capacity available.",
+      "switchToAnotherAccount": "Switch to another Claude account and retry the operation:",
+      "selectAccountPlaceholder": "Select account...",
+      "addNewAccountOption": "Add new account...",
+      "addAnotherAccountLabel": "Add another account:",
+      "connectAccountLabel": "Connect a Claude account:",
+      "accountNamePlaceholder": "Account name (e.g., Work, Personal)",
+      "willOpenLoginWindow": "This will open Claude login to authenticate the new account.",
+      "upgradeForMoreUsage": "Upgrade for more usage",
+      "upgradeSubscriptionDesc": "Upgrade your Claude subscription for higher usage limits.",
+      "upgradeSubscriptionButton": "Upgrade Subscription",
+      "sourceNames": {
+        "changelog": "Changelog Generation",
+        "task": "Task Execution",
+        "roadmap": "Roadmap Generation",
+        "ideation": "Ideation",
+        "titleGenerator": "Title Generation",
+        "default": "Claude Operation"
+      }
     }
   },
   "prReview": {
@@ -376,7 +403,20 @@
     "logs": {
       "agentActivity": "Agent Activity",
       "showMore": "Show {{count}} more",
-      "hideMore": "Hide {{count}} more"
+      "hideMore": "Hide {{count}} more",
+      "waitingForLogs": "Waiting for logs...",
+      "reviewStarting": "Review is starting",
+      "noLogsAvailable": "No logs available",
+      "runReviewToGenerate": "Run a review to generate logs",
+      "noLogsYet": "No logs yet",
+      "entries": "entries",
+      "streaming": "Streaming",
+      "running": "Running",
+      "pending": "Pending",
+      "complete": "Complete",
+      "failed": "Failed",
+      "more": "More",
+      "less": "Less"
     }
   },
   "downloads": {
@@ -408,6 +448,96 @@
     "loadingMore": "Loading more...",
     "scrollForMore": "Scroll for more",
     "allLoaded": "All issues loaded"
+  },
+  "fileExplorer": {
+    "projectFiles": "Project Files",
+    "dragHint": "Drag files into a terminal to insert the path",
+    "noFilesFound": "No files found"
+  },
+  "chatHistory": {
+    "title": "Chat History",
+    "noConversations": "No conversations yet",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete conversation?",
+    "deleteConfirmDescription": "This will permanently delete this conversation and all its messages. This action cannot be undone."
+  },
+  "envConfig": {
+    "title": "Claude Authentication Required",
+    "description": "A Claude Code OAuth token is required to use AI features like Ideation and Roadmap generation.",
+    "useExistingAccount": "Use Existing Account",
+    "authenticateWithBrowser": "Authenticate with Browser",
+    "authenticateNewAccount": "Authenticate New Account",
+    "enterTokenManually": "Enter token manually",
+    "tokenConfigured": "Token configured successfully",
+    "tokenConfiguredDescription": "You can now use AI features like Ideation and Roadmap generation.",
+    "steps": "Steps:",
+    "step1": "Install Claude Code CLI if you haven't already",
+    "step2": "Run",
+    "step3": "Copy the token and paste it below",
+    "claudeOAuthToken": "Claude Code OAuth Token",
+    "tokenPlaceholder": "Enter your token...",
+    "tokenSavedTo": "The token will be saved to",
+    "existingTokenInfo": "A token is already configured.",
+    "replaceToken": "Enter a new token above to replace it.",
+    "authenticateAgain": "Authenticate again to replace it.",
+    "selectAccount": "Select Account",
+    "useThisAccount": "Use This Account",
+    "saving": "Saving...",
+    "or": "or",
+    "addNewAccount": "Add a new Claude account by logging in with your browser.",
+    "clickToAuthenticate": "Click below to open your browser and log in with your Claude account.",
+    "waitingForAuth": "Waiting for authentication...",
+    "browserWindowInfo": "A browser window should open. Complete the authentication there, then return here.",
+    "hideToken": "Hide token",
+    "showToken": "Show token",
+    "saveToken": "Save Token",
+    "accountsAvailable": "You have {{count}} authenticated Claude account",
+    "accountsAvailable_plural": "You have {{count}} authenticated Claude accounts",
+    "selectOneToUse": "Select one to use:",
+    "default": "(Default)"
+  },
+  "authStatus": {
+    "authentication": "Authentication",
+    "oauth": "OAuth",
+    "apiProfile": "API Profile",
+    "usingProfile": "Using profile:"
+  },
+  "titles": {
+    "hideTokenEntry": "Hide token entry",
+    "enterTokenManually": "Enter token manually",
+    "renameProfile": "Rename profile",
+    "deleteProfile": "Delete profile",
+    "hideSidebar": "Hide sidebar",
+    "showSidebar": "Show sidebar"
+  },
+  "placeholders": {
+    "searchMergeRequests": "Search merge requests...",
+    "searchTasks": "Search tasks...",
+    "searchRepositories": "Search repositories...",
+    "searchBranches": "Search branches...",
+    "askAboutCodebase": "Ask about your codebase...",
+    "selectTeam": "Select a team",
+    "allProjects": "All projects",
+    "autoDetected": "Auto-detected",
+    "autoCreated": "Auto-created"
+  },
+  "hints": {
+    "pressEnterToSend": "Press Enter to send, Shift+Enter for new line"
+  },
+  "states": {
+    "opened": "opened",
+    "merged": "merged",
+    "closed": "closed",
+    "all": "all"
+  },
+  "integrations": {
+    "connectionStatus": "Connection Status"
   },
   "usage": {
     "dataUnavailable": "Usage data unavailable",

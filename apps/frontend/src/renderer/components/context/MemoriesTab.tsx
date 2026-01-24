@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
   Database,
@@ -77,6 +78,7 @@ export function MemoriesTab({
   searchLoading,
   onSearch
 }: MemoriesTabProps) {
+  const { t } = useTranslation('context');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
 
@@ -155,27 +157,27 @@ export function MemoriesTab({
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                       <div className="text-center p-2 rounded-lg bg-muted/30">
                         <div className="text-lg font-semibold text-foreground">{memoryCounts.all}</div>
-                        <div className="text-xs text-muted-foreground">Total</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.total')}</div>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-cyan-500/10">
                         <div className="text-lg font-semibold text-cyan-400">{memoryCounts.pr}</div>
-                        <div className="text-xs text-muted-foreground">PR Reviews</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.prReviews')}</div>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-amber-500/10">
                         <div className="text-lg font-semibold text-amber-400">{memoryCounts.sessions}</div>
-                        <div className="text-xs text-muted-foreground">Sessions</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.sessions')}</div>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-blue-500/10">
                         <div className="text-lg font-semibold text-blue-400">{memoryCounts.codebase}</div>
-                        <div className="text-xs text-muted-foreground">Codebase</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.codebase')}</div>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-purple-500/10">
                         <div className="text-lg font-semibold text-purple-400">{memoryCounts.patterns}</div>
-                        <div className="text-xs text-muted-foreground">Patterns</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.patterns')}</div>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-red-500/10">
                         <div className="text-lg font-semibold text-red-400">{memoryCounts.gotchas}</div>
-                        <div className="text-xs text-muted-foreground">Gotchas</div>
+                        <div className="text-xs text-muted-foreground">{t('memory.gotchas')}</div>
                       </div>
                     </div>
                   </div>
@@ -183,9 +185,9 @@ export function MemoriesTab({
               </>
             ) : (
               <div className="text-sm text-muted-foreground">
-                <p>{memoryStatus?.reason || 'Graphiti memory is not configured'}</p>
+                <p>{memoryStatus?.reason || t('memory.notConfigured')}</p>
                 <p className="mt-2 text-xs">
-                  To enable graph memory, set <code className="bg-muted px-1 py-0.5 rounded">GRAPHITI_ENABLED=true</code> in project settings.
+                  {t('memory.enableInstructions')}
                 </p>
               </div>
             )}
@@ -199,7 +201,7 @@ export function MemoriesTab({
           </h3>
           <div className="flex gap-2">
             <Input
-              placeholder="Search for patterns, insights, gotchas..."
+              placeholder={t('memory.searchPlaceholder')}
               value={localSearchQuery}
               onChange={(e) => setLocalSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}

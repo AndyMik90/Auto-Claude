@@ -1,0 +1,75 @@
+{
+  "title": "Feuille de route",
+  "emptyState": {
+    "title": "Aucune feuille de route pour le moment",
+    "description": "Générez une feuille de route alimentée par l'IA qui comprend le public cible de votre projet et crée un plan de fonctionnalités stratégique.",
+    "generateButton": "Générer la feuille de route"
+  },
+  "header": {
+    "competitorAnalysis": "Analyse de la concurrence",
+    "clickToView": "Cliquez pour voir l'analyse détaillée",
+    "analyzedCompetitors": "{{count}} concurrents analysés avec {{painPoints}} points de douleur identifiés",
+    "addFeature": "Ajouter une fonctionnalité",
+    "addFeatureTooltip": "Ajouter une nouvelle fonctionnalité à la feuille de route",
+    "regenerate": "Régénérer la feuille de route",
+    "target": "Cible :",
+    "morePersonas": "+{{count}} personas supplémentaires",
+    "secondaryPersonas": "Personas secondaires :",
+    "features": "fonctionnalités",
+    "phases": "phases"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "allFeatures": "Toutes les fonctionnalités",
+    "byPriority": "Par priorité",
+    "insight": "Aperçu",
+    "impact": "impact"
+  },
+  "featureDetail": {
+    "description": "Description",
+    "rationale": "Justification",
+    "complexity": "Complexité",
+    "impact": "Impact",
+    "dependencies": "Dépendances",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Critères d'acceptation",
+    "competitorInsights": "Répond aux points de douleur des concurrents",
+    "severity": "gravité",
+    "goToTask": "Aller à la tâche",
+    "convertToTask": "Convertir en tâche de construction automatique",
+    "deleteFeature": "Supprimer la fonctionnalité ?",
+    "deleteConfirm": "Cela supprimera définitivement \"{{title}}\" de votre feuille de route.",
+    "cancel": "Annuler",
+    "delete": "Supprimer"
+  },
+  "competitorAnalysis": {
+    "dialog": {
+      "title": "Activer l'analyse de la concurrence ?",
+      "description": "Améliorez votre feuille de route avec des informations sur les produits concurrents",
+      "whatItDoes": "Ce que fait l'analyse de la concurrence :",
+      "identifyCompetitors": "Identifie 3 à 5 principaux concurrents en fonction du type de votre projet",
+      "searchFeedback": "Recherche dans les magasins d'applications, les forums et les réseaux sociaux les commentaires des utilisateurs et les points de douleur",
+      "suggestFeatures": "Suggère des fonctionnalités qui comblent les lacunes des produits concurrents",
+      "privacyTitle": "Des recherches Web seront effectuées",
+      "privacyDescription": "Cette fonctionnalité effectuera des recherches Web pour recueillir des informations sur les concurrents. Le nom et le type de votre projet seront utilisés dans les requêtes de recherche. Aucun code ou donnée sensible n'est partagé.",
+      "optionalInfo": "Vous pouvez générer une feuille de route sans analyse de la concurrence si vous préférez. La feuille de route sera toujours basée sur la structure de votre projet et les meilleures pratiques.",
+      "decline": "Non, ignorer l'analyse",
+      "accept": "Oui, activer l'analyse"
+    },
+    "viewer": {
+      "title": "Résultats de l'analyse de la concurrence",
+      "description": "{{count}} concurrents analysés pour identifier les lacunes du marché et les opportunités",
+      "painPoints": "Points de douleur identifiés ({{count}})",
+      "noPainPoints": "Aucun point de douleur identifié",
+      "source": "Source :",
+      "frequency": "Fréquence : {{frequency}}",
+      "opportunity": "Opportunité :",
+      "marketInsights": "Résumé des informations sur le marché",
+      "topPainPoints": "Principaux points de douleur :",
+      "differentiatorOpportunities": "Opportunités de différenciation :",
+      "marketTrends": "Tendances du marché :",
+      "visit": "Visiter"
+    }
+  }
+}

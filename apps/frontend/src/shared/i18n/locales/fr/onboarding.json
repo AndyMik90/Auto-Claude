@@ -200,6 +200,16 @@
     },
     "learnMore": "En savoir plus sur Claude Code"
   },
+  "authChoice": {
+    "title": "Choisissez votre méthode d'authentification",
+    "description": "Sélectionnez comment vous souhaitez vous authentifier avec Claude. Vous pourrez modifier cela plus tard dans les paramètres.",
+    "oauthTitle": "Se connecter avec Anthropic",
+    "oauthDescription": "Utilisez votre compte Anthropic pour vous authentifier. Flux OAuth simple et sécurisé.",
+    "apiKeyTitle": "Utiliser une clé API personnalisée",
+    "apiKeyDescription": "Apportez votre propre clé API d'Anthropic ou d'un fournisseur d'API compatible. ⚠️ Hautement expérimental — peut entraîner des coûts importants.",
+    "bothOptionsInfo": "Les deux options offrent un accès complet aux fonctionnalités de Claude Code. Choisissez selon votre préférence.",
+    "skipForNow": "Passer pour l'instant"
+  },
   "devtools": {
     "title": "Outils de développement",
     "description": "Choisissez votre IDE et terminal préférés pour travailler avec les worktrees Auto Claude",
@@ -210,17 +220,21 @@
     "ide": {
       "label": "IDE préféré",
       "description": "Auto Claude ouvrira les worktrees dans cet éditeur",
-      "customPath": "Chemin IDE personnalisé"
+      "customPath": "Chemin IDE personnalisé",
+      "placeholder": "Sélectionner un IDE..."
     },
     "terminal": {
       "label": "Terminal préféré",
       "description": "Auto Claude ouvrira les sessions terminal ici",
-      "customPath": "Chemin terminal personnalisé"
+      "customPath": "Chemin terminal personnalisé",
+      "placeholder": "Sélectionner un terminal..."
     },
     "detectedSummary": "Détecté sur votre système :",
     "noToolsDetected": "Aucun outil supplémentaire détecté (VS Code et le terminal système seront utilisés)",
     "custom": "Personnalisé...",
-    "saveAndContinue": "Enregistrer et continuer"
+    "saveAndContinue": "Enregistrer et continuer",
+    "saving": "Enregistrement...",
+    "back": "Retour"
   },
   "ollama": {
     "notInstalled": {

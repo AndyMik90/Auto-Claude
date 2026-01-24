@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Check, Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Label } from '../ui/label';
@@ -18,6 +19,7 @@ interface ThemeSelectorProps {
  * require saving to take effect.
  */
 export function ThemeSelector({ settings, onSettingsChange }: ThemeSelectorProps) {
+  const { t } = useTranslation('settings');
   const updateStoreSettings = useSettingsStore((state) => state.updateSettings);
 
   const currentColorTheme = settings.colorTheme || 'default';
@@ -113,12 +115,12 @@ export function ThemeSelector({ settings, onSettingsChange }: ThemeSelectorProps
                     <div
                       className="w-6 h-6 rounded-full border-2 border-background shadow-sm"
                       style={{ backgroundColor: bgColor }}
-                      title="Background color"
+                      title={t("theme.backgroundColorTitle")}
                     />
                     <div
                       className="w-6 h-6 rounded-full border-2 border-background shadow-sm"
                       style={{ backgroundColor: accentColor }}
-                      title="Accent color"
+                      title={t("theme.accentColorTitle")}
                     />
                   </div>
                 </div>

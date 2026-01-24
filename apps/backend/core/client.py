@@ -490,6 +490,11 @@ def create_client(
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
+    # Apply API profile if configured (from Electron frontend)
+    # This sets ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from the active profile
+    from core.auth import apply_api_profile_to_env
+    profile_applied = apply_api_profile_to_env()
+
     # Get OAuth token - Claude CLI handles token lifecycle internally
     oauth_token = require_auth_token()
 

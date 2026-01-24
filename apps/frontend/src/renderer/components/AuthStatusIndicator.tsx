@@ -14,6 +14,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, Lock, Shield, Server, Fingerprint, ExternalLink } from 'lucide-react';
 import {
   Tooltip,
@@ -21,7 +22,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
-import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
 import { detectProvider, getProviderLabel, getProviderBadgeColor, type ApiProvider } from '../../shared/utils/provider-detection';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
@@ -49,9 +49,9 @@ const OAUTH_FALLBACK = {
 } as const;
 
 export function AuthStatusIndicator() {
+  const { t } = useTranslation(['common']);
   // Subscribe to profile state from settings store
   const { profiles, activeProfileId } = useSettingsStore();
-  const { t } = useTranslation(['common']);
 
   // Track usage data for warning badge
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);

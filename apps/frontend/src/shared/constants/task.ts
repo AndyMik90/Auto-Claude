@@ -62,15 +62,15 @@ export const SUBTASK_STATUS_COLORS: Record<string, string> = {
 // Execution Phases
 // ============================================
 
-// Execution phase labels
+// Execution phase labels (i18n keys - use with t('tasks:execution.phases.{key}'))
 export const EXECUTION_PHASE_LABELS: Record<string, string> = {
-  idle: 'Idle',
-  planning: 'Planning',
-  coding: 'Coding',
-  qa_review: 'AI Review',
-  qa_fixing: 'Fixing Issues',
-  complete: 'Complete',
-  failed: 'Failed'
+  idle: 'tasks:execution.phases.idle',
+  planning: 'tasks:execution.phases.planning',
+  coding: 'tasks:execution.phases.coding',
+  qa_review: 'tasks:execution.phases.qa_review',
+  qa_fixing: 'tasks:execution.phases.qa_fixing',
+  complete: 'tasks:execution.phases.complete',
+  failed: 'tasks:execution.phases.failed'
 };
 
 // Execution phase colors (for progress bars and indicators)
@@ -110,16 +110,17 @@ export const EXECUTION_PHASE_WEIGHTS: Record<string, { start: number; end: numbe
 // Task Categories
 // ============================================
 
+// Task category labels (i18n keys - use with t('tasks:form.classification.values.category.{key}'))
 export const TASK_CATEGORY_LABELS: Record<string, string> = {
-  feature: 'Feature',
-  bug_fix: 'Bug Fix',
-  refactoring: 'Refactoring',
-  documentation: 'Docs',
-  security: 'Security',
-  performance: 'Performance',
-  ui_ux: 'UI/UX',
-  infrastructure: 'Infrastructure',
-  testing: 'Testing'
+  feature: 'tasks:form.classification.values.category.feature',
+  bug_fix: 'tasks:form.classification.values.category.bug_fix',
+  refactoring: 'tasks:form.classification.values.category.refactoring',
+  documentation: 'tasks:form.classification.values.category.documentation',
+  security: 'tasks:form.classification.values.category.security',
+  performance: 'tasks:form.classification.values.category.performance',
+  ui_ux: 'tasks:form.classification.values.category.ui_ux',
+  infrastructure: 'tasks:form.classification.values.category.infrastructure',
+  testing: 'tasks:form.classification.values.category.testing'
 };
 
 export const TASK_CATEGORY_COLORS: Record<string, string> = {
@@ -138,12 +139,13 @@ export const TASK_CATEGORY_COLORS: Record<string, string> = {
 // Task Complexity
 // ============================================
 
+// Task complexity labels (i18n keys - use with t('tasks:form.classification.values.complexity.{key}'))
 export const TASK_COMPLEXITY_LABELS: Record<string, string> = {
-  trivial: 'Trivial',
-  small: 'Small',
-  medium: 'Medium',
-  large: 'Large',
-  complex: 'Complex'
+  trivial: 'tasks:form.classification.values.complexity.trivial',
+  small: 'tasks:form.classification.values.complexity.small',
+  medium: 'tasks:form.classification.values.complexity.medium',
+  large: 'tasks:form.classification.values.complexity.large',
+  complex: 'tasks:form.classification.values.complexity.complex'
 };
 
 export const TASK_COMPLEXITY_COLORS: Record<string, string> = {
@@ -158,11 +160,12 @@ export const TASK_COMPLEXITY_COLORS: Record<string, string> = {
 // Task Impact
 // ============================================
 
+// Task impact labels (i18n keys - use with t('tasks:form.classification.values.impact.{key}'))
 export const TASK_IMPACT_LABELS: Record<string, string> = {
-  low: 'Low Impact',
-  medium: 'Medium Impact',
-  high: 'High Impact',
-  critical: 'Critical Impact'
+  low: 'tasks:form.classification.values.impact.low',
+  medium: 'tasks:form.classification.values.impact.medium',
+  high: 'tasks:form.classification.values.impact.high',
+  critical: 'tasks:form.classification.values.impact.critical'
 };
 
 export const TASK_IMPACT_COLORS: Record<string, string> = {
@@ -176,11 +179,12 @@ export const TASK_IMPACT_COLORS: Record<string, string> = {
 // Task Priority
 // ============================================
 
+// Task priority labels (i18n keys - use with t('tasks:form.classification.values.priority.{key}'))
 export const TASK_PRIORITY_LABELS: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent'
+  low: 'tasks:form.classification.values.priority.low',
+  medium: 'tasks:form.classification.values.priority.medium',
+  high: 'tasks:form.classification.values.priority.high',
+  urgent: 'tasks:form.classification.values.priority.urgent'
 };
 
 export const TASK_PRIORITY_COLORS: Record<string, string> = {

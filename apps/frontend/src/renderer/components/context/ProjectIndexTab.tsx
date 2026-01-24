@@ -1,4 +1,5 @@
 import { RefreshCw, AlertCircle, FolderTree } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -22,13 +23,15 @@ export function ProjectIndexTab({
   indexError,
   onRefresh
 }: ProjectIndexTabProps) {
+  const { t } = useTranslation('context');
+
   return (
     <ScrollArea className="h-full">
       <div className="p-6 space-y-6">
         {/* Header with refresh */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Project Structure</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('projectStructure')}</h2>
             <p className="text-sm text-muted-foreground">
               AI-discovered knowledge about your codebase
             </p>
@@ -45,7 +48,7 @@ export function ProjectIndexTab({
                 Refresh
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Re-analyze project structure</TooltipContent>
+            <TooltipContent>{t('reanalyze')}</TooltipContent>
           </Tooltip>
         </div>
 
@@ -54,7 +57,7 @@ export function ProjectIndexTab({
           <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 text-destructive">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <div>
-              <p className="font-medium">Failed to load project index</p>
+              <p className="font-medium">{t('failedToLoad')}</p>
               <p className="text-sm opacity-80">{indexError}</p>
             </div>
           </div>
@@ -71,7 +74,7 @@ export function ProjectIndexTab({
         {!indexLoading && !projectIndex && !indexError && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FolderTree className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground">No Project Index Found</h3>
+            <h3 className="text-lg font-medium text-foreground">{t('noIndexFound')}</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-sm">
               Click the Refresh button to analyze your project structure and create an index.
             </p>
@@ -88,7 +91,7 @@ export function ProjectIndexTab({
             {/* Project Overview */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Overview</CardTitle>
+                <CardTitle className="text-base">{t('overview')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -143,7 +146,7 @@ export function ProjectIndexTab({
                       {projectIndex.infrastructure.docker_services &&
                         projectIndex.infrastructure.docker_services.length > 0 && (
                           <div className="sm:col-span-2">
-                            <span className="text-xs text-muted-foreground">Docker Services</span>
+                            <span className="text-xs text-muted-foreground">{t('dockerServices')}</span>
                             <div className="flex flex-wrap gap-1 mt-1">
                               {projectIndex.infrastructure.docker_services.map((svc) => (
                                 <Badge key={svc} variant="secondary" className="text-xs">

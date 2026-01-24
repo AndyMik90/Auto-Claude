@@ -179,7 +179,11 @@
     "fineTuneDescription": "Ajustez de 75% à 200% par incréments de 5%",
     "default": "Par défaut",
     "comfortable": "Confortable",
-    "large": "Grand"
+    "large": "Grand",
+    "resetToDefault": "Réinitialiser par défaut (100%)",
+    "decreaseScale": "Réduire l'échelle de {{step}}%",
+    "increaseScale": "Augmenter l'échelle de {{step}}%",
+    "applyScaleChanges": "Appliquer les modifications d'échelle"
   },
   "general": {
     "otherAgentSettings": "Autres paramètres de l'agent",
@@ -233,7 +237,27 @@
     "dark": "Sombre",
     "system": "Système",
     "colorTheme": "Thème de couleur",
-    "colorThemeDescription": "Choisissez votre palette de couleurs préférée"
+    "colorThemeDescription": "Choisissez votre palette de couleurs préférée",
+    "themes": {
+      "default": "Par Défaut",
+      "dusk": "Crépuscule",
+      "lime": "Citron Vert",
+      "ocean": "Océan",
+      "retro": "Rétro",
+      "neo": "Néo",
+      "forest": "Forêt"
+    },
+    "themeDescriptions": {
+      "default": "Inspiré d'Oscura avec accent jaune pâle",
+      "dusk": "Variante plus chaude avec mode sombre légèrement plus clair",
+      "lime": "Citron vert frais et énergique avec accents violets",
+      "ocean": "Tons bleus calmes et professionnels",
+      "retro": "Ambiance ambrée chaleureuse et nostalgique",
+      "neo": "Rose/magenta cyberpunk moderne",
+      "forest": "Tons verts naturels et terreux"
+    },
+    "backgroundColorTitle": "Couleur de fond",
+    "accentColorTitle": "Couleur d'accentuation"
   },
   "devtools": {
     "title": "Outils de développement",
@@ -693,7 +717,12 @@
     "errorCommandRequired": "La commande est requise pour les serveurs basés sur commande",
     "errorUrlRequired": "L'URL est requise pour les serveurs basés sur HTTP",
     "testConnection": "Test",
+    "testConnectionTitle": "Tester la connexion",
     "testing": "Test en cours...",
+    "edit": "Modifier",
+    "editTitle": "Modifier",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer",
     "authToken": "Jeton d'authentification",
     "authTokenPlaceholder": "Collez votre jeton API ou PAT ici",
     "authTokenHint": "Utilisé comme jeton Bearer dans l'en-tête Authorization",

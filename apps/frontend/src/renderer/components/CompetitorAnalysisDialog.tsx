@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Search, Globe, AlertTriangle, TrendingUp } from 'lucide-react';
 import {
   AlertDialog,
@@ -23,6 +24,8 @@ export function CompetitorAnalysisDialog({
   onAccept,
   onDecline,
 }: CompetitorAnalysisDialogProps) {
+  const { t } = useTranslation(['roadmap']);
+
   const handleAccept = () => {
     onAccept();
     onOpenChange(false);
@@ -39,10 +42,10 @@ export function CompetitorAnalysisDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-foreground">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Enable Competitor Analysis?
+            {t('roadmap:competitorAnalysis.dialog.title')}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-muted-foreground">
-            Enhance your roadmap with insights from competitor products
+            {t('roadmap:competitorAnalysis.dialog.description')}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -50,24 +53,20 @@ export function CompetitorAnalysisDialog({
           {/* What it does */}
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
             <h4 className="text-sm font-medium text-foreground mb-2">
-              What competitor analysis does:
+              {t('roadmap:competitorAnalysis.dialog.whatItDoes')}
             </h4>
             <ul className="text-sm text-muted-foreground space-y-2">
               <li className="flex items-start gap-2">
                 <Search className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                <span>Identifies 3-5 main competitors based on your project type</span>
+                <span>{t('roadmap:competitorAnalysis.dialog.identifyCompetitors')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <Globe className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                <span>
-                  Searches app stores, forums, and social media for user feedback and pain points
-                </span>
+                <span>{t('roadmap:competitorAnalysis.dialog.searchFeedback')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <TrendingUp className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                <span>
-                  Suggests features that address gaps in competitor products
-                </span>
+                <span>{t('roadmap:competitorAnalysis.dialog.suggestFeatures')}</span>
               </li>
             </ul>
           </div>
@@ -78,12 +77,10 @@ export function CompetitorAnalysisDialog({
               <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="text-sm font-medium text-foreground">
-                  Web searches will be performed
+                  {t('roadmap:competitorAnalysis.dialog.privacyTitle')}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  This feature will perform web searches to gather competitor information.
-                  Your project name and type will be used in search queries.
-                  No code or sensitive data is shared.
+                  {t('roadmap:competitorAnalysis.dialog.privacyDescription')}
                 </p>
               </div>
             </div>
@@ -91,17 +88,16 @@ export function CompetitorAnalysisDialog({
 
           {/* Optional info */}
           <p className="text-xs text-muted-foreground">
-            You can generate a roadmap without competitor analysis if you prefer.
-            The roadmap will still be based on your project structure and best practices.
+            {t('roadmap:competitorAnalysis.dialog.optionalInfo')}
           </p>
         </div>
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleDecline}>
-            No, Skip Analysis
+            {t('roadmap:competitorAnalysis.dialog.decline')}
           </AlertDialogCancel>
           <AlertDialogAction onClick={handleAccept}>
-            Yes, Enable Analysis
+            {t('roadmap:competitorAnalysis.dialog.accept')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

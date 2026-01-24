@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Zap, Import, Radio } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
@@ -29,13 +30,15 @@ export function LinearIntegrationSection({
   isCheckingLinear,
   onOpenImportModal,
 }: LinearIntegrationSectionProps) {
+  const { t } = useTranslation(['settings', 'common']);
+
   const badge = envConfig.linearEnabled ? (
     <StatusBadge status="success" label="Enabled" />
   ) : null;
 
   return (
     <CollapsibleSection
-      title="Linear Integration"
+      title={t('settings:projectSections.linear.title')}
       icon={<Zap className="h-4 w-4" />}
       isExpanded={isExpanded}
       onToggle={onToggle}
@@ -81,7 +84,7 @@ export function LinearIntegrationSection({
             <ConnectionStatus
               isChecking={isCheckingLinear}
               isConnected={linearConnectionStatus?.connected || false}
-              title="Connection Status"
+              title={t('common:integrations.connectionStatus')}
               successMessage={`Connected${linearConnectionStatus?.teamName ? ` to ${linearConnectionStatus.teamName}` : ''}`}
               errorMessage={linearConnectionStatus?.error || 'Not connected'}
               additionalInfo={

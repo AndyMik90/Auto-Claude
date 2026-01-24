@@ -81,7 +81,7 @@ export function TaskFileExplorerDrawer({ isOpen, onClose, projectPath }: TaskFil
                   size="icon"
                   className="h-6 w-6"
                   onClick={handleRefresh}
-                  title="Refresh"
+                  title={t("buttons.refresh")}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
@@ -90,7 +90,7 @@ export function TaskFileExplorerDrawer({ isOpen, onClose, projectPath }: TaskFil
                   size="icon"
                   className="h-6 w-6"
                   onClick={onClose}
-                  title="Close"
+                  title={t("buttons.close")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>

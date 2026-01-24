@@ -1,0 +1,101 @@
+{
+  "title": "变更日志生成器",
+  "noProjectSelected": "未选择项目",
+  "selectProjectPrompt": "从侧边栏选择一个项目以生成变更日志。",
+  "noCompletedTasks": "无已完成任务",
+  "noCommitsFound": "未找到提交记录",
+  "sourceLabel": "变更日志来源",
+  "gitHistoryOptions": "Git 历史选项",
+  "historyType": "历史类型",
+  "numberOfCommits": "提交数量",
+  "sinceDate": "起始日期",
+  "fromTag": "起始标签",
+  "toTag": "结束标签（可选）",
+  "lastVersion": "上一版本",
+  "branchComparison": "分支比较",
+  "baseBranch": "基础分支",
+  "compareBranch": "比较分支",
+  "releaseInfo": "发布信息",
+  "version": "版本",
+  "date": "日期",
+  "previousVersion": "上一版本：{{version}}",
+  "outputStyle": "输出样式",
+  "format": "格式",
+  "audience": "受众",
+  "emojis": "表情符号",
+  "customInstructions": "自定义说明",
+  "preview": "预览",
+  "dropImagesPrompt": "将图片拖放到此处以添加到变更日志",
+  "pasteImagesPrompt": "将图片粘贴到描述中以保存到变更日志",
+  "createGithubRelease": "创建 GitHub 发布",
+  "releaseCreatedSuccess": "发布创建成功！",
+  "archiveCompletedTasks": "归档已完成任务",
+  "savedSuccess": "变更日志已保存！",
+  "selectTag": "选择标签...",
+  "headLatest": "HEAD（最新）",
+  "selectVersion": "选择版本...",
+  "selectBaseBranch": "选择基础分支...",
+  "selectCompareBranch": "选择比较分支...",
+  "customInstructionsPlaceholder": "为 AI 添加任何特殊说明...",
+  "previewPlaceholder": "生成的变更日志将显示在此处...",
+  "formats": {
+    "keep-a-changelog": "Keep a Changelog",
+    "simple-list": "简单列表",
+    "github-release": "GitHub 发布"
+  },
+  "formatDescriptions": {
+    "keep-a-changelog": "结构化格式，包含添加/更改/修复/删除部分",
+    "simple-list": "带分类的简洁项目符号列表",
+    "github-release": "GitHub 风格的发布说明"
+  },
+  "audiences": {
+    "technical": "技术",
+    "user-facing": "面向用户",
+    "marketing": "营销"
+  },
+  "audienceDescriptions": {
+    "technical": "面向开发人员的详细技术变更",
+    "user-facing": "面向最终用户的清晰非技术描述",
+    "marketing": "强调优势的价值导向文案"
+  },
+  "emojiLevels": {
+    "none": "无",
+    "little": "仅标题",
+    "medium": "标题 + 重点",
+    "high": "全部"
+  },
+  "emojiLevelDescriptions": {
+    "none": "无表情符号",
+    "little": "仅在章节标题上使用表情符号",
+    "medium": "在标题和关键项目上使用表情符号",
+    "high": "在标题和每一行上使用表情符号"
+  },
+  "sourceModes": {
+    "tasks": "已完成任务",
+    "git-history": "Git 历史",
+    "branch-diff": "分支比较"
+  },
+  "sourceModeDescriptions": {
+    "tasks": "从已完成的规格任务生成",
+    "git-history": "从最近的提交或标签范围生成",
+    "branch-diff": "从两个分支之间的提交生成"
+  },
+  "gitHistoryTypes": {
+    "recent": "最近提交",
+    "since-date": "自日期起",
+    "tag-range": "标签之间"
+  },
+  "gitHistoryTypeDescriptions": {
+    "recent": "从 HEAD 开始的最后 N 次提交",
+    "since-date": "自特定日期以来的所有提交",
+    "tag-range": "两个标签之间的提交"
+  },
+  "stages": {
+    "loading_specs": "加载规格文件中...",
+    "loading_commits": "加载提交中...",
+    "generating": "生成变更日志中...",
+    "formatting": "格式化输出中...",
+    "complete": "完成",
+    "error": "错误"
+  }
+}

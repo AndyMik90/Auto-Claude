@@ -282,8 +282,8 @@ export function WorkspaceStatus({
                 <>
                   <AlertTriangle className="h-4 w-4 text-warning" />
                   <div>
-                    <span className="text-sm font-medium text-warning">Branch Diverged</span>
-                    <span className="text-xs text-muted-foreground ml-2">AI will resolve</span>
+                    <span className="text-sm font-medium text-warning">{t('taskReview:merge.status.branchDiverged')}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{t('taskReview:merge.status.aiWillResolve')}</span>
                   </div>
                 </>
               ) : isBranchBehind || hasPathMappedMerges ? (
@@ -332,7 +332,7 @@ export function WorkspaceStatus({
                 onClick={onLoadMergePreview}
                 disabled={isLoadingPreview}
                 className="h-7 px-2"
-                title="Refresh"
+                title={t("buttons.refresh")}
               >
                 {isLoadingPreview ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -484,7 +484,7 @@ export function WorkspaceStatus({
             onClick={() => onShowDiscardDialog(true)}
             disabled={isMerging || isDiscarding || isCreatingPR}
             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
-            title="Discard build"
+            title={t("buttons.discardBuild")}
           >
             <FolderX className="h-4 w-4" />
           </Button>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Clock,
   GitPullRequest,
@@ -107,6 +108,7 @@ function SeverityBadge({ severity, count }: { severity: string; count: number })
 }
 
 export function PRReviewCard({ memory }: PRReviewCardProps) {
+  const { t } = useTranslation('context');
   const [expanded, setExpanded] = useState(false);
   const parsed = useMemo(() => parsePRReviewContent(memory.content), [memory.content]);
 
@@ -220,7 +222,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Bug className="h-4 w-4 text-orange-400" />
-                  <span className="text-sm font-medium text-foreground">Key Findings</span>
+                  <span className="text-sm font-medium text-foreground">{t('prReview.keyFindings')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.keyFindings.length}
                   </Badge>
@@ -262,7 +264,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm font-medium text-foreground">Gotchas Discovered</span>
+                  <span className="text-sm font-medium text-foreground">{t('prReview.gotchas')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.gotchas.length}
                   </Badge>
@@ -282,7 +284,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm font-medium text-foreground">Patterns Identified</span>
+                  <span className="text-sm font-medium text-foreground">{t('prReview.patterns')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.patterns.length}
                   </Badge>

@@ -21,6 +21,7 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { Plus, Sparkles, Grid2X2, FolderTree, File, Folder, History, ChevronDown, Loader2, TerminalSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SortableTerminalWrapper } from './SortableTerminalWrapper';
 import { Button } from './ui/button';
 import {
@@ -45,6 +46,7 @@ interface TerminalGridProps {
 }
 
 export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: TerminalGridProps) {
+  const { t } = useTranslation(['terminal', 'common']);
   const allTerminals = useTerminalStore((state) => state.terminals);
   // Filter terminals to show only those belonging to the current project
   // Also include legacy terminals without projectPath (created before this change)
@@ -374,6 +376,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
 
   // Empty state
   if (terminals.length === 0) {
+    const shortcut = navigator.platform.includes('Mac') ? '⌘+T' : 'Ctrl+T';
     return (
       <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
         <div className="flex flex-col items-center gap-3 text-center">
@@ -381,16 +384,15 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
             <Grid2X2 className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Agent Terminals</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('terminal:grid.agentTerminals')}</h2>
             <p className="mt-1 text-sm text-muted-foreground max-w-md">
-              Spawn multiple terminals to run Claude agents in parallel.
-              Use <kbd className="px-1.5 py-0.5 text-xs bg-card border border-border rounded">Ctrl+T</kbd> to create a new terminal.
+              {t('terminal:grid.agentTerminalsDescription', { shortcut })}
             </p>
           </div>
         </div>
         <Button onClick={handleAddTerminal} className="gap-2">
           <Plus className="h-4 w-4" />
-          New Terminal
+          {t('terminal:grid.newTerminal')}
         </Button>
       </div>
     );
@@ -408,7 +410,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
         <div className="flex h-10 items-center justify-between border-b border-border bg-card/30 px-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">
-              {terminals.length} / 12 terminals
+              {t('terminal:grid.terminalsCount', { count: terminals.length })}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -427,13 +429,13 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                     ) : (
                       <History className="h-3 w-3" />
                     )}
-                    History
+                    {t('terminal:grid.history')}
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                    Restore sessions from...
+                    {t('terminal:grid.restoreFrom')}
                   </div>
                   <DropdownMenuSeparator />
                   {sessionDates.map((dateInfo) => (
@@ -444,7 +446,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                     >
                       <span>{dateInfo.label}</span>
                       <span className="text-xs text-muted-foreground">
-                        {dateInfo.sessionCount} session{dateInfo.sessionCount !== 1 ? 's' : ''}
+                        {t('terminal:grid.session', { count: dateInfo.sessionCount })}
                       </span>
                     </DropdownMenuItem>
                   ))}
@@ -459,7 +461,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                 onClick={handleInvokeClaudeAll}
               >
                 <Sparkles className="h-3 w-3" />
-                Invoke Claude All
+                {t('terminal:grid.invokeClaude')}
               </Button>
             )}
             <Button
@@ -470,7 +472,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
               disabled={!canAddTerminal(projectPath)}
             >
               <Plus className="h-3 w-3" />
-              New Terminal
+              {t('terminal:grid.newTerminal')}
               <kbd className="ml-1 text-[10px] text-muted-foreground">
                 {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+T
               </kbd>
@@ -484,7 +486,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
                 onClick={toggleFileExplorer}
               >
                 <FolderTree className="h-3 w-3" />
-                Files
+                {t('terminal:grid.files')}
               </Button>
             )}
           </div>

@@ -1,0 +1,205 @@
+{
+  "title": "设置",
+  "tabs": {
+    "app": "应用设置",
+    "project": "项目设置"
+  },
+  "theme": {
+    "title": "外观",
+    "description": "自定义 Auto Claude 的外观",
+    "mode": "模式",
+    "modeDescription": "在浅色和深色主题之间选择",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统",
+    "colorTheme": "颜色主题",
+    "colorThemeDescription": "选择您喜欢的调色板",
+    "themes": {
+      "default": "默认",
+      "dusk": "黄昏",
+      "lime": "青柠",
+      "ocean": "海洋",
+      "retro": "复古",
+      "neo": "霓虹",
+      "forest": "森林"
+    },
+    "themeDescriptions": {
+      "default": "Oscura 风格，带淡黄色强调",
+      "dusk": "更温暖的变体，深色模式稍亮",
+      "lime": "清新活力的青柠色，带紫色强调",
+      "ocean": "平静专业的蓝色调",
+      "retro": "温暖怀旧的琥珀色氛围",
+      "neo": "现代赛博朋克粉红/洋红色",
+      "forest": "自然朴实的绿色调"
+    },
+    "backgroundColorTitle": "背景颜色",
+    "accentColorTitle": "强调色"
+  },
+  "scale": {
+    "resetToDefault": "重置为默认值 (100%)",
+    "decreaseScale": "减少 {{step}}% 缩放",
+    "increaseScale": "增加 {{step}}% 缩放",
+    "applyScaleChanges": "应用缩放更改"
+  },
+  "sections": {
+    "appearance": {
+      "title": "外观",
+      "description": "自定义 Auto Claude 的外观"
+    },
+    "display": {
+      "title": "显示",
+      "description": "调整 UI 元素的大小"
+    },
+    "language": {
+      "title": "语言",
+      "description": "选择您的首选语言"
+    },
+    "devtools": {
+      "title": "开发工具",
+      "description": "IDE 和终端偏好设置"
+    },
+    "agent": {
+      "title": "Agent 设置",
+      "description": "默认模型和框架"
+    },
+    "paths": {
+      "title": "路径",
+      "description": "CLI 工具和框架路径"
+    },
+    "integrations": {
+      "title": "集成",
+      "description": "API 密钥和 Claude 账户"
+    },
+    "api-profiles": {
+      "title": "API 配置",
+      "description": "自定义 API 端点配置"
+    },
+    "updates": {
+      "title": "更新",
+      "description": "Auto Claude 更新"
+    },
+    "notifications": {
+      "title": "通知",
+      "description": "提醒偏好设置"
+    },
+    "debug": {
+      "title": "调试和日志",
+      "description": "故障排除工具"
+    }
+  },
+  "apiProfiles": {
+    "title": "API 配置",
+    "description": "配置自定义的 Anthropic 兼容 API 端点",
+    "addButton": "添加配置",
+    "presets": {
+      "anthropic": "Anthropic",
+      "openrouter": "OpenRouter",
+      "groq": "Groq",
+      "glmGlobal": "GLM (全球)",
+      "glmChina": "GLM (中国)"
+    },
+    "fields": {
+      "name": "名称",
+      "preset": "预设",
+      "baseUrl": "基础 URL",
+      "apiKey": "API 密钥"
+    },
+    "placeholders": {
+      "name": "我的自定义 API",
+      "preset": "选择提供商预设",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-..."
+    },
+    "hints": {
+      "preset": "预设会自动填充基础 URL；您仍需粘贴 API 密钥。",
+      "baseUrl": "示例: https://api.anthropic.com 或 http://localhost:8080"
+    },
+    "validation": {
+      "nameRequired": "名称为必填项",
+      "baseUrlRequired": "基础 URL 为必填项",
+      "baseUrlInvalid": "无效的 URL 格式(必须是 http:// 或 https://)",
+      "apiKeyRequired": "API 密钥为必填项",
+      "apiKeyInvalid": "无效的 API 密钥格式"
+    },
+    "actions": {
+      "save": "保存配置",
+      "saving": "保存中...",
+      "cancel": "取消",
+      "changeKey": "更改",
+      "cancelKeyChange": "取消"
+    },
+    "testConnection": {
+      "label": "测试连接",
+      "testing": "测试中...",
+      "success": "连接成功",
+      "failure": "连接失败"
+    },
+    "models": {
+      "title": "可选：模型名称映射",
+      "description": "从您的 API 提供商中选择模型。留空则使用默认值。",
+      "defaultLabel": "默认模型（可选）",
+      "haikuLabel": "Haiku 模型（可选）",
+      "sonnetLabel": "Sonnet 模型（可选）",
+      "opusLabel": "Opus 模型（可选）",
+      "defaultPlaceholder": "例如: claude-sonnet-4-5-20250929",
+      "haikuPlaceholder": "例如: claude-haiku-4-5-20251001",
+      "sonnetPlaceholder": "例如: claude-sonnet-4-5-20250929",
+      "opusPlaceholder": "例如: claude-opus-4-5-20251101"
+    },
+    "empty": {
+      "title": "未配置 API 配置",
+      "description": "创建配置以为您的构建配置自定义 API 端点。",
+      "action": "创建第一个配置"
+    },
+    "switchToOauth": {
+      "label": "切换到 OAuth",
+      "loading": "切换中..."
+    },
+    "activeBadge": "激活",
+    "customModels": "自定义模型: {{models}}",
+    "setActive": {
+      "label": "设为激活",
+      "loading": "设置中..."
+    },
+    "tooltips": {
+      "edit": "编辑配置",
+      "deleteActive": "删除前请先切换到 OAuth",
+      "deleteInactive": "删除配置"
+    },
+    "deleteAriaLabel": "删除配置 {{name}}",
+    "toast": {
+      "create": {
+        "title": "配置已创建",
+        "description": "\"{{name}}\" 已成功添加。"
+      },
+      "update": {
+        "title": "配置已更新",
+        "description": "\"{{name}}\" 已成功更新。"
+      },
+      "delete": {
+        "title": "配置已删除",
+        "description": "\"{{name}}\" 已被移除。",
+        "errorTitle": "删除配置失败",
+        "errorFallback": "删除配置时发生错误。"
+      },
+      "switch": {
+        "oauthTitle": "已切换到 OAuth",
+        "oauthDescription": "现在使用 OAuth 认证",
+        "profileTitle": "配置已激活",
+        "profileDescription": "现在使用 {{name}}",
+        "errorTitle": "切换认证失败",
+        "errorFallback": "切换认证方式时发生错误。"
+      }
+    },
+    "dialog": {
+      "createTitle": "添加 API 配置",
+      "editTitle": "编辑配置",
+      "description": "为您的构建配置自定义的 Anthropic 兼容 API 端点。",
+      "deleteTitle": "删除配置？",
+      "deleteDescription": "确定要删除 \"{{name}}\" 吗？此操作无法撤销。",
+      "cancel": "取消",
+      "delete": "删除",
+      "deleting": "删除中..."
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "projectStructure": "Project Structure",
+  "reanalyze": "Re-analyze project structure",
+  "failedToLoad": "Failed to load project index",
+  "noIndexFound": "No Project Index Found",
+  "overview": "Overview",
+  "dockerServices": "Docker Services",
+  "memory": {
+    "total": "Total",
+    "prReviews": "PR Reviews",
+    "sessions": "Sessions",
+    "codebase": "Codebase",
+    "patterns": "Patterns",
+    "gotchas": "Gotchas",
+    "notConfigured": "Graphiti memory is not configured",
+    "enableInstructions": "To enable graph memory, set GRAPHITI_ENABLED=true in project settings.",
+    "searchPlaceholder": "Search for patterns, insights, gotchas..."
+  },
+  "prReview": {
+    "keyFindings": "Key Findings",
+    "gotchas": "Gotchas Discovered",
+    "patterns": "Patterns Identified"
+  },
+  "service": {
+    "testing": "Testing",
+    "orm": "ORM",
+    "port": "Port",
+    "styling": "Styling",
+    "state": "State",
+    "appleFrameworks": "Apple Frameworks",
+    "keyDirectories": "Key Directories"
+  },
+  "externalServices": {
+    "databases": "Databases",
+    "email": "Email",
+    "payments": "Payments",
+    "cache": "Cache"
+  },
+  "monitoring": {
+    "metrics": "Metrics",
+    "health": "Health"
+  },
+  "memoryCard": {
+    "whatWorked": "What Worked",
+    "whatFailed": "What Failed",
+    "approach": "Approach",
+    "recommendations": "Recommendations",
+    "patterns": "Patterns",
+    "gotchas": "Gotchas",
+    "changedFiles": "Changed Files",
+    "fileInsights": "File Insights",
+    "subtasksCompleted": "Subtasks Completed",
+    "collapse": "Collapse",
+    "expand": "Expand"
+  }
+}
