@@ -53,9 +53,15 @@ All API routes must follow these patterns:
 ...
 ```
 
-### Requiring Skills
+### Auto-Triggering Skills with `require_skills`
 
-Rules can require specific skills to be run. Add `require_skills` to the frontmatter:
+> **Note:** For creating skills, see [Claude Code's official skills documentation](https://docs.anthropic.com/en/docs/claude-code/skills). This section covers Auto-Claude's **extension** that auto-triggers skills during builds.
+
+Auto-Claude extends Claude Code's rules with `require_skills` - allowing rules to automatically invoke skills at specific build phases. This is **not** part of Claude Code's standard rules format.
+
+#### Basic Format
+
+Add `require_skills` to trigger skills when the rule matches:
 
 ```markdown
 ---
@@ -66,36 +72,60 @@ require_skills:
 ---
 ```
 
-#### Structured Format with Timing Control
+#### Timing Control with `when`
 
-For more control over when skills run, use the structured format:
+Control exactly when skills run during the build:
 
 ```markdown
 ---
 paths:
   - src/**/*.ts
 require_skills:
-  - skill: /review
-    when: end_of_coding
   - skill: /security-audit
-    when: per_subtask
-    paths:
-      - src/app/api/**
+    when: end_of_coding
+  - skill: /migration-review
+    when: qa_phase
 ---
+```
+
+#### Build Phase Integration
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AUTO-CLAUDE BUILD                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. PLANNING PHASE (Planner Agent)                              │
+│     └── when: planning                                          │
+│         Skills run here to inform the implementation plan       │
+│                                                                 │
+│  2. CODING PHASE (Coder Agent)                                  │
+│     ├── Subtask 1                                               │
+│     │   └── when: per_subtask  ← runs after this subtask        │
+│     ├── Subtask 2                                               │
+│     │   └── when: per_subtask  ← runs after this subtask        │
+│     └── All subtasks complete                                   │
+│         └── when: end_of_coding  ← runs once here               │
+│                                                                 │
+│  3. QA PHASE (QA Reviewer Agent)                                │
+│     └── when: qa_phase                                          │
+│         Skills run during validation                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 #### `when` Options
 
-| Value | Agent | Description |
-|-------|-------|-------------|
-| `planning` | Planner | Include in implementation plan as a requirement |
-| `per_subtask` | Coder | Run on each matching subtask (default) |
-| `end_of_coding` | Coder | Run once after ALL subtasks complete |
-| `qa_phase` | QA Reviewer | Run during QA validation |
+| Value | Agent | When It Runs |
+|-------|-------|--------------|
+| `planning` | Planner | Before coding starts, informs implementation plan |
+| `per_subtask` | Coder | After each subtask completes (default) |
+| `end_of_coding` | Coder | Once, after ALL subtasks complete |
+| `qa_phase` | QA Reviewer | During QA validation |
 
 #### `paths` Filter (Optional)
 
-Narrow skill execution to specific file patterns within the rule's scope:
+Narrow skill execution to specific patterns within the rule's scope:
 
 ```yaml
 require_skills:
@@ -107,6 +137,47 @@ require_skills:
 ```
 
 If omitted, the skill applies to all files matched by the rule's `paths`.
+
+#### Practical Examples
+
+**Security audit after API changes:**
+```yaml
+---
+paths:
+  - src/app/api/**/*.ts
+require_skills:
+  - skill: /security-audit
+    when: end_of_coding
+---
+```
+
+**Migration review before QA:**
+```yaml
+---
+paths:
+  - supabase/migrations/**/*.sql
+require_skills:
+  - skill: /migration-review
+    when: end_of_coding
+---
+```
+
+**Multiple skills at different phases:**
+```yaml
+---
+paths:
+  - src/**/*.ts
+require_skills:
+  - skill: /lint-check
+    when: per_subtask
+  - skill: /security-audit
+    when: end_of_coding
+    paths:
+      - src/app/api/**
+  - skill: /performance-review
+    when: qa_phase
+---
+```
 
 ### Supported Path Patterns
 
@@ -243,4 +314,5 @@ During planning phase, all rules are intentionally loaded. During coding phase, 
 
 ## Related
 
-- Skills Support - Loading `.claude/skills/` (see [#1504](https://github.com/AndyMik90/Auto-Claude/issues/1504))
+- [Claude Code Skills Documentation](https://docs.anthropic.com/en/docs/claude-code/skills) - Official skill creation guide
+- [Claude Code Rules Documentation](https://docs.anthropic.com/en/docs/claude-code/memory) - Official rules guide
