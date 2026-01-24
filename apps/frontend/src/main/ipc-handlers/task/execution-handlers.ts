@@ -629,7 +629,10 @@ export function registerTaskExecutionHandlers(
                   // More concerning - fallback pattern didn't match actual branch
                   console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
                 } else {
-                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`);
+                  console.warn(
+                    `[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`,
+                    branchDeleteError
+                  );
                 }
               }
 
