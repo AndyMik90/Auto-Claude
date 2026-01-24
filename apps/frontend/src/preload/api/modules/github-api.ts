@@ -263,7 +263,7 @@ export interface GitHubAPI {
   ) => IpcListenerCleanup;
 
   // PR operations (fetches up to 100 open PRs at once - GitHub GraphQL limit)
-  listPRs: (projectId: string) => Promise<PRData[]>;
+  listPRs: (projectId: string) => Promise<PRListResult>;
   getPR: (projectId: string, prNumber: number) => Promise<PRData | null>;
   runPRReview: (projectId: string, prNumber: number) => void;
   cancelPRReview: (projectId: string, prNumber: number) => Promise<boolean>;
@@ -325,6 +325,14 @@ export interface PRData {
   createdAt: string;
   updatedAt: string;
   htmlUrl: string;
+}
+
+/**
+ * PR list result with pagination info
+ */
+export interface PRListResult {
+  prs: PRData[];
+  hasNextPage: boolean; // True if more PRs exist beyond the 100 limit
 }
 
 /**
@@ -653,7 +661,7 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   // PR operations
   // Fetches up to 100 open PRs at once (GitHub GraphQL limit)
-  listPRs: (projectId: string): Promise<PRData[]> =>
+  listPRs: (projectId: string): Promise<PRListResult> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST, projectId),
 
   getPR: (projectId: string, prNumber: number): Promise<PRData | null> =>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { GitPullRequest, User, Clock, FileDiff } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Badge } from '../../ui/badge';
@@ -203,7 +202,6 @@ export function PRList({
   onSelectPR,
 }: PRListProps) {
   const { t } = useTranslation('common');
-  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
 
   if (isLoading && prs.length === 0) {
     return (
@@ -238,7 +236,7 @@ export function PRList({
   }
 
   return (
-    <ScrollArea className="flex-1" onViewportRef={setViewportElement}>
+    <ScrollArea className="flex-1">
       <div className="divide-y divide-border">
         {prs.map((pr) => {
           const reviewState = getReviewStateForPR(pr.number);

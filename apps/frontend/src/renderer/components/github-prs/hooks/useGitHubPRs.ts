@@ -157,14 +157,13 @@ export function useGitHubPRs(
             // Fetch PRs (returns up to 100 open PRs at once - GitHub GraphQL limit)
             const result = await window.electronAPI.github.listPRs(projectId);
             if (result) {
-              // If we got exactly 100, there might be more PRs (GitHub GraphQL limit)
-              // This is informational only - cursor-based pagination is not implemented
-              setHasMore(result.length === 100);
-              setPrs(result);
+              // Use hasNextPage from API to determine if more PRs exist
+              setHasMore(result.hasNextPage);
+              setPrs(result.prs);
 
               // Batch preload review results for PRs not in store (single IPC call)
               // Skip PRs that are currently being reviewed - their state is managed by IPC listeners
-              const prsNeedingPreload = result.filter((pr) => {
+              const prsNeedingPreload = result.prs.filter((pr) => {
                 const existingState = getPRReviewState(projectId, pr.number);
                 return !existingState?.result && !existingState?.isReviewing;
               });
