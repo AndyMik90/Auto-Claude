@@ -40,13 +40,15 @@ interface KanbanBoardProps {
   onTaskClick: (task: Task) => void;
   onNewTaskClick?: () => void;
   onStatusChange?: (taskId: string, newStatus: TaskStatus) => Promise<void>;
+  onDelete?: (taskId: string) => Promise<void>;
 }
 
 export function KanbanBoard({
   tasks,
   onTaskClick,
   onNewTaskClick,
-  onStatusChange
+  onStatusChange,
+  onDelete
 }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
@@ -176,6 +178,12 @@ export function KanbanBoard({
     }
   }, [onStatusChange]);
 
+  const handleDelete = useCallback((taskId: string) => {
+    if (onDelete) {
+      onDelete(taskId);
+    }
+  }, [onDelete]);
+
   return (
     <div className="flex h-full flex-col">
       {/* Kanban columns */}
@@ -194,6 +202,7 @@ export function KanbanBoard({
               tasks={tasksByStatus[status]}
               onTaskClick={onTaskClick}
               onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
               isOver={overColumnId === status}
               onAddClick={status === 'backlog' ? onNewTaskClick : undefined}
             />

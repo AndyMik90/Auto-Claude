@@ -9,6 +9,7 @@ interface SortableTaskCardProps {
   task: Task;
   onClick: () => void;
   onStatusChange?: (newStatus: TaskStatus) => unknown;
+  onDelete?: () => unknown;
 }
 
 // Custom comparator - only re-render when task or onClick actually changed
@@ -21,14 +22,16 @@ function sortableTaskCardPropsAreEqual(
   return (
     prevProps.task === nextProps.task &&
     prevProps.onClick === nextProps.onClick &&
-    prevProps.onStatusChange === nextProps.onStatusChange
+    prevProps.onStatusChange === nextProps.onStatusChange &&
+    prevProps.onDelete === nextProps.onDelete
   );
 }
 
 export const SortableTaskCard = memo(function SortableTaskCard({
   task,
   onClick,
-  onStatusChange
+  onStatusChange,
+  onDelete
 }: SortableTaskCardProps) {
   const {
     attributes,
@@ -68,6 +71,7 @@ export const SortableTaskCard = memo(function SortableTaskCard({
         task={task}
         onClick={handleClick}
         onStatusChange={onStatusChange}
+        onDelete={onDelete}
       />
     </div>
   );

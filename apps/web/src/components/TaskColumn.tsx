@@ -14,6 +14,7 @@ interface TaskColumnProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => unknown;
+  onDelete: (taskId: string) => unknown;
   isOver: boolean;
   onAddClick?: () => void;
 }
@@ -104,6 +105,7 @@ export const TaskColumn = memo(function TaskColumn({
   tasks,
   onTaskClick,
   onStatusChange,
+  onDelete,
   isOver,
   onAddClick
 }: TaskColumnProps) {
@@ -132,6 +134,15 @@ export const TaskColumn = memo(function TaskColumn({
     return handlers;
   }, [tasks, onStatusChange]);
 
+  // Create stable onDelete handlers for each task
+  const onDeleteHandlers = useMemo(() => {
+    const handlers = new Map<string, () => unknown>();
+    tasks.forEach((task) => {
+      handlers.set(task.id, () => onDelete(task.id));
+    });
+    return handlers;
+  }, [tasks, onDelete]);
+
   // Memoize task card elements
   const taskCards = useMemo(() => {
     if (tasks.length === 0) return null;
@@ -141,9 +152,10 @@ export const TaskColumn = memo(function TaskColumn({
         task={task}
         onClick={onClickHandlers.get(task.id)!}
         onStatusChange={onStatusChangeHandlers.get(task.id)}
+        onDelete={onDeleteHandlers.get(task.id)}
       />
     ));
-  }, [tasks, onClickHandlers, onStatusChangeHandlers]);
+  }, [tasks, onClickHandlers, onStatusChangeHandlers, onDeleteHandlers]);
 
   const getColumnBorderColor = (): string => {
     switch (status) {

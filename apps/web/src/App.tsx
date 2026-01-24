@@ -111,6 +111,12 @@ export function App() {
     });
   };
 
+  // Handle task deletion
+  const handleDeleteTask = async (taskId: string) => {
+    // Send delete request to backend
+    ipc.send('task:delete', { taskId });
+  };
+
   // Reload tasks after create/edit
   const handleTaskChanged = () => {
     loadTasks();
@@ -137,6 +143,7 @@ export function App() {
               tasks={tasks}
               onTaskClick={handleTaskClick}
               onStatusChange={handleStatusChange}
+              onDelete={handleDeleteTask}
             />
           </div>
         );

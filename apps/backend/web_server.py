@@ -56,6 +56,10 @@ active_connections: Set[WebSocketServerProtocol] = set()
 # Track PTY sessions: websocket -> (master_fd, pid, read_task)
 pty_sessions: Dict[WebSocketServerProtocol, Tuple[int, int, Optional[asyncio.Task]]] = {}
 
+# In-memory task storage for web UI
+# TODO: Replace with persistent storage or integrate with backend task manager
+tasks_storage: Dict[str, Dict[str, Any]] = {}
+
 # Type alias for channel handler functions
 ChannelHandler = Callable[[WebSocketServerProtocol, Any], Awaitable[Optional[Dict[str, Any]]]]
 
@@ -371,6 +375,244 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
         }
 
 
+async def handle_task_list_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Handle task:list - Get all tasks.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data (contains projectId)
+
+    Returns:
+        Response with all tasks
+    """
+    tasks = list(tasks_storage.values())
+    logger.info("Listing %d tasks", len(tasks))
+
+    # Send tasks-loaded event
+    await websocket.send(json.dumps({
+        "channel": "tasks-loaded",
+        "data": tasks
+    }))
+
+    return {
+        "success": True,
+        "tasks": tasks
+    }
+
+
+async def handle_task_create_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Handle task:create - Create new task.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data containing task details
+
+    Returns:
+        Response with created task
+    """
+    if not isinstance(data, dict):
+        return {
+            "success": False,
+            "error": "Invalid data format"
+        }
+
+    # Extract task data
+    title = data.get("title", "")
+    description = data.get("description", "")
+    status = data.get("status", "backlog")
+
+    if not title:
+        return {
+            "success": False,
+            "error": "Title is required"
+        }
+
+    # Create task
+    import uuid
+    from datetime import datetime
+
+    task_id = str(uuid.uuid4())
+    task = {
+        "id": task_id,
+        "title": title,
+        "description": description,
+        "status": status,
+        "metadata": {
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat(),
+            "priority": data.get("priority", "medium")
+        }
+    }
+
+    # Store task
+    tasks_storage[task_id] = task
+    logger.info("Created task: %s - %s", task_id, title)
+
+    # Broadcast to all connected clients
+    await broadcast_message({
+        "channel": "task-created",
+        "data": task
+    })
+
+    return {
+        "success": True,
+        "task": task
+    }
+
+
+async def handle_task_update_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Handle task:update - Update task details.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data containing taskId and updates
+
+    Returns:
+        Response with updated task
+    """
+    if not isinstance(data, dict):
+        return {
+            "success": False,
+            "error": "Invalid data format"
+        }
+
+    task_id = data.get("taskId")
+    updates = data.get("updates", {})
+
+    if not task_id:
+        return {
+            "success": False,
+            "error": "taskId is required"
+        }
+
+    if task_id not in tasks_storage:
+        return {
+            "success": False,
+            "error": f"Task {task_id} not found"
+        }
+
+    # Update task
+    from datetime import datetime
+    task = tasks_storage[task_id]
+    task.update(updates)
+    task["metadata"]["updatedAt"] = datetime.now().isoformat()
+
+    logger.info("Updated task: %s", task_id)
+
+    # Broadcast to all connected clients
+    await broadcast_message({
+        "channel": "task-updated",
+        "data": {"taskId": task_id, "updates": updates}
+    })
+
+    return {
+        "success": True,
+        "task": task
+    }
+
+
+async def handle_task_delete_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Handle task:delete - Delete task.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data containing taskId
+
+    Returns:
+        Response confirming deletion
+    """
+    if not isinstance(data, dict):
+        return {
+            "success": False,
+            "error": "Invalid data format"
+        }
+
+    task_id = data.get("taskId")
+
+    if not task_id:
+        return {
+            "success": False,
+            "error": "taskId is required"
+        }
+
+    if task_id not in tasks_storage:
+        return {
+            "success": False,
+            "error": f"Task {task_id} not found"
+        }
+
+    # Delete task
+    del tasks_storage[task_id]
+    logger.info("Deleted task: %s", task_id)
+
+    # Broadcast to all connected clients
+    await broadcast_message({
+        "channel": "task-deleted",
+        "data": {"taskId": task_id}
+    })
+
+    return {
+        "success": True,
+        "taskId": task_id
+    }
+
+
+async def handle_task_move_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Handle task:move - Move task to different status/column.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data containing taskId and status
+
+    Returns:
+        Response with updated task
+    """
+    if not isinstance(data, dict):
+        return {
+            "success": False,
+            "error": "Invalid data format"
+        }
+
+    task_id = data.get("taskId")
+    status = data.get("status")
+
+    if not task_id or not status:
+        return {
+            "success": False,
+            "error": "taskId and status are required"
+        }
+
+    if task_id not in tasks_storage:
+        return {
+            "success": False,
+            "error": f"Task {task_id} not found"
+        }
+
+    # Update task status
+    from datetime import datetime
+    task = tasks_storage[task_id]
+    task["status"] = status
+    task["metadata"]["updatedAt"] = datetime.now().isoformat()
+
+    logger.info("Moved task %s to %s", task_id, status)
+
+    # Broadcast to all connected clients
+    await broadcast_message({
+        "channel": "task-status-changed",
+        "data": {"taskId": task_id, "status": status}
+    })
+
+    return {
+        "success": True,
+        "task": task
+    }
+
+
 async def handle_unknown_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
     """
     Default handler for unknown channels.
@@ -394,8 +636,39 @@ CHANNEL_HANDLERS: Dict[str, ChannelHandler] = {
     "echo": handle_echo_channel,
     "ping": handle_ping_channel,
     "terminal": handle_terminal_channel,
-    # Additional channels will be added here (e.g., "task", etc.)
+    "task:list": handle_task_list_channel,
+    "task:create": handle_task_create_channel,
+    "task:update": handle_task_update_channel,
+    "task:delete": handle_task_delete_channel,
+    "task:move": handle_task_move_channel,
 }
+
+
+async def broadcast_message(message: Dict[str, Any]) -> None:
+    """
+    Broadcast a message to all connected WebSocket clients.
+
+    Args:
+        message: Message dictionary to broadcast
+    """
+    if not active_connections:
+        return
+
+    # Convert message to JSON
+    message_json = json.dumps(message)
+
+    # Send to all active connections
+    disconnected = set()
+    for websocket in active_connections:
+        try:
+            await websocket.send(message_json)
+        except Exception as e:
+            logger.warning("Failed to broadcast to client %s: %s", id(websocket), e)
+            disconnected.add(websocket)
+
+    # Clean up disconnected clients
+    for websocket in disconnected:
+        active_connections.discard(websocket)
 
 
 async def handle_message(websocket: WebSocketServerProtocol, message: str) -> None:

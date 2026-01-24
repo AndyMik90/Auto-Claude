@@ -36,6 +36,7 @@ interface TaskState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearTasks: () => void;
+  deleteTask: (taskId: string) => void;
   // Task order actions for kanban drag-and-drop reordering
   setTaskOrder: (order: TaskOrderState) => void;
   reorderTasksInColumn: (status: TaskStatus, activeId: string, overId: string) => void;
@@ -372,6 +373,32 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       taskOrder: null
     }),
 
+  deleteTask: (taskId: string) =>
+    set((state) => {
+      const index = findTaskIndex(state.tasks, taskId);
+      if (index === -1) return state;
+
+      const task = state.tasks[index];
+      const taskStatus = task.status;
+
+      // Remove task from array
+      const newTasks = state.tasks.filter((t) => t.id !== taskId);
+
+      // Update task order - remove from column
+      let taskOrder = state.taskOrder;
+      if (taskOrder && taskStatus && taskOrder[taskStatus]) {
+        const newTaskOrder = { ...taskOrder };
+        newTaskOrder[taskStatus] = newTaskOrder[taskStatus].filter((id) => id !== taskId);
+        taskOrder = newTaskOrder;
+      }
+
+      return {
+        tasks: newTasks,
+        taskOrder,
+        selectedTaskId: state.selectedTaskId === taskId ? null : state.selectedTaskId
+      };
+    }),
+
   // Task order management
   setTaskOrder: (order) => set({ taskOrder: order }),
 
@@ -535,5 +562,9 @@ if (typeof window !== 'undefined') {
 
   ipc.on('tasks-loaded', (data: Task[]) => {
     useTaskStore.getState().setTasks(data);
+  });
+
+  ipc.on('task-deleted', (data: { taskId: string }) => {
+    useTaskStore.getState().deleteTask(data.taskId);
   });
 }

@@ -20,6 +20,7 @@ interface TaskCardProps {
   task: Task;
   onClick: () => void;
   onStatusChange?: (newStatus: TaskStatus) => unknown;
+  onDelete?: () => unknown;
 }
 
 // Custom comparator for React.memo - only re-render when relevant task data changes
@@ -56,6 +57,7 @@ export const TaskCard = memo(function TaskCard({
   task,
   onClick,
   onStatusChange,
+  onDelete,
 }: TaskCardProps) {
   const [isStuck] = useState(false);
 
@@ -247,6 +249,17 @@ export const TaskCard = memo(function TaskCard({
                   <DropdownMenuLabel>Move to</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {statusMenuItems}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => onDelete()}
+                      >
+                        Delete Task
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
