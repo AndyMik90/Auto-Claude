@@ -756,7 +756,7 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
         logger.warning(f"Failed to resolve rules directory path: {e}")
         return None
 
-    return rules_dir
+    return resolved_rules
 
 
 def _collect_all_rules(

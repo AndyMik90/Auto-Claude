@@ -243,4 +243,4 @@ During planning phase, all rules are intentionally loaded. During coding phase, 
 
 ## Related
 
-- Skills Support - Loading `.claude/skills/` (documentation coming soon)
+- Skills Support - Loading `.claude/skills/` (see [#1504](https://github.com/AndyMik90/Auto-Claude/issues/1504))
