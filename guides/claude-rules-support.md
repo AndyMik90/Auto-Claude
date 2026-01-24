@@ -1,6 +1,15 @@
-# Claude Code Rules Support (`.claude/rules/`)
+# Auto Claude Rules Support
 
-Auto-Claude now supports Claude Code's path-based rules convention, automatically loading project-specific rules based on which files are being modified.
+Auto-Claude can load project-specific rules from `.claude/rules/`, automatically selecting relevant rules based on which files are being modified during a build.
+
+> **Note:** For the official rules format, see [Claude Code's rules documentation](https://docs.anthropic.com/en/docs/claude-code/memory). This guide covers Auto-Claude's integration and extensions.
+
+## When to Use Rules
+
+- You have project-specific coding standards or patterns
+- You want security rules enforced automatically during builds
+- You need different conventions for different parts of your codebase
+- You want to auto-trigger skills (like audits) based on file changes
 
 ## Overview
 
@@ -39,16 +48,16 @@ Rules are markdown files in `.claude/rules/` with YAML frontmatter specifying pa
 ```markdown
 ---
 paths:
-  - src/app/api/**/*.ts
-  - src/app/api/**/*.tsx
+  - src/api/**/*.ts
+  - src/api/**/*.tsx
 ---
 
-# API Route Security Rules
+# API Security Rules
 
-All API routes must follow these patterns:
+All API endpoints must follow these patterns:
 
-1. Wrap POST/PUT/PATCH/DELETE handlers with `withCsrfProtection`
-2. Validate user permissions before database operations
+1. Validate all user input
+2. Check authentication and authorization
 3. Return consistent error responses
 ...
 ```
@@ -66,7 +75,7 @@ Add `require_skills` to trigger skills when the rule matches:
 ```markdown
 ---
 paths:
-  - src/app/api/**/*.ts
+  - src/api/**/*.ts
 require_skills:
   - /security-audit
 ---
@@ -132,8 +141,8 @@ require_skills:
   - skill: /security-audit
     when: per_subtask
     paths:
-      - src/app/api/**
-      - supabase/functions/**
+      - src/api/**
+      - src/server/**
 ```
 
 If omitted, the skill applies to all files matched by the rule's `paths`.
@@ -144,18 +153,18 @@ If omitted, the skill applies to all files matched by the rule's `paths`.
 ```yaml
 ---
 paths:
-  - src/app/api/**/*.ts
+  - src/api/**/*.ts
 require_skills:
   - skill: /security-audit
     when: end_of_coding
 ---
 ```
 
-**Migration review before QA:**
+**Database migration review:**
 ```yaml
 ---
 paths:
-  - supabase/migrations/**/*.sql
+  - db/migrations/**/*.sql
 require_skills:
   - skill: /migration-review
     when: end_of_coding
@@ -173,7 +182,7 @@ require_skills:
   - skill: /security-audit
     when: end_of_coding
     paths:
-      - src/app/api/**
+      - src/api/**
   - skill: /performance-review
     when: qa_phase
 ---
@@ -183,10 +192,10 @@ require_skills:
 
 | Pattern | Matches |
 |---------|---------|
-| `src/app/api/**/*.ts` | Any `.ts` file under `src/app/api/` at any depth |
+| `src/api/**/*.ts` | Any `.ts` file under `src/api/` at any depth |
 | `src/components/*.tsx` | `.tsx` files directly in `src/components/` |
 | `**/*.test.ts` | Any test file anywhere in the project |
-| `supabase/migrations/*.sql` | SQL files in migrations directory |
+| `db/migrations/*.sql` | SQL files in migrations directory |
 
 ## How It Works
 
@@ -200,12 +209,11 @@ When an implementation plan exists, rules are **selectively loaded** based on `f
 
 ```text
 Implementation Plan:
-  - files_to_modify: ["src/app/api/films/route.ts"]
-  - files_to_create: ["src/components/FilmModal.tsx"]
+  - files_to_modify: ["src/api/users/handler.ts"]
+  - files_to_create: ["src/components/UserModal.tsx"]
 
 Matched Rules:
-  - security/api-routes.md (matches src/app/api/**)
-  - security/csrf-protection.md (matches src/app/api/**)
+  - security/api-rules.md (matches src/api/**)
   - frontend/patterns.md (matches src/components/**)
 ```
 
@@ -284,7 +292,7 @@ Security settings: .claude_settings.json
    ```yaml
    ---
    paths:
-     - src/app/api/**/*.ts
+     - src/api/**/*.ts
    ---
    ```
 
