@@ -33,7 +33,6 @@ class IpcAbstraction {
    */
   public initialize(url?: string): void {
     if (this.isInitialized) {
-      console.warn('[IPC] Already initialized');
       return;
     }
 
