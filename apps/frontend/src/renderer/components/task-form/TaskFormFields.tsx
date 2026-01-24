@@ -3,10 +3,10 @@
  *
  * Bundles the common form fields used in both TaskCreationWizard and TaskEditDialog:
  * - Description (required, with image paste/drop support)
+ * - Reference Images section (collapsible, with screenshot capture)
  * - Title (optional)
  * - Agent profile selector
  * - Classification fields (collapsible)
- * - Reference Images section (collapsible, with screenshot capture)
  * - Review requirement checkbox
  */
 import { useRef, useState, useEffect, type ReactNode } from 'react';
@@ -263,38 +263,6 @@ export function TaskFormFields({
           </div>
         )}
 
-        {/* Title (Optional) */}
-        <div className="space-y-2">
-          <Label htmlFor={`${prefix}title`} className="text-sm font-medium text-foreground">
-            {t('tasks:form.taskTitle')} <span className="text-muted-foreground font-normal">({t('common:labels.optional')})</span>
-          </Label>
-          <Input
-            id={`${prefix}title`}
-            placeholder={t('tasks:form.titlePlaceholder')}
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            disabled={disabled}
-          />
-          <p className="text-xs text-muted-foreground">
-            {t('tasks:form.titleHelpText')}
-          </p>
-        </div>
-
-        {/* Agent Profile Selection */}
-        <AgentProfileSelector
-          profileId={profileId}
-          model={model}
-          thinkingLevel={thinkingLevel}
-          phaseModels={phaseModels}
-          phaseThinking={phaseThinking}
-          onProfileChange={onProfileChange}
-          onModelChange={onModelChange}
-          onThinkingLevelChange={onThinkingLevelChange}
-          onPhaseModelsChange={onPhaseModelsChange}
-          onPhaseThinkingChange={onPhaseThinkingChange}
-          disabled={disabled}
-        />
-
         {/* Reference Images Toggle */}
         <button
           type="button"
@@ -396,6 +364,38 @@ export function TaskFormFields({
             )}
           </div>
         )}
+
+        {/* Title (Optional) */}
+        <div className="space-y-2">
+          <Label htmlFor={`${prefix}title`} className="text-sm font-medium text-foreground">
+            {t('tasks:form.taskTitle')} <span className="text-muted-foreground font-normal">({t('common:labels.optional')})</span>
+          </Label>
+          <Input
+            id={`${prefix}title`}
+            placeholder={t('tasks:form.titlePlaceholder')}
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            disabled={disabled}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t('tasks:form.titleHelpText')}
+          </p>
+        </div>
+
+        {/* Agent Profile Selection */}
+        <AgentProfileSelector
+          profileId={profileId}
+          model={model}
+          thinkingLevel={thinkingLevel}
+          phaseModels={phaseModels}
+          phaseThinking={phaseThinking}
+          onProfileChange={onProfileChange}
+          onModelChange={onModelChange}
+          onThinkingLevelChange={onThinkingLevelChange}
+          onPhaseModelsChange={onPhaseModelsChange}
+          onPhaseThinkingChange={onPhaseThinkingChange}
+          disabled={disabled}
+        />
 
         {/* Classification Toggle */}
         <button
