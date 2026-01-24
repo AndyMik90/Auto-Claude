@@ -13,6 +13,9 @@
  * Backend equivalent: apps/backend/core/git_executable.py:get_isolated_git_env()
  */
 
+import { execFileSync } from 'child_process';
+import { getToolPath } from '../cli-tool-manager';
+
 /**
  * Git environment variables that can cause cross-contamination between worktrees.
  *
@@ -129,17 +132,12 @@ export function getIsolatedGitSpawnOptions(
  * ```
  */
 export function refreshGitIndex(cwd: string): void {
-  // Import dynamically to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { execFileSync } = require('child_process');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getToolPath } = require('../cli-tool-manager');
-
   try {
     execFileSync(getToolPath('git'), ['update-index', '--refresh'], {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv(),
     });
   } catch {
     // Ignore refresh errors - it's a best-effort optimization
