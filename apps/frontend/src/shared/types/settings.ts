@@ -236,6 +236,9 @@ export interface AppSettings {
   globalGoogleApiKey?: string;
   globalGroqApiKey?: string;
   globalOpenRouterApiKey?: string;
+  // Global GitLab settings (used as defaults for all projects)
+  globalGitlabInstanceUrl?: string;  // Self-hosted GitLab URL (e.g., https://gitlab.yourcompany.com)
+  globalGitlabToken?: string;        // Personal Access Token with 'api' scope
   // Graphiti LLM provider settings (legacy)
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;

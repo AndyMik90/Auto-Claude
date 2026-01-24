@@ -431,14 +431,18 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         config.githubAutoSync = true;
       }
 
-      // GitLab config
+      // GitLab config: project-specific takes precedence, then global
       if (vars[GITLAB_ENV_KEYS.TOKEN]) {
         config.gitlabToken = vars[GITLAB_ENV_KEYS.TOKEN];
         // Enable by default if token exists and GITLAB_ENABLED is not explicitly false
         config.gitlabEnabled = vars[GITLAB_ENV_KEYS.ENABLED]?.toLowerCase() !== 'false';
+      } else if (globalSettings.globalGitlabToken) {
+        config.gitlabToken = globalSettings.globalGitlabToken;
       }
       if (vars[GITLAB_ENV_KEYS.INSTANCE_URL]) {
         config.gitlabInstanceUrl = vars[GITLAB_ENV_KEYS.INSTANCE_URL];
+      } else if (globalSettings.globalGitlabInstanceUrl) {
+        config.gitlabInstanceUrl = globalSettings.globalGitlabInstanceUrl;
       }
       if (vars[GITLAB_ENV_KEYS.PROJECT]) {
         config.gitlabProject = vars[GITLAB_ENV_KEYS.PROJECT];
