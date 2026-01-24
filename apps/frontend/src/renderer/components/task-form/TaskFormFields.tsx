@@ -22,6 +22,7 @@ import { ClassificationFields } from './ClassificationFields';
 import { useImageUpload, type FileReferenceData } from './useImageUpload';
 import { createThumbnail } from '../ImageUpload';
 import { ScreenshotCapture } from '../ScreenshotCapture';
+import { ImagePreviewModal } from './ImagePreviewModal';
 import { cn } from '../../lib/utils';
 import { MAX_IMAGES_PER_TASK } from '../../../shared/constants';
 import type {
@@ -144,6 +145,7 @@ export function TaskFormFields({
   // Reference Images section state
   const [showReferenceImages, setShowReferenceImages] = useState(false);
   const [screenshotModalOpen, setScreenshotModalOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<ImageAttachment | null>(null);
 
   // Auto-expand reference images section when images are added via paste/drop/capture
   const prevImagesLengthRef = useRef(images.length);
@@ -214,6 +216,11 @@ export function TaskFormFields({
         open={screenshotModalOpen}
         onOpenChange={setScreenshotModalOpen}
         onCapture={handleScreenshotCapture}
+      />
+      <ImagePreviewModal
+        open={previewImage !== null}
+        onOpenChange={(open) => !open && setPreviewImage(null)}
+        image={previewImage}
       />
 
       <div className="space-y-6">
@@ -324,6 +331,7 @@ export function TaskFormFields({
                     className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                     style={{ width: '72px', height: '72px' }}
                     title={image.filename}
+                    onDoubleClick={() => setPreviewImage(image)}
                   >
                     {image.thumbnail ? (
                       <img
