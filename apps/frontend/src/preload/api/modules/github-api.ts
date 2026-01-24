@@ -652,8 +652,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
     createIpcListener(IPC_CHANNELS.GITHUB_AUTOFIX_ANALYZE_PREVIEW_ERROR, callback),
 
   // PR operations
-  listPRs: (projectId: string, page: number = 1): Promise<PRData[]> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST, projectId, page),
+  // Fetches up to 100 open PRs at once (GitHub GraphQL limit)
+  listPRs: (projectId: string): Promise<PRData[]> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST, projectId),
 
   getPR: (projectId: string, prNumber: number): Promise<PRData | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_GET, projectId, prNumber),

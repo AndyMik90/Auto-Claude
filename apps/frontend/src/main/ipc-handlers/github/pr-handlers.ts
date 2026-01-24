@@ -38,6 +38,7 @@ import {
 
 /**
  * GraphQL response type for PR list query
+ * Note: repository can be null if the repo doesn't exist or user lacks access
  */
 interface GraphQLPRListResponse {
   data: {
@@ -64,7 +65,7 @@ interface GraphQLPRListResponse {
           url: string;
         }>;
       };
-    };
+    } | null;
   };
   errors?: Array<{ message: string }>;
 }
@@ -1326,11 +1327,11 @@ async function runPRReview(
 export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): void {
   debugLog("Registering PR handlers");
 
-  // List open PRs with pagination support
+  // List open PRs - fetches up to 100 open PRs at once, client handles display pagination
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_LIST,
-    async (_, projectId: string, page: number = 1): Promise<PRData[]> => {
-      debugLog("listPRs handler called", { projectId, page });
+    async (_, projectId: string): Promise<PRData[]> => {
+      debugLog("listPRs handler called", { projectId });
       const result = await withProjectOrNull(projectId, async (project) => {
         const config = getGitHubConfig(project);
         if (!config) {
@@ -1348,8 +1349,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Use GraphQL API to get PRs with diff stats (REST list endpoint doesn't include them)
-          // GraphQL pagination uses cursor-based "after", simulate page-based by fetching first N*page
-          // For simplicity, we fetch 100 items for page 1, and handle pagination client-side
+          // Fetches up to 100 open PRs (GitHub GraphQL max per request)
+          // Client-side pagination can be implemented if needed for repos with >100 open PRs
           const response = await githubGraphQL<GraphQLPRListResponse>(
             config.token,
             LIST_PRS_QUERY,
@@ -1357,13 +1358,19 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
               owner,
               repo,
               first: 100, // GitHub GraphQL max is 100
-              after: null, // First page
+              after: null, // Start from beginning
             }
           );
 
+          // Handle case where repository doesn't exist or user lacks access
+          if (!response.data.repository) {
+            debugLog("Repository not found or access denied", { owner, repo });
+            return [];
+          }
+
           const prs = response.data.repository.pullRequests.nodes;
 
-          debugLog("Fetched PRs via GraphQL", { count: prs.length, page, samplePr: prs[0] });
+          debugLog("Fetched PRs via GraphQL", { count: prs.length, samplePr: prs[0] });
           return prs.map((pr) => ({
             number: pr.number,
             title: pr.title,

@@ -162,10 +162,12 @@ export function useGitHubPRs(
           setRepoFullName(connectionResult.data.repoFullName || null);
 
           if (connectionResult.data.connected) {
-            // Fetch PRs with pagination
-            const result = await window.electronAPI.github.listPRs(projectId, page);
+            // Fetch PRs (returns up to 100 open PRs at once)
+            // Note: page parameter is kept for local state tracking but API fetches all at once
+            const result = await window.electronAPI.github.listPRs(projectId);
             if (result) {
-              // Check if there are more PRs to load (GitHub returns up to 100 per page)
+              // If we got exactly 100, there might be more PRs (GitHub GraphQL limit)
+              // Currently no cursor-based pagination support, so hasMore is informational only
               setHasMore(result.length === 100);
               setCurrentPage(page);
 
