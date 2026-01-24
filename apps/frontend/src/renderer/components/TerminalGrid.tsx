@@ -173,6 +173,11 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
           }
         }
 
+        // Trigger terminal refit after grid layout stabilizes to ensure correct dimensions
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('terminal-refit-all'));
+        }, TERMINAL_DOM_UPDATE_DELAY_MS);
+
         // Refresh session dates to update counts
         const datesResult = await window.electronAPI.getTerminalSessionDates(projectPath);
         if (datesResult.success && datesResult.data) {
