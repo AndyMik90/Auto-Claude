@@ -573,7 +573,6 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
 
       return new Promise((resolve, reject) => {
         console.warn(`[Claude Code] Spawning: ${executable}`, args);
-        let resolved = false;
 
         const child = spawn(executable, args, {
           detached: true,
@@ -584,27 +583,18 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         // Detach from the child process so it runs independently
         child.unref();
 
-        const doResolve = () => {
-          if (!resolved) {
-            resolved = true;
-            resolve();
-          }
+        const timer = setTimeout(() => {
+          child.removeListener('error', onError);
+          resolve();
+        }, SPAWN_WAIT_MS);
+
+        const onError = (err: Error) => {
+          console.error(`[Claude Code] Spawn error for ${executable}:`, err);
+          clearTimeout(timer);
+          reject(err);
         };
 
-        // Resolve immediately - we don't wait for the terminal to close
-        // Give it a brief moment to ensure the window opens
-        setTimeout(doResolve, SPAWN_WAIT_MS);
-
-        // Handle spawn errors (e.g., executable not found)
-        child.on('error', (err) => {
-          console.error(`[Claude Code] Spawn error for ${executable}:`, err);
-          if (!resolved) {
-            resolved = true;
-            reject(err);
-          }
-          // If already resolved, log but don't reject
-          // (terminal started but failed later - user will see the error)
-        });
+        child.on('error', onError);
       });
     };
 
