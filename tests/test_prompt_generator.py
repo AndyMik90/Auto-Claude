@@ -4,7 +4,6 @@ Tests for prompt_generator module functions.
 Tests for worktree detection and environment context generation.
 """
 
-import pytest
 from pathlib import Path
 
 # Import the functions we're testing

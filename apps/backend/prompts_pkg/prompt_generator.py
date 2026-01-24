@@ -30,25 +30,20 @@ def detect_worktree_mode(spec_dir: Path, project_dir: Path) -> tuple[bool, str |
         - forbidden_parent_path: The parent project path to forbid, or None
     """
     # Check if spec_dir contains worktree path patterns
-    spec_str = str(spec_dir)
+    # Normalize path separators to forward slashes for consistent matching
+    spec_str = str(spec_dir).replace("\\", "/")
 
     # New worktree location: .auto-claude/worktrees/tasks/{spec-name}/
-    if (
-        "/.auto-claude/worktrees/tasks/" in spec_str
-        or "\\.auto-claude\\worktrees\\tasks\\" in spec_str
-    ):
-        # Extract the parent project path (forbidden)
-        # In worktree: /path/to/parent/.auto-claude/worktrees/tasks/{spec}/.auto-claude/specs/{spec}/
-        # We need to go up from spec_dir to find the parent project
-        parts = spec_str.split("/.auto-claude/worktrees/tasks/")[0].split(
-            "\\.auto-claude\\worktrees\\tasks\\"
-        )[0]
-        return True, parts
+    new_worktree_marker = "/.auto-claude/worktrees/tasks/"
+    if new_worktree_marker in spec_str:
+        parent_path = spec_str.split(new_worktree_marker, 1)[0]
+        return True, parent_path
 
     # Legacy worktree location: .worktrees/{spec-name}/
-    if "/.worktrees/" in spec_str or "\\.worktrees\\" in spec_str:
-        parts = spec_str.split("/.worktrees/")[0].split("\\.worktrees\\")[0]
-        return True, parts
+    legacy_worktree_marker = "/.worktrees/"
+    if legacy_worktree_marker in spec_str:
+        parent_path = spec_str.split(legacy_worktree_marker, 1)[0]
+        return True, parent_path
 
     return False, None
 
