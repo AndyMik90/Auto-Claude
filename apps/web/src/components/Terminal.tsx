@@ -50,10 +50,11 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       const rows = terminal.rows;
 
       if (cols >= MIN_COLS && rows >= MIN_ROWS) {
-        // Send resize to backend PTY
+        // Send resize to backend PTY with terminal ID
         if (ipc.isConnected()) {
           ipc.send('terminal', {
             type: 'resize',
+            terminalId: id,
             rows,
             cols,
           });
@@ -112,6 +113,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       if (ipc.isConnected()) {
         ipc.send('terminal', {
           type: 'input',
+          terminalId: id,
           data,
         });
       }
@@ -134,19 +136,20 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     const rows = terminal.rows;
     const cols = terminal.cols;
 
-    // Start PTY session on backend
-    // Note: Backend creates one PTY per WebSocket connection, not per terminal ID
+    // Start PTY session on backend with terminal ID
     ipc.send('terminal', {
       type: 'start',
+      terminalId: id,
       rows,
       cols,
+      cwd,
     });
 
     // Listen for terminal output from backend
     const handleOutput = (data: any) => {
-      // Backend sends: {type: 'output', data: '...'}
-      // No terminal ID is included since backend manages one PTY per WebSocket
-      if (data.type === 'output' && terminal) {
+      // Backend sends: {type: 'output', terminalId: '...', data: '...'}
+      // Only write to this terminal if the output is for this terminal ID
+      if (data.type === 'output' && data.terminalId === id && terminal) {
         terminal.write(data.data);
       }
     };
@@ -156,8 +159,13 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     return () => {
       ipc.off('terminal', handleOutput);
 
-      // Note: PTY cleanup happens automatically when WebSocket disconnects
-      // The backend destroys the PTY session on connection close
+      // Notify backend to clean up this terminal's PTY
+      if (ipc.isConnected()) {
+        ipc.send('terminal', {
+          type: 'close',
+          terminalId: id,
+        });
+      }
     };
   }, [isReady, id, cwd]);
 
