@@ -15,12 +15,6 @@ interface ProjectEnvState {
   clearEnvConfig: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-
-  // Selectors (for encapsulation - used by consumers who prefer method access)
-  isGitHubEnabled: () => boolean;
-  isGitLabEnabled: () => boolean;
-  isLinearEnabled: () => boolean;
-  getGitHubRepo: () => string | null;
 }
 
 // Track the current pending request to handle race conditions
@@ -62,28 +56,7 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  setError: (error) => set({ error }),
-
-  // Selectors (for encapsulation - used by consumers who prefer method access)
-  isGitHubEnabled: () => {
-    const { envConfig } = get();
-    return envConfig?.githubEnabled ?? false;
-  },
-
-  isGitLabEnabled: () => {
-    const { envConfig } = get();
-    return envConfig?.gitlabEnabled ?? false;
-  },
-
-  isLinearEnabled: () => {
-    const { envConfig } = get();
-    return envConfig?.linearEnabled ?? false;
-  },
-
-  getGitHubRepo: () => {
-    const { envConfig } = get();
-    return envConfig?.githubRepo ?? null;
-  }
+  setError: (error) => set({ error })
 }));
 
 /**

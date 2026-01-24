@@ -290,6 +290,8 @@ export function useProjectSettings(
         const envResult = await window.electronAPI.getProjectEnv(project.id);
         if (envResult.success && envResult.data) {
           setEnvConfig(envResult.data);
+          // Update global store so Sidebar reflects correct GitHub/GitLab enabled state
+          setProjectEnvConfig(project.id, envResult.data);
         }
       } else {
         setError(result?.error || 'Failed to initialize');

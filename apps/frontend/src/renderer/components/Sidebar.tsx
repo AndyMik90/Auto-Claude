@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -130,7 +130,9 @@ export function Sidebar({
   // Subscribe to project-env-store for reactive GitHub/GitLab tab visibility
   const githubEnabled = useProjectEnvStore((state) => state.envConfig?.githubEnabled ?? false);
   const gitlabEnabled = useProjectEnvStore((state) => state.envConfig?.gitlabEnabled ?? false);
-  const storeProjectId = useProjectEnvStore((state) => state.projectId);
+
+  // Track the last loaded project ID to avoid redundant loads
+  const lastLoadedProjectIdRef = useRef<string | null>(null);
 
   // Compute visible nav items based on GitHub/GitLab enabled state from store
   const visibleNavItems = useMemo(() => {
@@ -154,14 +156,16 @@ export function Sidebar({
 
     const initializeEnvConfig = async () => {
       if (selectedProject?.id && selectedProject?.autoBuildPath) {
-        // Only reload if the project ID differs from what's in the store
-        if (selectedProject.id !== storeProjectId) {
+        // Only reload if the project ID differs from what we last loaded
+        if (selectedProject.id !== lastLoadedProjectIdRef.current) {
+          lastLoadedProjectIdRef.current = selectedProject.id;
           await loadProjectEnvConfig(selectedProject.id);
           // Check if this effect was cancelled while loading
           if (!isCurrent) return;
         }
       } else {
         // Clear the store if no project is selected or has no autoBuildPath
+        lastLoadedProjectIdRef.current = null;
         clearProjectEnvConfig();
       }
     };
@@ -171,7 +175,7 @@ export function Sidebar({
     return () => {
       isCurrent = false;
     };
-  }, [selectedProject?.id, selectedProject?.autoBuildPath, storeProjectId]);
+  }, [selectedProject?.id, selectedProject?.autoBuildPath]);
 
   // Keyboard shortcuts
   useEffect(() => {
