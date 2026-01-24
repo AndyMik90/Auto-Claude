@@ -440,7 +440,7 @@ Based on the discovery data:
 3. Organize into phases
 4. Create milestones
 5. Map dependencies
-{f"6. Do NOT generate features with the same IDs as preserved features listed above" if preserved_features else ""}
+{"6. Do NOT generate features with the same IDs as preserved features listed above" if self._preserved_features else ""}
 
 Output the complete roadmap to roadmap.json.
 """
