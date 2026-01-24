@@ -492,8 +492,16 @@ Output the complete roadmap to roadmap.json.
                     data["features"] = merged_features
 
                     # Write back the merged roadmap
-                    with open(self.roadmap_file, "w", encoding="utf-8") as f:
-                        json.dump(data, f, indent=2)
+                    try:
+                        with open(self.roadmap_file, "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=2)
+                    except OSError as e:
+                        debug_error(
+                            "roadmap_phase",
+                            "Failed to write merged roadmap",
+                            error=str(e),
+                        )
+                        return None
 
                     debug_success(
                         "roadmap_phase",

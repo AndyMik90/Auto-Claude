@@ -208,7 +208,11 @@ export class AgentEvents {
     } else if (log.includes('Discovery attempt')) {
       phase = 'discovering';
       progress = 45;
-    } else if (log.includes('roadmap_discovery.json')) {
+    } else if (
+      log.includes('roadmap_discovery.json') &&
+      !log.toLowerCase().includes('failed') &&
+      !log.toLowerCase().includes('error')
+    ) {
       phase = 'discovering';
       progress = 50;
     }
