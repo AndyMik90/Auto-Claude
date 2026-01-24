@@ -105,3 +105,78 @@ export function getIsolatedGitSpawnOptions(
     ...additionalOptions,
   };
 }
+
+/**
+ * Result type for detectWorktreeBranch function.
+ */
+export interface WorktreeBranchDetectionResult {
+  /** The branch name to use for deletion */
+  branch: string;
+  /** Whether the fallback branch pattern was used */
+  usingFallback: boolean;
+}
+
+/**
+ * Detects the branch name in a worktree with safety validation.
+ *
+ * This function prevents a critical bug where git rev-parse in a corrupted/orphaned
+ * worktree can return the main project's current branch instead of the worktree's branch.
+ * It validates the detected branch matches the expected pattern before using it.
+ *
+ * @param worktreePath - Path to the worktree directory
+ * @param specId - The spec ID used to generate the expected branch name
+ * @param options - Optional configuration
+ * @param options.timeout - Timeout in milliseconds for git commands (default: 30000)
+ * @param options.logPrefix - Prefix for log messages (e.g., "[TASK_UPDATE_STATUS]")
+ * @returns Object containing the branch name and whether fallback was used
+ *
+ * @example
+ * ```typescript
+ * import { detectWorktreeBranch } from './utils/git-isolation';
+ * import { getToolPath } from './cli-tool-manager';
+ *
+ * const { branch, usingFallback } = detectWorktreeBranch(
+ *   worktreePath,
+ *   task.specId,
+ *   { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
+ * );
+ * ```
+ */
+export function detectWorktreeBranch(
+  worktreePath: string,
+  specId: string,
+  options: { timeout?: number; logPrefix?: string } = {}
+): WorktreeBranchDetectionResult {
+  const { timeout = 30000, logPrefix = '[WORKTREE_BRANCH_DETECTION]' } = options;
+  const expectedBranch = `auto-claude/${specId}`;
+  let branch = expectedBranch;
+  let usingFallback = false;
+
+  try {
+    const { execFileSync } = require('child_process');
+    const { getToolPath } = require('../cli-tool-manager');
+
+    const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+      timeout,
+      env: getIsolatedGitEnv()
+    }).trim();
+
+    // Only use detected branch if it matches expected pattern (auto-claude/)
+    // This prevents deleting wrong branch when worktree is corrupted/orphaned
+    // and git rev-parse walks up to main project's current branch
+    if (detectedBranch === expectedBranch || detectedBranch.startsWith('auto-claude/')) {
+      branch = detectedBranch;
+    } else {
+      console.warn(`${logPrefix} Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}', using fallback: ${expectedBranch}`);
+      usingFallback = true;
+    }
+  } catch (branchError) {
+    // If we can't get branch name, use the default pattern
+    usingFallback = true;
+    console.warn(`${logPrefix} Could not get branch name, using fallback pattern: ${branch}`, branchError);
+  }
+
+  return { branch, usingFallback };
+}

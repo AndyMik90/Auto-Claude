@@ -19,7 +19,7 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 
 // Regex pattern for validating git branch names
@@ -2583,28 +2583,13 @@ export function registerWorktreeHandlers(
 
         try {
           // Get the branch name before removing
-          // Use expected pattern as default to avoid deleting wrong branch
-          const expectedBranch = `auto-claude/${task.specId}`;
-          let branch = expectedBranch;
-          try {
-            const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-              cwd: worktreePath,
-              encoding: 'utf-8',
-              env: getIsolatedGitEnv(),
-              timeout: 30000
-            }).trim();
-            // Only use detected branch if it matches expected pattern (auto-claude/)
-            // This prevents deleting wrong branch when worktree is corrupted/orphaned
-            // and git rev-parse walks up to main project's current branch
-            if (detectedBranch === expectedBranch || detectedBranch.startsWith('auto-claude/')) {
-              branch = detectedBranch;
-            } else {
-              console.warn(`[TASK_WORKTREE_DISCARD] Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}', using fallback`);
-            }
-          } catch {
-            // Use expected pattern as fallback
-            console.warn(`[TASK_WORKTREE_DISCARD] Could not get branch name, using fallback pattern: ${expectedBranch}`);
-          }
+          // Use shared utility to validate detected branch matches expected pattern
+          // This prevents deleting wrong branch when worktree is corrupted/orphaned
+          const { branch } = detectWorktreeBranch(
+            worktreePath,
+            task.specId,
+            { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
+          );
 
           // Remove the worktree
           execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
