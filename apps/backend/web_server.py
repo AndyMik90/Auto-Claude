@@ -53,8 +53,8 @@ DEFAULT_CORS_ORIGINS = "http://localhost:5173"
 # Track active connections
 active_connections: Set[WebSocketServerProtocol] = set()
 
-# Track PTY sessions: websocket -> (master_fd, pid, read_task)
-pty_sessions: Dict[WebSocketServerProtocol, Tuple[int, int, Optional[asyncio.Task]]] = {}
+# Track PTY sessions: (websocket, terminal_id) -> (master_fd, pid, read_task)
+pty_sessions: Dict[Tuple[WebSocketServerProtocol, str], Tuple[int, int, Optional[asyncio.Task]]] = {}
 
 # In-memory task storage for web UI
 # TODO: Replace with persistent storage or integrate with backend task manager
@@ -101,7 +101,7 @@ def create_pty_session(rows: int = 24, cols: int = 80) -> Tuple[int, int]:
         return master_fd, pid
 
 
-async def read_pty_output(websocket: WebSocketServerProtocol, master_fd: int) -> None:
+async def read_pty_output(websocket: WebSocketServerProtocol, master_fd: int, terminal_id: str) -> None:
     """
     Read output from PTY and send to WebSocket.
     Runs in background until WebSocket closes or PTY ends.
@@ -109,6 +109,7 @@ async def read_pty_output(websocket: WebSocketServerProtocol, master_fd: int) ->
     Args:
         websocket: WebSocket connection to send data to
         master_fd: PTY master file descriptor
+        terminal_id: Terminal ID to include in output messages
     """
     loop = asyncio.get_event_loop()
 
@@ -133,6 +134,7 @@ async def read_pty_output(websocket: WebSocketServerProtocol, master_fd: int) ->
                         "channel": "terminal",
                         "data": {
                             "type": "output",
+                            "terminalId": terminal_id,
                             "data": data.decode("utf-8", errors="replace")
                         }
                     }
@@ -152,49 +154,63 @@ async def read_pty_output(websocket: WebSocketServerProtocol, master_fd: int) ->
         logger.error("Error in PTY reader for fd=%d: %s", master_fd, e, exc_info=True)
 
 
-def cleanup_pty_session(websocket: WebSocketServerProtocol) -> None:
+def cleanup_pty_session(websocket: WebSocketServerProtocol, terminal_id: Optional[str] = None) -> None:
     """
-    Clean up a PTY session associated with a WebSocket.
+    Clean up PTY session(s) associated with a WebSocket.
 
     Args:
         websocket: WebSocket connection
+        terminal_id: Specific terminal ID to cleanup, or None to cleanup all terminals for this websocket
     """
-    if websocket not in pty_sessions:
+    # Cleanup specific terminal or all terminals for this websocket
+    sessions_to_cleanup = []
+
+    if terminal_id:
+        # Cleanup specific terminal
+        session_key = (websocket, terminal_id)
+        if session_key in pty_sessions:
+            sessions_to_cleanup.append(session_key)
+    else:
+        # Cleanup all terminals for this websocket
+        sessions_to_cleanup = [key for key in pty_sessions.keys() if key[0] == websocket]
+
+    if not sessions_to_cleanup:
         return
 
-    master_fd, pid, read_task = pty_sessions[websocket]
+    for session_key in sessions_to_cleanup:
+        master_fd, pid, read_task = pty_sessions[session_key]
 
-    logger.info("Cleaning up PTY session: pid=%d, fd=%d", pid, master_fd)
+        logger.info("Cleaning up PTY session: pid=%d, fd=%d, terminal_id=%s", pid, master_fd, session_key[1])
 
-    # Cancel read task if running
-    if read_task and not read_task.done():
-        read_task.cancel()
+        # Cancel read task if running
+        if read_task and not read_task.done():
+            read_task.cancel()
 
-    # Close PTY master
-    try:
-        os.close(master_fd)
-        logger.debug("Closed PTY master fd=%d", master_fd)
-    except OSError as e:
-        logger.warning("Error closing PTY fd=%d: %s", master_fd, e)
-
-    # Terminate child process
-    try:
-        os.kill(pid, signal.SIGTERM)
-        # Wait for process to exit (non-blocking)
+        # Close PTY master
         try:
-            os.waitpid(pid, os.WNOHANG)
-            logger.debug("Terminated PTY process pid=%d", pid)
-        except ChildProcessError:
-            pass  # Process already exited
-    except ProcessLookupError:
-        logger.debug("PTY process pid=%d already terminated", pid)
-    except Exception as e:
-        logger.warning("Error terminating PTY process pid=%d: %s", pid, e)
+            os.close(master_fd)
+            logger.debug("Closed PTY master fd=%d", master_fd)
+        except OSError as e:
+            logger.warning("Error closing PTY fd=%d: %s", master_fd, e)
 
-    # Remove from tracking
-    del pty_sessions[websocket]
-    logger.info("PTY session cleaned up: %d active sessions remaining",
-               len(pty_sessions))
+        # Terminate child process
+        try:
+            os.kill(pid, signal.SIGTERM)
+            # Wait for process to exit (non-blocking)
+            try:
+                os.waitpid(pid, os.WNOHANG)
+                logger.debug("Terminated PTY process pid=%d", pid)
+            except ChildProcessError:
+                pass  # Process already exited
+        except ProcessLookupError:
+            logger.debug("PTY process pid=%d already terminated", pid)
+        except Exception as e:
+            logger.warning("Error terminating PTY process pid=%d: %s", pid, e)
+
+        # Remove from tracking
+        del pty_sessions[session_key]
+
+    logger.info("PTY sessions cleaned up: %d active sessions remaining", len(pty_sessions))
 
 
 def resize_pty(master_fd: int, rows: int, cols: int) -> None:
@@ -255,9 +271,10 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
     Terminal channel handler for PTY session management.
 
     Message types:
-    - {"type": "start", "rows": 24, "cols": 80} - Create new PTY session
-    - {"type": "input", "data": "..."} - Send input to PTY
-    - {"type": "resize", "rows": 30, "cols": 100} - Resize PTY
+    - {"type": "start", "terminalId": "...", "rows": 24, "cols": 80} - Create new PTY session
+    - {"type": "input", "terminalId": "...", "data": "..."} - Send input to PTY
+    - {"type": "resize", "terminalId": "...", "rows": 30, "cols": 100} - Resize PTY
+    - {"type": "close", "terminalId": "..."} - Close PTY session
 
     Args:
         websocket: WebSocket connection
@@ -270,18 +287,27 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
         return {
             "status": "error",
             "error": "Invalid data",
-            "message": "Terminal channel expects object with 'type' field"
+            "message": "Terminal channel expects object with 'type' and 'terminalId' fields"
         }
 
     msg_type = data.get("type")
+    terminal_id = data.get("terminalId")
+
+    if not terminal_id:
+        return {
+            "status": "error",
+            "error": "Missing terminalId",
+            "message": "Terminal channel requires 'terminalId' field"
+        }
 
     if msg_type == "start":
         # Create new PTY session
-        if websocket in pty_sessions:
+        session_key = (websocket, terminal_id)
+        if session_key in pty_sessions:
             return {
                 "status": "error",
                 "error": "Session exists",
-                "message": "PTY session already exists for this connection"
+                "message": f"PTY session already exists for terminal {terminal_id}"
             }
 
         try:
@@ -292,20 +318,23 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
             master_fd, pid = create_pty_session(rows, cols)
 
             # Start background task to read PTY output
-            read_task = asyncio.create_task(read_pty_output(websocket, master_fd))
+            read_task = asyncio.create_task(read_pty_output(websocket, master_fd, terminal_id))
 
             # Track session
-            pty_sessions[websocket] = (master_fd, pid, read_task)
+            pty_sessions[session_key] = (master_fd, pid, read_task)
+
+            logger.info("Started PTY session for terminal %s: pid=%d, fd=%d", terminal_id, pid, master_fd)
 
             return {
                 "status": "started",
+                "terminalId": terminal_id,
                 "pid": pid,
                 "rows": rows,
                 "cols": cols
             }
 
         except Exception as e:
-            logger.error("Failed to create PTY session: %s", e, exc_info=True)
+            logger.error("Failed to create PTY session for terminal %s: %s", terminal_id, e, exc_info=True)
             return {
                 "status": "error",
                 "error": "PTY creation failed",
@@ -314,14 +343,15 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
 
     elif msg_type == "input":
         # Send input to PTY
-        if websocket not in pty_sessions:
+        session_key = (websocket, terminal_id)
+        if session_key not in pty_sessions:
             return {
                 "status": "error",
                 "error": "No session",
-                "message": "No PTY session exists for this connection"
+                "message": f"No PTY session exists for terminal {terminal_id}"
             }
 
-        master_fd, pid, _ = pty_sessions[websocket]
+        master_fd, pid, _ = pty_sessions[session_key]
         input_data = data.get("data", "")
 
         try:
@@ -331,7 +361,7 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
             return None
 
         except OSError as e:
-            logger.error("Failed to write to PTY fd=%d: %s", master_fd, e)
+            logger.error("Failed to write to PTY fd=%d for terminal %s: %s", master_fd, terminal_id, e)
             return {
                 "status": "error",
                 "error": "Write failed",
@@ -340,14 +370,15 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
 
     elif msg_type == "resize":
         # Resize PTY
-        if websocket not in pty_sessions:
+        session_key = (websocket, terminal_id)
+        if session_key not in pty_sessions:
             return {
                 "status": "error",
                 "error": "No session",
-                "message": "No PTY session exists for this connection"
+                "message": f"No PTY session exists for terminal {terminal_id}"
             }
 
-        master_fd, _, _ = pty_sessions[websocket]
+        master_fd, _, _ = pty_sessions[session_key]
         rows = data.get("rows", 24)
         cols = data.get("cols", 80)
 
@@ -355,17 +386,36 @@ async def handle_terminal_channel(websocket: WebSocketServerProtocol, data: Any)
             resize_pty(master_fd, rows, cols)
             return {
                 "status": "resized",
+                "terminalId": terminal_id,
                 "rows": rows,
                 "cols": cols
             }
 
         except Exception as e:
-            logger.error("Failed to resize PTY fd=%d: %s", master_fd, e)
+            logger.error("Failed to resize PTY fd=%d for terminal %s: %s", master_fd, terminal_id, e)
             return {
                 "status": "error",
                 "error": "Resize failed",
                 "message": str(e)
             }
+
+    elif msg_type == "close":
+        # Close PTY session
+        session_key = (websocket, terminal_id)
+        if session_key not in pty_sessions:
+            return {
+                "status": "error",
+                "error": "No session",
+                "message": f"No PTY session exists for terminal {terminal_id}"
+            }
+
+        # Cleanup this specific terminal
+        cleanup_pty_session(websocket, terminal_id)
+
+        return {
+            "status": "closed",
+            "terminalId": terminal_id
+        }
 
     else:
         return {
