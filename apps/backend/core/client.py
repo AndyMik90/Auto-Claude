@@ -783,12 +783,12 @@ def _collect_all_rules(
 
         # Resolve the path and verify it stays under rules_dir
         # (handles symlinked parent directories)
-        rule_path_resolved = rule_path.resolve()
         try:
+            rule_path_resolved = rule_path.resolve()
             rule_path_resolved.relative_to(rules_dir_resolved)
-        except ValueError:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.warning(
-                f"Skipping rule outside rules directory: {rule_path} -> {rule_path_resolved}"
+                f"Skipping rule file that failed to resolve or escaped rules dir: {rule_path} ({e})"
             )
             continue
 
