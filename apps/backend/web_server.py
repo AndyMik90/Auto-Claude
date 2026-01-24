@@ -473,19 +473,18 @@ async def handle_message(websocket: WebSocketServerProtocol, message: str) -> No
         logger.error("Error handling message: %s", e, exc_info=True)
 
 
-async def handle_client(websocket: WebSocketServerProtocol, path: str) -> None:
+async def handle_client(websocket: WebSocketServerProtocol) -> None:
     """
     Handle WebSocket client connection lifecycle.
 
     Args:
         websocket: WebSocket connection
-        path: Connection path
     """
     # Register connection
     active_connections.add(websocket)
     client_id = id(websocket)
-    logger.info("Client %s connected from %s (path: %s)",
-                client_id, websocket.remote_address, path)
+    logger.info("Client %s connected from %s",
+                client_id, websocket.remote_address)
 
     try:
         # Handle messages
