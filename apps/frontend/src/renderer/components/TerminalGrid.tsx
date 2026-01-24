@@ -157,12 +157,18 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
         });
 
         // Add each successfully restored session to the renderer's terminal store
+        // Use staggered initialization to prevent race conditions when multiple terminals
+        // try to initialize and measure dimensions simultaneously
+        const TERMINAL_INIT_STAGGER_MS = 75; // Small delay between each terminal
+
         for (const sessionResult of result.data.sessions) {
           if (sessionResult.success) {
             const fullSession = sortedSessions.find(s => s.id === sessionResult.id);
             if (fullSession) {
               console.warn(`[TerminalGrid] Adding restored terminal to store: ${fullSession.id}`);
               addRestoredTerminal(fullSession);
+              // Stagger terminal initialization to prevent race conditions
+              await new Promise(resolve => setTimeout(resolve, TERMINAL_INIT_STAGGER_MS));
             }
           }
         }
