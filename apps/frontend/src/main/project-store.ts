@@ -616,7 +616,8 @@ export class ProjectStore {
       }
 
       // Plan review stage (human approval of spec before coding starts)
-      if (isPlanReviewStage && storedStatus === 'human_review') {
+      // Only show plan_review when user explicitly requested human review via checkbox
+      if (isPlanReviewStage && storedStatus === 'human_review' && metadata?.requireReviewBeforeCoding) {
         debugLog('[determineTaskStatusAndReason] Plan review stage detected:', {
           planStatus: plan.status,
           reason: 'Spec creation complete, awaiting user approval'
