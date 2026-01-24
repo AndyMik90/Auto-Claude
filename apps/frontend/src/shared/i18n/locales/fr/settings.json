@@ -54,8 +54,8 @@
       "anthropic": "Anthropic",
       "openrouter": "OpenRouter",
       "groq": "Groq",
-      "zaiGlobal": "z.AI (Global)",
-      "zaiChina": "z.AI (China)"
+      "zaiGlobal": "z.AI (Mondial)",
+      "zaiChina": "z.AI (Chine)"
     },
     "fields": {
       "name": "Nom",

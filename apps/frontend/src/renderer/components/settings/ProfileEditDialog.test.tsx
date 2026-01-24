@@ -282,8 +282,8 @@ describe('ProfileEditDialog - Create Mode', () => {
     const presetTrigger = screen.getByLabelText(/preset/i);
     fireEvent.keyDown(presetTrigger, { key: 'ArrowDown', code: 'ArrowDown' });
 
-    const glmGlobalOption = await screen.findByRole('option', { name: 'z.AI (Global)' });
-    fireEvent.click(glmGlobalOption);
+    const zaiGlobalOption = await screen.findByRole('option', { name: 'z.AI (Global)' });
+    fireEvent.click(zaiGlobalOption);
 
     expect(screen.getByLabelText(/base url/i)).toHaveValue('https://api.z.ai/api/anthropic');
     expect(screen.getByLabelText(/name/i)).toHaveValue('z.AI (Global)');
