@@ -76,13 +76,13 @@ export function getPlanPath(project: Project, task: Task): string {
  */
 export function mapStatusToPlanStatus(status: TaskStatus): string {
   switch (status) {
+    case 'queue':
+      return 'queued';
     case 'in_progress':
       return 'in_progress';
     case 'ai_review':
     case 'human_review':
       return 'review';
-    case 'pr_created':
-      return 'pr_created';
     case 'done':
       return 'completed';
     default:
