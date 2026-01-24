@@ -694,9 +694,9 @@ export function handleOnboardingComplete(
   // Debug: Test each pattern individually to see what matches
   const emailPatternTests = [
     { name: 'Authenticated/Logged in', pattern: /(?:Authenticated as |Logged in as |email[:\s]+)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
-    { name: "email's Organization", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})[''\u2019]s\s*Organization/i },
+    { name: "email's Organization", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s\s*Organization/i },
     { name: 'Claude Max · email', pattern: /Claude\s+(?:Max|Pro|Team|Enterprise)\s*[·•]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
-    { name: "email's (broad)", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['''\u2019]s/i },
+    { name: "email's (broad)", pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\u2019]s/i },
     { name: 'any email', pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i },
   ];
 
