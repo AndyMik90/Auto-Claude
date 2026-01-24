@@ -200,6 +200,11 @@ export function App() {
 
   // Listen for tray menu actions
   useEffect(() => {
+    // Guard: Only set up listeners if electronAPI is available
+    if (!window.electronAPI?.onNewTask || !window.electronAPI?.onOpenSettings) {
+      return;
+    }
+
     const cleanupNewTask = window.electronAPI.onNewTask(() => {
       setIsNewTaskDialogOpen(true);
     });

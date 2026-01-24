@@ -49,6 +49,11 @@ export function useTraySync(): void {
   const tasks = useTaskStore((state) => state.tasks);
 
   useEffect(() => {
+    // Guard: Only run if electronAPI is available
+    if (!window.electronAPI?.updateStatus) {
+      return;
+    }
+
     // Calculate task counts
     const counts = getTaskCounts(tasks);
 
