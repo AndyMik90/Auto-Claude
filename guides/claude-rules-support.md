@@ -99,7 +99,7 @@ require_skills:
 
 #### Build Phase Integration
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        AUTO-CLAUDE BUILD                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -150,6 +150,7 @@ If omitted, the skill applies to all files matched by the rule's `paths`.
 #### Practical Examples
 
 **Security audit after API changes:**
+
 ```yaml
 ---
 paths:
@@ -161,6 +162,7 @@ require_skills:
 ```
 
 **Database migration review:**
+
 ```yaml
 ---
 paths:
@@ -172,6 +174,7 @@ require_skills:
 ```
 
 **Multiple skills at different phases:**
+
 ```yaml
 ---
 paths:

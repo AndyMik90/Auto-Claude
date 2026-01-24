@@ -773,14 +773,27 @@ def _collect_all_rules(
         where required_skills is a list of dicts with 'skill', 'when', and optional 'paths' keys
     """
     rules = []
+    rules_dir_resolved = rules_dir.resolve()
 
     for rule_path in rules_dir.rglob("*.md"):
-        # Skip symlinks to prevent traversal outside project directory
+        # Skip symlink files to prevent traversal outside project directory
         if rule_path.is_symlink():
             logger.warning(f"Skipping symlink rule file: {rule_path}")
             continue
+
+        # Resolve the path and verify it stays under rules_dir
+        # (handles symlinked parent directories)
+        rule_path_resolved = rule_path.resolve()
         try:
-            content = rule_path.read_text(encoding="utf-8")
+            rule_path_resolved.relative_to(rules_dir_resolved)
+        except ValueError:
+            logger.warning(
+                f"Skipping rule outside rules directory: {rule_path} -> {rule_path_resolved}"
+            )
+            continue
+
+        try:
+            content = rule_path_resolved.read_text(encoding="utf-8")
             paths, skills, rule_content = _parse_rule_frontmatter(content)
             if paths and rule_content:
                 rules.append((rule_path, paths, skills, rule_content))
