@@ -268,6 +268,7 @@ export const IPC_CHANNELS = {
   GITLAB_GET_ISSUE: 'gitlab:getIssue',
   GITLAB_GET_ISSUE_NOTES: 'gitlab:getIssueNotes',
   GITLAB_CHECK_CONNECTION: 'gitlab:checkConnection',
+  GITLAB_TEST_GLOBAL_CONNECTION: 'gitlab:testGlobalConnection',
   GITLAB_INVESTIGATE_ISSUE: 'gitlab:investigateIssue',
   GITLAB_IMPORT_ISSUES: 'gitlab:importIssues',
   GITLAB_CREATE_RELEASE: 'gitlab:createRelease',
@@ -352,6 +353,9 @@ export const IPC_CHANNELS = {
   GITLAB_TRIAGE_PROGRESS: 'gitlab:triage:progress',
   GITLAB_TRIAGE_COMPLETE: 'gitlab:triage:complete',
   GITLAB_TRIAGE_ERROR: 'gitlab:triage:error',
+
+  // JIRA integration
+  JIRA_TEST_CONNECTION: 'jira:testConnection',
 
   // GitHub Auto-Fix operations
   GITHUB_AUTOFIX_START: 'github:autofix:start',
@@ -562,5 +566,14 @@ export const IPC_CHANNELS = {
   // Queue routing events (main -> renderer)
   QUEUE_PROFILE_SWAPPED: 'queue:profileSwapped',      // Task switched to different profile
   QUEUE_SESSION_CAPTURED: 'queue:sessionCaptured',    // Session ID captured from running task
-  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
+  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles', // All profiles unavailable
+
+  // Vault operations (external vault integration)
+  VAULT_TEST_CONNECTION: 'vault:testConnection',     // Test vault path and structure
+  VAULT_LIST_FILES: 'vault:listFiles',               // List files in vault directory
+  VAULT_READ_FILE: 'vault:readFile',                 // Read vault file content
+  VAULT_SEARCH: 'vault:search',                      // Search vault content
+  VAULT_GET_CONTEXT: 'vault:getContext',             // Get vault context (CLAUDE.md, preferences, etc.)
+  VAULT_SYNC_LEARNING: 'vault:syncLearning',         // Sync learning to vault
+  VAULT_WRITE_FILE: 'vault:writeFile'                // Write file to vault (restricted paths only)
 } as const;

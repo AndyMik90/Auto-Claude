@@ -239,6 +239,13 @@ export interface AppSettings {
   // Global GitLab settings (used as defaults for all projects)
   globalGitlabInstanceUrl?: string;  // Self-hosted GitLab URL (e.g., https://gitlab.yourcompany.com)
   globalGitlabToken?: string;        // Personal Access Token with 'api' scope
+  // Global JIRA settings (used as defaults for all projects)
+  globalJiraHost?: string;           // JIRA instance URL (e.g., https://company.atlassian.net)
+  globalJiraEmail?: string;          // JIRA user email
+  globalJiraToken?: string;          // JIRA API token
+  globalJiraDefaultProject?: string; // Default JIRA project key (e.g., CAP)
+  // Issue Tracker preference: where issues are managed
+  issueTrackerProvider?: 'gitlab' | 'jira' | 'github' | 'linear';  // Default: based on what's configured
   // Graphiti LLM provider settings (legacy)
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;
@@ -293,6 +300,17 @@ export interface AppSettings {
   seenVersionWarnings?: string[];
   // Sidebar collapsed state (icons only when true)
   sidebarCollapsed?: boolean;
+  // Vault integration settings
+  /** Path to external vault (e.g., ~/vaults/hc/) */
+  globalVaultPath?: string;
+  /** Whether vault integration is enabled */
+  vaultEnabled?: boolean;
+  /** Whether to sync learnings to vault */
+  vaultSyncLearnings?: boolean;
+  /** Whether to auto-load vault context on session start */
+  vaultAutoLoad?: boolean;
+  /** Whether to allow write operations to vault (default: false for safety) */
+  vaultWriteEnabled?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

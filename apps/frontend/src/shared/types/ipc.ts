@@ -498,12 +498,25 @@ export interface ElectronAPI {
     callback: (projectId: string, error: string) => void
   ) => () => void;
 
+  // JIRA integration operations
+  testJiraConnection: (host: string, email: string, token: string) => Promise<IPCResult<{ displayName: string }>>;
+
+  // Vault integration operations (external vault/Obsidian)
+  testVaultConnection: (vaultPath: string) => Promise<IPCResult<import('./vault').VaultConnectionResult>>;
+  listVaultFiles: (vaultPath: string, subPath?: string) => Promise<IPCResult<import('./vault').VaultFile[]>>;
+  readVaultFile: (vaultPath: string, filePath: string) => Promise<IPCResult<string>>;
+  searchVault: (vaultPath: string, query: string) => Promise<IPCResult<import('./vault').VaultSearchResult[]>>;
+  getVaultContext: (vaultPath: string) => Promise<IPCResult<import('./vault').VaultContext>>;
+  syncVaultLearning: (vaultPath: string, topic: string, content: string) => Promise<IPCResult<import('./vault').VaultSyncResult>>;
+  writeVaultFile: (vaultPath: string, filePath: string, content: string) => Promise<IPCResult<{ path: string }>>;
+
   // GitLab integration operations
   getGitLabProjects: (projectId: string) => Promise<IPCResult<GitLabProject[]>>;
   getGitLabIssues: (projectId: string, state?: 'opened' | 'closed' | 'all') => Promise<IPCResult<GitLabIssue[]>>;
   getGitLabIssue: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabIssue>>;
   getGitLabIssueNotes: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabNote[]>>;
   checkGitLabConnection: (projectId: string) => Promise<IPCResult<GitLabSyncStatus>>;
+  testGitLabConnection: (instanceUrl: string, token: string) => Promise<IPCResult<{ username: string }>>;
   investigateGitLabIssue: (projectId: string, issueIid: number, selectedNoteIds?: number[]) => void;
   importGitLabIssues: (projectId: string, issueIids: number[]) => Promise<IPCResult<GitLabImportResult>>;
   createGitLabRelease: (

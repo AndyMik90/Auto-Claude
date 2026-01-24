@@ -34,6 +34,8 @@ import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerScreenshotHandlers } from './screenshot-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
+import { registerJiraHandlers } from './jira-handlers';
+import { registerVaultHandlers } from './vault-handlers';
 import { notificationService } from '../notification-service';
 
 /**
@@ -122,6 +124,12 @@ export function setupIpcHandlers(
   // Screenshot capture handlers
   registerScreenshotHandlers();
 
+  // JIRA integration handlers
+  registerJiraHandlers();
+
+  // Vault integration handlers (external vault/Obsidian integration)
+  registerVaultHandlers();
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -149,5 +157,7 @@ export {
   registerClaudeCodeHandlers,
   registerMcpHandlers,
   registerProfileHandlers,
-  registerScreenshotHandlers
+  registerScreenshotHandlers,
+  registerJiraHandlers,
+  registerVaultHandlers
 };

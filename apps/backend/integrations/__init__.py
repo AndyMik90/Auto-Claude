@@ -9,6 +9,7 @@ Available integrations:
 - graphiti: Memory graph integration
 - jira: JIRA/Confluence via MCP bridge
 - gitlab: GitLab with multi-user OAuth
+- vault: External Obsidian-compatible vault integration
 """
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "graphiti",
     "jira",
     "gitlab",
+    "vault",
 ]

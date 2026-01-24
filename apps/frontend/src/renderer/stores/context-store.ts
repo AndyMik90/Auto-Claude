@@ -6,6 +6,11 @@ import type {
   MemoryEpisode,
   ContextSearchResult
 } from '../../shared/types';
+import type {
+  VaultContext,
+  VaultFile,
+  VaultSearchResult
+} from '../../shared/types/vault';
 
 interface ContextState {
   // Project Index
@@ -42,6 +47,34 @@ interface ContextState {
   setSearchLoading: (loading: boolean) => void;
   setSearchQuery: (query: string) => void;
   clearAll: () => void;
+}
+
+/**
+ * Vault state interface (separate store for vault operations)
+ */
+interface VaultState {
+  // Vault context
+  vaultContext: VaultContext | null;
+  vaultLoading: boolean;
+  vaultError: string | null;
+
+  // Vault files
+  vaultFiles: VaultFile[];
+
+  // Vault search
+  vaultSearchResults: VaultSearchResult[];
+  vaultSearchLoading: boolean;
+  vaultSearchQuery: string;
+
+  // Actions
+  setVaultContext: (context: VaultContext | null) => void;
+  setVaultLoading: (loading: boolean) => void;
+  setVaultError: (error: string | null) => void;
+  setVaultFiles: (files: VaultFile[]) => void;
+  setVaultSearchResults: (results: VaultSearchResult[]) => void;
+  setVaultSearchLoading: (loading: boolean) => void;
+  setVaultSearchQuery: (query: string) => void;
+  clearVault: () => void;
 }
 
 export const useContextStore = create<ContextState>((set) => ({
@@ -195,5 +228,102 @@ export async function loadRecentMemories(
     // Silently fail - memories are optional
   } finally {
     store.setMemoriesLoading(false);
+  }
+}
+
+/**
+ * Vault store for external vault operations
+ */
+export const useVaultStore = create<VaultState>((set) => ({
+  // Vault context
+  vaultContext: null,
+  vaultLoading: false,
+  vaultError: null,
+
+  // Vault files
+  vaultFiles: [],
+
+  // Vault search
+  vaultSearchResults: [],
+  vaultSearchLoading: false,
+  vaultSearchQuery: '',
+
+  // Actions
+  setVaultContext: (context) => set({ vaultContext: context }),
+  setVaultLoading: (loading) => set({ vaultLoading: loading }),
+  setVaultError: (error) => set({ vaultError: error }),
+  setVaultFiles: (files) => set({ vaultFiles: files }),
+  setVaultSearchResults: (results) => set({ vaultSearchResults: results }),
+  setVaultSearchLoading: (loading) => set({ vaultSearchLoading: loading }),
+  setVaultSearchQuery: (query) => set({ vaultSearchQuery: query }),
+  clearVault: () =>
+    set({
+      vaultContext: null,
+      vaultLoading: false,
+      vaultError: null,
+      vaultFiles: [],
+      vaultSearchResults: [],
+      vaultSearchLoading: false,
+      vaultSearchQuery: '',
+    }),
+}));
+
+/**
+ * Load vault context (CLAUDE.md, preferences, agents, learnings)
+ */
+export async function loadVaultContext(vaultPath: string): Promise<void> {
+  const store = useVaultStore.getState();
+  store.setVaultLoading(true);
+  store.setVaultError(null);
+
+  try {
+    // Load context
+    const contextResult = await window.electronAPI.getVaultContext(vaultPath);
+    if (contextResult.success && contextResult.data) {
+      store.setVaultContext(contextResult.data);
+    } else {
+      store.setVaultError(contextResult.error || 'Failed to load vault context');
+    }
+
+    // Load file tree
+    const filesResult = await window.electronAPI.listVaultFiles(vaultPath);
+    if (filesResult.success && filesResult.data) {
+      store.setVaultFiles(filesResult.data);
+    }
+  } catch (error) {
+    store.setVaultError(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    store.setVaultLoading(false);
+  }
+}
+
+/**
+ * Search vault content
+ */
+export async function searchVault(
+  vaultPath: string,
+  query: string
+): Promise<void> {
+  const store = useVaultStore.getState();
+  store.setVaultSearchQuery(query);
+
+  if (!query.trim()) {
+    store.setVaultSearchResults([]);
+    return;
+  }
+
+  store.setVaultSearchLoading(true);
+
+  try {
+    const result = await window.electronAPI.searchVault(vaultPath, query);
+    if (result.success && result.data) {
+      store.setVaultSearchResults(result.data);
+    } else {
+      store.setVaultSearchResults([]);
+    }
+  } catch (_error) {
+    store.setVaultSearchResults([]);
+  } finally {
+    store.setVaultSearchLoading(false);
   }
 }
