@@ -850,7 +850,7 @@ export interface ElectronAPI {
     id: string;
     name: string;
     thumbnail: string;
-  }>>>;
+  }>> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
 }
 
