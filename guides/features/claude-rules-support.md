@@ -19,8 +19,8 @@ This enables project-specific coding standards, security patterns, and conventio
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `USE_CLAUDE_MD` | `false` | Enable CLAUDE.md loading (also enables rules by default) |
-| `USE_CLAUDE_RULES` | (inherits from USE_CLAUDE_MD) | Explicitly enable/disable rules loading |
+| `USE_CLAUDE_MD` | `true` (UI) / `false` (env) | Enable CLAUDE.md loading. UI defaults to enabled; env var defaults to disabled. |
+| `USE_CLAUDE_RULES` | (inherits from USE_CLAUDE_MD) | Explicitly enable/disable rules loading. When `USE_CLAUDE_MD=true`, rules are enabled unless explicitly set to `false`. |
 
 ### Project Setup
 
