@@ -152,16 +152,25 @@ export class AgentState {
 
   /**
    * Update the session ID for a task
+   *
+   * @param taskId - The task ID
+   * @param sessionId - The Claude SDK session ID
+   * @param profileInfo - Optional profile info when creating a new assignment
    */
-  updateTaskSession(taskId: string, sessionId: string): void {
+  updateTaskSession(
+    taskId: string,
+    sessionId: string,
+    profileInfo?: { profileId: string; profileName: string }
+  ): void {
     const assignment = this.taskProfileAssignments.get(taskId);
     if (assignment) {
       assignment.sessionId = sessionId;
     } else {
       // Create a minimal assignment if none exists
+      // Use provided profile info or 'unknown' as a placeholder
       this.taskProfileAssignments.set(taskId, {
-        profileId: 'default',
-        profileName: 'Default',
+        profileId: profileInfo?.profileId ?? 'unknown',
+        profileName: profileInfo?.profileName ?? 'Unknown',
         reason: 'proactive',
         sessionId
       });

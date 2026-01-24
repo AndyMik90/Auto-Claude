@@ -78,6 +78,12 @@ export interface EnsureValidTokenResult {
   wasRefreshed: boolean;
   error?: string;
   errorCode?: string;  // 'invalid_grant', 'invalid_client', 'network_error', etc.
+  /**
+   * True if token was refreshed but failed to persist to keychain.
+   * The token is valid for this session but will be lost on restart.
+   * Callers should alert the user to re-authenticate.
+   */
+  persistenceFailed?: boolean;
 }
 
 /**
@@ -394,10 +400,14 @@ export async function ensureValidToken(
     scopes: creds.scopes || undefined
   });
 
+  // Track if persistence failed - callers can alert user to re-authenticate
+  let persistenceFailed = false;
+
   if (!updateResult.success) {
     // This is a critical error - we have new tokens but can't persist them
     console.error('[TokenRefresh:ensureValidToken] CRITICAL: Failed to persist refreshed tokens:', updateResult.error);
     console.error('[TokenRefresh:ensureValidToken] The new token will be lost on next restart!');
+    persistenceFailed = true;
     // Still return the new token for this session
   } else {
     if (isDebug) {
@@ -422,7 +432,8 @@ export async function ensureValidToken(
 
   return {
     token: refreshResult.accessToken,
-    wasRefreshed: true
+    wasRefreshed: true,
+    ...(persistenceFailed && { persistenceFailed: true })
   };
 }
 
@@ -491,8 +502,11 @@ export async function reactiveTokenRefresh(
     scopes: creds.scopes || undefined
   });
 
+  // Track if persistence failed - callers can alert user to re-authenticate
+  let persistenceFailed = false;
   if (!updateResult.success) {
     console.error('[TokenRefresh:reactive] CRITICAL: Failed to persist refreshed tokens:', updateResult.error);
+    persistenceFailed = true;
   }
 
   clearKeychainCache(expandedConfigDir);
@@ -512,6 +526,7 @@ export async function reactiveTokenRefresh(
 
   return {
     token: refreshResult.accessToken,
-    wasRefreshed: true
+    wasRefreshed: true,
+    ...(persistenceFailed && { persistenceFailed: true })
   };
 }

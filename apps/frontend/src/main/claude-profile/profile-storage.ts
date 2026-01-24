@@ -64,20 +64,54 @@ function usesLegacySharedDirectory(profile: ClaudeProfile): boolean {
 /**
  * Migrate a profile from shared ~/.claude to isolated ~/.claude-profiles/{name}
  * Returns the new configDir path
+ *
+ * Handles directory collisions by appending a counter (e.g., 'work-account-2')
+ * when two profile names sanitize to the same value.
  */
 function migrateProfileToIsolatedDirectory(profile: ClaudeProfile): string {
   // Generate isolated directory name from profile name
-  const sanitizedName = profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'primary';
-  const isolatedDir = join(CLAUDE_PROFILES_DIR, sanitizedName);
+  const baseName = profile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'primary';
 
   // Ensure the profiles directory exists
   if (!existsSync(CLAUDE_PROFILES_DIR)) {
     mkdirSync(CLAUDE_PROFILES_DIR, { recursive: true });
   }
 
+  // Check for directory collision and append counter if needed
+  let sanitizedName = baseName;
+  let counter = 1;
+  let isolatedDir = join(CLAUDE_PROFILES_DIR, sanitizedName);
+
+  // Keep incrementing counter until we find an available directory name
+  // Use profile.id as a marker file to detect if the directory belongs to this profile
+  while (existsSync(isolatedDir)) {
+    const markerFile = join(isolatedDir, '.profile-id');
+    if (existsSync(markerFile)) {
+      try {
+        const existingId = readFileSync(markerFile, 'utf-8').trim();
+        if (existingId === profile.id) {
+          // This directory belongs to us, use it
+          break;
+        }
+      } catch {
+        // Ignore read errors, treat as collision
+      }
+    }
+    // Directory exists but belongs to different profile, try next counter
+    counter++;
+    sanitizedName = `${baseName}-${counter}`;
+    isolatedDir = join(CLAUDE_PROFILES_DIR, sanitizedName);
+  }
+
   // Create the profile directory if it doesn't exist
   if (!existsSync(isolatedDir)) {
     mkdirSync(isolatedDir, { recursive: true });
+  }
+
+  // Write a marker file with our profile ID for collision detection
+  const markerFile = join(isolatedDir, '.profile-id');
+  if (!existsSync(markerFile)) {
+    writeFileSync(markerFile, profile.id, 'utf-8');
   }
 
   console.warn(`[ProfileStorage] Migrated profile "${profile.name}" from ~/.claude to ${isolatedDir}`);

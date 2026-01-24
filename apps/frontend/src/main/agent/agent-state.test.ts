@@ -110,7 +110,20 @@ describe('AgentState - Queue Routing', () => {
       const assignment = state.getTaskProfileAssignment('task-1');
       expect(assignment).toBeDefined();
       expect(assignment?.sessionId).toBe('session-456');
-      expect(assignment?.profileId).toBe('default');
+      expect(assignment?.profileId).toBe('unknown');
+    });
+
+    it('should create assignment with provided profile info', () => {
+      state.updateTaskSession('task-1', 'session-789', {
+        profileId: 'my-profile',
+        profileName: 'My Profile'
+      });
+
+      const assignment = state.getTaskProfileAssignment('task-1');
+      expect(assignment).toBeDefined();
+      expect(assignment?.sessionId).toBe('session-789');
+      expect(assignment?.profileId).toBe('my-profile');
+      expect(assignment?.profileName).toBe('My Profile');
     });
   });
 
