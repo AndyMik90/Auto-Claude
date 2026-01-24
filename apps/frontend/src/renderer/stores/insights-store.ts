@@ -415,10 +415,24 @@ export function setupInsightsListeners(): () => void {
     });
   });
 
+  // Listen for session updates (e.g., after assistant message saved with auto-generated title)
+  const unsubSessionUpdated = window.electronAPI.onInsightsSessionUpdated(
+    (_projectId, session: InsightsSession) => {
+      // Update current session if it matches
+      const currentSession = store().session;
+      if (currentSession?.id === session.id) {
+        store().setSession(session);
+      }
+      // Also refresh sessions list for sidebar
+      loadInsightsSessions(session.projectId);
+    }
+  );
+
   // Return cleanup function
   return () => {
     unsubStreamChunk();
     unsubStatus();
     unsubError();
+    unsubSessionUpdated();
   };
 }
