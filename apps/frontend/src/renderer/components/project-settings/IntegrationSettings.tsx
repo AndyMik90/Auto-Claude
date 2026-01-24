@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Zap,
   Eye,
@@ -79,15 +79,25 @@ export function IntegrationSettings({
   const [branches, setBranches] = useState<string[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
+  // Track whether initial branch detection has been done to prevent double-execution
+  const hasDetectedMainBranch = useRef(false);
+
+  // Reset detection flag when project changes
+  useEffect(() => {
+    hasDetectedMainBranch.current = false;
+  }, [project.path]);
+
   // Load branches function wrapped in useCallback
+  // Note: We use a ref for mainBranch check to avoid recreating this callback when mainBranch changes
   const loadBranches = useCallback(async () => {
     setIsLoadingBranches(true);
     try {
       const result = await window.electronAPI.getGitBranches(project.path);
       if (result.success && result.data) {
         setBranches(result.data);
-        // Auto-detect main branch if not set
-        if (!settings.mainBranch) {
+        // Auto-detect main branch if not set and not already detected
+        if (!settings.mainBranch && !hasDetectedMainBranch.current) {
+          hasDetectedMainBranch.current = true;
           const detectResult = await window.electronAPI.detectMainBranch(project.path);
           if (detectResult.success && detectResult.data !== null && detectResult.data !== undefined) {
             const detectedBranch = detectResult.data;
@@ -100,7 +110,8 @@ export function IntegrationSettings({
     } finally {
       setIsLoadingBranches(false);
     }
-  }, [project.path, settings.mainBranch, setSettings]);
+    // Remove settings.mainBranch from deps - we use a ref to track detection instead
+  }, [project.path, setSettings]);
 
   // Load branches when GitHub section expands or GitHub connection changes
   useEffect(() => {

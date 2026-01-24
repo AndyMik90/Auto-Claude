@@ -10,17 +10,21 @@ interface ProjectEnvState {
 
   // Actions
   setEnvConfig: (projectId: string | null, config: ProjectEnvConfig | null) => void;
+  setEnvConfigOnly: (projectId: string | null, config: ProjectEnvConfig | null) => void;
   updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => void;
   clearEnvConfig: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Selectors
+  // Selectors (for encapsulation - used by consumers who prefer method access)
   isGitHubEnabled: () => boolean;
   isGitLabEnabled: () => boolean;
   isLinearEnabled: () => boolean;
   getGitHubRepo: () => string | null;
 }
+
+// Track the current pending request to handle race conditions
+let currentRequestId = 0;
 
 export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
   // Initial state
@@ -30,10 +34,17 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
   error: null,
 
   // Actions
+  // setEnvConfig clears error - used for successful config loads
   setEnvConfig: (projectId, envConfig) => set({
     projectId,
     envConfig,
     error: null
+  }),
+
+  // setEnvConfigOnly updates config without touching error state - used in error cases
+  setEnvConfigOnly: (projectId, envConfig) => set({
+    projectId,
+    envConfig
   }),
 
   updateEnvConfig: (updates) =>
@@ -53,7 +64,7 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
 
   setError: (error) => set({ error }),
 
-  // Selectors
+  // Selectors (for encapsulation - used by consumers who prefer method access)
   isGitHubEnabled: () => {
     const { envConfig } = get();
     return envConfig?.githubEnabled ?? false;
@@ -78,28 +89,50 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
 /**
  * Load project environment config from main process.
  * Updates the store with the loaded config.
+ * Handles race conditions when called rapidly for different projects.
  */
 export async function loadProjectEnvConfig(projectId: string): Promise<ProjectEnvConfig | null> {
   const store = useProjectEnvStore.getState();
+
+  // Increment request ID to track this specific request
+  const requestId = ++currentRequestId;
+
   store.setLoading(true);
   store.setError(null);
 
   try {
     const result = await window.electronAPI.getProjectEnv(projectId);
+
+    // Check if this request is still the current one (handle race conditions)
+    if (requestId !== currentRequestId) {
+      // A newer request was made, ignore this result
+      return null;
+    }
+
     if (result.success && result.data) {
       store.setEnvConfig(projectId, result.data);
       return result.data;
     } else {
+      // Use setEnvConfigOnly to update config without clearing the error we're about to set
+      store.setEnvConfigOnly(projectId, null);
       store.setError(result.error || 'Failed to load environment config');
-      store.setEnvConfig(projectId, null);
       return null;
     }
   } catch (error) {
+    // Check if this request is still the current one
+    if (requestId !== currentRequestId) {
+      return null;
+    }
+
+    // Use setEnvConfigOnly to update config without clearing the error we're about to set
+    store.setEnvConfigOnly(projectId, null);
     store.setError(error instanceof Error ? error.message : 'Unknown error');
-    store.setEnvConfig(projectId, null);
     return null;
   } finally {
-    store.setLoading(false);
+    // Only update loading state if this is still the current request
+    if (requestId === currentRequestId) {
+      store.setLoading(false);
+    }
   }
 }
 

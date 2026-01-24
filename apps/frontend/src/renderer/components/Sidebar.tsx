@@ -140,11 +140,16 @@ export function Sidebar({
 
   // Load envConfig when project changes to ensure store is populated
   useEffect(() => {
+    // Track whether this effect is still current (for race condition handling)
+    let isCurrent = true;
+
     const initializeEnvConfig = async () => {
       if (selectedProject?.id && selectedProject?.autoBuildPath) {
         // Only reload if the project ID differs from what's in the store
         if (selectedProject.id !== storeProjectId) {
           await loadProjectEnvConfig(selectedProject.id);
+          // Check if this effect was cancelled while loading
+          if (!isCurrent) return;
         }
       } else {
         // Clear the store if no project is selected or has no autoBuildPath
@@ -152,6 +157,11 @@ export function Sidebar({
       }
     };
     initializeEnvConfig();
+
+    // Cleanup function to mark this effect as stale
+    return () => {
+      isCurrent = false;
+    };
   }, [selectedProject?.id, selectedProject?.autoBuildPath, storeProjectId]);
 
   // Keyboard shortcuts
