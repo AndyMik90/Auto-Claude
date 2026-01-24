@@ -11,6 +11,7 @@ import { parseEnvFile } from './utils';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { debugError } from '../../shared/utils/debug-logger';
 import { getSpawnOptions, getSpawnCommand } from '../env-utils';
+import { decryptToken } from '../claude-profile/token-encryption';
 
 // GitLab environment variable keys
 const GITLAB_ENV_KEYS = {
@@ -91,7 +92,10 @@ export function registerEnvHandlers(
 
     // Update with new values
     if (config.claudeOAuthToken !== undefined) {
-      existingVars['CLAUDE_CODE_OAUTH_TOKEN'] = config.claudeOAuthToken;
+      // CRITICAL: Decrypt token if encrypted (starts with "enc:") before saving to .env
+      // The backend Python code cannot decrypt encrypted tokens, so we must save plaintext
+      const decryptedToken = decryptToken(config.claudeOAuthToken);
+      existingVars['CLAUDE_CODE_OAUTH_TOKEN'] = decryptedToken;
     }
     if (config.autoBuildModel !== undefined) {
       existingVars['AUTO_BUILD_MODEL'] = config.autoBuildModel;
