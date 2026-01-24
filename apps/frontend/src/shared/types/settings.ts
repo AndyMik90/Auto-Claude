@@ -245,6 +245,7 @@ export interface AppSettings {
   memoryOllamaEmbeddingModel?: string;
   memoryOllamaEmbeddingDim?: number;
   memoryVoyageApiKey?: string;
+  memoryVoyageEmbeddingModel?: string;
   memoryAzureApiKey?: string;
   memoryAzureBaseUrl?: string;
   memoryAzureEmbeddingDeployment?: string;
