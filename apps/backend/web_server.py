@@ -50,6 +50,9 @@ DEFAULT_PORT = 8765
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_CORS_ORIGINS = "http://localhost:5173"
 
+# Global variable for CORS origins (set in main())
+cors_origins: str = DEFAULT_CORS_ORIGINS
+
 # Track active connections
 active_connections: Set[WebSocketServerProtocol] = set()
 
@@ -62,6 +65,47 @@ tasks_storage: Dict[str, Dict[str, Any]] = {}
 
 # Type alias for channel handler functions
 ChannelHandler = Callable[[WebSocketServerProtocol, Any], Awaitable[Optional[Dict[str, Any]]]]
+
+
+# ============================================================================
+# Origin Validation
+# ============================================================================
+
+async def validate_origin(path: str, request_headers) -> Optional[Tuple[int, Dict[str, str], bytes]]:
+    """
+    Validate WebSocket connection origin against allowed CORS origins.
+
+    Args:
+        path: WebSocket path
+        request_headers: HTTP request headers
+
+    Returns:
+        None if origin is allowed, (status, headers, body) tuple to reject
+    """
+    origin = request_headers.get("Origin")
+
+    # Parse allowed origins from environment variable
+    allowed_origins = [o.strip() for o in cors_origins.split(",")]
+
+    # Allow connections without Origin header (native WebSocket clients like wscat)
+    # Browser WebSocket connections will always send Origin header
+    if not origin:
+        logger.debug("Connection without Origin header (native client)")
+        return None
+
+    # Check if origin is in allowed list
+    if origin in allowed_origins:
+        logger.debug("Accepted connection from allowed origin: %s", origin)
+        return None
+
+    # Reject unauthorized origin
+    logger.warning("SECURITY: Rejected connection from unauthorized origin: %s (allowed: %s)",
+                  origin, allowed_origins)
+    return (
+        403,
+        {"Connection": "close", "Content-Type": "text/plain"},
+        b"Forbidden: Invalid origin. This WebSocket server only accepts connections from authorized origins.\n"
+    )
 
 
 # ============================================================================
@@ -832,15 +876,21 @@ async def handle_client(websocket: WebSocketServerProtocol) -> None:
 
 async def start_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> None:
     """
-    Start the WebSocket server.
+    Start the WebSocket server with origin validation.
 
     Args:
         host: Host address to bind to
         port: Port to listen on
     """
     logger.info("Starting WebSocket server on %s:%s", host, port)
+    logger.info("Allowed origins: %s", cors_origins)  # Log allowed origins for debugging
 
-    async with websockets.serve(handle_client, host, port):
+    async with websockets.serve(
+        handle_client,
+        host,
+        port,
+        process_request=validate_origin  # ADD THIS LINE - enables origin validation
+    ):
         logger.info("WebSocket server running on ws://%s:%s", host, port)
         logger.info("Press Ctrl+C to stop the server")
 
@@ -852,10 +902,12 @@ def main() -> None:
     """
     Main entry point for the WebSocket server.
     """
+    global cors_origins  # ADD THIS LINE
+
     # Load configuration from environment
     host = os.getenv("WEB_SERVER_HOST", DEFAULT_HOST)
     port = int(os.getenv("WEB_SERVER_PORT", str(DEFAULT_PORT)))
-    cors_origins = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
+    cors_origins = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS)  # This now sets global
 
     logger.info("Configuration:")
     logger.info("  Host: %s", host)
