@@ -50,6 +50,8 @@ function checkProfileAvailability(
   // Check usage thresholds
   if (profile.usage) {
     // Weekly threshold check (more important - longer reset time)
+    // Using >= to reject profiles AT or ABOVE threshold (e.g., 95% is rejected when threshold is 95%)
+    // This is intentional: we want to switch proactively BEFORE hitting hard limits
     if (profile.usage.weeklyUsagePercent >= settings.weeklyThreshold) {
       return {
         available: false,
@@ -58,6 +60,7 @@ function checkProfileAvailability(
     }
 
     // Session threshold check
+    // Using >= to reject profiles AT or ABOVE threshold (same rationale as weekly)
     if (profile.usage.sessionUsagePercent >= settings.sessionThreshold) {
       return {
         available: false,

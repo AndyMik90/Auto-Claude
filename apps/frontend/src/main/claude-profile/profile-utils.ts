@@ -38,18 +38,17 @@ export function generateProfileId(name: string, existingProfiles: ClaudeProfile[
  * Create a new profile directory and initialize it
  */
 export async function createProfileDirectory(profileName: string): Promise<string> {
-  // Ensure profiles directory exists
-  if (!existsSync(CLAUDE_PROFILES_DIR)) {
-    mkdirSync(CLAUDE_PROFILES_DIR, { recursive: true });
-  }
+  // Create profiles directory - mkdirSync with recursive:true is idempotent
+  // and won't throw if the directory already exists, so no existsSync check needed
+  mkdirSync(CLAUDE_PROFILES_DIR, { recursive: true });
 
   // Create directory for this profile
   const sanitizedName = profileName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const profileDir = join(CLAUDE_PROFILES_DIR, sanitizedName);
 
-  if (!existsSync(profileDir)) {
-    mkdirSync(profileDir, { recursive: true });
-  }
+  // mkdirSync with recursive:true is idempotent and won't throw if directory exists
+  // No existsSync check needed - avoids TOCTOU race condition
+  mkdirSync(profileDir, { recursive: true });
 
   return profileDir;
 }

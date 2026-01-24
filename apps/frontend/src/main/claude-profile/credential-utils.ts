@@ -17,7 +17,7 @@
 
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
@@ -34,6 +34,31 @@ function getTokenFingerprint(token: string | null | undefined): string {
   if (!token) return 'null';
   if (token.length <= 16) return token.slice(0, 4) + '...' + token.slice(-2);
   return token.slice(0, 8) + '...' + token.slice(-4);
+}
+
+/**
+ * Escape a string for safe interpolation into PowerShell double-quoted strings.
+ * Escapes all PowerShell special characters to prevent injection attacks.
+ *
+ * @param str - The string to escape
+ * @returns The escaped string safe for PowerShell interpolation
+ */
+function escapePowerShellString(str: string): string {
+  return str
+    .replace(/`/g, '``')   // Backtick is PowerShell's escape character - must be escaped first
+    .replace(/\$/g, '`$')  // Dollar sign triggers variable expansion
+    .replace(/"/g, '`"');  // Double quotes end the string
+}
+
+/**
+ * Encode a string to base64 for safe passing to PowerShell.
+ * This is the most secure way to pass arbitrary data to PowerShell scripts.
+ *
+ * @param str - The string to encode
+ * @returns Base64-encoded string
+ */
+function encodeBase64ForPowerShell(str: string): string {
+  return Buffer.from(str, 'utf-8').toString('base64');
 }
 
 /**
@@ -269,6 +294,88 @@ function isValidTokenFormat(token: string): boolean {
 }
 
 // =============================================================================
+// Platform-Specific Credential Reading Helpers (Shared Implementation)
+// =============================================================================
+
+/**
+ * Execute a credential read operation with platform-specific executable.
+ * Shared helper to reduce code duplication across macOS, Linux, and Windows.
+ *
+ * @param executablePath - Path to the security/secret-tool/powershell executable
+ * @param args - Arguments to pass to the executable
+ * @param timeout - Timeout in milliseconds
+ * @param identifier - Identifier for logging (e.g., "macOS:serviceName", "Linux:attribute")
+ * @returns The raw output string or null if not found
+ */
+function executeCredentialRead(
+  executablePath: string,
+  args: string[],
+  timeout: number,
+  identifier: string
+): string | null {
+  try {
+    const result = execFileSync(executablePath, args, {
+      encoding: 'utf-8',
+      timeout,
+      windowsHide: true,
+    });
+    return result.trim();
+  } catch (error) {
+    // Handle expected "not found" errors (macOS exit code 44, Linux/Windows non-zero exit)
+    if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as { status: number }).status;
+      if (status === 44) {
+        // macOS: errSecItemNotFound
+        return null;
+      }
+    }
+    // Check for "not found" in error message (Linux/Windows)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('not found') || errorMessage.includes('exit code')) {
+      return null;
+    }
+    // Re-throw unexpected errors
+    throw error;
+  }
+}
+
+/**
+ * Parse and validate credential JSON from platform storage.
+ * Shared helper to reduce code duplication across platforms.
+ *
+ * @param credentialsJson - Raw JSON string from credential store
+ * @param identifier - Identifier for logging (e.g., "macOS:serviceName")
+ * @param extractFn - Function to extract credentials (basic or full)
+ * @returns Extracted credentials or null values if invalid
+ */
+function parseCredentialJson<T extends PlatformCredentials>(
+  credentialsJson: string | null,
+  identifier: string,
+  extractFn: (data: any) => T
+): T {
+  if (!credentialsJson) {
+    return extractFn({}) as T;
+  }
+
+  // Parse JSON
+  let data: unknown;
+  try {
+    data = JSON.parse(credentialsJson);
+  } catch {
+    console.warn(`[CredentialUtils] Failed to parse credential JSON for ${identifier}`);
+    return extractFn({}) as T;
+  }
+
+  // Validate JSON structure
+  if (!validateCredentialData(data)) {
+    console.warn(`[CredentialUtils] Invalid credential data structure for ${identifier}`);
+    return extractFn({}) as T;
+  }
+
+  return extractFn(data);
+}
+
+// =============================================================================
 // macOS Keychain Implementation
 // =============================================================================
 
@@ -317,44 +424,20 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
   }
 
   try {
-    // Query macOS Keychain for Claude Code credentials
-    const result = execFileSync(
+    // Query macOS Keychain for Claude Code credentials using shared helper
+    const credentialsJson = executeCredentialRead(
       securityPath,
       ['find-generic-password', '-s', serviceName, '-w'],
-      {
-        encoding: 'utf-8',
-        timeout: MACOS_KEYCHAIN_TIMEOUT_MS,
-        windowsHide: true,
-      }
+      MACOS_KEYCHAIN_TIMEOUT_MS,
+      `macOS:${serviceName}`
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      const emptyResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: emptyResult, timestamp: now });
-      return emptyResult;
-    }
-
-    // Parse JSON response
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:macOS] Failed to parse Keychain JSON for service:', serviceName);
-      const errorResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-      return errorResult;
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:macOS] Invalid Keychain data structure for service:', serviceName);
-      const invalidResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-      return invalidResult;
-    }
-
-    const { token, email } = extractCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email } = parseCredentialJson(
+      credentialsJson,
+      `macOS:${serviceName}`,
+      extractCredentials
+    );
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
@@ -377,13 +460,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
     }
     return credentials;
   } catch (error) {
-    // Check for exit code 44 (errSecItemNotFound) which indicates item not found
-    if (error && typeof error === 'object' && 'status' in error && error.status === 44) {
-      const notFoundResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-      return notFoundResult;
-    }
-
+    // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn('[CredentialUtils:macOS] Keychain access failed for service:', serviceName, errorMessage);
     const errorResult = { token: null, email: null, error: `Keychain access failed: ${errorMessage}` };
@@ -478,48 +555,20 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
   }
 
   try {
-    // Query Secret Service for credentials
-    // secret-tool lookup application claude-code
-    const result = execFileSync(
+    // Query Secret Service for credentials using shared helper
+    const credentialsJson = executeCredentialRead(
       secretToolPath,
       ['lookup', 'application', attribute],
-      {
-        encoding: 'utf-8',
-        timeout: LINUX_SECRET_TOOL_TIMEOUT_MS,
-        windowsHide: true,
-      }
+      LINUX_SECRET_TOOL_TIMEOUT_MS,
+      `Linux:SecretService:${attribute}`
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Linux:SecretService] No credentials found for attribute:', attribute);
-      }
-      const notFoundResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-      return notFoundResult;
-    }
-
-    // Parse JSON
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:Linux:SecretService] Failed to parse credentials JSON for attribute:', attribute);
-      const errorResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-      return errorResult;
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Linux:SecretService] Invalid credentials data structure for attribute:', attribute);
-      const invalidResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-      return invalidResult;
-    }
-
-    const { token, email } = extractCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email } = parseCredentialJson(
+      credentialsJson,
+      `Linux:SecretService:${attribute}`,
+      extractCredentials
+    );
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
@@ -543,16 +592,8 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
     }
     return credentials;
   } catch (error) {
+    // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // secret-tool returns non-zero if item not found, which is expected
-    if (errorMessage.includes('not found') || errorMessage.includes('exit code')) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Linux:SecretService] Credentials not found in Secret Service for attribute:', attribute);
-      }
-      const notFoundResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-      return notFoundResult;
-    }
     console.warn('[CredentialUtils:Linux:SecretService] Secret Service access failed:', errorMessage);
     // Return error to trigger fallback to file storage
     return { token: null, email: null, error: `Secret Service access failed: ${errorMessage}` };
@@ -769,7 +810,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
 
       $credPtr = [IntPtr]::Zero
       # CRED_TYPE_GENERIC = 1
-      $success = [Win32.Credential]::CredRead("${targetName.replace(/"/g, '`"')}", 1, 0, [ref]$credPtr)
+      $success = [Win32.Credential]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
 
       if ($success) {
         try {
@@ -802,36 +843,14 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
       }
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Windows] Credential not found for target:', targetName);
-      }
-      const notFoundResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-      return notFoundResult;
-    }
+    const credentialsJson = result.trim() || null;
 
-    // Parse JSON response
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:Windows] Failed to parse credential JSON for target:', targetName);
-      const errorResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-      return errorResult;
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Windows] Invalid credential data structure for target:', targetName);
-      const invalidResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-      return invalidResult;
-    }
-
-    const { token, email } = extractCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email } = parseCredentialJson(
+      credentialsJson,
+      `Windows:${targetName}`,
+      extractCredentials
+    );
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
@@ -980,38 +999,20 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
   }
 
   try {
-    // Query macOS Keychain for Claude Code credentials
-    const result = execFileSync(
+    // Query macOS Keychain for Claude Code credentials using shared helper
+    const credentialsJson = executeCredentialRead(
       securityPath,
       ['find-generic-password', '-s', serviceName, '-w'],
-      {
-        encoding: 'utf-8',
-        timeout: MACOS_KEYCHAIN_TIMEOUT_MS,
-        windowsHide: true,
-      }
+      MACOS_KEYCHAIN_TIMEOUT_MS,
+      `macOS:Full:${serviceName}`
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    // Parse JSON response
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:macOS:Full] Failed to parse Keychain JSON for service:', serviceName);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:macOS:Full] Invalid Keychain data structure for service:', serviceName);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+      credentialsJson,
+      `macOS:Full:${serviceName}`,
+      extractFullCredentials
+    );
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
@@ -1030,11 +1031,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
     }
     return { token, email, refreshToken, expiresAt, scopes };
   } catch (error) {
-    // Check for exit code 44 (errSecItemNotFound) which indicates item not found
-    if (error && typeof error === 'object' && 'status' in error && error.status === 44) {
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
+    // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn('[CredentialUtils:macOS:Full] Keychain access failed for service:', serviceName, errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Keychain access failed: ${errorMessage}` };
@@ -1058,38 +1055,20 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
   }
 
   try {
-    const result = execFileSync(
+    // Query Secret Service for credentials using shared helper
+    const credentialsJson = executeCredentialRead(
       secretToolPath,
       ['lookup', 'application', attribute],
-      {
-        encoding: 'utf-8',
-        timeout: LINUX_SECRET_TOOL_TIMEOUT_MS,
-        windowsHide: true,
-      }
+      LINUX_SECRET_TOOL_TIMEOUT_MS,
+      `Linux:SecretService:Full:${attribute}`
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Linux:SecretService:Full] No credentials found for attribute:', attribute);
-      }
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:Linux:SecretService:Full] Failed to parse credentials JSON for attribute:', attribute);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid credentials data structure for attribute:', attribute);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+      credentialsJson,
+      `Linux:SecretService:Full:${attribute}`,
+      extractFullCredentials
+    );
 
     if (token && !isValidTokenFormat(token)) {
       console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid token format for attribute:', attribute);
@@ -1108,13 +1087,8 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
     }
     return { token, email, refreshToken, expiresAt, scopes };
   } catch (error) {
+    // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes('not found') || errorMessage.includes('exit code')) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Linux:SecretService:Full] Credentials not found in Secret Service for attribute:', attribute);
-      }
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
     console.warn('[CredentialUtils:Linux:SecretService:Full] Secret Service access failed:', errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Secret Service access failed: ${errorMessage}` };
   }
@@ -1249,7 +1223,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
       $credPtr = [IntPtr]::Zero
       # CRED_TYPE_GENERIC = 1
-      $success = [Win32.Credential]::CredRead("${targetName.replace(/"/g, '`"')}", 1, 0, [ref]$credPtr)
+      $success = [Win32.Credential]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
 
       if ($success) {
         try {
@@ -1282,30 +1256,14 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
       }
     );
 
-    const credentialsJson = result.trim();
-    if (!credentialsJson) {
-      if (isDebug) {
-        console.warn('[CredentialUtils:Windows:Full] Credential not found for target:', targetName);
-      }
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
+    const credentialsJson = result.trim() || null;
 
-    // Parse JSON response
-    let data: unknown;
-    try {
-      data = JSON.parse(credentialsJson);
-    } catch {
-      console.warn('[CredentialUtils:Windows:Full] Failed to parse credential JSON for target:', targetName);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Windows:Full] Invalid credential data structure for target:', targetName);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+    // Parse and validate using shared helper
+    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+      credentialsJson,
+      `Windows:Full:${targetName}`,
+      extractFullCredentials
+    );
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
@@ -1540,8 +1498,6 @@ function updateLinuxFileCredentials(
   const credentialsPath = getLinuxCredentialsPath(configDir);
   const isDebug = process.env.DEBUG === 'true';
 
-  // Import writeFileSync dynamically to avoid issues
-  const { writeFileSync } = require('fs');
 
   // Defense-in-depth: Validate credentials path
   if (!isValidCredentialsPath(credentialsPath)) {
@@ -1626,8 +1582,8 @@ function updateWindowsCredentialManagerCredentials(
     };
 
     const credentialsJson = JSON.stringify(newCredentialData);
-    // Escape single quotes in JSON for PowerShell
-    const escapedJson = credentialsJson.replace(/'/g, "''");
+    // Use base64 encoding for maximum security - prevents all injection attacks
+    const base64Json = encodeBase64ForPowerShell(credentialsJson);
 
     // PowerShell script to write to Credential Manager
     const psScript = `
@@ -1656,7 +1612,8 @@ function updateWindowsCredentialManagerCredentials(
 '@
       Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
 
-      $json = '${escapedJson}'
+      # Decode base64 JSON (more secure than string escaping)
+      $json = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64Json}'))
       $jsonBytes = [System.Text.Encoding]::Unicode.GetBytes($json)
       $jsonPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($jsonBytes.Length)
       [System.Runtime.InteropServices.Marshal]::Copy($jsonBytes, 0, $jsonPtr, $jsonBytes.Length)
@@ -1664,7 +1621,7 @@ function updateWindowsCredentialManagerCredentials(
       try {
         $cred = New-Object Win32.Credential+CREDENTIAL
         $cred.Type = 1  # CRED_TYPE_GENERIC
-        $cred.TargetName = "${targetName.replace(/"/g, '`"')}"
+        $cred.TargetName = "${escapePowerShellString(targetName)}"
         $cred.CredentialBlob = $jsonPtr
         $cred.CredentialBlobSize = $jsonBytes.Length
         $cred.Persist = 2  # CRED_PERSIST_LOCAL_MACHINE

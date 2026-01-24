@@ -168,8 +168,10 @@ export async function refreshOAuthToken(refreshToken: string): Promise<TokenRefr
   const isDebug = process.env.DEBUG === 'true';
 
   if (isDebug) {
+    // Reduce fingerprint to fewer characters to minimize information exposure
+    // Show only first 4 and last 2 characters for debugging purposes
     console.warn('[TokenRefresh] Starting token refresh', {
-      refreshTokenFingerprint: refreshToken ? `${refreshToken.slice(0, 12)}...${refreshToken.slice(-4)}` : 'null'
+      refreshTokenFingerprint: refreshToken ? `${refreshToken.slice(0, 4)}...${refreshToken.slice(-2)}` : 'null'
     });
   }
 
@@ -382,9 +384,12 @@ export async function ensureValidToken(
 
   if (!refreshResult.success || !refreshResult.accessToken || !refreshResult.refreshToken || !refreshResult.expiresAt) {
     console.error('[TokenRefresh:ensureValidToken] Token refresh failed:', refreshResult.error);
-    // Return existing token - it might still work
+    // CRITICAL: When token refresh fails server-side, the old token may already be revoked.
+    // Returning the old token here is a best-effort fallback, but callers should be aware
+    // that it will likely result in 401 errors. The comment "it might still work" is optimistic.
+    // This scenario indicates the user needs to re-authenticate via OAuth flow.
     return {
-      token: creds.token,
+      token: creds.token,  // WARNING: This token may be invalid/revoked
       wasRefreshed: false,
       error: `Token refresh failed: ${refreshResult.error}`,
       errorCode: refreshResult.errorCode

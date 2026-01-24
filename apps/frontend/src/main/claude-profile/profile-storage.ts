@@ -84,6 +84,9 @@ function migrateProfileToIsolatedDirectory(profile: ClaudeProfile): string {
 
   // Keep incrementing counter until we find an available directory name
   // Use profile.id as a marker file to detect if the directory belongs to this profile
+  // NOTE: There's a TOCTOU race window between existsSync and readFileSync, but this is
+  // acceptable because profile directory creation is infrequent and concurrent creation
+  // is unlikely. The worst case is we increment the counter unnecessarily.
   while (existsSync(isolatedDir)) {
     const markerFile = join(isolatedDir, '.profile-id');
     if (existsSync(markerFile)) {

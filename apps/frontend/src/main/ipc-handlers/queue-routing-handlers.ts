@@ -8,14 +8,16 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent/agent-manager';
-import type { ProfileAssignmentReason, RunningTasksByProfile } from '../../shared/types';
+import type { ProfileAssignmentReason, RunningTasksByProfile, ClaudeProfile } from '../../shared/types';
+import type { ClaudeProfileManager } from '../claude-profile-manager';
 
 /**
  * Register queue routing IPC handlers
  */
 export function registerQueueRoutingHandlers(
   agentManager: AgentManager,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  profileManager?: ClaudeProfileManager
 ): void {
   // Get running tasks grouped by profile
   ipcMain.handle(
@@ -44,13 +46,43 @@ export function registerQueueRoutingHandlers(
         perProfileMaxTasks?: number;
         profileThreshold?: number;
       }
-    ): Promise<{ success: boolean; data?: unknown; error?: string }> => {
+    ): Promise<{ success: boolean; data?: ClaudeProfile | null; error?: string }> => {
       try {
-        // This would integrate with the profile scorer
-        // For now, return null to indicate no preference
-        // The actual implementation would use getBestAvailableProfile from profile-scorer.ts
-        console.log('[QueueRouting] getBestProfileForTask called with options:', options);
-        return { success: true, data: null };
+        // If no profile manager is available, return null (no preference)
+        if (!profileManager) {
+          console.log('[QueueRouting] Profile manager not available, returning null');
+          return { success: true, data: null };
+        }
+
+        // Get auto-switch settings to check if enabled
+        const settings = profileManager.getAutoSwitchSettings();
+
+        // If auto-switching is disabled, return null (no preference)
+        if (!settings.enabled) {
+          console.log('[QueueRouting] Auto-switching disabled, returning null');
+          return { success: true, data: null };
+        }
+
+        // Use getBestAvailableProfile which internally handles:
+        // - User's configured priority order
+        // - Profile authentication status
+        // - Rate limit status
+        // - Usage thresholds (session and weekly)
+        const bestProfile = profileManager.getBestAvailableProfile(
+          options?.excludeProfileId
+        );
+
+        if (bestProfile) {
+          console.log('[QueueRouting] Best profile selected:', {
+            profileId: bestProfile.id,
+            profileName: bestProfile.name,
+            excludedId: options?.excludeProfileId
+          });
+        } else {
+          console.log('[QueueRouting] No suitable profile found for task routing');
+        }
+
+        return { success: true, data: bestProfile };
       } catch (error) {
         console.error('[QueueRouting] Failed to get best profile for task:', error);
         return {

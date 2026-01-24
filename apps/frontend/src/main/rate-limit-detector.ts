@@ -302,13 +302,17 @@ export interface BestProfileEnvResult {
 }
 
 /**
- * Get environment variables for the BEST available Claude profile.
+ * Get environment variables for the BEST available Claude profile and persist the profile swap.
+ *
+ * IMPORTANT: This function has the side effect of calling profileManager.setActiveProfile()
+ * when a better profile is found. This modifies global state and persists the profile swap.
  *
  * This is the preferred function for SDK operations that need profile environment.
  * It automatically handles:
  * 1. Checking if the active profile is explicitly rate-limited (received 429/rate limit error)
  * 2. Checking if the active profile is at capacity (100% weekly usage)
  * 3. Finding a better alternative profile if available
+ * 4. PERSISTING the swap by updating the active profile
  *
  * Use this instead of getProfileEnv() for any operation that will make Claude API calls.
  *
