@@ -16,6 +16,43 @@ import json
 from pathlib import Path
 
 
+def detect_worktree_mode(spec_dir: Path, project_dir: Path) -> tuple[bool, str | None]:
+    """
+    Detect if running in isolated worktree mode.
+
+    Args:
+        spec_dir: Absolute path to spec directory
+        project_dir: Absolute path to project/working directory
+
+    Returns:
+        (is_worktree, forbidden_parent_path) tuple:
+        - is_worktree: True if running in a worktree
+        - forbidden_parent_path: The parent project path to forbid, or None
+    """
+    # Check if spec_dir contains worktree path patterns
+    spec_str = str(spec_dir)
+
+    # New worktree location: .auto-claude/worktrees/tasks/{spec-name}/
+    if (
+        "/.auto-claude/worktrees/tasks/" in spec_str
+        or "\\.auto-claude\\worktrees\\tasks\\" in spec_str
+    ):
+        # Extract the parent project path (forbidden)
+        # In worktree: /path/to/parent/.auto-claude/worktrees/tasks/{spec}/.auto-claude/specs/{spec}/
+        # We need to go up from spec_dir to find the parent project
+        parts = spec_str.split("/.auto-claude/worktrees/tasks/")[0].split(
+            "\\.auto-claude\\worktrees\\tasks\\"
+        )[0]
+        return True, parts
+
+    # Legacy worktree location: .worktrees/{spec-name}/
+    if "/.worktrees/" in spec_str or "\\.worktrees\\" in spec_str:
+        parts = spec_str.split("/.worktrees/")[0].split("\\.worktrees\\")[0]
+        return True, parts
+
+    return False, None
+
+
 def get_relative_spec_path(spec_dir: Path, project_dir: Path) -> str:
     """
     Get the spec directory path relative to the project/working directory.
@@ -54,7 +91,11 @@ def generate_environment_context(project_dir: Path, spec_dir: Path) -> str:
     """
     relative_spec = get_relative_spec_path(spec_dir, project_dir)
 
-    return f"""## YOUR ENVIRONMENT
+    # Detect worktree mode and get forbidden parent path
+    is_worktree, forbidden_parent = detect_worktree_mode(spec_dir, project_dir)
+
+    # Build the environment context
+    context = f"""## YOUR ENVIRONMENT
 
 **Working Directory:** `{project_dir}`
 **Spec Location:** `{relative_spec}/`
@@ -76,6 +117,38 @@ coder prompt for detailed examples.
 ---
 
 """
+
+    # Add worktree isolation warning if in worktree mode
+    if is_worktree and forbidden_parent:
+        context += f"""## 🚨 ISOLATED WORKTREE - CRITICAL
+
+You are in an **ISOLATED GIT WORKTREE** - a complete copy of the project.
+
+**YOUR LOCATION:** `{project_dir}`
+**FORBIDDEN:** Do NOT use `cd {forbidden_parent}` or `cd ../..` - this **ESCAPES ISOLATION**
+
+All project files exist HERE via relative paths:
+
+* `./apps/` ✅ (NOT `{forbidden_parent}/apps/`)
+* `./core/` ✅ (NOT `{forbidden_parent}/core/`)
+* `./prod/` ✅ (NOT `{forbidden_parent}/prod/`)
+
+**CRITICAL RULES:**
+* **NEVER** `cd {forbidden_parent}` or any path traversal outside your worktree
+* **STAY** within your working directory at all times
+* **ALL** file operations use paths relative to your current location
+* Before any `cd` command, run `pwd` and verify the target is within your worktree
+
+**VIOLATION WARNING:** Escaping the worktree will cause:
+* Git commits going to wrong branch
+* Files created/modified in the wrong location
+* Breaking worktree isolation guarantees
+
+---
+
+"""
+
+    return context
 
 
 def generate_subtask_prompt(
