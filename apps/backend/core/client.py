@@ -739,9 +739,24 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
         Path to rules directory if found, None otherwise
     """
     rules_dir = project_dir / ".claude" / "rules"
-    if rules_dir.exists() and rules_dir.is_dir():
-        return rules_dir
-    return None
+    if not rules_dir.exists() or not rules_dir.is_dir():
+        return None
+
+    # Security: Verify the resolved path is still under project_dir
+    # This prevents symlink attacks where .claude or rules points outside
+    try:
+        resolved_rules = rules_dir.resolve()
+        resolved_project = project_dir.resolve()
+        if not str(resolved_rules).startswith(str(resolved_project) + os.sep):
+            logger.warning(
+                f"Rules directory {rules_dir} resolves outside project: {resolved_rules}"
+            )
+            return None
+    except (OSError, ValueError) as e:
+        logger.warning(f"Failed to resolve rules directory path: {e}")
+        return None
+
+    return rules_dir
 
 
 def _collect_all_rules(
