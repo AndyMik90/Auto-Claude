@@ -552,6 +552,7 @@
     "footer": "The account will be available once you complete authentication."
   },
   "roadmapGeneration": {
+    "progress": "Progress",
     "elapsed": "Elapsed: {{time}}",
     "stillWorking": "Still working...",
     "stopping": "Stopping...",

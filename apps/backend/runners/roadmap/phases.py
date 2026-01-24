@@ -331,6 +331,13 @@ class FeaturesPhase:
                 )
                 skipped_count += 1
             else:
+                # Warn about features without IDs - they cannot be deduplicated
+                if not feature_id:
+                    debug_warning(
+                        "roadmap_phase",
+                        "Feature without ID - cannot deduplicate",
+                        title=feature.get("title", "Untitled"),
+                    )
                 merged.append(feature)
                 added_count += 1
 
