@@ -12,6 +12,7 @@
     "createNew": "新建工作树",
     "existing": "终端工作树",
     "taskWorktrees": "任务工作树",
+    "otherWorktrees": "其他",
     "createTitle": "创建终端工作树",
     "createDescription": "为此终端创建一个隔离的工作空间。所有工作都将在工作树目录中进行。",
     "name": "工作树名称",
@@ -59,7 +60,8 @@
     "deleting": "删除中...",
     "deleteTerminalWorktreeTitle": "删除终端工作树？",
     "deleteTerminalWorktreeDescription": "这将永久删除工作树及其分支。所有未提交的更改都将丢失。",
-    "created": "创建于 {{date}}"
+    "created": "创建于 {{date}}",
+    "detached": "（已分离）"
   },
   "grid": {
     "agentTerminals": "代理终端",

@@ -102,7 +102,11 @@
     "merge": "合并工作树",
     "mergeDescription": "将此工作树的更改合并到基础分支。",
     "delete": "删除工作树？",
-    "deleteDescription": "这将永久删除工作树及所有未提交的更改。此操作无法撤销。"
+    "deleteDescription": "这将永久删除工作树及所有未提交的更改。此操作无法撤销。",
+    "bulkDeleteTitle": "删除 {{count}} 个工作树？",
+    "bulkDeleteDescription": "这将永久删除选中的工作树及其所有未提交的更改。此操作无法撤销。",
+    "deleting": "正在删除...",
+    "deleteSelected": "删除选中项"
   },
   "worktreeCleanup": {
     "title": "完成任务",
@@ -220,5 +224,16 @@
     "selectBranchPlaceholder": "选择分支",
     "repoNamePlaceholder": "我的项目",
     "existingRepoPlaceholder": "用户名/仓库"
+  },
+  "versionWarning": {
+    "title": "需要操作",
+    "subtitle": "版本 2.7.5 更新",
+    "description": "由于此版本中的身份验证更改，您需要重新验证您的 Claude 配置文件。",
+    "instructions": "重新验证步骤：",
+    "step1": "前往设置",
+    "step2": "导航到 应用设置 > 集成",
+    "step3": "在您的配置文件上点击\"重新验证\"",
+    "gotIt": "知道了",
+    "goToSettings": "前往设置"
   }
 }

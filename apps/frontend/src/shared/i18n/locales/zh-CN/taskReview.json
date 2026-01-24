@@ -79,5 +79,22 @@
     "step2": "使用以下命令查看暂存的变更",
     "step2And": "和",
     "step3": "准备好后提交："
+  },
+  "bulkPR": {
+    "title": "创建拉取请求",
+    "description": "为 {{count}} 个选中的任务创建拉取请求",
+    "creating": "正在创建 PR {{current}}/{{total}}...",
+    "creatingPR": "正在创建 PR {{current}}/{{total}}",
+    "resultsDescription": "{{success}} 个成功，{{failed}} 个失败",
+    "tasksToProcess": "待处理任务",
+    "targetBranchHint": "留空以使用每个任务的默认分支。此设置将应用于所有 PR。",
+    "createAll": "创建 {{count}} 个 PR",
+    "completed": "已完成",
+    "succeeded": "成功",
+    "failed": "失败",
+    "skipped": "已跳过",
+    "alreadyExisted": "已存在",
+    "noWorktree": "此任务未找到工作树",
+    "resultsDescriptionWithSkipped": "{{success}} 个成功，{{skipped}} 个跳过，{{failed}} 个失败"
   }
 }

@@ -2,6 +2,7 @@
   "refreshTasks": "刷新任务",
   "status": {
     "backlog": "待办",
+    "queue": "队列",
     "todo": "待处理",
     "in_progress": "进行中",
     "review": "审核中",
@@ -19,7 +20,8 @@
     "view": "查看详情",
     "viewPR": "查看 PR",
     "moveTo": "移动到",
-    "taskActions": "任务操作"
+    "taskActions": "任务操作",
+    "selectTask": "选择任务：{{title}}"
   },
   "labels": {
     "running": "运行中",
@@ -56,6 +58,7 @@
     "error": "错误",
     "backlog": "规划中",
     "in_progress": "进行中",
+    "queue": "队列",
     "ai_review": "AI 审核",
     "human_review": "人工审核",
     "done": "已完成",
@@ -64,6 +67,8 @@
   "kanban": {
     "emptyBacklog": "没有计划的任务",
     "emptyBacklogHint": "添加任务开始使用",
+    "emptyQueue": "队列为空",
+    "emptyQueueHint": "当达到并行任务限制时，任务将在此等待",
     "emptyInProgress": "没有运行中的任务",
     "emptyInProgressHint": "从待办列表启动任务",
     "emptyAiReview": "没有审核中的任务",
@@ -86,7 +91,18 @@
     "worktreeCleanupNotStaged": "此任务有一个包含未合并更改的工作树。删除工作树以标记为完成，或取消以先查看更改。",
     "keepWorktree": "保留工作树",
     "deleteWorktree": "删除工作树并标记为完成",
-    "refreshTasks": "刷新任务"
+    "refreshTasks": "刷新任务",
+    "queueSettings": "队列设置",
+    "orderSaveFailedTitle": "重排序未保存",
+    "orderSaveFailedDescription": "您的任务顺序更改已应用，但无法保存到存储。刷新后将丢失。",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "selectedCount": "已选择 {{count}} 个",
+    "selectedCountOne": "已选择 {{count}} 个任务",
+    "selectedCountOther": "已选择 {{count}} 个任务",
+    "createPRs": "创建 PR",
+    "clearSelection": "清除选择",
+    "queueAllAriaLabel": "将所有任务移至队列"
   },
   "execution": {
     "phases": {
@@ -344,5 +360,50 @@
       "aiReview": "AI 审核 (80-95%)",
       "complete": "完成 (95-100%)"
     }
+  },
+  "queue": {
+    "limitReached": "已达到并行任务限制 ({{current}}/{{max}})。任务已移至队列。",
+    "movedToQueue": "任务已移至队列。",
+    "autoPromoted": "任务已从队列自动提升到进行中。",
+    "capacityAvailable": "进行中有 {{count}} 个空位可用。",
+    "queueAll": "全部加入队列",
+    "queueAllSuccess": "已将 {{count}} 个任务移至队列。",
+    "settings": {
+      "title": "队列设置",
+      "description": "配置\"进行中\"看板中可并行运行的最大任务数",
+      "maxParallelLabel": "最大并行任务数",
+      "minValueError": "至少为 1",
+      "maxValueError": "不能超过 10",
+      "hint": "达到此限制时，新任务将在队列中等待，然后再移至\"进行中\"",
+      "saved": "队列设置已保存",
+      "saveFailed": "保存队列设置失败",
+      "retry": "请重试"
+    }
+  },
+  "bulkPR": {
+    "selectAllInColumn": "选择列中所有任务",
+    "deselectAllInColumn": "取消选择所有任务",
+    "selectionMode": "选择模式已激活",
+    "exitSelectionMode": "退出选择模式",
+    "noTasksToSelect": "没有可选择的任务",
+    "confirmBulkAction": "确认对 {{count}} 个任务执行批量操作",
+    "processingTasks": "正在处理选中的任务..."
+  },
+  "screenshot": {
+    "title": "截取屏幕",
+    "description": "选择屏幕或窗口作为参考图片",
+    "capture": "截取",
+    "capturing": "正在截取...",
+    "noSources": "未找到屏幕或窗口",
+    "errors": {
+      "getSources": "获取截图来源失败",
+      "fetchSources": "获取截图来源失败",
+      "capture": "截图失败",
+      "captureFailed": "截图失败"
+    }
+  },
+  "referenceImages": {
+    "title": "参考图片（可选）",
+    "description": "添加截图或设计等视觉参考，帮助 AI 理解您的需求。"
   }
 }
