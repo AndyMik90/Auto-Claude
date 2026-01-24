@@ -21,7 +21,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Dict, Set
+from typing import Any, Awaitable, Callable, Dict, Optional, Set
 
 try:
     import websockets
@@ -47,6 +47,74 @@ DEFAULT_CORS_ORIGINS = "http://localhost:5173"
 # Track active connections
 active_connections: Set[WebSocketServerProtocol] = set()
 
+# Type alias for channel handler functions
+ChannelHandler = Callable[[WebSocketServerProtocol, Any], Awaitable[Optional[Dict[str, Any]]]]
+
+
+# ============================================================================
+# Channel Handlers
+# ============================================================================
+
+async def handle_echo_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Echo channel handler for testing and debugging.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data to echo back
+
+    Returns:
+        Response data dictionary
+    """
+    logger.info("Echo channel: %s", data)
+    return {
+        "status": "received",
+        "echo": data
+    }
+
+
+async def handle_ping_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Ping/pong channel handler for connection health checks.
+
+    Args:
+        websocket: WebSocket connection
+        data: Ping data (typically timestamp)
+
+    Returns:
+        Pong response with original data
+    """
+    return {
+        "status": "pong",
+        "timestamp": data.get("timestamp") if isinstance(data, dict) else None
+    }
+
+
+async def handle_unknown_channel(websocket: WebSocketServerProtocol, data: Any) -> Dict[str, Any]:
+    """
+    Default handler for unknown channels.
+
+    Args:
+        websocket: WebSocket connection
+        data: Message data
+
+    Returns:
+        Error response
+    """
+    return {
+        "status": "error",
+        "error": "Unknown channel",
+        "message": "The requested channel is not supported"
+    }
+
+
+# Channel routing table
+CHANNEL_HANDLERS: Dict[str, ChannelHandler] = {
+    "echo": handle_echo_channel,
+    "ping": handle_ping_channel,
+    # Additional channels will be added here (e.g., "terminal", "task", etc.)
+}
+
 
 async def handle_message(websocket: WebSocketServerProtocol, message: str) -> None:
     """
@@ -66,24 +134,59 @@ async def handle_message(websocket: WebSocketServerProtocol, message: str) -> No
 
         if not channel:
             logger.warning("Message missing 'channel' field: %s", message)
+            await websocket.send(json.dumps({
+                "channel": "error",
+                "data": {
+                    "status": "error",
+                    "error": "Missing channel field"
+                }
+            }))
             return
 
         logger.debug("Received message on channel '%s': %s", channel, data)
 
-        # TODO: Route to appropriate channel handlers
-        # For now, echo back for basic testing
-        response = {
-            "channel": channel,
-            "data": {
-                "status": "received",
-                "echo": data
-            }
-        }
+        # Route to appropriate channel handler
+        handler = CHANNEL_HANDLERS.get(channel, handle_unknown_channel)
 
-        await websocket.send(json.dumps(response))
+        try:
+            # Execute handler and get response data
+            response_data = await handler(websocket, data)
+
+            # Send response if handler returned data
+            if response_data is not None:
+                response = {
+                    "channel": channel,
+                    "data": response_data
+                }
+                await websocket.send(json.dumps(response))
+
+        except Exception as handler_error:
+            logger.error("Error in handler for channel '%s': %s",
+                        channel, handler_error, exc_info=True)
+            # Send error response to client
+            error_response = {
+                "channel": channel,
+                "data": {
+                    "status": "error",
+                    "error": "Handler error",
+                    "message": str(handler_error)
+                }
+            }
+            await websocket.send(json.dumps(error_response))
 
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON message: %s - Error: %s", message, e)
+        try:
+            await websocket.send(json.dumps({
+                "channel": "error",
+                "data": {
+                    "status": "error",
+                    "error": "Invalid JSON",
+                    "message": str(e)
+                }
+            }))
+        except Exception:
+            pass  # Connection may be closed
     except Exception as e:
         logger.error("Error handling message: %s", e, exc_info=True)
 
