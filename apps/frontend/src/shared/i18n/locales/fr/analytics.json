@@ -120,7 +120,11 @@
     "actualCost": "Coût réel",
     "rateLimitImpact": "Impact limite de taux",
     "session": "Session",
-    "messages": "messages"
+    "messages": "messages",
+    "costNoteInsightsChat": "Insights Chat utilise votre limite de taux d'abonnement Claude Code, pas la facturation API.",
+    "costNoteSubscription": "Le coût affiché est le prix API estimé. Les utilisateurs abonnés à Claude Code ne sont pas facturés par token.",
+    "insightsChatNote": "Les sessions Insights Chat sont conversationnelles et n'ont pas de phases d'exécution comme les tâches de build.",
+    "subagentBreakdownNote": "La répartition par sous-agent sera disponible dans une future mise à jour."
   },
   "tooltips": {
     "tokenUsage": "Total des tokens consommés par les modèles IA lors de l'exécution des tâches",

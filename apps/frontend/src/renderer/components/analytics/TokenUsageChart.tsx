@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Coins,
   ChevronRight,
-  ChevronDown,
   ArrowLeft,
   Info,
 } from 'lucide-react';
@@ -13,7 +12,6 @@ import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
 import type {
   AnalyticsSummary,
-  DrillDownLevel,
   FeatureType,
   AnalyticsPhase,
   TaskAnalytics,
@@ -544,7 +542,7 @@ function PhaseLevelView({ data, taskId, phase }: PhaseLevelViewProps) {
 
       {/* Note about subagent data (not yet available) */}
       <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-        <Info className="mb-1 inline h-3 w-3" /> Subagent-level breakdown will be available in a future update.
+        <Info className="mb-1 inline h-3 w-3" /> {t('analytics:labels.subagentBreakdownNote')}
       </div>
     </div>
   );

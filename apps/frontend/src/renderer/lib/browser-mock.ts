@@ -106,6 +106,7 @@ const browserMockAPI: ElectronAPI = {
       dateRange: { start: new Date(), end: new Date() },
       totalTokens: 0,
       totalTasks: 0,
+      totalCostUsd: 0,
       averageDurationMs: 0,
       successRate: 0,
       successCount: 0,

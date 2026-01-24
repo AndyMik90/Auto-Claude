@@ -62,7 +62,8 @@ function loadImplementationPlan(projectPath: string, specId: string): Implementa
     }
     const content = fs.readFileSync(planPath, "utf-8");
     return JSON.parse(content) as ImplementationPlan;
-  } catch {
+  } catch (error) {
+    console.warn('[Analytics] Failed to load implementation plan:', specId, error);
     return null;
   }
 }

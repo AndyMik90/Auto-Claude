@@ -670,8 +670,8 @@ function TaskLevelView({ data, taskId, onSelectPhase }: TaskLevelViewProps) {
           <div className="mt-3 text-xs text-muted-foreground bg-muted/50 rounded p-2">
             <Info className="inline h-3 w-3 mb-0.5 mr-1" />
             {isInsightsChat
-              ? 'Insights Chat uses your Claude Code subscription rate limit, not API billing.'
-              : 'Cost shown is the estimated API price. Claude Code subscription users are not charged per-token.'}
+              ? t('analytics:labels.costNoteInsightsChat')
+              : t('analytics:labels.costNoteSubscription')}
           </div>
         </div>
       )}
@@ -694,7 +694,7 @@ function TaskLevelView({ data, taskId, onSelectPhase }: TaskLevelViewProps) {
       {isInsightsChat && (
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
           <Info className="inline h-3 w-3 mb-0.5" />{' '}
-          Insights Chat sessions are conversational and don't have execution phases like build tasks.
+          {t('analytics:labels.insightsChatNote')}
         </div>
       )}
     </div>

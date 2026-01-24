@@ -605,18 +605,18 @@ function DurationBreakdownBar({ durationMs }: DurationBreakdownBarProps) {
   const minutes = Math.floor((durationMs % 3600000) / 60000);
   const seconds = Math.floor((durationMs % 60000) / 1000);
 
-  const parts = [];
-  if (hours > 0) parts.push({ label: `${hours}h`, value: hours, color: 'bg-primary' });
-  if (minutes > 0) parts.push({ label: `${minutes}m`, value: minutes, color: 'bg-primary/70' });
-  if (seconds > 0 || parts.length === 0) parts.push({ label: `${seconds}s`, value: seconds, color: 'bg-primary/40' });
+  const parts: { label: string; seconds: number; color: string }[] = [];
+  if (hours > 0) parts.push({ label: `${hours}h`, seconds: hours * 3600, color: 'bg-primary' });
+  if (minutes > 0) parts.push({ label: `${minutes}m`, seconds: minutes * 60, color: 'bg-primary/70' });
+  if (seconds > 0 || parts.length === 0) parts.push({ label: `${seconds}s`, seconds: seconds, color: 'bg-primary/40' });
 
-  const total = (hours * 60 + minutes) * 60 + seconds;
+  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
   return (
     <div className="space-y-2">
       <div className="h-3 w-full rounded-full bg-muted flex overflow-hidden">
-        {parts.map((part, index) => {
-          const percentage = total > 0 ? ((index === 0 && hours > 0 ? hours * 3600 : index === 1 || (index === 0 && hours === 0) ? minutes * 60 : seconds) / total) * 100 : 100 / parts.length;
+        {parts.map((part) => {
+          const percentage = totalSeconds > 0 ? (part.seconds / totalSeconds) * 100 : 100 / parts.length;
           return (
             <div
               key={part.label}
