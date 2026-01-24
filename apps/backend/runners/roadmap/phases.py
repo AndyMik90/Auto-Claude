@@ -416,7 +416,9 @@ class FeaturesPhase:
         preserved_section = ""
         if self._preserved_features:
             preserved_ids = [f.get("id", "unknown") for f in self._preserved_features]
-            preserved_titles = [f.get("title", "Untitled") for f in self._preserved_features]
+            preserved_titles = [
+                f.get("title", "Untitled") for f in self._preserved_features
+            ]
             preserved_info = "\n".join(
                 f"  - {fid}: {title}"
                 for fid, title in zip(preserved_ids, preserved_titles)
