@@ -553,7 +553,37 @@
   },
   "roadmapGeneration": {
     "elapsed": "Écoulé : {{time}}",
-    "stillWorking": "Toujours en cours..."
+    "stillWorking": "Toujours en cours...",
+    "stopping": "Arrêt...",
+    "stop": "Arrêter",
+    "stopTooltip": "Arrêter la génération",
+    "phases": {
+      "analyzing": {
+        "label": "Analyse",
+        "description": "Analyse de la structure et du code du projet..."
+      },
+      "discovering": {
+        "label": "Découverte",
+        "description": "Découverte du public cible et des besoins des utilisateurs..."
+      },
+      "generating": {
+        "label": "Génération",
+        "description": "Génération de la feuille de route des fonctionnalités..."
+      },
+      "complete": {
+        "label": "Terminé",
+        "description": "Génération de la feuille de route terminée !"
+      },
+      "error": {
+        "label": "Erreur",
+        "description": "La génération a échoué"
+      }
+    },
+    "steps": {
+      "analyze": "Analyser",
+      "discover": "Découvrir",
+      "generate": "Générer"
+    }
   },
   "auth": {
     "failure": {

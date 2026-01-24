@@ -553,7 +553,37 @@
   },
   "roadmapGeneration": {
     "elapsed": "Elapsed: {{time}}",
-    "stillWorking": "Still working..."
+    "stillWorking": "Still working...",
+    "stopping": "Stopping...",
+    "stop": "Stop",
+    "stopTooltip": "Stop generation",
+    "phases": {
+      "analyzing": {
+        "label": "Analyzing",
+        "description": "Analyzing project structure and codebase..."
+      },
+      "discovering": {
+        "label": "Discovering",
+        "description": "Discovering target audience and user needs..."
+      },
+      "generating": {
+        "label": "Generating",
+        "description": "Generating feature roadmap..."
+      },
+      "complete": {
+        "label": "Complete",
+        "description": "Roadmap generation complete!"
+      },
+      "error": {
+        "label": "Error",
+        "description": "Generation failed"
+      }
+    },
+    "steps": {
+      "analyze": "Analyze",
+      "discover": "Discover",
+      "generate": "Generate"
+    }
   },
   "auth": {
     "failure": {

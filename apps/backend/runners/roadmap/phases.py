@@ -215,6 +215,8 @@ class FeaturesPhase:
         self.roadmap_file = output_dir / "roadmap.json"
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
+        # Preserved features loaded ONCE before agent runs and overwrites the file
+        self._preserved_features: list[dict] = []
 
     def _load_existing_features(self) -> list[dict]:
         """Load features from existing roadmap that should be preserved.
@@ -357,6 +359,10 @@ class FeaturesPhase:
             print_status("roadmap.json already exists", "success")
             return RoadmapPhaseResult("features", True, [str(self.roadmap_file)], [], 0)
 
+        # Load preserved features BEFORE the agent runs and overwrites the file
+        # This must happen once, before the retry loop, to capture the original state
+        self._preserved_features = self._load_existing_features()
+
         errors = []
         for attempt in range(MAX_RETRIES):
             debug("roadmap_phase", f"Features attempt {attempt + 1}/{MAX_RETRIES}")
@@ -402,21 +408,22 @@ class FeaturesPhase:
         in the context so the AI agent can generate complementary features
         without duplicating existing ones.
         """
-        # Load any preserved features to inform the AI
-        preserved_features = self._load_existing_features()
+        # Use the pre-loaded preserved features (loaded before agent ran)
+        # This ensures we use the original features even on retry attempts
+        # after the file has been overwritten by a failed attempt
 
         # Build preserved features section if any exist
         preserved_section = ""
-        if preserved_features:
-            preserved_ids = [f.get("id", "unknown") for f in preserved_features]
-            preserved_titles = [f.get("title", "Untitled") for f in preserved_features]
+        if self._preserved_features:
+            preserved_ids = [f.get("id", "unknown") for f in self._preserved_features]
+            preserved_titles = [f.get("title", "Untitled") for f in self._preserved_features]
             preserved_info = "\n".join(
                 f"  - {fid}: {title}"
                 for fid, title in zip(preserved_ids, preserved_titles)
             )
             preserved_section = f"""
 **EXISTING FEATURES TO PRESERVE** (DO NOT regenerate these):
-The following {len(preserved_features)} features already exist and will be preserved.
+The following {len(self._preserved_features)} features already exist and will be preserved.
 Generate NEW features that complement these, do not duplicate them:
 {preserved_info}
 
@@ -474,10 +481,12 @@ Output the complete roadmap to roadmap.json.
 
             if not missing and feature_count >= 3:
                 # Merge preserved features into the roadmap
-                preserved_features = self._load_existing_features()
-                if preserved_features:
+                # Use the pre-loaded preserved features (loaded before agent ran)
+                if self._preserved_features:
                     new_features = data.get("features", [])
-                    merged_features = self._merge_features(new_features, preserved_features)
+                    merged_features = self._merge_features(
+                        new_features, self._preserved_features
+                    )
                     data["features"] = merged_features
 
                     # Write back the merged roadmap
@@ -487,11 +496,11 @@ Output the complete roadmap to roadmap.json.
                     debug_success(
                         "roadmap_phase",
                         "Merged preserved features into roadmap.json",
-                        preserved_count=len(preserved_features),
+                        preserved_count=len(self._preserved_features),
                         final_count=len(merged_features),
                     )
                     print_status(
-                        f"Merged {len(preserved_features)} preserved features",
+                        f"Merged {len(self._preserved_features)} preserved features",
                         "success",
                     )
 
