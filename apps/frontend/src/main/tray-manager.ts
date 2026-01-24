@@ -8,8 +8,14 @@
  */
 
 import { Tray, Menu, nativeImage, app, BrowserWindow } from 'electron';
-import { join } from 'path';
-import { isWindows, isMacOS } from './platform';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+import { isMacOS } from './platform';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export type TrayStatus = 'idle' | 'running' | 'review' | 'error';
 
@@ -28,18 +34,28 @@ let taskCounts: TrayTaskCounts = { running: 0, review: 0, pending: 0, completed:
 /**
  * Get the path to tray icon based on status and platform
  */
-function getTrayIconPath(status: TrayStatus): string {
-  // For macOS, we use template images (monochrome icons that adapt to menu bar)
-  // For Windows/Linux, we use colored icons
-  const resourcesPath = app.isPackaged
-    ? join(process.resourcesPath, 'resources')
-    : join(__dirname, '../../resources');
+function getTrayIconPath(_status: TrayStatus): string {
+  // Try multiple possible paths for the icon
+  const possiblePaths = [
+    // Production: resources in app bundle
+    app.isPackaged ? join(process.resourcesPath, 'resources', 'icons', '16x16.png') : null,
+    // Development: relative to compiled output (out/main -> apps/frontend/resources)
+    join(__dirname, '../../resources/icons/16x16.png'),
+    // Alternative dev path
+    join(__dirname, '../../../resources/icons/16x16.png'),
+    // Fallback: from app path
+    join(app.getAppPath(), 'resources/icons/16x16.png'),
+  ].filter(Boolean) as string[];
 
-  // Use the 16x16 icon as base - works on all platforms
-  // In a full implementation, you'd have status-specific icons
-  const iconName = isMacOS() ? 'icons/16x16.png' : 'icons/16x16.png';
+  for (const iconPath of possiblePaths) {
+    if (existsSync(iconPath)) {
+      console.log('[tray] Found icon at:', iconPath);
+      return iconPath;
+    }
+  }
 
-  return join(resourcesPath, iconName);
+  console.warn('[tray] Icon not found in any expected location:', possiblePaths);
+  return possiblePaths[0]; // Return first path even if not found (will create empty image)
 }
 
 /**
@@ -48,6 +64,23 @@ function getTrayIconPath(status: TrayStatus): string {
 function createTrayImage(status: TrayStatus): Electron.NativeImage {
   const iconPath = getTrayIconPath(status);
   let image = nativeImage.createFromPath(iconPath);
+
+  // Check if image loaded successfully
+  if (image.isEmpty()) {
+    console.warn('[tray] Failed to load icon from:', iconPath, '- creating placeholder');
+    // Create a simple 16x16 placeholder (a small colored square)
+    // This ensures the tray is still visible even without the icon file
+    const size = 16;
+    const canvas = Buffer.alloc(size * size * 4); // RGBA
+    // Fill with a purple color (#8B5CF6) for visibility
+    for (let i = 0; i < size * size; i++) {
+      canvas[i * 4] = 139;     // R
+      canvas[i * 4 + 1] = 92;  // G
+      canvas[i * 4 + 2] = 246; // B
+      canvas[i * 4 + 3] = 255; // A
+    }
+    image = nativeImage.createFromBuffer(canvas, { width: size, height: size });
+  }
 
   // On macOS, mark as template image so it adapts to light/dark menu bar
   if (isMacOS()) {

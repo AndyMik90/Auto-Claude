@@ -328,6 +328,11 @@ const browserMockAPI: ElectronAPI = {
     error: 'Screenshot capture not available in browser mode'
   }),
 
+  // System tray operations
+  updateStatus: async () => ({ success: true }),
+  onNewTask: () => () => {},
+  onOpenSettings: () => () => {},
+
   // Debug Operations
   getDebugInfo: async () => ({
     systemInfo: {

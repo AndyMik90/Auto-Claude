@@ -852,6 +852,11 @@ export interface ElectronAPI {
     thumbnail: string;
   }>>>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // System tray operations
+  updateStatus: (counts: { running: number; review: number; pending: number; completed: number }) => Promise<{ success: boolean }>;
+  onNewTask: (callback: () => void) => () => void;
+  onOpenSettings: (callback: () => void) => () => void;
 }
 
 declare global {

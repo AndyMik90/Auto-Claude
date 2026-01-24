@@ -65,6 +65,7 @@ import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
 import { useIpcListeners } from './hooks/useIpc';
 import { useGlobalTerminalListeners } from './hooks/useGlobalTerminalListeners';
 import { useTerminalProfileChange } from './hooks/useTerminalProfileChange';
+import { useTraySync } from './hooks/useTraySync';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
@@ -114,6 +115,9 @@ export function App() {
 
   // Handle terminal profile change events (recreate terminals on profile switch)
   useTerminalProfileChange();
+
+  // Sync task state to system tray
+  useTraySync();
 
   // Stores
   const projects = useProjectStore((state) => state.projects);
@@ -191,6 +195,21 @@ export function App() {
 
     return () => {
       cleanupDownloadListener();
+    };
+  }, []);
+
+  // Listen for tray menu actions
+  useEffect(() => {
+    const cleanupNewTask = window.electronAPI.onNewTask(() => {
+      setIsNewTaskDialogOpen(true);
+    });
+    const cleanupSettings = window.electronAPI.onOpenSettings(() => {
+      setIsSettingsDialogOpen(true);
+    });
+
+    return () => {
+      cleanupNewTask();
+      cleanupSettings();
     };
   }, []);
 
