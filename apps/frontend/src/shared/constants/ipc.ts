@@ -480,6 +480,7 @@ export const IPC_CHANNELS = {
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
   INSIGHTS_STATUS: 'insights:status',
   INSIGHTS_ERROR: 'insights:error',
+  INSIGHTS_SESSION_UPDATED: 'insights:sessionUpdated',  // Event: session updated (main -> renderer)
 
   // File explorer operations
   FILE_EXPLORER_LIST: 'fileExplorer:list',
