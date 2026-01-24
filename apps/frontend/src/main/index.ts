@@ -46,6 +46,7 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
+import { initializeTray, destroyTray, setTrayTaskCounts, type TrayTaskCounts } from './tray-manager';
 import { DEFAULT_APP_SETTINGS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
@@ -380,6 +381,10 @@ app.whenReady().then(() => {
   // Create window
   createWindow();
 
+  // Initialize system tray
+  initializeTray(() => mainWindow);
+  console.log('[main] System tray initialized');
+
   // Pre-warm CLI tool cache in background (non-blocking)
   // This ensures CLI detection is done before user needs it
   // Include all commonly used tools to prevent sync blocking on first use
@@ -472,6 +477,9 @@ app.on('before-quit', async () => {
   const usageMonitor = getUsageMonitor();
   usageMonitor.stop();
   console.warn('[main] Usage monitor stopped');
+
+  // Destroy system tray
+  destroyTray();
 
   // Kill all running agent processes
   if (agentManager) {

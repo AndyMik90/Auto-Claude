@@ -14,6 +14,7 @@ import { ClaudeCodeAPI, createClaudeCodeAPI } from './modules/claude-code-api';
 import { McpAPI, createMcpAPI } from './modules/mcp-api';
 import { ProfileAPI, createProfileAPI } from './profile-api';
 import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
+import { TrayAPI, createTrayAPI } from './tray-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -30,7 +31,8 @@ export interface ElectronAPI extends
   ClaudeCodeAPI,
   McpAPI,
   ProfileAPI,
-  ScreenshotAPI {
+  ScreenshotAPI,
+  TrayAPI {
   github: GitHubAPI;
 }
 
@@ -47,6 +49,7 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createMcpAPI(),
   ...createProfileAPI(),
   ...createScreenshotAPI(),
+  ...createTrayAPI(),
   github: createGitHubAPI()
 });
 
@@ -65,7 +68,8 @@ export {
   createDebugAPI,
   createClaudeCodeAPI,
   createMcpAPI,
-  createScreenshotAPI
+  createScreenshotAPI,
+  createTrayAPI
 };
 
 export type {
@@ -84,5 +88,6 @@ export type {
   DebugAPI,
   ClaudeCodeAPI,
   McpAPI,
-  ScreenshotAPI
+  ScreenshotAPI,
+  TrayAPI
 };
