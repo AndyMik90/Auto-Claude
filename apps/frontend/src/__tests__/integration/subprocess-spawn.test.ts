@@ -394,6 +394,9 @@ describe('Subprocess Spawn Integration', () => {
         expect(manager.getRunningTasks()).toHaveLength(2);
       }, { timeout: 5000 });
 
+      // Wait for spawn to complete (ensures exit handlers are attached)
+      await new Promise(resolve => setImmediate(resolve));
+
       // Both tasks share the same mock process, so emit exit once triggers both handlers
       mockProcess.emit('exit', 0);
 

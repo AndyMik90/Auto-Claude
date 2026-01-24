@@ -512,6 +512,18 @@ export class AgentProcessManager {
     this.killProcess(taskId);
 
     const spawnId = this.state.generateSpawnId();
+
+    // IMPORTANT: Add to tracking IMMEDIATELY, before async operations.
+    // This ensures getRunningTasks() returns the task right away, preventing
+    // flaky tests on slower Windows CI where async setup may take longer than
+    // vi.waitFor timeout (ACS-392).
+    this.state.addProcess(taskId, {
+      taskId,
+      process: null, // Will be set after spawn() call completes below
+      startedAt: new Date(),
+      spawnId
+    });
+
     const env = this.setupProcessEnvironment(extraEnv);
 
     // Get Python environment (PYTHONPATH for bundled packages, etc.)
@@ -541,12 +553,8 @@ export class AgentProcessManager {
       }
     });
 
-    this.state.addProcess(taskId, {
-      taskId,
-      process: childProcess,
-      startedAt: new Date(),
-      spawnId
-    });
+    // Update the tracked process with the actual spawned ChildProcess
+    this.state.updateProcess(taskId, { process: childProcess });
 
     let currentPhase: ExecutionProgressData['phase'] = isSpecRunner ? 'planning' : 'planning';
     let phaseProgress = 0;
@@ -743,6 +751,13 @@ export class AgentProcessManager {
     // Mark this specific spawn as killed so its exit handler knows to ignore
     this.state.markSpawnAsKilled(agentProcess.spawnId);
 
+    // If process hasn't been spawned yet (still in async setup phase, before spawn() returns),
+    // just remove from tracking - this is safe because the spawn() call will be abandoned
+    if (!agentProcess.process) {
+      this.state.deleteProcess(taskId);
+      return true;
+    }
+
     // Use shared platform-aware kill utility
     killProcessGracefully(agentProcess.process, {
       debugPrefix: '[AgentProcess]',
@@ -764,6 +779,14 @@ export class AgentProcessManager {
         const agentProcess = this.state.getProcess(taskId);
 
         if (!agentProcess) {
+          resolve();
+          return;
+        }
+
+        // If process hasn't been spawned yet (still in async setup phase before spawn() returns),
+        // just resolve immediately - the spawn will be abandoned
+        if (!agentProcess.process) {
+          this.killProcess(taskId);
           resolve();
           return;
         }

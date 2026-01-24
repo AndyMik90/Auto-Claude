@@ -85,6 +85,16 @@ export class AgentState {
   }
 
   /**
+   * Update a process's properties (e.g., after spawn completes)
+   */
+  updateProcess(taskId: string, updates: Partial<AgentProcess>): void {
+    const existing = this.processes.get(taskId);
+    if (existing) {
+      this.processes.set(taskId, { ...existing, ...updates });
+    }
+  }
+
+  /**
    * Get all processes
    */
   getAllProcesses(): Map<string, AgentProcess> {
