@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Settings, Plus, RefreshCw } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Terminal as TerminalIcon } from 'lucide-react';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TaskEditDialog } from './components/TaskEditDialog';
 import { TaskCreateDialog } from './components/TaskList';
+import { Terminal } from './components/Terminal';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Button } from './components/ui/button';
 import {
@@ -26,7 +27,7 @@ import { useSettingsStore } from './stores/settings-store';
 import { ipc } from './lib/ipc-abstraction';
 import type { Task } from './types';
 
-type AppView = 'kanban' | 'settings';
+type AppView = 'kanban' | 'terminal' | 'settings';
 
 export function App() {
   // Stores
@@ -139,6 +140,14 @@ export function App() {
             />
           </div>
         );
+      case 'terminal':
+        return (
+          <div className="flex-1 overflow-hidden p-4">
+            <div className="h-full rounded-lg border bg-card overflow-hidden">
+              <Terminal id="test-terminal" cwd={process.env.HOME || '/tmp'} />
+            </div>
+          </div>
+        );
       case 'settings':
         return (
           <div className="flex-1 overflow-auto p-8">
@@ -189,6 +198,14 @@ export function App() {
                 onClick={() => setActiveView('kanban')}
               >
                 Tasks
+              </Button>
+              <Button
+                variant={activeView === 'terminal' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveView('terminal')}
+              >
+                <TerminalIcon className="h-4 w-4 mr-2" />
+                Terminal
               </Button>
             </div>
 
