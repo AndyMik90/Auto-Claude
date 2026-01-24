@@ -355,6 +355,33 @@ memory.add_session_insight("Pattern: use React hooks for state")
 
 ## Development Guidelines
 
+### No Time Estimates
+
+**CRITICAL: Never provide time estimates or predictions for how long tasks will take.**
+
+AI-assisted development dramatically changes implementation timelines, making traditional estimates misleading. Avoid:
+- Week/day/hour estimates (e.g., "Week 1: Foundation", "This will take 2-3 days")
+- Phrases like "quick fix", "simple change", "this should be fast"
+- Roadmaps with time-based phases
+
+Instead:
+- Focus on **what** needs to be done, not **when**
+- Break work into actionable steps without duration predictions
+- Use priority-based ordering (High Impact, Low Effort) rather than time-based phases
+- Let users judge timing for themselves based on their context
+
+```
+// ❌ WRONG - Time-based roadmap
+Week 1: Foundation
+Week 2: Prevention over Detection
+Week 3: Calibration
+
+// ✅ CORRECT - Priority-based ordering
+Phase 1: Foundation (High Impact, Low Effort)
+Phase 2: Prevention over Detection
+Phase 3: Calibration
+```
+
 ### Frontend Internationalization (i18n)
 
 **CRITICAL: Always use i18n translation keys for all user-facing text in the frontend.**
