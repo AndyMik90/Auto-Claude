@@ -494,6 +494,47 @@ npm run test:coverage
 | Stores | kebab-case with `-store` | `task-store.ts` |
 | Types | PascalCase | `Task`, `TaskStatus` |
 
+## Synchronizing with Upstream
+
+This fork adds a web UI to the original Auto-Claude project. To sync with upstream updates while preserving the web UI:
+
+### Initial Setup (Already Done)
+```bash
+git remote add upstream https://github.com/AndyMik90/Auto-Claude.git
+```
+
+### Sync Script
+Use the provided sync script:
+```bash
+./scripts/sync-upstream.sh
+```
+
+This script will:
+1. Fetch updates from upstream
+2. Create a merge branch
+3. Merge changes (web UI files are preserved)
+4. Handle conflicts if any
+
+### Manual Sync
+```bash
+# Fetch upstream
+git fetch upstream
+
+# Merge upstream develop into your branch
+git merge upstream/develop
+
+# If conflicts in apps/web/, keep your changes (the web UI)
+# For other files, evaluate case by case
+
+# Push after resolving
+git push origin develop
+```
+
+### Important Notes
+- The `apps/web/` directory is **new** and won't conflict with upstream
+- The `apps/backend/web_server.py` is also new
+- Conflicts may occur in shared files like `package.json` or backend code
+
 ## Contributing
 
 Follow the same guidelines as the main Auto Claude project. See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
