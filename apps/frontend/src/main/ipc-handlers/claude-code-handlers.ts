@@ -22,6 +22,8 @@ import { readSettingsFile, writeSettingsFile } from '../settings-utils';
 import { isSecurePath } from '../utils/windows-paths';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { isValidConfigDir } from '../utils/config-path-validator';
+import { clearKeychainCache } from '../claude-profile/credential-utils';
+import { getUsageMonitor } from '../claude-profile/usage-monitor';
 import semver from 'semver';
 
 const execFileAsync = promisify(execFile);
@@ -1310,7 +1312,13 @@ export function registerClaudeCodeHandlers(): void {
           }
         }
 
-        // If authenticated, update the profile with the email and OAuth token
+        // If authenticated, update the profile with the email
+        // NOTE: We intentionally do NOT store the OAuth token in the profile.
+        // Storing the token causes AutoClaude to use a stale cached token instead of
+        // letting Claude CLI read fresh tokens from Keychain (which auto-refreshes).
+        // By only storing metadata, we ensure getProfileEnv() uses CLAUDE_CONFIG_DIR,
+        // which allows Claude CLI's working token refresh mechanism to be used.
+        // See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
         if (result.authenticated) {
           profile.isAuthenticated = true;
 
@@ -1318,18 +1326,21 @@ export function registerClaudeCodeHandlers(): void {
             profile.email = result.email;
           }
 
-          // Save the OAuth token if available (critical for re-authentication)
-          if (result.oauthAccount?.accessToken) {
-            console.warn('[Claude Code] Saving OAuth token for profile:', profileId);
-            profileManager.setProfileToken(
-              profileId,
-              result.oauthAccount.accessToken,
-              result.email
-            );
-          } else {
-            // No OAuth token, just save the email update
-            profileManager.saveProfile(profile);
-          }
+          // Save profile metadata (email, isAuthenticated) but NOT the OAuth token
+          profileManager.saveProfile(profile);
+
+          // CRITICAL: Clear keychain cache for this profile's configDir
+          // This ensures the new token is read from keychain instead of using a stale cached token
+          // Without this, UsageMonitor would use the old cached token and show incorrect usage data
+          clearKeychainCache(expandedConfigDir);
+          console.warn('[Claude Code] Cleared keychain cache for profile after re-authentication:', profileId);
+
+          // CRITICAL: Also clear the UsageMonitor's usage cache for this profile
+          // This ensures fresh usage data is fetched from the API instead of using stale cached data
+          // The keychain cache clear alone is not enough - we also need to clear the usage cache
+          const usageMonitor = getUsageMonitor();
+          usageMonitor.clearProfileUsageCache(profileId);
+          console.warn('[Claude Code] Cleared usage cache for profile after re-authentication:', profileId);
 
           // Clean up backup file after successful authentication
           if (existsSync(claudeJsonBakPath)) {

@@ -5,6 +5,7 @@ import path from 'path';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -951,7 +952,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1021,7 +1022,7 @@ function isAppInstalled(
   for (const checkPath of specificPaths) {
     const expandedPath = checkPath
       .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+      .replace('~', homedir());
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {
@@ -1465,9 +1466,9 @@ async function updateTaskStatusAfterPRCreation(
 
   // Await status persistence to ensure completion before resolving
   try {
-    const persisted = await persistPlanStatus(planPath, 'pr_created');
+    const persisted = await persistPlanStatus(planPath, 'done');
     result.mainProjectStatus = persisted;
-    debug('Main project status persisted to pr_created:', persisted);
+    debug('Main project status persisted to done:', persisted);
   } catch (err) {
     debug('Failed to persist main project status:', err);
   }
@@ -1484,9 +1485,9 @@ async function updateTaskStatusAfterPRCreation(
     const worktreeMetadataPath = path.join(worktreePath, specsBaseDir, specId, 'task_metadata.json');
 
     try {
-      const persisted = await persistPlanStatus(worktreePlanPath, 'pr_created');
+      const persisted = await persistPlanStatus(worktreePlanPath, 'done');
       result.worktreeStatus = persisted;
-      debug('Worktree status persisted to pr_created:', persisted);
+      debug('Worktree status persisted to done:', persisted);
     } catch (err) {
       debug('Failed to persist worktree status:', err);
     }

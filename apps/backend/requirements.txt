@@ -2,6 +2,9 @@
 claude-agent-sdk>=0.1.19
 python-dotenv>=1.0.0
 
+# WebSocket server support
+websockets>=11.0
+
 # TOML parsing fallback for Python < 3.11
 tomli>=2.0.0; python_version < "3.11"
 
