@@ -372,12 +372,16 @@ export function useProjectSettings(
         const result = await window.electronAPI.updateProjectEnv(project.id, newConfig);
         if (!result.success) {
           console.error('[useProjectSettings] Failed to auto-save env config:', result.error);
+          // Don't update UI state if backend save failed - prevents data inconsistency
+          return;
         }
       } catch (err) {
         console.error('[useProjectSettings] Error auto-saving env config:', err);
+        // Don't update UI state if backend save threw - prevents data inconsistency
+        return;
       }
 
-      // Then update local state (triggers effects that read from disk)
+      // Only update local state after successful backend save
       setEnvConfig(newConfig);
 
       // Update the shared store so other components (like Sidebar) can react immediately
