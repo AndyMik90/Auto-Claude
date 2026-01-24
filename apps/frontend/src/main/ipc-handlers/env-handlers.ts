@@ -11,7 +11,7 @@ import { parseEnvFile } from './utils';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { debugError } from '../../shared/utils/debug-logger';
 import { getSpawnOptions, getSpawnCommand } from '../env-utils';
-import { decryptToken } from '../claude-profile/token-encryption';
+import { decryptToken, isTokenEncrypted } from '../claude-profile/token-encryption';
 
 // GitLab environment variable keys
 const GITLAB_ENV_KEYS = {
