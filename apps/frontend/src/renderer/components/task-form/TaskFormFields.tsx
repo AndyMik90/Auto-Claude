@@ -37,6 +37,10 @@ import type {
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../../shared/types/settings';
 
 interface TaskFormFieldsProps {
+  // Project context (for loading image thumbnails from disk)
+  projectPath?: string;
+  specId?: string;
+
   // Description field
   description: string;
   onDescriptionChange: (value: string) => void;
@@ -98,6 +102,8 @@ interface TaskFormFieldsProps {
 }
 
 export function TaskFormFields({
+  projectPath,
+  specId,
   description,
   onDescriptionChange,
   descriptionPlaceholder,
@@ -164,6 +170,9 @@ export function TaskFormFields({
   // This handles the case when TaskFormFields mounts with persisted images from disk
   useEffect(() => {
     const loadMissingThumbnails = async () => {
+      // Need project context to load images from disk
+      if (!projectPath || !specId) return;
+
       // Find images that have path but no thumbnail and haven't been attempted yet
       const imagesToLoad = images.filter(
         img => img.path && !img.thumbnail && !loadedThumbnailsRef.current.has(img.id)
@@ -179,11 +188,11 @@ export function TaskFormFields({
 
       for (const image of imagesToLoad) {
         try {
-          const result = await window.electronAPI.loadImageThumbnail(image.path!);
-          if (result.success && result.data?.thumbnail) {
+          const result = await window.electronAPI.loadImageThumbnail(projectPath, specId, image.path!);
+          if (result.success && result.data) {
             const idx = updatedImages.findIndex(img => img.id === image.id);
             if (idx !== -1) {
-              updatedImages[idx] = { ...updatedImages[idx], thumbnail: result.data.thumbnail };
+              updatedImages[idx] = { ...updatedImages[idx], thumbnail: result.data };
               hasUpdates = true;
             }
           }
@@ -198,7 +207,7 @@ export function TaskFormFields({
     };
 
     loadMissingThumbnails();
-  }, [images, onImagesChange]);
+  }, [images, onImagesChange, projectPath, specId]);
 
   // Use the shared image upload hook with translated error messages
   const {

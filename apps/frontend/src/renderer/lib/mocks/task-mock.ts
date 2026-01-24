@@ -75,7 +75,7 @@ export const taskMock = {
   checkTaskRunning: async () => ({ success: true, data: false }),
 
   // Image operations
-  loadImageThumbnail: async (_filePath: string) => ({
+  loadImageThumbnail: async (_projectPath: string, _specId: string, _imagePath: string) => ({
     success: false,
     error: 'Image loading not available in browser mode'
   }),

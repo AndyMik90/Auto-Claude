@@ -169,7 +169,7 @@ export interface ElectronAPI {
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
 
   // Image operations
-  loadImageThumbnail: (filePath: string) => Promise<IPCResult<{ thumbnail: string }>>;
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
