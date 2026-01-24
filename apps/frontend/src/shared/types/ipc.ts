@@ -66,6 +66,7 @@ import type {
   ClaudeAutoSwitchSettings,
   ClaudeAuthResult,
   ClaudeUsageSnapshot,
+  AllProfilesUsage,
   TerminalProfileChangedEvent
 } from './agent';
 import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult } from './settings';
@@ -292,6 +293,10 @@ export interface ElectronAPI {
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */
   updateAutoSwitchSettings: (settings: Partial<ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  /** Get unified account priority order (both OAuth and API profiles) */
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  /** Set unified account priority order */
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   /** Request usage fetch from a terminal (sends /usage command) */
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   /** Get the best available profile (for manual switching) */
@@ -306,6 +311,8 @@ export interface ElectronAPI {
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
+  /** Request all profiles usage immediately (for startup/refresh) */
+  requestAllProfilesUsage: () => Promise<IPCResult<AllProfilesUsage | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */
@@ -315,6 +322,8 @@ export interface ElectronAPI {
     reason: string;
     usageSnapshot: ClaudeUsageSnapshot;
   }) => void) => () => void;
+  /** Listen for all profiles usage updates (for multi-profile display) */
+  onAllProfilesUsageUpdated?: (callback: (allProfilesUsage: AllProfilesUsage) => void) => () => void;
 
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
