@@ -262,8 +262,8 @@ export interface GitHubAPI {
     callback: (projectId: string, error: { error: string }) => void
   ) => IpcListenerCleanup;
 
-  // PR operations
-  listPRs: (projectId: string, page?: number) => Promise<PRData[]>;
+  // PR operations (fetches up to 100 open PRs at once - GitHub GraphQL limit)
+  listPRs: (projectId: string) => Promise<PRData[]>;
   getPR: (projectId: string, prNumber: number) => Promise<PRData | null>;
   runPRReview: (projectId: string, prNumber: number) => void;
   cancelPRReview: (projectId: string, prNumber: number) => Promise<boolean>;
