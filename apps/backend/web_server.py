@@ -32,6 +32,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional, Set, Tuple
 try:
     import websockets
     from websockets.server import WebSocketServerProtocol
+    from websockets.asyncio.server import Response
 except ImportError:
     raise ImportError(
         "websockets library not installed. "
@@ -71,17 +72,18 @@ ChannelHandler = Callable[[WebSocketServerProtocol, Any], Awaitable[Optional[Dic
 # Origin Validation
 # ============================================================================
 
-async def validate_origin(request) -> Optional[Tuple[int, Dict[str, str], bytes]]:
+async def validate_origin(connection, request) -> Optional[Response]:
     """
     Validate WebSocket connection origin against allowed CORS origins.
 
     Compatible with websockets v16.0 API.
 
     Args:
+        connection: ServerConnection object (websockets v16.0)
         request: websockets.Request object (v16.0+ API)
 
     Returns:
-        None if origin is allowed, (status, headers, body) tuple to reject
+        None if origin is allowed, Response object to reject
     """
     # Access headers via request.headers (v16.0 API)
     origin = request.headers.get("Origin")
@@ -103,10 +105,13 @@ async def validate_origin(request) -> Optional[Tuple[int, Dict[str, str], bytes]
     # Reject unauthorized origin
     logger.warning("SECURITY: Rejected connection from unauthorized origin: %s (allowed: %s)",
                   origin, allowed_origins)
-    return (
-        403,
-        {"Connection": "close", "Content-Type": "text/plain"},
-        b"Forbidden: Invalid origin. This WebSocket server only accepts connections from authorized origins.\n"
+
+    from websockets.datastructures import Headers
+    return Response(
+        status_code=403,
+        reason_phrase="Forbidden",
+        headers=Headers({"Connection": "close", "Content-Type": "text/plain"}),
+        body=b"Forbidden: Invalid origin. This WebSocket server only accepts connections from authorized origins.\n"
     )
 
 
