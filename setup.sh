@@ -72,7 +72,23 @@ echo "Step 2: Installing Python dependencies..."
 echo "------------------------------------------"
 
 pip install --upgrade pip
-pip install -r apps/backend/requirements.txt
+
+# Install core dependencies (skip optional graphiti/memory deps if they fail)
+# Core deps: claude-agent-sdk, python-dotenv, pydantic, httpx, aiohttp, sentry-sdk
+echo "Installing core dependencies..."
+pip install claude-agent-sdk python-dotenv pydantic httpx aiohttp sentry-sdk google-generativeai
+
+# Try to install optional memory dependencies (require cmake)
+echo ""
+echo "Installing optional dependencies (Graphiti memory system)..."
+echo -e "${YELLOW}Note: These require cmake. Install with: brew install cmake${NC}"
+if pip install real_ladybug graphiti-core pandas 2>/dev/null; then
+    echo -e "${GREEN}Graphiti memory system installed${NC}"
+else
+    echo -e "${YELLOW}Graphiti dependencies skipped (cmake not found)${NC}"
+    echo -e "${YELLOW}Memory features will be disabled. To enable later:${NC}"
+    echo -e "${YELLOW}  brew install cmake && pip install real_ladybug graphiti-core pandas${NC}"
+fi
 
 echo -e "${GREEN}Python dependencies installed${NC}"
 

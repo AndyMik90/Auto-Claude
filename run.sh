@@ -111,7 +111,7 @@ run_cli() {
 
 # Test JIRA connection
 test_jira() {
-    echo -e "${CYAN}Testing JIRA MCP Bridge connection...${NC}"
+    echo -e "${CYAN}Testing JIRA connection...${NC}"
     echo ""
     activate_venv
     cd apps/backend
@@ -121,43 +121,51 @@ import asyncio
 import sys
 sys.path.insert(0, '.')
 
-from integrations.jira.integration import JiraManager, is_jira_enabled
-from pathlib import Path
+from integrations.jira.direct_client import DirectJiraClient, JiraCredentials
 
 async def test():
-    print(f"JIRA integration enabled: {is_jira_enabled()}")
+    # Try to load credentials
+    creds = JiraCredentials.from_mcp_settings() or JiraCredentials.from_env()
 
-    if not is_jira_enabled():
-        print("\n⚠️  JIRA not configured.")
+    if not creds:
+        print("⚠️  JIRA not configured.")
         print("   Ensure hc-jira is in ~/.claude/settings.json")
-        print("   Or set JIRA_MCP_START_SCRIPT in .env")
+        print("   Or set JIRA_HOST, JIRA_EMAIL, JIRA_API_TOKEN in environment")
         return
 
-    print("\nConnecting to JIRA via MCP...")
-    manager = JiraManager(Path('.'), Path('.'))
+    print(f"JIRA Host: {creds.host}")
+    print(f"Email: {creds.email}")
+    print(f"Default Project: {creds.default_project or 'Not set'}")
+
+    print("\nConnecting to JIRA...")
 
     try:
-        await manager.connect()
-        print("✓ Connected to JIRA MCP server")
+        async with DirectJiraClient(creds) as client:
+            # Get current user
+            user = await client.get_current_user()
+            print(f"✓ Authenticated as: {user.get('displayName', 'Unknown')}")
 
-        # Try a simple search
-        issues = await manager.search_issues('ORDER BY created DESC', 3)
-        print(f"✓ Found {len(issues)} recent issues")
+            # Search for issues (new API requires bounded queries)
+            project = creds.default_project or 'CAP'
+            jql = f'project = {project} ORDER BY created DESC'
+            result = await client.search_issues(jql, 5, fields=['key', 'summary', 'status'])
+            issues = result.get('issues', [])
+            print(f"✓ Found {len(issues)} recent issues")
 
-        for issue in issues:
-            key = issue.get('key', 'N/A')
-            summary = issue.get('fields', {}).get('summary', 'No summary')[:50]
-            print(f"   - {key}: {summary}")
+            for issue in issues:
+                key = issue.get('key', 'N/A')
+                fields = issue.get('fields', {})
+                summary = fields.get('summary', 'No summary')[:50] if fields.get('summary') else 'No summary'
+                status_obj = fields.get('status', {})
+                status = status_obj.get('name', 'Unknown') if status_obj else 'Unknown'
+                print(f"   - {key}: {summary} [{status}]")
 
-        await manager.disconnect()
-        print("\n✓ JIRA integration working!")
+            print("\n✓ JIRA integration working!")
 
     except Exception as e:
         print(f"\n✗ Error: {e}")
-        print("\nTroubleshooting:")
-        print("  1. Check hc-jira MCP server is configured")
-        print("  2. Verify JIRA credentials in MCP config")
-        print("  3. Run: claude  # then /mcp to check servers")
+        import traceback
+        traceback.print_exc()
 
 asyncio.run(test())
 EOF
