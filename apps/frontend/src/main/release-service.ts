@@ -198,6 +198,17 @@ export class ReleaseService extends EventEmitter {
 
     // Check 1: Git working directory is clean
     try {
+      // Refresh the git index to ensure accurate status after external commits
+      try {
+        execFileSync(getToolPath('git'), ['update-index', '--refresh'], {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      } catch {
+        // Ignore refresh errors - it's a best-effort optimization
+      }
+
       const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
         cwd: projectPath,
         encoding: 'utf-8'
@@ -445,6 +456,17 @@ export class ReleaseService extends EventEmitter {
 
       // If empty or error checking, assume merged for safety
       if (unmergedCommits === 'error') {
+        // Refresh the git index to ensure accurate status after external commits
+        try {
+          execFileSync(getToolPath('git'), ['update-index', '--refresh'], {
+            cwd: worktreePath,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+        } catch {
+          // Ignore refresh errors - it's a best-effort optimization
+        }
+
         // Try alternative: check if worktree has any uncommitted changes
         const hasChanges = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
           cwd: worktreePath,
@@ -486,6 +508,17 @@ export class ReleaseService extends EventEmitter {
     }
 
     // Check for uncommitted changes
+    // Refresh the git index to ensure accurate status after external commits
+    try {
+      execFileSync(getToolPath('git'), ['update-index', '--refresh'], {
+        cwd: projectPath,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    } catch {
+      // Ignore refresh errors - it's a best-effort optimization
+    }
+
     const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
       cwd: projectPath,
       encoding: 'utf-8'
