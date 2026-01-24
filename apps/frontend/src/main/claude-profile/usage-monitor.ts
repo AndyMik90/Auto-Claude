@@ -10,14 +10,41 @@
  */
 
 import { EventEmitter } from 'events';
+import { homedir } from 'os';
 import { getClaudeProfileManager } from '../claude-profile-manager';
-import { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import { ClaudeUsageSnapshot, ProfileUsageSummary, AllProfilesUsage } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
 import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
+import { getCredentialsFromKeychain, clearKeychainCache } from './credential-utils';
+import { isProfileRateLimited } from './rate-limit-manager';
 
 // Re-export for backward compatibility
 export type { ApiProvider };
+
+/**
+ * Create a safe fingerprint of a credential for debug logging.
+ * Shows first 8 and last 4 characters, hiding the sensitive middle portion.
+ * This is NOT for authentication - only for human-readable debug identification.
+ *
+ * @param credential - The credential (token or API key) to create a fingerprint for
+ * @returns A safe fingerprint like "sk-ant-oa...xyz9" or "null" if no credential
+ */
+function getCredentialFingerprint(credential: string | null | undefined): string {
+  if (!credential) return 'null';
+  if (credential.length <= 16) return credential.slice(0, 4) + '...' + credential.slice(-2);
+  return credential.slice(0, 8) + '...' + credential.slice(-4);
+}
+
+/**
+ * Allowed domains for usage API requests.
+ * Only these domains are permitted for outbound usage monitoring requests.
+ */
+const ALLOWED_USAGE_API_DOMAINS = new Set([
+  'api.anthropic.com',
+  'api.z.ai',
+  'open.bigmodel.cn',
+]);
 
 /**
  * Provider usage endpoint configuration
@@ -155,9 +182,19 @@ export function detectProvider(baseUrl: string): ApiProvider {
 interface ActiveProfileResult {
   profileId: string;
   profileName: string;
+  profileEmail?: string;
   isAPIProfile: boolean;
   baseUrl: string;
   credential?: string;
+}
+
+/**
+ * Type guard to check if an error has an HTTP status code
+ * @param error - The error to check
+ * @returns true if the error has a statusCode property
+ */
+function isHttpError(error: unknown): error is Error & { statusCode?: number } {
+  return error instanceof Error && 'statusCode' in error;
 }
 
 export class UsageMonitor extends EventEmitter {
@@ -174,6 +211,11 @@ export class UsageMonitor extends EventEmitter {
   // Swap loop protection: track profiles that recently failed auth
   private authFailedProfiles: Map<string, number> = new Map(); // profileId -> timestamp
   private static AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
+
+  // Cache for all profiles' usage data
+  // Map<profileId, { usage: ProfileUsageSummary, fetchedAt: number }>
+  private allProfilesUsageCache: Map<string, { usage: ProfileUsageSummary; fetchedAt: number }> = new Map();
+  private static PROFILE_USAGE_CACHE_TTL_MS = 60 * 1000; // 1 minute cache for inactive profiles
 
   // Debug flag for verbose logging
   private readonly isDebug = process.env.DEBUG === 'true';
@@ -238,12 +280,329 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
+   * Clear the usage cache for a specific profile.
+   * Called after re-authentication to ensure fresh usage data is fetched.
+   *
+   * @param profileId - Profile identifier to clear cache for
+   */
+  clearProfileUsageCache(profileId: string): void {
+    const deleted = this.allProfilesUsageCache.delete(profileId);
+    if (this.isDebug) {
+      console.warn('[UsageMonitor] Cleared usage cache for profile:', {
+        profileId,
+        wasInCache: deleted
+      });
+    }
+  }
+
+  /**
+   * Get all profiles usage data (for multi-profile display in UI)
+   * Returns cached data if fresh, otherwise fetches for all profiles
+   *
+   * Uses parallel fetching for inactive profiles to minimize blocking delays.
+   */
+  async getAllProfilesUsage(): Promise<AllProfilesUsage | null> {
+    const profileManager = getClaudeProfileManager();
+    const settings = profileManager.getSettings();
+    const activeProfileId = settings.activeProfileId;
+
+    if (!this.currentUsage) {
+      return null;
+    }
+
+    const now = Date.now();
+    const allProfiles: ProfileUsageSummary[] = [];
+
+    // First pass: identify profiles that need fresh data vs cached
+    type ProfileToFetch = { profile: typeof settings.profiles[0]; index: number };
+    const profilesToFetch: ProfileToFetch[] = [];
+    const profileResults: (ProfileUsageSummary | null)[] = new Array(settings.profiles.length).fill(null);
+
+    for (let i = 0; i < settings.profiles.length; i++) {
+      const profile = settings.profiles[i];
+      const cached = this.allProfilesUsageCache.get(profile.id);
+
+      // Use cached data if fresh (within TTL)
+      if (cached && (now - cached.fetchedAt) < UsageMonitor.PROFILE_USAGE_CACHE_TTL_MS) {
+        profileResults[i] = {
+          ...cached.usage,
+          isActive: profile.id === activeProfileId
+        };
+        continue;
+      }
+
+      // For active profile, use the current detailed usage
+      if (profile.id === activeProfileId && this.currentUsage) {
+        const summary = this.buildProfileUsageSummary(profile, this.currentUsage);
+        profileResults[i] = summary;
+        this.allProfilesUsageCache.set(profile.id, { usage: summary, fetchedAt: now });
+        continue;
+      }
+
+      // Mark for parallel fetch
+      profilesToFetch.push({ profile, index: i });
+    }
+
+    // Parallel fetch for all inactive profiles that need fresh data
+    if (profilesToFetch.length > 0) {
+      // Collect usage updates for batch save (avoids race condition with concurrent saves)
+      const usageUpdates: Array<{ profileId: string; sessionPercent: number; weeklyPercent: number }> = [];
+
+      const fetchPromises = profilesToFetch.map(async ({ profile, index }) => {
+        const inactiveUsage = await this.fetchUsageForInactiveProfile(profile);
+        const rateLimitStatus = isProfileRateLimited(profile);
+
+        let sessionPercent = 0;
+        let weeklyPercent = 0;
+
+        if (inactiveUsage) {
+          sessionPercent = inactiveUsage.sessionPercent;
+          weeklyPercent = inactiveUsage.weeklyPercent;
+          // Collect update for batch save (don't save here to avoid race condition)
+          return {
+            index,
+            update: { profileId: profile.id, sessionPercent, weeklyPercent },
+            profile,
+            inactiveUsage,
+            rateLimitStatus
+          };
+        } else {
+          // Fallback to cached profile data if API fetch failed
+          sessionPercent = profile.usage?.sessionUsagePercent ?? 0;
+          weeklyPercent = profile.usage?.weeklyUsagePercent ?? 0;
+          return {
+            index,
+            update: null, // No update needed for fallback
+            profile,
+            inactiveUsage,
+            rateLimitStatus,
+            sessionPercent,
+            weeklyPercent
+          };
+        }
+      });
+
+      // Wait for all fetches to complete in parallel
+      const fetchResults = await Promise.all(fetchPromises);
+
+      // Collect all updates and build summaries
+      for (const result of fetchResults) {
+        const { index, update, profile, inactiveUsage, rateLimitStatus } = result;
+
+        // Get percentages from either the update or the fallback values
+        const sessionPercent = update?.sessionPercent ?? result.sessionPercent ?? 0;
+        const weeklyPercent = update?.weeklyPercent ?? result.weeklyPercent ?? 0;
+
+        if (update) {
+          usageUpdates.push(update);
+        }
+
+        const summary: ProfileUsageSummary = {
+          profileId: profile.id,
+          profileName: profile.name,
+          profileEmail: profile.email,
+          sessionPercent,
+          weeklyPercent,
+          isAuthenticated: profile.isAuthenticated ?? false,
+          isRateLimited: rateLimitStatus.limited,
+          rateLimitType: rateLimitStatus.type,
+          availabilityScore: this.calculateAvailabilityScore(
+            sessionPercent,
+            weeklyPercent,
+            rateLimitStatus.limited,
+            rateLimitStatus.type,
+            profile.isAuthenticated ?? false
+          ),
+          isActive: profile.id === activeProfileId,
+          lastFetchedAt: inactiveUsage?.fetchedAt?.toISOString() ?? profile.usage?.lastUpdated?.toISOString()
+        };
+
+        this.allProfilesUsageCache.set(profile.id, { usage: summary, fetchedAt: now });
+        profileResults[index] = summary;
+      }
+
+      // Batch save all usage updates at once (single disk write, no race condition)
+      if (usageUpdates.length > 0) {
+        profileManager.batchUpdateProfileUsageFromAPI(usageUpdates);
+      }
+    }
+
+    // Collect non-null results
+    for (const result of profileResults) {
+      if (result) {
+        allProfiles.push(result);
+      }
+    }
+
+    // Sort by availability score (highest first = most available)
+    allProfiles.sort((a, b) => b.availabilityScore - a.availabilityScore);
+
+    return {
+      activeProfile: this.currentUsage,
+      allProfiles,
+      fetchedAt: new Date()
+    };
+  }
+
+  /**
+   * Fetch usage for an inactive profile using its own credentials
+   * This allows showing real usage data for non-active profiles
+   */
+  private async fetchUsageForInactiveProfile(
+    profile: { id: string; name: string; email?: string; configDir?: string; isAuthenticated?: boolean }
+  ): Promise<ClaudeUsageSnapshot | null> {
+    // Only fetch for authenticated profiles with a configDir
+    if (!profile.isAuthenticated || !profile.configDir) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Skipping inactive profile fetch - not authenticated or no configDir:', {
+          profileId: profile.id,
+          profileName: profile.name,
+          isAuthenticated: profile.isAuthenticated,
+          hasConfigDir: !!profile.configDir
+        });
+      }
+      return null;
+    }
+
+    try {
+      // Get credentials from keychain for this profile's configDir
+      const expandedConfigDir = profile.configDir.startsWith('~')
+        ? profile.configDir.replace(/^~/, homedir())
+        : profile.configDir;
+
+      const keychainCreds = getCredentialsFromKeychain(expandedConfigDir);
+
+      if (!keychainCreds.token) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor] No keychain credentials for inactive profile:', profile.name);
+        }
+        return null;
+      }
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Fetching usage for inactive profile:', {
+          profileId: profile.id,
+          profileName: profile.name,
+          tokenFingerprint: getCredentialFingerprint(keychainCreds.token)
+        });
+      }
+
+      // Fetch usage via API - OAuth profiles always use Anthropic
+      const usage = await this.fetchUsageViaAPI(
+        keychainCreds.token,
+        profile.id,
+        profile.name,
+        keychainCreds.email ?? profile.email,
+        {
+          profileId: profile.id,
+          profileName: profile.name,
+          profileEmail: keychainCreds.email ?? profile.email,
+          isAPIProfile: false,
+          baseUrl: 'https://api.anthropic.com'
+        }
+      );
+
+      if (this.isDebug && usage) {
+        console.warn('[UsageMonitor] Successfully fetched inactive profile usage:', {
+          profileName: profile.name,
+          sessionPercent: usage.sessionPercent,
+          weeklyPercent: usage.weeklyPercent
+        });
+      }
+
+      return usage;
+    } catch (error) {
+      console.warn('[UsageMonitor] Failed to fetch inactive profile usage:', profile.name, error);
+      return null;
+    }
+  }
+
+  /**
+   * Build a ProfileUsageSummary from a ClaudeUsageSnapshot
+   */
+  private buildProfileUsageSummary(
+    profile: { id: string; name: string; email?: string; isAuthenticated?: boolean },
+    usage: ClaudeUsageSnapshot
+  ): ProfileUsageSummary {
+    const profileManager = getClaudeProfileManager();
+    const fullProfile = profileManager.getProfile(profile.id);
+    const rateLimitStatus = fullProfile ? isProfileRateLimited(fullProfile) : { limited: false };
+
+    return {
+      profileId: profile.id,
+      profileName: profile.name,
+      profileEmail: usage.profileEmail || profile.email,
+      sessionPercent: usage.sessionPercent,
+      weeklyPercent: usage.weeklyPercent,
+      sessionResetTimestamp: usage.sessionResetTimestamp,
+      weeklyResetTimestamp: usage.weeklyResetTimestamp,
+      isAuthenticated: profile.isAuthenticated ?? true,
+      isRateLimited: rateLimitStatus.limited,
+      rateLimitType: rateLimitStatus.type,
+      availabilityScore: this.calculateAvailabilityScore(
+        usage.sessionPercent,
+        usage.weeklyPercent,
+        rateLimitStatus.limited,
+        rateLimitStatus.type,
+        profile.isAuthenticated ?? true
+      ),
+      isActive: usage.profileId === profileManager.getActiveProfile()?.id,
+      lastFetchedAt: usage.fetchedAt?.toISOString()
+    };
+  }
+
+  /**
+   * Calculate availability score for a profile (higher = more available)
+   *
+   * Scoring algorithm:
+   * - Base score: 100
+   * - Rate limited: -500 (session) or -1000 (weekly)
+   * - Unauthenticated: -500
+   * - Weekly usage penalty: -(weeklyPercent * 0.5)
+   * - Session usage penalty: -(sessionPercent * 0.2)
+   */
+  private calculateAvailabilityScore(
+    sessionPercent: number,
+    weeklyPercent: number,
+    isRateLimited: boolean,
+    rateLimitType?: 'session' | 'weekly',
+    isAuthenticated: boolean = true
+  ): number {
+    let score = 100;
+
+    // Penalize rate-limited profiles heavily
+    if (isRateLimited) {
+      if (rateLimitType === 'weekly') {
+        score -= 1000; // Weekly limit is worse (takes longer to reset)
+      } else {
+        score -= 500; // Session limit resets sooner
+      }
+    }
+
+    // Penalize unauthenticated profiles
+    if (!isAuthenticated) {
+      score -= 500;
+    }
+
+    // Penalize based on current usage (weekly more important)
+    score -= weeklyPercent * 0.5;
+    score -= sessionPercent * 0.2;
+
+    return Math.round(score * 100) / 100; // Round to 2 decimal places
+  }
+
+  /**
    * Get credential for usage monitoring (OAuth token or API key)
    * Detects profile type and returns appropriate credential
    *
    * Priority:
    * 1. API Profile (if active) - returns apiKey directly
-   * 2. OAuth Profile - returns decrypted oauthToken
+   * 2. OAuth Profile - reads FRESH token from Keychain (not cached oauthToken)
+   *
+   * IMPORTANT: For OAuth profiles, we read from Keychain instead of cached profile.oauthToken.
+   * OAuth tokens expire in 8-12 hours, but Claude CLI auto-refreshes and stores fresh tokens
+   * in Keychain. Using cached tokens causes 401 errors after a few hours.
+   * See: docs/LONG_LIVED_AUTH_PLAN.md
    *
    * @returns The credential string or undefined if none available
    */
@@ -269,15 +628,32 @@ export class UsageMonitor extends EventEmitter {
       }
     }
 
-    // Fall back to OAuth profile
+    // Fall back to OAuth profile - read FRESH token from Keychain
     const profileManager = getClaudeProfileManager();
     const activeProfile = profileManager.getActiveProfile();
-    if (activeProfile?.oauthToken) {
-      const decryptedToken = profileManager.getProfileToken(activeProfile.id);
-      if (this.isDebug && decryptedToken) {
-        console.warn('[UsageMonitor:TRACE] Using OAuth profile credential:', activeProfile.name);
+    if (activeProfile) {
+      // Read fresh token from Keychain using configDir (same as CLAUDE_CONFIG_DIR)
+      // This ensures we get the auto-refreshed token, not a stale cached copy
+      // IMPORTANT: Always pass configDir, even for default profiles - the keychain
+      // service name is based on the expanded path (e.g., /Users/xxx/.claude), not undefined
+      const keychainCreds = getCredentialsFromKeychain(activeProfile.configDir);
+
+      if (keychainCreds.token) {
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:TRACE] Using OAuth token from Keychain for profile:', activeProfile.name, {
+            tokenFingerprint: getCredentialFingerprint(keychainCreds.token)
+          });
+        }
+        return keychainCreds.token;
       }
-      return decryptedToken;
+
+      // Keychain read failed - log warning (don't fall back to cached token)
+      if (keychainCreds.error) {
+        console.warn('[UsageMonitor] Keychain access failed:', keychainCreds.error);
+      } else if (this.isDebug) {
+        console.warn('[UsageMonitor:TRACE] No token in Keychain for profile:', activeProfile.name,
+          '- user may need to re-authenticate with claude /login');
+      }
     }
 
     // No credential available
@@ -324,8 +700,18 @@ export class UsageMonitor extends EventEmitter {
 
       this.currentUsage = usage;
 
+      // Step 2.5: Persist usage to profile for caching (so other profiles can display cached usage)
+      const profileManager = getClaudeProfileManager();
+      profileManager.updateProfileUsageFromAPI(profileId, usage.sessionPercent, usage.weeklyPercent);
+
       // Step 3: Emit usage update for UI (always emit, regardless of proactive swap settings)
       this.emit('usage-updated', usage);
+
+      // Step 3.5: Emit all profiles usage for multi-profile display
+      const allProfilesUsage = await this.getAllProfilesUsage();
+      if (allProfilesUsage) {
+        this.emit('all-profiles-usage-updated', allProfilesUsage);
+      }
 
       // Step 4: Check thresholds and perform proactive swap (OAuth profiles only)
       if (!isAPIProfile) {
@@ -378,7 +764,7 @@ export class UsageMonitor extends EventEmitter {
       }
     } catch (error) {
       // Step 5: Handle auth failures
-      if ((error as any).statusCode === 401 || (error as any).statusCode === 403) {
+      if (isHttpError(error) && (error.statusCode === 401 || error.statusCode === 403)) {
         if (profileId) {
           await this.handleAuthFailure(profileId, isAPIProfile);
           return; // handleAuthFailure manages its own logging
@@ -467,19 +853,32 @@ export class UsageMonitor extends EventEmitter {
       return null;
     }
 
+    // Get email from profile or try keychain
+    let profileEmail = activeOAuthProfile.email;
+    if (!profileEmail) {
+      // Try to get email from keychain
+      // IMPORTANT: Always pass configDir - service name is based on expanded path (e.g., /Users/xxx/.claude)
+      const keychainCreds = getCredentialsFromKeychain(activeOAuthProfile.configDir);
+      profileEmail = keychainCreds.email ?? undefined;
+    }
+
     if (this.isDebug) {
       console.warn('[UsageMonitor:TRACE] Active auth type: OAuth Profile', {
         profileId: activeOAuthProfile.id,
-        profileName: activeOAuthProfile.name
+        profileName: activeOAuthProfile.name,
+        profileEmail
       });
     }
 
-    return {
+    const result = {
       profileId: activeOAuthProfile.id,
       profileName: activeOAuthProfile.name,
+      profileEmail,
       isAPIProfile: false,
       baseUrl: 'https://api.anthropic.com'
     };
+
+    return result;
   }
 
   /**
@@ -511,6 +910,17 @@ export class UsageMonitor extends EventEmitter {
    */
   private async handleAuthFailure(profileId: string, isAPIProfile: boolean): Promise<void> {
     const profileManager = getClaudeProfileManager();
+
+    // Clear keychain cache for this profile so next attempt gets fresh credentials
+    // This handles cases where the token was refreshed by Claude CLI but our cache is stale
+    if (!isAPIProfile) {
+      const profile = profileManager.getProfile(profileId);
+      if (profile?.configDir) {
+        console.warn('[UsageMonitor] Auth failure - clearing keychain cache for profile:', profileId);
+        clearKeychainCache(profile.configDir);
+      }
+    }
+
     const settings = profileManager.getAutoSwitchSettings();
 
     // Proactive swap is only supported for OAuth profiles, not API profiles
@@ -560,27 +970,45 @@ export class UsageMonitor extends EventEmitter {
     credential?: string,
     activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
-    // Get profile name - check both API profiles and OAuth profiles
+    // Get profile name and email - prefer activeProfile since it's already determined
     let profileName: string | undefined;
+    let profileEmail: string | undefined;
 
-    // First, check if it's an API profile
-    try {
-      const profilesFile = await loadProfilesFile();
-      const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
-      if (apiProfile) {
-        profileName = apiProfile.name;
-        if (this.isDebug) {
-          console.warn('[UsageMonitor:FETCH] Found API profile:', {
-            profileId,
-            profileName,
-            baseUrl: apiProfile.baseUrl
-          });
-        }
-      }
-    } catch (error) {
-      // Failed to load API profiles, continue to OAuth check
+    // Use activeProfile data if available (already fetched and validated)
+    // This fixes the bug where API profile names were incorrectly shown for OAuth profiles
+    if (activeProfile?.profileName) {
+      profileName = activeProfile.profileName;
+      profileEmail = activeProfile.profileEmail;
       if (this.isDebug) {
-        console.warn('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+        console.warn('[UsageMonitor:FETCH] Using activeProfile data:', {
+          profileId,
+          profileName,
+          profileEmail,
+          isAPIProfile: activeProfile.isAPIProfile
+        });
+      }
+    }
+
+    // Only search API profiles if not already set from activeProfile
+    if (!profileName) {
+      try {
+        const profilesFile = await loadProfilesFile();
+        const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
+        if (apiProfile) {
+          profileName = apiProfile.name;
+          if (this.isDebug) {
+            console.warn('[UsageMonitor:FETCH] Found API profile:', {
+              profileId,
+              profileName,
+              baseUrl: apiProfile.baseUrl
+            });
+          }
+        }
+      } catch (error) {
+        // Failed to load API profiles, continue to OAuth check
+        if (this.isDebug) {
+          console.warn('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+        }
       }
     }
 
@@ -590,10 +1018,15 @@ export class UsageMonitor extends EventEmitter {
       const oauthProfile = profileManager.getProfile(profileId);
       if (oauthProfile) {
         profileName = oauthProfile.name;
+        // Get email from OAuth profile if not already set
+        if (!profileEmail) {
+          profileEmail = oauthProfile.email;
+        }
         if (this.isDebug) {
           console.warn('[UsageMonitor:FETCH] Found OAuth profile:', {
             profileId,
-            profileName
+            profileName,
+            profileEmail
           });
         }
       }
@@ -620,7 +1053,7 @@ export class UsageMonitor extends EventEmitter {
       if (this.isDebug) {
         console.warn('[UsageMonitor:FETCH] Attempting API fetch method');
       }
-      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName, activeProfile);
+      const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName, profileEmail, activeProfile);
       if (apiUsage) {
         console.warn('[UsageMonitor] Successfully fetched via API');
         if (this.isDebug) {
@@ -665,6 +1098,7 @@ export class UsageMonitor extends EventEmitter {
    * @param credential - OAuth token or API key
    * @param profileId - Profile identifier
    * @param profileName - Profile display name
+   * @param profileEmail - Optional email associated with the profile
    * @param activeProfile - Optional pre-determined active profile info to avoid race conditions
    * @returns Normalized usage snapshot or null on failure
    */
@@ -672,6 +1106,7 @@ export class UsageMonitor extends EventEmitter {
     credential: string,
     profileId: string,
     profileName: string,
+    profileEmail?: string,
     activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
     if (this.isDebug) {
@@ -737,6 +1172,14 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
+        console.warn('[UsageMonitor:API_FETCH] API request:', {
+          endpoint: usageEndpoint,
+          profileId,
+          credentialFingerprint: getCredentialFingerprint(credential)
+        });
+      }
+
+      if (this.isDebug) {
         console.warn('[UsageMonitor:API_FETCH] Fetching from endpoint:', {
           provider,
           endpoint: usageEndpoint,
@@ -744,17 +1187,45 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
-      // Step 4: Fetch usage from provider endpoint
+      // Step 4: Validate endpoint domain before making request
+      // Security: Only allow requests to known provider domains
+      let endpointHostname: string;
+      try {
+        const endpointUrl = new URL(usageEndpoint);
+        endpointHostname = endpointUrl.hostname;
+      } catch {
+        console.error('[UsageMonitor] Invalid usage endpoint URL:', usageEndpoint);
+        return null;
+      }
+
+      if (!ALLOWED_USAGE_API_DOMAINS.has(endpointHostname)) {
+        console.error('[UsageMonitor] Blocked request to unauthorized domain:', endpointHostname, {
+          allowedDomains: Array.from(ALLOWED_USAGE_API_DOMAINS)
+        });
+        return null;
+      }
+
+      // Step 5: Fetch usage from provider endpoint
       // All providers use Bearer token authentication (RFC 6750)
       const authHeader = `Bearer ${credential}`;
 
+      // Build headers based on provider
+      // Anthropic OAuth requires the 'anthropic-beta: oauth-2025-04-20' header
+      // See: https://codelynx.dev/posts/claude-code-usage-limits-statusline
+      const headers: Record<string, string> = {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      };
+
+      if (provider === 'anthropic') {
+        // OAuth authentication requires the beta header
+        headers['anthropic-beta'] = 'oauth-2025-04-20';
+        headers['anthropic-version'] = '2023-06-01';
+      }
+
       const response = await fetch(usageEndpoint, {
         method: 'GET',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json',
-          ...(provider === 'anthropic' && { 'anthropic-version': '2023-06-01' })
-        }
+        headers
       });
 
       if (!response.ok) {
@@ -874,13 +1345,13 @@ export class UsageMonitor extends EventEmitter {
 
       switch (provider) {
         case 'anthropic':
-          normalizedUsage = this.normalizeAnthropicResponse(rawData, profileId, profileName);
+          normalizedUsage = this.normalizeAnthropicResponse(rawData, profileId, profileName, profileEmail);
           break;
         case 'zai':
-          normalizedUsage = this.normalizeZAIResponse(responseData, profileId, profileName);
+          normalizedUsage = this.normalizeZAIResponse(responseData, profileId, profileName, profileEmail);
           break;
         case 'zhipu':
-          normalizedUsage = this.normalizeZhipuResponse(responseData, profileId, profileName);
+          normalizedUsage = this.normalizeZhipuResponse(responseData, profileId, profileName, profileEmail);
           break;
         default:
           console.warn('[UsageMonitor] Unsupported provider for usage normalization:', provider);
@@ -895,7 +1366,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
-        console.warn('[UsageMonitor:PROVIDER] Normalized usage:', {
+        console.warn('[UsageMonitor:API_FETCH] Fetch completed - usage:', {
+          profileId,
+          profileName,
+          email: normalizedUsage.profileEmail,
           provider,
           sessionPercent: normalizedUsage.sessionPercent,
           weeklyPercent: normalizedUsage.weeklyPercent,
@@ -922,32 +1396,63 @@ export class UsageMonitor extends EventEmitter {
   /**
    * Normalize Anthropic API response to ClaudeUsageSnapshot
    *
-   * Expected Anthropic response format:
+   * Actual Anthropic OAuth usage API response format:
    * {
-   *   "five_hour_utilization": 0.72,  // 0.0-1.0
-   *   "seven_day_utilization": 0.45,  // 0.0-1.0
-   *   "five_hour_reset_at": "2025-01-17T15:00:00Z",
-   *   "seven_day_reset_at": "2025-01-20T12:00:00Z"
+   *   "five_hour": {
+   *     "utilization": 19,  // integer 0-100
+   *     "resets_at": "2025-01-17T15:00:00Z"
+   *   },
+   *   "seven_day": {
+   *     "utilization": 45,  // integer 0-100
+   *     "resets_at": "2025-01-20T12:00:00Z"
+   *   }
    * }
    */
   private normalizeAnthropicResponse(
     data: any,
     profileId: string,
-    profileName: string
+    profileName: string,
+    profileEmail?: string
   ): ClaudeUsageSnapshot {
-    const fiveHourUtil = data.five_hour_utilization ?? 0;
-    const sevenDayUtil = data.seven_day_utilization ?? 0;
+    // Support both new nested format and legacy flat format for backward compatibility
+    //
+    // NEW format (current API): { five_hour: { utilization: 72, resets_at: "..." } }
+    // OLD format (legacy):      { five_hour_utilization: 0.72, five_hour_reset_at: "..." }
+
+    let fiveHourUtil: number;
+    let sevenDayUtil: number;
+    let sessionResetTimestamp: string | undefined;
+    let weeklyResetTimestamp: string | undefined;
+
+    // Check for new nested format first
+    if (data.five_hour !== undefined || data.seven_day !== undefined) {
+      // New nested format - utilization is already 0-100 integer
+      fiveHourUtil = data.five_hour?.utilization ?? 0;
+      sevenDayUtil = data.seven_day?.utilization ?? 0;
+      sessionResetTimestamp = data.five_hour?.resets_at;
+      weeklyResetTimestamp = data.seven_day?.resets_at;
+    } else {
+      // Legacy flat format - utilization is 0-1 float, needs *100
+      const rawFiveHour = data.five_hour_utilization ?? 0;
+      const rawSevenDay = data.seven_day_utilization ?? 0;
+      // Convert 0-1 float to 0-100 integer
+      fiveHourUtil = Math.round(rawFiveHour * 100);
+      sevenDayUtil = Math.round(rawSevenDay * 100);
+      sessionResetTimestamp = data.five_hour_reset_at;
+      weeklyResetTimestamp = data.seven_day_reset_at;
+    }
 
     return {
-      sessionPercent: Math.round(fiveHourUtil * 100),
-      weeklyPercent: Math.round(sevenDayUtil * 100),
+      sessionPercent: fiveHourUtil,
+      weeklyPercent: sevenDayUtil,
       // Omit sessionResetTime/weeklyResetTime - renderer uses timestamps with formatTimeRemaining
       sessionResetTime: undefined,
       weeklyResetTime: undefined,
-      sessionResetTimestamp: data.five_hour_reset_at,
-      weeklyResetTimestamp: data.seven_day_reset_at,
+      sessionResetTimestamp,
+      weeklyResetTimestamp,
       profileId,
       profileName,
+      profileEmail,
       fetchedAt: new Date(),
       limitType: sevenDayUtil > fiveHourUtil ? 'weekly' : 'session',
       usageWindows: {
@@ -966,6 +1471,7 @@ export class UsageMonitor extends EventEmitter {
    * @param data - Raw response data with limits array
    * @param profileId - Profile identifier
    * @param profileName - Profile display name
+   * @param profileEmail - Optional email associated with the profile
    * @param providerName - Provider name for logging ('zai' or 'zhipu')
    * @returns Normalized usage snapshot or null on parse failure
    */
@@ -973,6 +1479,7 @@ export class UsageMonitor extends EventEmitter {
     data: any,
     profileId: string,
     profileName: string,
+    profileEmail: string | undefined,
     providerName: 'zai' | 'zhipu'
   ): ClaudeUsageSnapshot | null {
     const logPrefix = providerName.toUpperCase();
@@ -1072,6 +1579,7 @@ export class UsageMonitor extends EventEmitter {
         weeklyResetTimestamp,
         profileId,
         profileName,
+        profileEmail,
         fetchedAt: new Date(),
         limitType: weeklyPercent > sessionPercent ? 'weekly' : 'session',
         usageWindows: {
@@ -1120,10 +1628,11 @@ export class UsageMonitor extends EventEmitter {
   private normalizeZAIResponse(
     data: any,
     profileId: string,
-    profileName: string
+    profileName: string,
+    profileEmail?: string
   ): ClaudeUsageSnapshot | null {
     // Delegate to shared quota/limit response normalization
-    return this.normalizeQuotaLimitResponse(data, profileId, profileName, 'zai');
+    return this.normalizeQuotaLimitResponse(data, profileId, profileName, profileEmail, 'zai');
   }
 
   /**
@@ -1137,10 +1646,11 @@ export class UsageMonitor extends EventEmitter {
   private normalizeZhipuResponse(
     data: any,
     profileId: string,
-    profileName: string
+    profileName: string,
+    profileEmail?: string
   ): ClaudeUsageSnapshot | null {
     // Delegate to shared quota/limit response normalization
-    return this.normalizeQuotaLimitResponse(data, profileId, profileName, 'zhipu');
+    return this.normalizeQuotaLimitResponse(data, profileId, profileName, profileEmail, 'zhipu');
   }
 
   /**
@@ -1172,13 +1682,61 @@ export class UsageMonitor extends EventEmitter {
     additionalExclusions: string[] = []
   ): Promise<void> {
     const profileManager = getClaudeProfileManager();
-
-    // Get all profiles to swap to, excluding current and any additional exclusions
-    const allProfiles = profileManager.getProfilesSortedByAvailability();
     const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
-    const eligibleProfiles = allProfiles.filter(p => !excludeIds.has(p.id));
 
-    if (eligibleProfiles.length === 0) {
+    // Get priority order for unified account system
+    const priorityOrder = profileManager.getAccountPriorityOrder();
+
+    // Build unified list of available accounts
+    type UnifiedSwapTarget = {
+      id: string;
+      unifiedId: string;  // oauth-{id} or api-{id}
+      name: string;
+      type: 'oauth' | 'api';
+      priorityIndex: number;
+    };
+
+    const unifiedAccounts: UnifiedSwapTarget[] = [];
+
+    // Add OAuth profiles (sorted by availability)
+    const oauthProfiles = profileManager.getProfilesSortedByAvailability();
+    for (const profile of oauthProfiles) {
+      if (!excludeIds.has(profile.id)) {
+        const unifiedId = `oauth-${profile.id}`;
+        const priorityIndex = priorityOrder.indexOf(unifiedId);
+        unifiedAccounts.push({
+          id: profile.id,
+          unifiedId,
+          name: profile.name,
+          type: 'oauth',
+          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+        });
+      }
+    }
+
+    // Add API profiles (always considered available since they have unlimited usage)
+    try {
+      const profilesFile = await loadProfilesFile();
+      for (const apiProfile of profilesFile.profiles) {
+        if (!excludeIds.has(apiProfile.id) && apiProfile.apiKey) {
+          const unifiedId = `api-${apiProfile.id}`;
+          const priorityIndex = priorityOrder.indexOf(unifiedId);
+          unifiedAccounts.push({
+            id: apiProfile.id,
+            unifiedId,
+            name: apiProfile.name,
+            type: 'api',
+            priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+          });
+        }
+      }
+    } catch (error) {
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Failed to load API profiles for swap:', error);
+      }
+    }
+
+    if (unifiedAccounts.length === 0) {
       console.warn('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds), ')');
       this.emit('proactive-swap-failed', {
         reason: additionalExclusions.length > 0 ? 'all_alternatives_failed_auth' : 'no_alternative',
@@ -1188,30 +1746,75 @@ export class UsageMonitor extends EventEmitter {
       return;
     }
 
-    // Use the best available from eligible profiles
-    const bestProfile = eligibleProfiles[0];
+    // Sort by priority order (lower index = higher priority)
+    // If no priority order is set, OAuth profiles come first (they were already sorted by availability)
+    unifiedAccounts.sort((a, b) => {
+      // If both have priority indices, use them
+      if (a.priorityIndex !== Infinity || b.priorityIndex !== Infinity) {
+        return a.priorityIndex - b.priorityIndex;
+      }
+      // Otherwise, prefer OAuth profiles (which are sorted by availability)
+      if (a.type !== b.type) {
+        return a.type === 'oauth' ? -1 : 1;
+      }
+      return 0;
+    });
+
+    // Use the best available from unified accounts
+    const bestAccount = unifiedAccounts[0];
 
     console.warn('[UsageMonitor] Proactive swap:', {
       from: currentProfileId,
-      to: bestProfile.id,
+      to: bestAccount.id,
+      toType: bestAccount.type,
       reason: limitType
     });
 
-    // Switch profile
-    profileManager.setActiveProfile(bestProfile.id);
+    // Switch to the new profile
+    if (bestAccount.type === 'oauth') {
+      // Switch OAuth profile via profile manager
+      profileManager.setActiveProfile(bestAccount.id);
+    } else {
+      // Switch API profile via profile-manager service
+      try {
+        const { setActiveAPIProfile } = await import('../services/profile/profile-manager');
+        await setActiveAPIProfile(bestAccount.id);
+      } catch (error) {
+        console.error('[UsageMonitor] Failed to set active API profile:', error);
+        return;
+      }
+    }
+
+    // Get the "from" profile name
+    let fromProfileName: string | undefined;
+    const fromOAuthProfile = profileManager.getProfile(currentProfileId);
+    if (fromOAuthProfile) {
+      fromProfileName = fromOAuthProfile.name;
+    } else {
+      // It might be an API profile
+      try {
+        const profilesFile = await loadProfilesFile();
+        const fromAPIProfile = profilesFile.profiles.find(p => p.id === currentProfileId);
+        if (fromAPIProfile) {
+          fromProfileName = fromAPIProfile.name;
+        }
+      } catch {
+        // Ignore
+      }
+    }
 
     // Emit swap event
     this.emit('proactive-swap-completed', {
-      fromProfile: { id: currentProfileId, name: profileManager.getProfile(currentProfileId)?.name },
-      toProfile: { id: bestProfile.id, name: bestProfile.name },
+      fromProfile: { id: currentProfileId, name: fromProfileName },
+      toProfile: { id: bestAccount.id, name: bestAccount.name },
       limitType,
       timestamp: new Date()
     });
 
     // Notify UI
     this.emit('show-swap-notification', {
-      fromProfile: profileManager.getProfile(currentProfileId)?.name,
-      toProfile: bestProfile.name,
+      fromProfile: fromProfileName,
+      toProfile: bestAccount.name,
       reason: 'proactive',
       limitType
     });

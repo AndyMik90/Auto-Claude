@@ -11,6 +11,8 @@ import { EventEmitter } from 'events';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from './rate-limit-detector';
 import { parsePythonCommand, getValidatedPythonPath } from './python-detector';
 import { getConfiguredPythonPath } from './python-env-manager';
+import { getAPIProfileEnv } from './services/profile';
+import { getOAuthModeClearVars } from './agent/env-utils';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -142,8 +144,15 @@ export class TitleGenerator extends EventEmitter {
       hasOAuthToken: !!autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN
     });
 
-    // Get active Claude profile environment (CLAUDE_CONFIG_DIR if not default)
-    const profileEnv = getProfileEnv();
+    // Get active API profile environment variables (ANTHROPIC_* vars)
+    const apiProfileEnv = await getAPIProfileEnv();
+    const isApiProfileActive = Object.keys(apiProfileEnv).length > 0;
+
+    // Only get OAuth profile env if no API profile is active to avoid conflicts
+    const profileEnv = isApiProfileActive ? {} : getProfileEnv();
+
+    // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
+    const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
 
     return new Promise((resolve) => {
       // Parse Python command to handle space-separated commands like "py -3"
@@ -153,7 +162,9 @@ export class TitleGenerator extends EventEmitter {
         env: {
           ...process.env,
           ...autoBuildEnv,
-          ...profileEnv, // Include active Claude profile config
+          ...profileEnv, // Claude OAuth profile (only when no API profile active)
+          ...apiProfileEnv, // API profile (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, etc.)
+          ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
           PYTHONUNBUFFERED: '1',
           PYTHONIOENCODING: 'utf-8',
           PYTHONUTF8: '1'

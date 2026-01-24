@@ -5,6 +5,7 @@ import path from 'path';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -951,7 +952,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1021,7 +1022,7 @@ function isAppInstalled(
   for (const checkPath of specificPaths) {
     const expandedPath = checkPath
       .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+      .replace('~', homedir());
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {

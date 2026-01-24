@@ -56,6 +56,15 @@ vi.mock('../services/profile/profile-manager', () => ({
   loadProfilesFile: () => mockLoadProfilesFile()
 }));
 
+// Mock credential-utils to return mock token instead of reading real credentials
+vi.mock('./credential-utils', () => ({
+  getCredentialsFromKeychain: vi.fn(() => ({
+    token: 'mock-decrypted-token',
+    email: 'test@example.com'
+  })),
+  clearKeychainCache: vi.fn()
+}));
+
 // Mock global fetch
 global.fetch = vi.fn(() =>
   Promise.resolve({
@@ -720,7 +729,7 @@ describe('usage-monitor', () => {
 
       // 401 errors should throw
       await expect(
-        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile')
+        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile', undefined)
       ).rejects.toThrow('API Auth Failure: 401');
 
       expect(consoleSpy).toHaveBeenCalled();
@@ -751,7 +760,7 @@ describe('usage-monitor', () => {
 
       // 403 errors should throw
       await expect(
-        monitor['fetchUsageViaAPI']('expired-token', 'test-profile-1', 'Test Profile')
+        monitor['fetchUsageViaAPI']('expired-token', 'test-profile-1', 'Test Profile', undefined)
       ).rejects.toThrow('API Auth Failure: 403');
 
       expect(consoleSpy).toHaveBeenCalled();
@@ -771,7 +780,7 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile', undefined);
 
       expect(usage).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -786,7 +795,7 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile', undefined);
 
       expect(usage).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -808,7 +817,7 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile');
+      const usage = await monitor['fetchUsageViaAPI']('valid-token', 'test-profile-1', 'Test Profile', undefined);
 
       expect(usage).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -831,7 +840,7 @@ describe('usage-monitor', () => {
 
       // 401 errors should throw with proper message
       await expect(
-        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile')
+        monitor['fetchUsageViaAPI']('invalid-token', 'test-profile-1', 'Test Profile', undefined)
       ).rejects.toThrow('API Auth Failure: 401');
 
       expect(consoleSpy).toHaveBeenCalled();
@@ -945,7 +954,7 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const usage = await monitor['fetchUsageViaAPI']('zai-api-key', 'zai-profile-1', 'z.ai Profile');
+      const usage = await monitor['fetchUsageViaAPI']('zai-api-key', 'zai-profile-1', 'z.ai Profile', undefined);
 
       expect(usage).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -977,7 +986,7 @@ describe('usage-monitor', () => {
       const monitor = getUsageMonitor();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const usage = await monitor['fetchUsageViaAPI']('zhipu-api-key', 'zhipu-profile-1', 'ZHIPU Profile');
+      const usage = await monitor['fetchUsageViaAPI']('zhipu-api-key', 'zhipu-profile-1', 'ZHIPU Profile', undefined);
 
       expect(usage).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -1013,6 +1022,7 @@ describe('usage-monitor', () => {
         'unknown-api-key',
         'unknown-profile-1',
         'Unknown Profile',
+        undefined,
         unknownProviderProfile
       );
 
@@ -1442,7 +1452,7 @@ describe('usage-monitor', () => {
       const profileId = 'test-profile-cooldown';
 
       // Call fetchUsageViaAPI which should fail and record timestamp
-      await monitor['fetchUsageViaAPI']('valid-token', profileId, 'Test Profile');
+      await monitor['fetchUsageViaAPI']('valid-token', profileId, 'Test Profile', undefined);
 
       // Verify failure timestamp was recorded
       const failureTimestamp = monitor['apiFailureTimestamps'].get(profileId);
@@ -1569,6 +1579,7 @@ describe('usage-monitor', () => {
         'sk-ant-api-key',
         'api-profile-1',
         'API Profile',
+        undefined,
         predeterminedProfile
       );
 
@@ -1615,6 +1626,7 @@ describe('usage-monitor', () => {
         'sk-ant-api-key',
         'api-profile-1',
         'API Profile',
+        undefined, // No email
         undefined // No activeProfile passed
       );
 
@@ -1655,6 +1667,7 @@ describe('usage-monitor', () => {
         'oauth-token',
         'oauth-profile',
         'OAuth Profile',
+        undefined,
         oauthProfile
       );
 
