@@ -434,7 +434,10 @@ async function createTerminalWorktree(
     }
 
     if (createGitBranch) {
-      execFileSync(getToolPath('git'), ['worktree', 'add', '-b', branchName, worktreePath, baseRef], {
+      // Use --no-track to prevent the new branch from inheriting upstream tracking
+      // from the base ref (e.g., origin/main). This ensures users can push with -u
+      // to correctly set up tracking to their own remote branch.
+      execFileSync(getToolPath('git'), ['worktree', 'add', '-b', branchName, '--no-track', worktreePath, baseRef], {
         cwd: projectPath,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
