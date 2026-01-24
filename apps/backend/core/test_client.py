@@ -2,7 +2,7 @@
 """
 Unit tests for core/client.py glob pattern matching and frontmatter parsing.
 
-Run with: pytest apps/backend/core/test_client.py -v
+Run with: apps/backend/.venv/bin/pytest apps/backend/core/test_client.py -v
 
 Note: conftest.py handles sys.path setup for imports.
 """
