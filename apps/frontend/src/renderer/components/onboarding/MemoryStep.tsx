@@ -81,8 +81,8 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
     voyageEmbeddingModel: settings.memoryVoyageEmbeddingModel || '',
     googleApiKey: settings.globalGoogleApiKey || '',
     ollamaBaseUrl: settings.ollamaBaseUrl || 'http://localhost:11434',
-    ollamaEmbeddingModel: 'qwen3-embedding:4b',
-    ollamaEmbeddingDim: 2560,
+    ollamaEmbeddingModel: settings.memoryOllamaEmbeddingModel || 'qwen3-embedding:4b',
+    ollamaEmbeddingDim: settings.memoryOllamaEmbeddingDim ?? 2560,
   });
 
   const [isSaving, setIsSaving] = useState(false);
