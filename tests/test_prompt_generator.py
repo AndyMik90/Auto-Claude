@@ -6,9 +6,7 @@ Tests for worktree detection and environment context generation.
 
 from pathlib import Path
 
-# Import the functions we're testing
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "apps/backend"))
+# Note: sys.path manipulation is handled by conftest.py line 46
 
 from prompts_pkg.prompt_generator import detect_worktree_mode, generate_environment_context
 
@@ -136,12 +134,20 @@ class TestGenerateEnvironmentContext:
         assert "cd E:/projects/x" in context or '"cd E:/projects/x"' in context
 
     def test_context_forbidden_path_examples(self):
-        """Test that forbidden path examples are included in worktree mode."""
+        """Test that forbidden path is shown and critical rules are included."""
         spec_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/001-feature/.auto-claude/specs/001-feature")
         project_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/001-feature")
 
         context = generate_environment_context(project_dir, spec_dir)
 
-        # Verify examples showing what NOT to do
-        assert "./apps/" in context  # Correct relative path
-        assert "(NOT" in context  # Shows wrong way
+        # Verify forbidden parent path is shown
+        assert "FORBIDDEN:" in context
+        assert "/opt/dev/project" in context  # The parent project that is forbidden
+
+        # Verify CRITICAL RULES section exists
+        assert "**CRITICAL RULES:**" in context
+        assert "**NEVER**" in context  # Explicit prohibition
+
+        # Verify violation warning explains consequences
+        assert "**VIOLATION WARNING:**" in context
+        assert "Git commits going to wrong branch" in context

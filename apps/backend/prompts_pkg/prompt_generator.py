@@ -122,11 +122,7 @@ You are in an **ISOLATED GIT WORKTREE** - a complete copy of the project.
 **YOUR LOCATION:** `{project_dir}`
 **FORBIDDEN:** Do NOT use `cd {forbidden_parent}` or `cd ../..` - this **ESCAPES ISOLATION**
 
-All project files exist HERE via relative paths:
-
-* `./apps/` ✅ (NOT `{forbidden_parent}/apps/`)
-* `./core/` ✅ (NOT `{forbidden_parent}/core/`)
-* `./prod/` ✅ (NOT `{forbidden_parent}/prod/`)
+All project files exist HERE via relative paths from your working directory.
 
 **CRITICAL RULES:**
 * **NEVER** `cd {forbidden_parent}` or any path traversal outside your worktree
