@@ -29,13 +29,9 @@
       "title": "Chemins",
       "description": "Outils CLI et chemins framework"
     },
-    "integrations": {
-      "title": "Intégrations",
-      "description": "Clés API & comptes Claude"
-    },
-    "api-profiles": {
-      "title": "Profils API",
-      "description": "Profils d'endpoint API personnalisés"
+    "accounts": {
+      "title": "Comptes",
+      "description": "Comptes Claude & endpoints API"
     },
     "updates": {
       "title": "Mises à jour",
@@ -412,6 +408,7 @@
     "description": "Gérer les comptes Claude et les clés API",
     "claudeAccounts": "Comptes Claude",
     "claudeAccountsDescription": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux quand vous atteignez les limites.",
+    "claudeAccountsWarning": "Lors de l'authentification, assurez-vous d'être connecté au bon compte Claude dans votre navigateur. Chaque profil doit utiliser un abonnement différent.",
     "noAccountsYet": "Aucun compte configuré",
     "default": "Par défaut",
     "active": "Actif",
@@ -476,6 +473,123 @@
     "alerts": {
       "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
       "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
+      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
+    }
+  },
+  "accounts": {
+    "title": "Comptes",
+    "description": "Gérer les comptes Claude et les endpoints API",
+    "tabs": {
+      "claudeCode": "Claude Code",
+      "customEndpoints": "Endpoints personnalisés"
+    },
+    "claudeCode": {
+      "description": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux lorsque vous atteignez les limites de taux.",
+      "noAccountsYet": "Aucun compte configuré",
+      "default": "Par défaut",
+      "active": "Actif",
+      "authenticated": "Authentifié",
+      "needsAuth": "Auth requise",
+      "authenticate": "Authentifier",
+      "authenticating": "Authentification...",
+      "setActive": "Définir actif",
+      "manualTokenEntry": "Saisie manuelle du token",
+      "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
+      "tokenPlaceholder": "sk-ant-oat01-...",
+      "emailPlaceholder": "Email (optionnel, pour l'affichage)",
+      "saveToken": "Enregistrer le token",
+      "accountNamePlaceholder": "Nom du compte (ex: Travail, Personnel)"
+    },
+    "customEndpoints": {
+      "description": "Configurez des endpoints API compatibles Anthropic personnalisés",
+      "addButton": "Ajouter un profil",
+      "activeBadge": "Actif",
+      "customModels": "Modèles personnalisés: {{models}}",
+      "setActive": {
+        "label": "Définir actif",
+        "loading": "Configuration..."
+      },
+      "switchToOauth": {
+        "label": "Utiliser Claude Code",
+        "loading": "Basculement..."
+      },
+      "tooltips": {
+        "edit": "Modifier le profil",
+        "deleteActive": "Impossible de supprimer le profil actif",
+        "deleteInactive": "Supprimer le profil"
+      },
+      "empty": {
+        "title": "Aucun endpoint personnalisé",
+        "description": "Configurez des endpoints API compatibles Anthropic personnalisés pour utiliser des fournisseurs alternatifs.",
+        "action": "Ajouter un profil"
+      },
+      "dialog": {
+        "deleteTitle": "Supprimer le profil",
+        "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action est irréversible.",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "deleting": "Suppression..."
+      }
+    },
+    "autoSwitching": {
+      "title": "Basculement automatique de compte",
+      "description": "Basculez automatiquement entre les comptes pour éviter les interruptions. Configurez la surveillance proactive pour basculer avant d'atteindre les limites.",
+      "enableAutoSwitching": "Activer le basculement automatique",
+      "masterSwitch": "Interrupteur principal pour toutes les fonctionnalités d'auto-basculement",
+      "proactiveMonitoring": "Surveillance proactive",
+      "proactiveDescription": "Vérifier l'utilisation régulièrement et basculer avant d'atteindre les limites",
+      "sessionThreshold": "Seuil d'utilisation de session",
+      "sessionThresholdDescription": "Basculer lorsque l'utilisation de session atteint ce niveau (recommandé: 95%)",
+      "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
+      "weeklyThresholdDescription": "Basculer lorsque l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
+      "reactiveRecovery": "Récupération réactive",
+      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue"
+    },
+    "priority": {
+      "title": "Ordre de priorité des comptes",
+      "description": "Glissez pour réorganiser. Le système basculera vers le prochain compte disponible dans l'ordre.",
+      "noAccounts": "Aucun compte configuré. Ajoutez des comptes ci-dessus pour définir la priorité.",
+      "noEmail": "Pas d'email",
+      "active": "Actif",
+      "inUse": "En cours",
+      "next": "Suivant",
+      "unlimited": "Illimité",
+      "unavailable": "Indisponible",
+      "typeOAuth": "OAuth",
+      "typeAPI": "API",
+      "payPerUse": "Paiement à l'usage",
+      "needsAuth": "Non authentifié",
+      "duplicateUsage": "Doublon détecté",
+      "duplicateUsageHint": "Ce profil a une utilisation identique à un autre profil, suggérant qu'ils sont peut-être authentifiés sur le même compte Anthropic. Réauthentifiez-vous avec un autre compte pour corriger.",
+      "sessionUsage": "Utilisation de session (fenêtre de 5 heures)",
+      "weeklyUsage": "Utilisation hebdomadaire (fenêtre de 7 jours)",
+      "oauthSection": "Comptes Claude (utilisés en premier)",
+      "apiSection": "Points de terminaison de secours (quand tous les comptes sont épuisés)",
+      "tipTitle": "Comment fonctionne la priorité",
+      "tipDescription": "Les comptes Claude sont inclus dans votre abonnement et seront utilisés en premier. Les endpoints API facturent par requête et sont utilisés comme solutions de secours lorsque tous les comptes Claude atteignent leurs limites.",
+      "status": {
+        "healthy": "Sain",
+        "moderate": "Modéré",
+        "highUsage": "Utilisation élevée",
+        "nearLimit": "Proche de la limite",
+        "rateLimited": "Limité"
+      }
+    },
+    "toast": {
+      "loadProfilesFailed": "Échec du chargement des profils",
+      "addProfileFailed": "Échec de l'ajout du profil",
+      "deleteProfileFailed": "Échec de la suppression du profil",
+      "renameProfileFailed": "Échec du renommage du profil",
+      "setActiveProfileFailed": "Échec de la définition du profil actif",
+      "tokenSaved": "Token enregistré",
+      "tokenSavedDescription": "Votre token a été enregistré avec succès.",
+      "tokenSaveFailed": "Échec de l'enregistrement du token",
+      "settingsUpdateFailed": "Échec de la mise à jour des paramètres",
+      "tryAgain": "Veuillez réessayer."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification: {{error}}",
+      "authPrepareFailed": "Échec de la préparation de l'authentification: {{error}}",
       "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
     }
   },

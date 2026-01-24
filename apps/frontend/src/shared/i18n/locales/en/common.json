@@ -91,7 +91,8 @@
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "important": "Important"
   },
   "selection": {
     "select": "Select",
@@ -441,7 +442,15 @@
     "window5Hour": "5-hour window",
     "window7Day": "7-day window",
     "window5HoursQuota": "5 Hours Quota",
-    "windowMonthlyToolsQuota": "Monthly Tools Quota"
+    "windowMonthlyToolsQuota": "Monthly Tools Quota",
+    "otherAccounts": "Other Accounts",
+    "next": "Next",
+    "weeklyLimitReached": "Weekly limit reached",
+    "sessionLimitReached": "Session limit reached",
+    "notAuthenticated": "Not authenticated",
+    "sessionShort": "5-hour session usage",
+    "weeklyShort": "7-day weekly usage",
+    "swap": "Swap"
   },
   "oauth": {
     "enterCode": "Manual Code Entry (Fallback)",

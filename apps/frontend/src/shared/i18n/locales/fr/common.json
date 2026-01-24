@@ -91,7 +91,8 @@
     "noData": "Aucune donnée",
     "optional": "Optionnel",
     "required": "Requis",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "important": "Important"
   },
   "selection": {
     "select": "Sélectionner",
@@ -441,7 +442,15 @@
     "window5Hour": "Fenêtre de 5 heures",
     "window7Day": "Fenêtre de 7 jours",
     "window5HoursQuota": "Quota de 5 heures",
-    "windowMonthlyToolsQuota": "Quota mensuel d'outils"
+    "windowMonthlyToolsQuota": "Quota mensuel d'outils",
+    "otherAccounts": "Autres comptes",
+    "next": "Suivant",
+    "weeklyLimitReached": "Limite hebdomadaire atteinte",
+    "sessionLimitReached": "Limite de session atteinte",
+    "notAuthenticated": "Non authentifié",
+    "sessionShort": "Utilisation session 5 heures",
+    "weeklyShort": "Utilisation hebdomadaire 7 jours",
+    "swap": "Changer"
   },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",
