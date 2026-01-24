@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """
-Unit tests for core/client.py glob pattern matching.
+Unit tests for core/client.py glob pattern matching and frontmatter parsing.
 
 Run with: pytest apps/backend/core/test_client.py -v
+
+Note: conftest.py handles sys.path setup for imports.
 """
-
-import sys
-from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.client import _match_glob_pattern, _parse_rule_frontmatter
 
@@ -210,7 +206,11 @@ Just content, no metadata.
         assert "Just content, no metadata." in rule_content
 
     def test_no_frontmatter(self):
-        """Test handling of content without frontmatter."""
+        """Test handling of content without frontmatter.
+
+        Note: _parse_rule_frontmatter returns empty when no frontmatter found.
+        Higher-level logic (_collect_all_rules) treats missing paths as invalid.
+        """
         content = """# Just a regular markdown file
 
 No YAML frontmatter here.
@@ -218,10 +218,15 @@ No YAML frontmatter here.
         paths, skills, rule_content = _parse_rule_frontmatter(content)
         assert paths == []
         assert skills == []
-        assert rule_content == ""  # No frontmatter means no valid rule
+        # Parser returns empty rule_content when no valid frontmatter delimiters found
+        assert rule_content == ""
 
     def test_missing_closing_delimiter(self):
-        """Test handling of frontmatter without closing ---."""
+        """Test handling of frontmatter without closing --- delimiter.
+
+        When the closing delimiter is missing, the parser cannot distinguish
+        frontmatter from content, so it returns empty results.
+        """
         content = """---
 paths:
   - src/**
@@ -229,8 +234,10 @@ paths:
 This content has no closing delimiter.
 """
         paths, skills, rule_content = _parse_rule_frontmatter(content)
-        # Should still parse paths but may have issues with content
-        assert "src/**" in paths or paths == []
+        # Without closing delimiter, parser cannot extract valid frontmatter
+        assert paths == []
+        assert skills == []
+        assert rule_content == ""
 
     def test_paths_before_require_skills(self):
         """Test that paths followed by require_skills parses correctly."""
