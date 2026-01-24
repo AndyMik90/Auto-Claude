@@ -1377,6 +1377,9 @@ function updateMacOSKeychainCredentials(
       console.warn('[CredentialUtils:macOS:Update] Successfully updated Keychain credentials for service:', serviceName);
     }
 
+    // Clear cached credentials to ensure fresh values are read
+    clearCredentialCache(configDir);
+
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1444,6 +1447,9 @@ function updateLinuxSecretServiceCredentials(
     if (isDebug) {
       console.warn('[CredentialUtils:Linux:SecretService:Update] Successfully updated Secret Service credentials for attribute:', attribute);
     }
+
+    // Clear cached credentials to ensure fresh values are read
+    clearCredentialCache(configDir);
 
     return { success: true };
   } catch (error) {
@@ -1529,6 +1535,9 @@ function updateLinuxFileCredentials(
     if (isDebug) {
       console.warn('[CredentialUtils:Linux:Update] Successfully updated credentials file:', credentialsPath);
     }
+
+    // Clear cached credentials to ensure fresh values are read
+    clearCredentialCache(configDir);
 
     return { success: true };
   } catch (error) {
@@ -1654,6 +1663,9 @@ function updateWindowsCredentialManagerCredentials(
     if (isDebug) {
       console.warn('[CredentialUtils:Windows:Update] Successfully updated Credential Manager for target:', targetName);
     }
+
+    // Clear cached credentials to ensure fresh values are read
+    clearCredentialCache(configDir);
 
     return { success: true };
   } catch (error) {
