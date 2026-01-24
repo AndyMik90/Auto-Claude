@@ -4,7 +4,7 @@
  * Provides functions to retrieve Claude Code OAuth tokens and email from
  * platform-specific secure storage:
  * - macOS: Keychain (via `security` command)
- * - Linux: .credentials.json file in config directory
+ * - Linux: Secret Service API (via `secret-tool` command), with fallback to .credentials.json file
  * - Windows: Windows Credential Manager (via PowerShell)
  *
  * Supports both:
@@ -394,7 +394,198 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
 }
 
 // =============================================================================
-// Linux Credentials File Implementation
+// Linux Secret Service Implementation
+// =============================================================================
+
+/**
+ * Timeout for secret-tool commands (5 seconds)
+ */
+const LINUX_SECRET_TOOL_TIMEOUT_MS = 5000;
+
+/**
+ * Find secret-tool executable path on Linux
+ * secret-tool is part of libsecret-tools package
+ */
+function findSecretToolPath(): string | null {
+  const candidatePaths = [
+    '/usr/bin/secret-tool',
+    '/bin/secret-tool',
+    '/usr/local/bin/secret-tool',
+  ];
+
+  for (const candidate of candidatePaths) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get the Secret Service attribute value for a config directory.
+ * For default profile, uses "claude-code".
+ * For custom profiles, uses "claude-code-{hash}" where hash is first 8 chars of SHA256.
+ */
+function getSecretServiceAttribute(configDir?: string): string {
+  if (!configDir) {
+    return 'claude-code';
+  }
+  // For custom config dirs, create a hashed attribute to avoid conflicts
+  const hash = createHash('sha256').update(configDir).digest('hex').slice(0, 8);
+  return `claude-code-${hash}`;
+}
+
+/**
+ * Retrieve credentials from Linux Secret Service using secret-tool CLI.
+ *
+ * Claude Code stores credentials in Secret Service with:
+ * - Label: "Claude Code-credentials"
+ * - Attributes: {application: "claude-code"}
+ * - Secret: JSON string with claudeAiOauth.accessToken
+ */
+function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh = false): PlatformCredentials {
+  const attribute = getSecretServiceAttribute(configDir);
+  const cacheKey = `linux-secret:${attribute}`;
+  const isDebug = process.env.DEBUG === 'true';
+  const now = Date.now();
+
+  // Return cached credentials if available and fresh
+  const cached = credentialCache.get(cacheKey);
+  if (!forceRefresh && cached) {
+    const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
+    if ((now - cached.timestamp) < ttl) {
+      if (isDebug) {
+        const cacheAge = now - cached.timestamp;
+        console.warn('[CredentialUtils:Linux:SecretService:CACHE] Returning cached credentials:', {
+          attribute,
+          hasToken: !!cached.credentials.token,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
+          cacheAge: Math.round(cacheAge / 1000) + 's'
+        });
+      }
+      return cached.credentials;
+    }
+  }
+
+  // Find secret-tool executable
+  const secretToolPath = findSecretToolPath();
+  if (!secretToolPath) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService] secret-tool not found, falling back to file storage');
+    }
+    // Return a special result indicating Secret Service is unavailable
+    return { token: null, email: null, error: 'secret-tool not found' };
+  }
+
+  try {
+    // Query Secret Service for credentials
+    // secret-tool lookup application claude-code
+    const result = execFileSync(
+      secretToolPath,
+      ['lookup', 'application', attribute],
+      {
+        encoding: 'utf-8',
+        timeout: LINUX_SECRET_TOOL_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    const credentialsJson = result.trim();
+    if (!credentialsJson) {
+      if (isDebug) {
+        console.warn('[CredentialUtils:Linux:SecretService] No credentials found for attribute:', attribute);
+      }
+      const notFoundResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
+      return notFoundResult;
+    }
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(credentialsJson);
+    } catch {
+      console.warn('[CredentialUtils:Linux:SecretService] Failed to parse credentials JSON for attribute:', attribute);
+      const errorResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
+      return errorResult;
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Linux:SecretService] Invalid credentials data structure for attribute:', attribute);
+      const invalidResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+      return invalidResult;
+    }
+
+    const { token, email } = extractCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Linux:SecretService] Invalid token format for attribute:', attribute);
+      const result = { token: null, email };
+      credentialCache.set(cacheKey, { credentials: result, timestamp: now });
+      return result;
+    }
+
+    const credentials = { token, email };
+    credentialCache.set(cacheKey, { credentials, timestamp: now });
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService] Retrieved credentials from Secret Service:', {
+        attribute,
+        hasToken: !!token,
+        hasEmail: !!email,
+        tokenFingerprint: getTokenFingerprint(token),
+        forceRefresh
+      });
+    }
+    return credentials;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    // secret-tool returns non-zero if item not found, which is expected
+    if (errorMessage.includes('not found') || errorMessage.includes('exit code')) {
+      if (isDebug) {
+        console.warn('[CredentialUtils:Linux:SecretService] Credentials not found in Secret Service for attribute:', attribute);
+      }
+      const notFoundResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
+      return notFoundResult;
+    }
+    console.warn('[CredentialUtils:Linux:SecretService] Secret Service access failed:', errorMessage);
+    // Return error to trigger fallback to file storage
+    return { token: null, email: null, error: `Secret Service access failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Retrieve credentials from Linux - tries Secret Service first, falls back to file
+ */
+function getCredentialsFromLinux(configDir?: string, forceRefresh = false): PlatformCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Secret Service first (preferred secure storage)
+  const secretServiceResult = getCredentialsFromLinuxSecretService(configDir, forceRefresh);
+
+  // If we got a token from Secret Service, use it
+  if (secretServiceResult.token) {
+    return secretServiceResult;
+  }
+
+  // If Secret Service had an error (not just "not found"), log it and try file fallback
+  if (secretServiceResult.error && !secretServiceResult.error.includes('not found')) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
+    }
+  }
+
+  // Fall back to file-based storage
+  return getCredentialsFromLinuxFile(configDir, forceRefresh);
+}
+
+// =============================================================================
+// Linux Credentials File Implementation (Fallback)
 // =============================================================================
 
 /**
@@ -406,7 +597,7 @@ function getLinuxCredentialsPath(configDir?: string): string {
 }
 
 /**
- * Retrieve credentials from Linux .credentials.json file
+ * Retrieve credentials from Linux .credentials.json file (fallback when Secret Service unavailable)
  */
 function getCredentialsFromLinuxFile(configDir?: string, forceRefresh = false): PlatformCredentials {
   const credentialsPath = getLinuxCredentialsPath(configDir);
@@ -718,7 +909,7 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
   }
 
   if (isLinux()) {
-    return getCredentialsFromLinuxFile(configDir, forceRefresh);
+    return getCredentialsFromLinux(configDir, forceRefresh);
   }
 
   if (isWindows()) {
@@ -744,11 +935,13 @@ export function clearKeychainCache(configDir?: string): void {
   if (configDir) {
     // Clear cache for this specific configDir on all platforms
     const macOSKey = `macos:${getKeychainServiceName(configDir)}`;
-    const linuxKey = `linux:${getLinuxCredentialsPath(configDir)}`;
+    const linuxSecretKey = `linux-secret:${getSecretServiceAttribute(configDir)}`;
+    const linuxFileKey = `linux:${getLinuxCredentialsPath(configDir)}`;
     const windowsKey = `windows:${getWindowsCredentialTarget(configDir)}`;
 
     credentialCache.delete(macOSKey);
-    credentialCache.delete(linuxKey);
+    credentialCache.delete(linuxSecretKey);
+    credentialCache.delete(linuxFileKey);
     credentialCache.delete(windowsKey);
   } else {
     credentialCache.clear();
@@ -849,7 +1042,109 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
 }
 
 /**
- * Retrieve full credentials (including refresh token) from Linux .credentials.json file
+ * Retrieve full credentials (including refresh token) from Linux Secret Service
+ */
+function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuthCredentials {
+  const attribute = getSecretServiceAttribute(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Find secret-tool executable
+  const secretToolPath = findSecretToolPath();
+  if (!secretToolPath) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService:Full] secret-tool not found');
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'secret-tool not found' };
+  }
+
+  try {
+    const result = execFileSync(
+      secretToolPath,
+      ['lookup', 'application', attribute],
+      {
+        encoding: 'utf-8',
+        timeout: LINUX_SECRET_TOOL_TIMEOUT_MS,
+        windowsHide: true,
+      }
+    );
+
+    const credentialsJson = result.trim();
+    if (!credentialsJson) {
+      if (isDebug) {
+        console.warn('[CredentialUtils:Linux:SecretService:Full] No credentials found for attribute:', attribute);
+      }
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    let data: unknown;
+    try {
+      data = JSON.parse(credentialsJson);
+    } catch {
+      console.warn('[CredentialUtils:Linux:SecretService:Full] Failed to parse credentials JSON for attribute:', attribute);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid credentials data structure for attribute:', attribute);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid token format for attribute:', attribute);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService:Full] Retrieved full credentials from Secret Service:', {
+        attribute,
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('not found') || errorMessage.includes('exit code')) {
+      if (isDebug) {
+        console.warn('[CredentialUtils:Linux:SecretService:Full] Credentials not found in Secret Service for attribute:', attribute);
+      }
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+    console.warn('[CredentialUtils:Linux:SecretService:Full] Secret Service access failed:', errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Secret Service access failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Retrieve full credentials from Linux - tries Secret Service first, falls back to file
+ */
+function getFullCredentialsFromLinux(configDir?: string): FullOAuthCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Secret Service first
+  const secretServiceResult = getFullCredentialsFromLinuxSecretService(configDir);
+
+  if (secretServiceResult.token) {
+    return secretServiceResult;
+  }
+
+  if (secretServiceResult.error && !secretServiceResult.error.includes('not found')) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Full] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
+    }
+  }
+
+  // Fall back to file-based storage
+  return getFullCredentialsFromLinuxFile(configDir);
+}
+
+/**
+ * Retrieve full credentials (including refresh token) from Linux .credentials.json file (fallback)
  */
 function getFullCredentialsFromLinuxFile(configDir?: string): FullOAuthCredentials {
   const credentialsPath = getLinuxCredentialsPath(configDir);
@@ -1049,7 +1344,7 @@ export function getFullCredentialsFromKeychain(configDir?: string): FullOAuthCre
   }
 
   if (isLinux()) {
-    return getFullCredentialsFromLinuxFile(configDir);
+    return getFullCredentialsFromLinux(configDir);
   }
 
   if (isWindows()) {
@@ -1133,7 +1428,105 @@ function updateMacOSKeychainCredentials(
 }
 
 /**
- * Update credentials in Linux .credentials.json file with new tokens
+ * Update credentials in Linux Secret Service with new tokens
+ */
+function updateLinuxSecretServiceCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const attribute = getSecretServiceAttribute(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Find secret-tool executable
+  const secretToolPath = findSecretToolPath();
+  if (!secretToolPath) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService:Update] secret-tool not found');
+    }
+    return { success: false, error: 'secret-tool not found' };
+  }
+
+  try {
+    // Read existing credentials to preserve email
+    const existing = getFullCredentialsFromLinuxSecretService(configDir);
+
+    // Build new credential JSON with all fields
+    const newCredentialData = {
+      claudeAiOauth: {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiresAt: credentials.expiresAt,
+        scopes: credentials.scopes || existing.scopes || [],
+        email: existing.email || undefined,
+        emailAddress: existing.email || undefined
+      },
+      email: existing.email || undefined
+    };
+
+    const credentialsJson = JSON.stringify(newCredentialData);
+
+    // Use secret-tool store to update credentials
+    // secret-tool store --label="Claude Code-credentials" application claude-code
+    execFileSync(
+      secretToolPath,
+      ['store', '--label=Claude Code-credentials', 'application', attribute],
+      {
+        encoding: 'utf-8',
+        timeout: LINUX_SECRET_TOOL_TIMEOUT_MS,
+        input: credentialsJson,
+        windowsHide: true,
+      }
+    );
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:SecretService:Update] Successfully updated Secret Service credentials for attribute:', attribute);
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[CredentialUtils:Linux:SecretService:Update] Failed to update Secret Service credentials:', errorMessage);
+    return { success: false, error: `Secret Service update failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Update credentials in Linux - tries Secret Service first, falls back to file
+ */
+function updateLinuxCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Secret Service first
+  const secretToolPath = findSecretToolPath();
+  if (secretToolPath) {
+    const secretServiceResult = updateLinuxSecretServiceCredentials(configDir, credentials);
+    if (secretServiceResult.success) {
+      return secretServiceResult;
+    }
+    if (isDebug) {
+      console.warn('[CredentialUtils:Linux:Update] Secret Service update failed, trying file fallback:', secretServiceResult.error);
+    }
+  }
+
+  // Fall back to file-based storage
+  return updateLinuxFileCredentials(configDir, credentials);
+}
+
+/**
+ * Update credentials in Linux .credentials.json file with new tokens (fallback)
  */
 function updateLinuxFileCredentials(
   configDir: string | undefined,
@@ -1338,7 +1731,7 @@ export function updateKeychainCredentials(
   }
 
   if (isLinux()) {
-    return updateLinuxFileCredentials(configDir, credentials);
+    return updateLinuxCredentials(configDir, credentials);
   }
 
   if (isWindows()) {
