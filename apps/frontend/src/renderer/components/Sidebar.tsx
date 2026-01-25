@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -48,12 +48,17 @@ import {
   initializeProject
 } from '../stores/project-store';
 import { useSettingsStore, saveSettings } from '../stores/settings-store';
+import {
+  useProjectEnvStore,
+  loadProjectEnvConfig,
+  clearProjectEnvConfig
+} from '../stores/project-env-store';
 import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
 import { UpdateBanner } from './UpdateBanner';
-import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
+import type { Project, AutoBuildVersionInfo, GitStatus } from '../../shared/types';
 
 export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'analytics';
 
@@ -114,7 +119,6 @@ export function Sidebar({
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -125,41 +129,55 @@ export function Sidebar({
     saveSettings({ sidebarCollapsed: !isCollapsed });
   };
 
-  // Load env config when project changes to check GitHub/GitLab enabled state
-  useEffect(() => {
-    const loadEnvConfig = async () => {
-      if (selectedProject?.autoBuildPath) {
-        try {
-          const result = await window.electronAPI.getProjectEnv(selectedProject.id);
-          if (result.success && result.data) {
-            setEnvConfig(result.data);
-          } else {
-            setEnvConfig(null);
-          }
-        } catch {
-          setEnvConfig(null);
-        }
-      } else {
-        setEnvConfig(null);
-      }
-    };
-    loadEnvConfig();
-  }, [selectedProject?.id, selectedProject?.autoBuildPath]);
+  // Subscribe to project-env-store for reactive GitHub/GitLab tab visibility
+  const githubEnabled = useProjectEnvStore((state) => state.envConfig?.githubEnabled ?? false);
+  const gitlabEnabled = useProjectEnvStore((state) => state.envConfig?.gitlabEnabled ?? false);
 
-  // Compute visible nav items based on GitHub/GitLab enabled state
+  // Track the last loaded project ID to avoid redundant loads
+  const lastLoadedProjectIdRef = useRef<string | null>(null);
+
+  // Compute visible nav items based on GitHub/GitLab enabled state from store
   const visibleNavItems = useMemo(() => {
     const items = [...baseNavItems];
 
-    if (envConfig?.githubEnabled) {
+    if (githubEnabled) {
       items.push(...githubNavItems);
     }
 
-    if (envConfig?.gitlabEnabled) {
+    if (gitlabEnabled) {
       items.push(...gitlabNavItems);
     }
 
     return items;
-  }, [envConfig?.githubEnabled, envConfig?.gitlabEnabled]);
+  }, [githubEnabled, gitlabEnabled]);
+
+  // Load envConfig when project changes to ensure store is populated
+  useEffect(() => {
+    // Track whether this effect is still current (for race condition handling)
+    let isCurrent = true;
+
+    const initializeEnvConfig = async () => {
+      if (selectedProject?.id && selectedProject?.autoBuildPath) {
+        // Only reload if the project ID differs from what we last loaded
+        if (selectedProject.id !== lastLoadedProjectIdRef.current) {
+          lastLoadedProjectIdRef.current = selectedProject.id;
+          await loadProjectEnvConfig(selectedProject.id);
+          // Check if this effect was cancelled while loading
+          if (!isCurrent) return;
+        }
+      } else {
+        // Clear the store if no project is selected or has no autoBuildPath
+        lastLoadedProjectIdRef.current = null;
+        clearProjectEnvConfig();
+      }
+    };
+    initializeEnvConfig();
+
+    // Cleanup function to mark this effect as stale
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedProject?.id, selectedProject?.autoBuildPath]);
 
   // Keyboard shortcuts
   useEffect(() => {

@@ -4,6 +4,7 @@ const mockGetAPIProfileEnv = vi.fn();
 const mockGetOAuthModeClearVars = vi.fn();
 const mockGetPythonEnv = vi.fn();
 const mockGetBestAvailableProfileEnv = vi.fn();
+const mockGetGitHubTokenForSubprocess = vi.fn();
 
 vi.mock('../../../../services/profile', () => ({
   getAPIProfileEnv: (...args: unknown[]) => mockGetAPIProfileEnv(...args),
@@ -21,6 +22,12 @@ vi.mock('../../../../python-env-manager', () => ({
 
 vi.mock('../../../../rate-limit-detector', () => ({
   getBestAvailableProfileEnv: () => mockGetBestAvailableProfileEnv(),
+}));
+
+// Mock getGitHubTokenForSubprocess to avoid calling gh CLI in tests
+// Path is relative to the module being mocked (runner-env.ts), which imports from '../utils'
+vi.mock('../../utils', () => ({
+  getGitHubTokenForSubprocess: () => mockGetGitHubTokenForSubprocess(),
 }));
 
 import { getRunnerEnv } from '../runner-env';
@@ -42,6 +49,8 @@ describe('getRunnerEnv', () => {
       profileName: 'Default',
       wasSwapped: false
     });
+    // Default mock for GitHub token - returns null (no token) by default
+    mockGetGitHubTokenForSubprocess.mockResolvedValue(null);
   });
 
   it('merges Python env with API profile env and OAuth clear vars', async () => {
@@ -129,5 +138,25 @@ describe('getRunnerEnv', () => {
 
     // extraEnv has highest precedence
     expect(result.SHARED_VAR).toBe('from-extra');
+  });
+
+  it('includes GitHub token from gh CLI when available (fixes #151)', async () => {
+    mockGetAPIProfileEnv.mockResolvedValue({});
+    mockGetOAuthModeClearVars.mockReturnValue({});
+    mockGetGitHubTokenForSubprocess.mockResolvedValue('gh-token-123');
+
+    const result = await getRunnerEnv();
+
+    expect(result.GITHUB_TOKEN).toBe('gh-token-123');
+  });
+
+  it('omits GITHUB_TOKEN when gh CLI returns null', async () => {
+    mockGetAPIProfileEnv.mockResolvedValue({});
+    mockGetOAuthModeClearVars.mockReturnValue({});
+    mockGetGitHubTokenForSubprocess.mockResolvedValue(null);
+
+    const result = await getRunnerEnv();
+
+    expect(result.GITHUB_TOKEN).toBeUndefined();
   });
 });
