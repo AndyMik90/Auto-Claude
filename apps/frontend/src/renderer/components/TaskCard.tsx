@@ -143,7 +143,13 @@ export const TaskCard = memo(function TaskCard({
 
   const isRunning = task.status === 'in_progress';
   const executionPhase = task.executionProgress?.phase;
-  const hasActiveExecution = executionPhase && executionPhase !== 'idle' && executionPhase !== 'complete' && executionPhase !== 'failed';
+  const isPlanReview = task.status === 'human_review' && task.reviewReason === 'plan_review';
+  const hasActiveExecution =
+    !isPlanReview &&
+    executionPhase &&
+    executionPhase !== 'idle' &&
+    executionPhase !== 'complete' &&
+    executionPhase !== 'failed';
 
   // Check if task is in human_review but has no completed subtasks (crashed/incomplete)
   const isIncomplete = isIncompleteHumanReview(task);

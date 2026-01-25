@@ -402,7 +402,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 3. NOT in a terminal task status (pr_created, done) - finalized workflow states
           // 4. Plan doesn't explicitly say human_review
           // 5. Would not create an invalid terminal transition (ACS-203)
-          if (isActivePlanStatus) {
+          const shouldForceInProgress =
+            isActivePlanStatus &&
+            !isExplicitHumanReview &&
+            !isPlanReviewStage &&
+            !(t.status === 'human_review' && reviewReason === 'plan_review');
+          if (shouldForceInProgress) {
             status = 'in_progress';
           } else if (!isInActivePhase && !isInTerminalPhase && !isInTerminalStatus && !isExplicitHumanReview) {
             if (allCompleted && hasSubtasks) {
@@ -424,6 +429,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // ensure reviewReason is plan_review (used by UI to show Approve Plan)
           if (isPlanReviewStage && (isExplicitHumanReview || t.status === 'human_review') && t.metadata?.requireReviewBeforeCoding) {
             reviewReason = 'plan_review';
+          } else if (status === 'human_review' && reviewReason === 'plan_review' && allCompleted && hasSubtasks) {
+            // If coding finished and subtasks are complete, upgrade to completed review
+            reviewReason = 'completed';
           }
 
           // FIX (ACS-203): Final validation - prevent invalid terminal status transitions

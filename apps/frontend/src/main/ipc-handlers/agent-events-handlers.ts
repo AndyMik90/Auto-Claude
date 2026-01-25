@@ -278,17 +278,21 @@ export function registerAgenteventsHandlers(
             allSubtasksDone,
             requireReviewBeforeCoding,
           });
+          const decisionWithFallback =
+            requireReviewBeforeCoding && !decision.status
+              ? { status: "human_review", reviewReason: "plan_review" }
+              : decision;
 
-          if (isActiveStatus && decision.status) {
-            persistStatus(decision.status);
+          if (decisionWithFallback.status) {
+            persistStatus(decisionWithFallback.status);
             taskStateMachine.emitStatusChange(
               getMainWindow,
               taskId,
-              decision.status,
+              decisionWithFallback.status,
               projectId,
-              decision.reviewReason
+              decisionWithFallback.reviewReason
             );
-          } else if (isActiveStatus && !decision.status) {
+          } else if (isActiveStatus) {
             console.warn(
               `[Task ${taskId}] Process exited but status unchanged (current status: ${task.status})`
             );
@@ -303,14 +307,18 @@ export function registerAgenteventsHandlers(
             allSubtasksDone,
             requireReviewBeforeCoding,
           });
-          const nextStatus = decision.status ?? "human_review";
+          const decisionWithFallback =
+            requireReviewBeforeCoding && !decision.status
+              ? { status: "human_review", reviewReason: "plan_review" }
+              : decision;
+          const nextStatus = decisionWithFallback.status ?? "human_review";
           persistStatus(nextStatus);
           taskStateMachine.emitStatusChange(
             getMainWindow,
             taskId,
             nextStatus,
             projectId,
-            decision.reviewReason
+            decisionWithFallback.reviewReason
           );
         }
       }
