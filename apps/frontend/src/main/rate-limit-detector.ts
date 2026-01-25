@@ -35,7 +35,7 @@ const AUTH_FAILURE_PATTERNS = [
   /unauthorized/i,
   /please\s*(log\s*in|login|authenticate)/i,
   /invalid\s*(credentials|token|api\s*key)/i,
-  /auth(entication)?\s*(failed|error|failure)/i,
+  /auth(entication)?\s+(failed|error|failure)/i,
   /session\s*(expired|invalid)/i,
   /access\s*denied/i,
   /permission\s*denied/i,
