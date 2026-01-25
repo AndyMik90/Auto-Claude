@@ -234,6 +234,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       worktreeConfig: session.worktreeConfig,
       // Restore displayOrder for tab position persistence (falls back to end if not set)
       displayOrder: session.displayOrder ?? state.terminals.length,
+      // If session was in Claude mode before shutdown, mark for deferred resume.
+      // This ensures the renderer knows to trigger 'claude --continue' when the terminal
+      // becomes active, without relying on the TERMINAL_PENDING_RESUME IPC event timing
+      // (which may be sent before the Terminal component mounts its listener).
+      pendingClaudeResume: session.isClaudeMode === true,
     };
 
     set((state) => ({
@@ -241,7 +246,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       activeTerminalId: state.activeTerminalId || restoredTerminal.id,
     }));
 
-    debugLog(`[TerminalStore] Successfully added restored terminal ${session.id} to store, isRestored: true, claudeSessionId: ${session.claudeSessionId || 'none'}`);
+    debugLog(`[TerminalStore] Successfully added restored terminal ${session.id} to store, isRestored: true, claudeSessionId: ${session.claudeSessionId || 'none'}, pendingClaudeResume: ${session.isClaudeMode === true}`);
     return restoredTerminal;
   },
 
