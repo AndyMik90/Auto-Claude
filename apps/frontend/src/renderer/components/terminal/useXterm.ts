@@ -363,10 +363,23 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     return () => window.removeEventListener('terminal-refit-all', handleRefitAll);
   }, []);
 
-  const fit = useCallback(() => {
-    if (fitAddonRef.current && xtermRef.current) {
-      fitAddonRef.current.fit();
+  /**
+   * Fit the terminal content to the container dimensions.
+   * @returns boolean indicating whether fit was successful (had valid dimensions)
+   */
+  const fit = useCallback((): boolean => {
+    if (fitAddonRef.current && xtermRef.current && terminalRef.current) {
+      // Validate container has valid dimensions before fitting
+      const rect = terminalRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        fitAddonRef.current.fit();
+        const cols = xtermRef.current.cols;
+        const rows = xtermRef.current.rows;
+        setDimensions({ cols, rows });
+        return true;
+      }
     }
+    return false;
   }, []);
 
   const write = useCallback((data: string) => {
