@@ -81,14 +81,22 @@ export function IntegrationSettings({
 
   // Track whether initial branch detection has been done to prevent double-execution
   const hasDetectedMainBranch = useRef(false);
+  // Track mainBranch in a ref to avoid stale closure issues in loadBranches callback
+  const mainBranchRef = useRef(settings.mainBranch);
 
-  // Reset detection flag when project changes
+  // Keep mainBranchRef in sync with settings.mainBranch
+  useEffect(() => {
+    mainBranchRef.current = settings.mainBranch;
+  }, [settings.mainBranch]);
+
+  // Reset detection flag when project OR GitHub repo changes
+  // This allows auto-detection to run for a new repo within the same project
   useEffect(() => {
     hasDetectedMainBranch.current = false;
-  }, [project.path]);
+  }, [project.path, envConfig?.githubRepo]);
 
   // Load branches function wrapped in useCallback
-  // Note: We use a ref for mainBranch check to avoid recreating this callback when mainBranch changes
+  // Note: We use refs for mainBranch check and detection tracking to avoid stale closures
   const loadBranches = useCallback(async () => {
     setIsLoadingBranches(true);
     try {
@@ -96,7 +104,8 @@ export function IntegrationSettings({
       if (result.success && result.data) {
         setBranches(result.data);
         // Auto-detect main branch if not set and not already detected
-        if (!settings.mainBranch && !hasDetectedMainBranch.current) {
+        // Use mainBranchRef to avoid stale closure issues
+        if (!mainBranchRef.current && !hasDetectedMainBranch.current) {
           hasDetectedMainBranch.current = true;
           const detectResult = await window.electronAPI.detectMainBranch(project.path);
           if (detectResult.success && detectResult.data !== null && detectResult.data !== undefined) {
@@ -110,7 +119,8 @@ export function IntegrationSettings({
     } finally {
       setIsLoadingBranches(false);
     }
-    // Remove settings.mainBranch from deps - we use a ref to track detection instead
+    // settings.mainBranch not in deps - we use mainBranchRef to avoid stale closures
+    // hasDetectedMainBranch ref tracks whether detection has run this session
   }, [project.path, setSettings]);
 
   // Load branches when GitHub section expands or GitHub connection changes

@@ -92,6 +92,11 @@ export function useProjectSettings(
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Environment configuration state
+  // NOTE: We maintain local envConfig state AND update the global project-env-store.
+  // This dual-state pattern is intentional:
+  // - Local state: allows dialog-scoped edits, immediate UI feedback
+  // - Global store: syncs to Sidebar and other components for real-time updates
+  // The local state is the source of truth for this dialog's edits.
   const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
   const [isLoadingEnv, setIsLoadingEnv] = useState(false);
   const [envError, setEnvError] = useState<string | null>(null);
