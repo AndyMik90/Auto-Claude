@@ -286,8 +286,10 @@ class TestClaudeDetectionPathsStructured:
         result = get_claude_detection_paths_structured()
 
         nvm_dir = result['nvm_versions_dir']
-        assert '.nvm/versions/node' in nvm_dir
-        assert 'testuser' in nvm_dir
+        # Normalize path separators for cross-platform compatibility
+        nvm_dir_normalized = nvm_dir.replace('\\', '/')
+        assert '.nvm/versions/node' in nvm_dir_normalized
+        assert 'testuser' in nvm_dir_normalized
 
 
 class TestFindExecutableCli:
@@ -874,11 +876,12 @@ class TestWindowsEnvExpansionEdgeCases:
         assert validate_cli_path('prefix%VAR%suffix') is False
 
     def test_allows_literal_percent_in_valid_context(self):
-        """Single percent signs (not env vars) context varies by platform."""
-        # A single percent not forming %VAR% pattern might be allowed
-        # depending on the regex - test actual behavior
-        # Note: Our pattern is r"%[^%]+%" which requires %...%
-        pass  # Implementation-specific behavior
+        """Single percent signs (not env vars) should be allowed."""
+        # Our pattern is r"%[^%]+%" which requires %...% format
+        # Single percent signs that don't form env var patterns are allowed
+        assert validate_cli_path('file100%.txt') is True  # Single % without VAR pattern
+        assert validate_cli_path('100%done') is True  # Trailing percent
+        assert validate_cli_path('%file.txt') is True  # Leading single percent
 
 
 # ============================================================================
@@ -969,12 +972,11 @@ class TestSpecialPathEdgeCases:
         assert validate_cli_path('../bin/tool') is False
 
     @patch('core.platform.is_windows', return_value=True)
-    def test_windows_unc_paths_without_metacharacters(self, mock_is_windows):
-        """Windows UNC paths without metacharacters should be considered."""
-        # UNC paths start with \\
-        # Our validation would reject these due to double backslash
-        # which is fine for security purposes
-        pass  # UNC path support is not required for CLI validation
+    def test_windows_unc_paths_rejected_for_security(self, mock_is_windows):
+        """Windows UNC paths are rejected for security - not needed for CLI validation."""
+        # UNC paths start with \\ and are intentionally rejected
+        # This is a security feature, not a bug
+        assert validate_cli_path('\\\\server\\share\\file.exe') is False
 
     def test_very_long_paths_handled(self):
         """Very long paths should be handled without errors."""

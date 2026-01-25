@@ -295,7 +295,7 @@ export function isSecurePath(candidatePath: string): boolean {
     /%[^%]+%/,                   // Windows environment variable expansion
     /\.\.\//,                    // Unix directory traversal
     /\.\.\\/,                    // Windows directory traversal
-    /[\r\n]/                     // Newlines (command injection)
+    /[\r\n\x00]/                 // Newlines (command injection), null bytes (path truncation)
   ];
 
   for (const pattern of dangerousPatterns) {

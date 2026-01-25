@@ -482,6 +482,12 @@ describe('Platform Module', () => {
       expect(isSecurePath('cmd\r\n/bin/sh')).toBe(false);
     });
 
+    it('rejects null byte injection', () => {
+      mockPlatform('darwin');
+      expect(isSecurePath('cmd\x00.txt')).toBe(false);
+      expect(isSecurePath('file\x00evil')).toBe(false);
+    });
+
     it('validates Windows executable names', () => {
       mockPlatform('win32');
       expect(isSecurePath('claude.exe')).toBe(true);

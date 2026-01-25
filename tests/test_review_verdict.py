@@ -278,6 +278,31 @@ class TestCIStatusVerdict:
         # Should be BLOCKED (failing), not NEEDS_REVISION (pending)
         assert verdict == MergeVerdict.BLOCKED
 
+    def test_failing_ci_preserves_needs_revision(self):
+        """Test that failing CI preserves NEEDS_REVISION verdict (does not upgrade)."""
+        verdict = apply_ci_status_override(
+            verdict=MergeVerdict.NEEDS_REVISION,
+            failing_count=1,
+        )
+        # NEEDS_REVISION stays as NEEDS_REVISION (intentional design)
+        assert verdict == MergeVerdict.NEEDS_REVISION
+
+    def test_failing_ci_preserves_blocked(self):
+        """Test that failing CI preserves BLOCKED verdict."""
+        verdict = apply_ci_status_override(
+            verdict=MergeVerdict.BLOCKED,
+            failing_count=1,
+        )
+        assert verdict == MergeVerdict.BLOCKED
+
+    def test_pending_ci_preserves_needs_revision(self):
+        """Test that pending CI preserves NEEDS_REVISION verdict."""
+        verdict = apply_ci_status_override(
+            verdict=MergeVerdict.NEEDS_REVISION,
+            pending_count=1,
+        )
+        assert verdict == MergeVerdict.NEEDS_REVISION
+
 
 # ============================================================================
 # Verdict to Overall Status Mapping Tests (using production helper function)

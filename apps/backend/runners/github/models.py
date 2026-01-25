@@ -162,8 +162,9 @@ def apply_ci_status_override(
     """
     Apply CI status override to verdict.
 
-    Failing CI -> BLOCKED
-    Pending CI -> NEEDS_REVISION (if currently READY_TO_MERGE or MERGE_WITH_CHANGES)
+    Failing CI -> BLOCKED (only for READY_TO_MERGE or MERGE_WITH_CHANGES verdicts)
+    Pending CI -> NEEDS_REVISION (only for READY_TO_MERGE or MERGE_WITH_CHANGES verdicts)
+    BLOCKED and NEEDS_REVISION verdicts are preserved as-is.
 
     Args:
         verdict: The current verdict
