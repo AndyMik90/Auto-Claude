@@ -9,7 +9,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Holistic PR Understanding
 
-- [ ] **CONTEXT-01**: PR synthesis step before specialists run — orchestrator synthesizes description + files + commits + comments into a PR understanding document
+- [ ] **CONTEXT-01**: PR synthesis step before specialists run - orchestrator synthesizes description + files + commits + comments into a PR understanding document
 - [ ] **CONTEXT-02**: Related files list passed to orchestrator prompt (50 files already gathered, currently unused)
 - [ ] **CONTEXT-03**: Import graph summary passed to orchestrator (what imports what, reverse deps)
 - [ ] **CONTEXT-04**: Specialists receive "files to investigate" list (related files, not just changed files)
@@ -89,41 +89,41 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONTEXT-01 | TBD | Pending |
-| CONTEXT-02 | TBD | Pending |
-| CONTEXT-03 | TBD | Pending |
-| CONTEXT-04 | TBD | Pending |
-| CONTEXT-05 | TBD | Pending |
-| VAL-01 | TBD | Pending |
-| VAL-02 | TBD | Pending |
-| VAL-03 | TBD | Pending |
-| SCHEMA-01 | TBD | Pending |
-| SCHEMA-02 | TBD | Pending |
-| SCHEMA-03 | TBD | Pending |
-| SCHEMA-04 | TBD | Pending |
-| SCHEMA-05 | TBD | Pending |
-| PROMPT-01 | TBD | Pending |
-| PROMPT-02 | TBD | Pending |
-| PROMPT-03 | TBD | Pending |
-| PROMPT-04 | TBD | Pending |
-| PROMPT-05 | TBD | Pending |
-| PROMPT-06 | TBD | Pending |
-| REMOVE-01 | TBD | Pending |
-| REMOVE-02 | TBD | Pending |
-| REMOVE-03 | TBD | Pending |
-| REMOVE-04 | TBD | Pending |
-| REMOVE-05 | TBD | Pending |
-| REMOVE-06 | TBD | Pending |
-| MEASURE-01 | TBD | Pending |
-| MEASURE-02 | TBD | Pending |
-| MEASURE-03 | TBD | Pending |
-| MEASURE-04 | TBD | Pending |
+| CONTEXT-01 | Phase 1 | Pending |
+| CONTEXT-02 | Phase 1 | Pending |
+| CONTEXT-03 | Phase 1 | Pending |
+| CONTEXT-04 | Phase 1 | Pending |
+| CONTEXT-05 | Phase 1 | Pending |
+| SCHEMA-01 | Phase 2 | Pending |
+| SCHEMA-02 | Phase 2 | Pending |
+| SCHEMA-03 | Phase 2 | Pending |
+| SCHEMA-04 | Phase 2 | Pending |
+| SCHEMA-05 | Phase 2 | Pending |
+| PROMPT-01 | Phase 3 | Pending |
+| PROMPT-02 | Phase 3 | Pending |
+| PROMPT-03 | Phase 3 | Pending |
+| PROMPT-04 | Phase 3 | Pending |
+| PROMPT-05 | Phase 3 | Pending |
+| PROMPT-06 | Phase 3 | Pending |
+| VAL-01 | Phase 4 | Pending |
+| VAL-02 | Phase 4 | Pending |
+| VAL-03 | Phase 4 | Pending |
+| REMOVE-01 | Phase 5 | Pending |
+| REMOVE-02 | Phase 5 | Pending |
+| REMOVE-03 | Phase 5 | Pending |
+| REMOVE-04 | Phase 5 | Pending |
+| REMOVE-05 | Phase 5 | Pending |
+| REMOVE-06 | Phase 5 | Pending |
+| MEASURE-01 | Phase 6 | Pending |
+| MEASURE-02 | Phase 6 | Pending |
+| MEASURE-03 | Phase 6 | Pending |
+| MEASURE-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29 (will be filled by roadmap)
+- Mapped to phases: 29
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after initial definition*
+*Last updated: 2026-01-25 after roadmap creation*
