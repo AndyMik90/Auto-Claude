@@ -99,7 +99,14 @@
     "selectedCountOne": "{{count}} tâche sélectionnée",
     "selectedCountOther": "{{count}} tâches sélectionnées",
     "createPRs": "Créer les PRs",
-    "clearSelection": "Effacer la sélection"
+    "clearSelection": "Effacer la sélection",
+    "collapseColumn": "Réduire la colonne",
+    "expandColumn": "Développer la colonne",
+    "resizeColumn": "Redimensionner la colonne",
+    "lockColumn": "Verrouiller la largeur de la colonne",
+    "unlockColumn": "Déverrouiller la largeur de la colonne",
+    "columnLocked": "La largeur de la colonne est verrouillée",
+    "expandAll": "Développer toutes les colonnes"
   },
   "queue": {
     "limitReached": "Limite de tâches parallèles atteinte ({{current}}/{{max}}). Tâche déplacée vers la file d'attente.",
