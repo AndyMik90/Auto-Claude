@@ -16,10 +16,9 @@ import { isWindows, GRACEFUL_KILL_TIMEOUT_MS } from '../platform';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SOCKET_PATH =
-  process.platform === 'win32'
-    ? `\\\\.\\pipe\\auto-claude-pty-${process.getuid?.() || 'default'}`
-    : `/tmp/auto-claude-pty-${process.getuid?.() || 'default'}.sock`;
+const SOCKET_PATH = isWindows()
+  ? `\\\\.\\pipe\\auto-claude-pty-${process.getuid?.() || 'default'}`
+  : `/tmp/auto-claude-pty-${process.getuid?.() || 'default'}.sock`;
 
 interface DaemonResponseData {
   exitCode?: number;

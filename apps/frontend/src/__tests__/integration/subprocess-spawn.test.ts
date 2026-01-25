@@ -191,7 +191,7 @@ describe('Subprocess Spawn Integration', () => {
           })
         })
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
@@ -220,7 +220,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should spawn Python process for QA process', async () => {
       const { spawn } = await import('child_process');
@@ -250,7 +250,7 @@ describe('Subprocess Spawn Integration', () => {
           cwd: AUTO_CLAUDE_SOURCE  // Process runs from auto-claude source directory
         })
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should accept parallel options without affecting spawn args', async () => {
       // Note: --parallel was removed from run.py CLI - parallel execution is handled internally by the agent
@@ -281,7 +281,7 @@ describe('Subprocess Spawn Integration', () => {
         ]),
         expect.any(Object)
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should emit log events from stdout', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -297,7 +297,7 @@ describe('Subprocess Spawn Integration', () => {
       mockStdout.emit('data', Buffer.from('Test log output\n'));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Test log output\n');
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should emit log events from stderr', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -313,7 +313,7 @@ describe('Subprocess Spawn Integration', () => {
       mockStderr.emit('data', Buffer.from('Progress: 50%\n'));
 
       expect(logHandler).toHaveBeenCalledWith('task-1', 'Progress: 50%\n');
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should emit exit event when process exits', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -330,7 +330,7 @@ describe('Subprocess Spawn Integration', () => {
 
       // Exit event includes taskId, exit code, and process type
       expect(exitHandler).toHaveBeenCalledWith('task-1', 0, expect.any(String));
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should emit error event when process errors', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -346,7 +346,7 @@ describe('Subprocess Spawn Integration', () => {
       mockProcess.emit('error', new Error('Spawn failed'));
 
       expect(errorHandler).toHaveBeenCalledWith('task-1', 'Spawn failed');
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should kill task and remove from tracking', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -367,7 +367,7 @@ describe('Subprocess Spawn Integration', () => {
         expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
       }
       expect(manager.isRunning('task-1')).toBe(false);
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should return false when killing non-existent task', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -376,7 +376,7 @@ describe('Subprocess Spawn Integration', () => {
       const result = manager.killTask('nonexistent');
 
       expect(result).toBe(false);
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should track running tasks', async () => {
       const { AgentManager } = await import('../../main/agent');
@@ -419,7 +419,7 @@ describe('Subprocess Spawn Integration', () => {
         expect.any(Array),
         expect.any(Object)
       );
-    }, 15000);  // Increase timeout for Windows CI
+    }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
     it('should kill all running tasks', async () => {
       const { AgentManager } = await import('../../main/agent');

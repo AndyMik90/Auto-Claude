@@ -183,6 +183,9 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
     delete process.env.ANTHROPIC_AUTH_TOKEN;
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    // Clear CLI path env vars so tests use mocked getToolInfo
+    delete process.env.CLAUDE_CLI_PATH;
+    delete process.env.GITHUB_CLI_PATH;
 
     // Initialize components
     state = new AgentState();
