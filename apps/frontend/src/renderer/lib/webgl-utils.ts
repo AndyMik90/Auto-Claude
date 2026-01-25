@@ -68,7 +68,7 @@ export function getMaxWebGLContexts(): number {
     } else if (userAgent.includes('firefox')) {
       // Firefox typically supports 32
       maxContexts = 32;
-    } else if (userAgent.includes('safari')) {
+    } else if (isSafari()) {
       // Safari is more conservative
       maxContexts = 8;
     }
