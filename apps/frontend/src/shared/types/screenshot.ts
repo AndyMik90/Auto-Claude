@@ -24,16 +24,3 @@ export interface ScreenshotCaptureOptions {
   sourceId: string;
 }
 
-/**
- * Response from getting screenshot sources
- */
-export interface ScreenshotSourcesResponse {
-  /** Whether the operation was successful */
-  success: boolean;
-  /** List of available sources when successful */
-  sources?: ScreenshotSource[];
-  /** Error message when operation failed */
-  error?: string;
-  /** Indicates the app is running in development mode (screenshot capture unavailable) */
-  devMode?: boolean;
-}

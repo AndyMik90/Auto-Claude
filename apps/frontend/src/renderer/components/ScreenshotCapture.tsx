@@ -30,6 +30,14 @@ interface ScreenshotCaptureProps {
   onCapture: (imageData: string) => void; // base64 encoded PNG
 }
 
+/**
+ * Get the appropriate paste keyboard shortcut based on platform
+ */
+const getPasteShortcut = (): string => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  return isMac ? 'Cmd+V' : 'Ctrl+V';
+};
+
 export function ScreenshotCapture({ open, onOpenChange, onCapture }: ScreenshotCaptureProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const [sources, setSources] = useState<ScreenshotSource[]>([]);
@@ -40,33 +48,24 @@ export function ScreenshotCapture({ open, onOpenChange, onCapture }: ScreenshotC
   const [isDevMode, setIsDevMode] = useState(false);
 
   /**
-   * Get the appropriate paste keyboard shortcut based on platform
-   */
-  const getPasteShortcut = (): string => {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    return isMac ? 'Cmd+V' : 'Ctrl+V';
-  };
-
-  /**
    * Fetch available screenshot sources
    */
   const fetchSources = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setIsDevMode(false);
+    setSelectedSource(null);
     try {
       const result = await window.electronAPI.getSources();
 
       // Check if running in dev mode (screenshot capture unavailable)
       if (result.devMode) {
         setIsDevMode(true);
-        setIsLoading(false);
         return;
       }
 
       if (result.success && result.data) {
         setSources(result.data);
-        setSelectedSource(null);
       } else {
         setError(result.error || t('tasks:screenshot.errors.getSources'));
       }
