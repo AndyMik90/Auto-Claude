@@ -4,11 +4,14 @@
  */
 
 import { ipcMain, shell, BrowserWindow } from 'electron';
-import { execSync, execFileSync, spawn } from 'child_process';
+import { execSync, execFileSync, execFile, spawn } from 'child_process';
+import { promisify } from 'util';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
 import { getAugmentedEnv, findExecutable } from '../../env-utils';
 import { getToolPath } from '../../cli-tool-manager';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Send device code info to all renderer windows immediately when extracted
@@ -32,7 +35,6 @@ function sendDeviceCodeToRenderer(deviceCode: string, authUrl: string, browserOp
 interface GitHubAuthChangedPayload {
   oldUsername: string | null;
   newUsername: string;
-  timestamp: Date;
 }
 
 /**
@@ -44,8 +46,7 @@ function sendAuthChangedToRenderer(oldUsername: string | null, newUsername: stri
   const windows = BrowserWindow.getAllWindows();
   const payload: GitHubAuthChangedPayload = {
     oldUsername,
-    newUsername,
-    timestamp: new Date()
+    newUsername
   };
   for (const win of windows) {
     win.webContents.send(IPC_CHANNELS.GITHUB_AUTH_CHANGED, payload);
@@ -53,16 +54,16 @@ function sendAuthChangedToRenderer(oldUsername: string | null, newUsername: stri
 }
 
 /**
- * Get current GitHub username from gh CLI
+ * Get current GitHub username from gh CLI (async to avoid blocking main thread)
  * Returns null if not authenticated or on error
  */
-function getCurrentGitHubUsername(): string | null {
+async function getCurrentGitHubUsername(): Promise<string | null> {
   try {
-    const username = execFileSync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
+    const { stdout } = await execFileAsync(getToolPath('gh'), ['api', 'user', '--jq', '.login'], {
       encoding: 'utf-8',
-      stdio: 'pipe',
       env: getAugmentedEnv()
-    }).trim();
+    });
+    const username = stdout.trim();
     return username || null;
   } catch {
     // Not authenticated or gh CLI error
@@ -284,8 +285,8 @@ export function registerStartGhAuth(): void {
     async (): Promise<IPCResult<GitHubAuthStartResult>> => {
       debugLog('startGitHubAuth handler called');
 
-      // Capture current username before auth to detect account changes
-      const usernameBeforeAuth = getCurrentGitHubUsername();
+      // Capture current username before auth to detect account changes (async to avoid blocking main thread)
+      const usernameBeforeAuth = await getCurrentGitHubUsername();
       debugLog('Username before auth:', usernameBeforeAuth || '(not authenticated)');
 
       return new Promise((resolve) => {
@@ -365,14 +366,14 @@ export function registerStartGhAuth(): void {
             void tryExtractAndOpenBrowser();
           });
 
-          ghProcess.on('close', (code) => {
+          ghProcess.on('close', async (code) => {
             debugLog('gh process exited with code:', code);
             debugLog('Full stdout:', output);
             debugLog('Full stderr:', errorOutput);
 
             if (code === 0) {
-              // Check for auth change after successful authentication
-              const usernameAfterAuth = getCurrentGitHubUsername();
+              // Check for auth change after successful authentication (async to avoid blocking main thread)
+              const usernameAfterAuth = await getCurrentGitHubUsername();
               debugLog('Username after auth:', usernameAfterAuth || '(unknown)');
 
               // Emit auth changed event if account changed (or went from unauthenticated to authenticated)
@@ -382,6 +383,10 @@ export function registerStartGhAuth(): void {
                   to: usernameAfterAuth
                 });
                 sendAuthChangedToRenderer(usernameBeforeAuth, usernameAfterAuth);
+              } else if (!usernameAfterAuth) {
+                // Auth succeeded (exit code 0) but username fetch failed - log warning
+                // This edge case means we can't detect account changes, but auth is still valid
+                debugLog('WARNING: Auth succeeded but could not fetch username to detect account change');
               }
 
               // Success case - include fallbackUrl if browser failed to open

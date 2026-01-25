@@ -15,6 +15,9 @@ import { getGitHubTokenForSubprocess } from '../utils';
  * 5. githubEnv - Fresh GitHub token from gh CLI (GITHUB_TOKEN) - fetched on each call to reflect account changes
  * 6. extraEnv - Caller-specific vars (e.g., USE_CLAUDE_MD)
  *
+ * NOTE: extraEnv can intentionally override any of the above, including GITHUB_TOKEN.
+ * This allows callers to provide their own token for testing or special cases.
+ *
  * The pythonEnv is critical for packaged apps (#139) - without PYTHONPATH, Python
  * cannot find bundled dependencies like dotenv, claude_agent_sdk, etc.
  *
