@@ -202,7 +202,7 @@ const browserMockAPI: ElectronAPI = {
     onAutoFixProgress: () => () => {},
     onAutoFixComplete: () => () => {},
     onAutoFixError: () => () => {},
-    listPRs: async () => [],
+    listPRs: async () => ({ prs: [], hasNextPage: false }),
     getPR: async () => null,
     runPRReview: () => {},
     cancelPRReview: async () => true,
