@@ -600,3 +600,1033 @@ class TestSubtaskCritique:
 
         assert chunk.critique_result is not None
         assert chunk.critique_result["score"] == 8
+
+
+class TestSchemaValidation:
+    """Tests for JSON schema validation of implementation plans."""
+
+    # =========================================================================
+    # Valid Schema Tests
+    # =========================================================================
+
+    def test_valid_minimal_plan_schema(self):
+        """Minimal valid plan with required fields passes validation."""
+        valid_plan = {
+            "feature": "Test Feature",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Setup",
+                    "subtasks": [
+                        {"id": "task-1", "description": "Do something", "status": "pending"}
+                    ],
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(valid_plan)
+
+        assert plan.feature == "Test Feature"
+        assert plan.workflow_type == WorkflowType.FEATURE
+        assert len(plan.phases) == 1
+        assert len(plan.phases[0].subtasks) == 1
+
+    def test_valid_full_plan_schema(self):
+        """Full plan with all optional fields validates correctly."""
+        valid_plan = {
+            "feature": "User Authentication",
+            "workflow_type": "feature",
+            "services_involved": ["backend", "frontend", "worker"],
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Backend Foundation",
+                    "type": "setup",
+                    "depends_on": [],
+                    "parallel_safe": True,
+                    "subtasks": [
+                        {
+                            "id": "subtask-1-1",
+                            "description": "Add user model",
+                            "status": "completed",
+                            "service": "backend",
+                            "files_to_modify": ["app/models.py"],
+                            "files_to_create": ["app/auth.py"],
+                            "patterns_from": ["app/base_model.py"],
+                            "verification": {
+                                "type": "command",
+                                "run": "pytest tests/",
+                            },
+                            "expected_output": "Tests pass",
+                            "actual_output": "All 5 tests passed",
+                            "started_at": "2024-01-01T10:00:00",
+                            "completed_at": "2024-01-01T10:30:00",
+                            "session_id": 1,
+                        }
+                    ],
+                },
+                {
+                    "phase": 2,
+                    "name": "Frontend Integration",
+                    "type": "implementation",
+                    "depends_on": [1],
+                    "subtasks": [
+                        {
+                            "id": "subtask-2-1",
+                            "description": "Add login form",
+                            "status": "pending",
+                            "service": "frontend",
+                        }
+                    ],
+                },
+            ],
+            "final_acceptance": [
+                "User can log in",
+                "Sessions persist across refreshes",
+            ],
+            "created_at": "2024-01-01T09:00:00",
+            "updated_at": "2024-01-01T10:30:00",
+            "spec_file": "spec.md",
+        }
+
+        plan = ImplementationPlan.from_dict(valid_plan)
+
+        assert plan.feature == "User Authentication"
+        assert len(plan.services_involved) == 3
+        assert len(plan.phases) == 2
+        assert plan.phases[0].parallel_safe is True
+        assert plan.phases[1].depends_on == [1]
+        assert len(plan.final_acceptance) == 2
+
+    def test_all_workflow_types_valid(self):
+        """All defined workflow types are accepted."""
+        workflow_types = ["feature", "refactor", "investigation", "migration", "simple"]
+
+        for wf_type in workflow_types:
+            plan_data = {
+                "feature": f"Test {wf_type}",
+                "workflow_type": wf_type,
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test Phase",
+                        "subtasks": [
+                            {"id": "t1", "description": "Test", "status": "pending"}
+                        ],
+                    }
+                ],
+            }
+
+            plan = ImplementationPlan.from_dict(plan_data)
+            assert plan.workflow_type.value == wf_type
+
+    def test_all_phase_types_valid(self):
+        """All defined phase types are accepted."""
+        phase_types = ["setup", "implementation", "investigation", "integration", "cleanup"]
+
+        for phase_type in phase_types:
+            plan_data = {
+                "feature": "Test",
+                "workflow_type": "feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test Phase",
+                        "type": phase_type,
+                        "subtasks": [
+                            {"id": "t1", "description": "Test", "status": "pending"}
+                        ],
+                    }
+                ],
+            }
+
+            plan = ImplementationPlan.from_dict(plan_data)
+            assert plan.phases[0].type.value == phase_type
+
+    def test_all_subtask_statuses_valid(self):
+        """All defined subtask statuses are accepted."""
+        statuses = ["pending", "in_progress", "completed", "blocked", "failed"]
+
+        for status in statuses:
+            subtask_data = {
+                "id": "test",
+                "description": "Test subtask",
+                "status": status,
+            }
+
+            subtask = Chunk.from_dict(subtask_data)
+            assert subtask.status.value == status
+
+    def test_all_verification_types_valid(self):
+        """All defined verification types are accepted."""
+        ver_types = ["command", "api", "browser", "component", "manual", "none"]
+
+        for ver_type in ver_types:
+            ver_data = {"type": ver_type}
+
+            verification = Verification.from_dict(ver_data)
+            assert verification.type.value == ver_type
+
+    # =========================================================================
+    # Invalid Schema Tests - Missing Required Fields
+    # =========================================================================
+
+    def test_invalid_plan_missing_feature_uses_default(self):
+        """Plan without feature field uses default name."""
+        invalid_plan = {
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Test",
+                    "subtasks": [
+                        {"id": "t1", "description": "Test", "status": "pending"}
+                    ],
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(invalid_plan)
+        assert plan.feature == "Unnamed Feature"
+
+    def test_invalid_plan_missing_workflow_type_uses_default(self):
+        """Plan without workflow_type uses default."""
+        invalid_plan = {
+            "feature": "Test",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Test",
+                    "subtasks": [
+                        {"id": "t1", "description": "Test", "status": "pending"}
+                    ],
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(invalid_plan)
+        assert plan.workflow_type == WorkflowType.FEATURE
+
+    def test_invalid_plan_missing_phases_creates_empty_list(self):
+        """Plan without phases creates empty phases list."""
+        invalid_plan = {
+            "feature": "Test",
+            "workflow_type": "feature",
+        }
+
+        plan = ImplementationPlan.from_dict(invalid_plan)
+        assert plan.phases == []
+
+    def test_invalid_phase_missing_name_uses_fallback(self):
+        """Phase without name uses fallback name."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "subtasks": [
+                        {"id": "t1", "description": "Test", "status": "pending"}
+                    ],
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+        assert plan.phases[0].name == "Phase 1"
+
+    def test_invalid_phase_missing_subtasks_creates_empty_list(self):
+        """Phase without subtasks creates empty subtasks list."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Empty Phase",
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+        assert plan.phases[0].subtasks == []
+
+    def test_invalid_subtask_missing_status_uses_default(self):
+        """Subtask without status defaults to pending."""
+        subtask_data = {
+            "id": "test",
+            "description": "Test subtask",
+        }
+
+        subtask = Chunk.from_dict(subtask_data)
+        assert subtask.status == ChunkStatus.PENDING
+
+    # =========================================================================
+    # Invalid Schema Tests - Wrong Types
+    # =========================================================================
+
+    def test_invalid_workflow_type_falls_back_to_feature(self):
+        """Unknown workflow_type falls back to feature with warning."""
+        invalid_plan = {
+            "feature": "Test",
+            "workflow_type": "invalid_type",
+            "phases": [],
+        }
+
+        plan = ImplementationPlan.from_dict(invalid_plan)
+        assert plan.workflow_type == WorkflowType.FEATURE
+
+    def test_invalid_subtask_status_raises_error(self):
+        """Invalid subtask status raises ValueError."""
+        subtask_data = {
+            "id": "test",
+            "description": "Test",
+            "status": "invalid_status",
+        }
+
+        with pytest.raises(ValueError):
+            Chunk.from_dict(subtask_data)
+
+    def test_invalid_phase_type_raises_error(self):
+        """Invalid phase type raises ValueError."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Test",
+                    "type": "invalid_type",
+                    "subtasks": [],
+                }
+            ],
+        }
+
+        with pytest.raises(ValueError):
+            ImplementationPlan.from_dict(plan_data)
+
+    def test_invalid_verification_type_raises_error(self):
+        """Invalid verification type raises ValueError."""
+        ver_data = {"type": "invalid_type"}
+
+        with pytest.raises(ValueError):
+            Verification.from_dict(ver_data)
+
+    # =========================================================================
+    # Edge Cases
+    # =========================================================================
+
+    def test_empty_plan_schema(self):
+        """Completely empty dict creates plan with defaults."""
+        plan = ImplementationPlan.from_dict({})
+
+        assert plan.feature == "Unnamed Feature"
+        assert plan.workflow_type == WorkflowType.FEATURE
+        assert plan.phases == []
+        assert plan.services_involved == []
+
+    def test_plan_with_title_field_instead_of_feature(self):
+        """Plan with 'title' field instead of 'feature' works."""
+        plan_data = {
+            "title": "My Feature Title",
+            "workflow_type": "feature",
+            "phases": [],
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+        assert plan.feature == "My Feature Title"
+
+    def test_phase_with_chunks_field_instead_of_subtasks(self):
+        """Phase with 'chunks' field (legacy) works."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Test Phase",
+                    "chunks": [
+                        {"id": "t1", "description": "Test", "status": "pending"}
+                    ],
+                }
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+        assert len(plan.phases[0].subtasks) == 1
+        assert plan.phases[0].subtasks[0].id == "t1"
+
+    def test_plan_preserves_qa_signoff_structure(self):
+        """Plan preserves qa_signoff dict structure."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [],
+            "qa_signoff": {
+                "status": "approved",
+                "qa_session": 1,
+                "timestamp": "2024-01-01T12:00:00",
+                "tests_passed": {"unit": True, "integration": True},
+            },
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+
+        assert plan.qa_signoff is not None
+        assert plan.qa_signoff["status"] == "approved"
+        assert plan.qa_signoff["qa_session"] == 1
+        assert plan.qa_signoff["tests_passed"]["unit"] is True
+
+    def test_subtask_with_all_optional_fields(self):
+        """Subtask with all optional fields deserializes correctly."""
+        subtask_data = {
+            "id": "complex-task",
+            "description": "Complex task with all fields",
+            "status": "completed",
+            "service": "backend",
+            "all_services": True,
+            "files_to_modify": ["file1.py", "file2.py"],
+            "files_to_create": ["new_file.py"],
+            "patterns_from": ["pattern.py"],
+            "verification": {"type": "command", "run": "pytest"},
+            "expected_output": "Tests pass",
+            "actual_output": "All tests passed",
+            "started_at": "2024-01-01T10:00:00",
+            "completed_at": "2024-01-01T10:30:00",
+            "session_id": 42,
+            "critique_result": {"passed": True, "score": 9},
+        }
+
+        subtask = Chunk.from_dict(subtask_data)
+
+        assert subtask.id == "complex-task"
+        assert subtask.service == "backend"
+        assert subtask.all_services is True
+        assert len(subtask.files_to_modify) == 2
+        assert subtask.verification.type == VerificationType.COMMAND
+        assert subtask.session_id == 42
+        assert subtask.critique_result["score"] == 9
+
+    def test_verification_with_api_fields(self):
+        """API verification with all fields deserializes correctly."""
+        ver_data = {
+            "type": "api",
+            "url": "/api/users",
+            "method": "POST",
+            "expect_status": 201,
+            "expect_contains": "user_id",
+        }
+
+        verification = Verification.from_dict(ver_data)
+
+        assert verification.type == VerificationType.API
+        assert verification.url == "/api/users"
+        assert verification.method == "POST"
+        assert verification.expect_status == 201
+        assert verification.expect_contains == "user_id"
+
+    def test_verification_with_browser_scenario(self):
+        """Browser verification with scenario deserializes correctly."""
+        ver_data = {
+            "type": "browser",
+            "scenario": "User can click login button and see dashboard",
+        }
+
+        verification = Verification.from_dict(ver_data)
+
+        assert verification.type == VerificationType.BROWSER
+        assert verification.scenario == "User can click login button and see dashboard"
+
+    def test_plan_round_trip_preserves_data(self):
+        """Plan survives to_dict/from_dict round trip."""
+        original_plan = ImplementationPlan(
+            feature="Round Trip Test",
+            workflow_type=WorkflowType.REFACTOR,
+            services_involved=["backend", "frontend"],
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase One",
+                    type=PhaseType.SETUP,
+                    subtasks=[
+                        Chunk(
+                            id="task-1",
+                            description="First task",
+                            status=ChunkStatus.COMPLETED,
+                            service="backend",
+                            files_to_modify=["file.py"],
+                            verification=Verification(
+                                type=VerificationType.COMMAND,
+                                run="pytest",
+                            ),
+                        )
+                    ],
+                    depends_on=[],
+                    parallel_safe=True,
+                )
+            ],
+            final_acceptance=["Feature works"],
+        )
+
+        # Round trip
+        data = original_plan.to_dict()
+        restored_plan = ImplementationPlan.from_dict(data)
+
+        # Verify
+        assert restored_plan.feature == original_plan.feature
+        assert restored_plan.workflow_type == original_plan.workflow_type
+        assert restored_plan.services_involved == original_plan.services_involved
+        assert len(restored_plan.phases) == len(original_plan.phases)
+        assert restored_plan.phases[0].name == original_plan.phases[0].name
+        assert restored_plan.phases[0].parallel_safe == original_plan.phases[0].parallel_safe
+        assert len(restored_plan.phases[0].subtasks) == len(original_plan.phases[0].subtasks)
+        assert restored_plan.phases[0].subtasks[0].id == original_plan.phases[0].subtasks[0].id
+        assert restored_plan.phases[0].subtasks[0].verification.run == "pytest"
+
+    def test_deeply_nested_phases_with_dependencies(self):
+        """Plan with complex phase dependencies deserializes correctly."""
+        plan_data = {
+            "feature": "Complex Feature",
+            "workflow_type": "feature",
+            "phases": [
+                {
+                    "phase": 1,
+                    "name": "Foundation",
+                    "depends_on": [],
+                    "subtasks": [{"id": "t1", "description": "Task 1", "status": "completed"}],
+                },
+                {
+                    "phase": 2,
+                    "name": "Build A",
+                    "depends_on": [1],
+                    "subtasks": [{"id": "t2", "description": "Task 2", "status": "completed"}],
+                },
+                {
+                    "phase": 3,
+                    "name": "Build B",
+                    "depends_on": [1],
+                    "subtasks": [{"id": "t3", "description": "Task 3", "status": "pending"}],
+                },
+                {
+                    "phase": 4,
+                    "name": "Integration",
+                    "depends_on": [2, 3],
+                    "subtasks": [{"id": "t4", "description": "Task 4", "status": "pending"}],
+                },
+            ],
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+
+        assert len(plan.phases) == 4
+        assert plan.phases[0].depends_on == []
+        assert plan.phases[1].depends_on == [1]
+        assert plan.phases[2].depends_on == [1]
+        assert plan.phases[3].depends_on == [2, 3]
+
+        # Test dependency resolution
+        available = plan.get_available_phases()
+        # Phase 1 complete, so phases 2 and 3 should be available (but 3 is pending, 2 is complete)
+        # Actually phase 2 is also complete, so phase 4 should check if 2 AND 3 are done
+        # Phase 3 has pending subtask, so phase 4 is not available
+        phase_nums = [p.phase for p in available]
+        assert 3 in phase_nums  # Phase 3 depends on 1 (complete), has pending work
+        assert 4 not in phase_nums  # Phase 4 depends on 2 AND 3, but 3 not complete
+
+    def test_plan_status_fields_preserved(self):
+        """Plan status and planStatus fields are preserved."""
+        plan_data = {
+            "feature": "Test",
+            "workflow_type": "feature",
+            "phases": [],
+            "status": "in_progress",
+            "planStatus": "in_progress",
+            "recoveryNote": "Resumed after crash",
+        }
+
+        plan = ImplementationPlan.from_dict(plan_data)
+
+        assert plan.status == "in_progress"
+        assert plan.planStatus == "in_progress"
+        assert plan.recoveryNote == "Resumed after crash"
+
+        # Verify they serialize back
+        data = plan.to_dict()
+        assert data["status"] == "in_progress"
+        assert data["planStatus"] == "in_progress"
+        assert data["recoveryNote"] == "Resumed after crash"
+
+
+class TestEdgeCaseStateTransitions:
+    """Tests for edge cases in plan state transitions (stuck, skipped, blocked)."""
+
+    # =========================================================================
+    # BLOCKED Status Tests
+    # =========================================================================
+
+    def test_chunk_blocked_status_initialization(self):
+        """Chunk can be initialized with blocked status."""
+        chunk = Chunk(
+            id="blocked-task",
+            description="Task waiting for investigation results",
+            status=ChunkStatus.BLOCKED,
+        )
+
+        assert chunk.status == ChunkStatus.BLOCKED
+        assert chunk.started_at is None
+        assert chunk.completed_at is None
+
+    def test_chunk_blocked_to_pending_transition(self):
+        """Blocked chunk can transition to pending (unblocking)."""
+        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+
+        # Manually unblock by setting to pending
+        chunk.status = ChunkStatus.PENDING
+
+        assert chunk.status == ChunkStatus.PENDING
+
+    def test_chunk_blocked_to_in_progress_transition(self):
+        """Blocked chunk can be started directly (auto-unblock)."""
+        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+
+        chunk.start(session_id=1)
+
+        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.started_at is not None
+        assert chunk.session_id == 1
+
+    def test_blocked_chunk_serialization_roundtrip(self):
+        """Blocked status survives serialization/deserialization."""
+        chunk = Chunk(
+            id="blocked-task",
+            description="Blocked task",
+            status=ChunkStatus.BLOCKED,
+        )
+
+        data = chunk.to_dict()
+        restored = Chunk.from_dict(data)
+
+        assert restored.status == ChunkStatus.BLOCKED
+        assert data["status"] == "blocked"
+
+    def test_phase_with_all_blocked_chunks(self):
+        """Phase with all blocked chunks is not complete."""
+        phase = Phase(
+            phase=1,
+            name="Blocked Phase",
+            subtasks=[
+                Chunk(id="c1", description="Task 1", status=ChunkStatus.BLOCKED),
+                Chunk(id="c2", description="Task 2", status=ChunkStatus.BLOCKED),
+            ],
+        )
+
+        assert phase.is_complete() is False
+        assert phase.get_pending_subtasks() == []  # Blocked != pending
+        completed, total = phase.get_progress()
+        assert completed == 0
+        assert total == 2
+
+    def test_phase_completion_ignores_blocked_chunks(self):
+        """Phase is not complete if any chunks are blocked."""
+        phase = Phase(
+            phase=1,
+            name="Mixed Phase",
+            subtasks=[
+                Chunk(id="c1", description="Task 1", status=ChunkStatus.COMPLETED),
+                Chunk(id="c2", description="Task 2", status=ChunkStatus.BLOCKED),
+            ],
+        )
+
+        assert phase.is_complete() is False
+        completed, total = phase.get_progress()
+        assert completed == 1
+        assert total == 2
+
+    def test_investigation_plan_blocked_fix_chunks(self):
+        """Investigation plan has blocked chunks in fix phase."""
+        plan = create_investigation_plan(
+            bug_description="User login fails intermittently",
+            services=["backend"],
+        )
+
+        fix_phase = plan.phases[2]  # Phase 3 - Fix
+        blocked_chunks = [c for c in fix_phase.subtasks if c.status == ChunkStatus.BLOCKED]
+
+        assert len(blocked_chunks) == 2
+        assert any("fix" in c.id.lower() for c in blocked_chunks)
+        assert any("regression" in c.id.lower() for c in blocked_chunks)
+
+    # =========================================================================
+    # STUCK Plan Tests
+    # =========================================================================
+
+    def test_plan_stuck_all_phases_blocked(self):
+        """Plan is stuck when all available phases have only blocked subtasks."""
+        plan = ImplementationPlan(
+            feature="Stuck Plan",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
+                    ],
+                ),
+            ],
+        )
+
+        # No pending subtasks available
+        result = plan.get_next_subtask()
+
+        assert result is None
+
+    def test_plan_stuck_due_to_unmet_dependencies(self):
+        """Plan is stuck when all phases have unmet dependencies."""
+        plan = ImplementationPlan(
+            feature="Dependency Deadlock",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Task 1", status=ChunkStatus.PENDING),
+                    ],
+                    depends_on=[2],  # Circular dependency
+                ),
+                Phase(
+                    phase=2,
+                    name="Phase 2",
+                    subtasks=[
+                        Chunk(id="c2", description="Task 2", status=ChunkStatus.PENDING),
+                    ],
+                    depends_on=[1],  # Circular dependency
+                ),
+            ],
+        )
+
+        # Both phases depend on each other - neither can proceed
+        available = plan.get_available_phases()
+        assert len(available) == 0
+
+        result = plan.get_next_subtask()
+        assert result is None
+
+    def test_plan_stuck_message_in_status_summary(self):
+        """Status summary shows BLOCKED when no work available."""
+        plan = ImplementationPlan(
+            feature="Stuck Feature",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Waiting Phase",
+                    subtasks=[
+                        Chunk(id="c1", description="Blocked task", status=ChunkStatus.BLOCKED),
+                    ],
+                ),
+            ],
+        )
+
+        summary = plan.get_status_summary()
+
+        assert "BLOCKED" in summary
+        assert "No available subtasks" in summary
+
+    def test_plan_stuck_with_failed_subtasks(self):
+        """Plan with only failed subtasks shows stuck state."""
+        plan = ImplementationPlan(
+            feature="Failed Plan",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Failed task", status=ChunkStatus.FAILED),
+                    ],
+                ),
+            ],
+        )
+
+        # Failed subtasks are not pending, so no work available
+        result = plan.get_next_subtask()
+        assert result is None
+
+        progress = plan.get_progress()
+        assert progress["failed_subtasks"] == 1
+        assert progress["is_complete"] is False
+
+    def test_plan_progress_includes_failed_count(self):
+        """Progress tracking includes failed subtask count."""
+        plan = ImplementationPlan(
+            feature="Mixed Status",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
+                        Chunk(id="c2", description="Failed", status=ChunkStatus.FAILED),
+                        Chunk(id="c3", description="Blocked", status=ChunkStatus.BLOCKED),
+                        Chunk(id="c4", description="Pending", status=ChunkStatus.PENDING),
+                    ],
+                ),
+            ],
+        )
+
+        progress = plan.get_progress()
+
+        assert progress["completed_subtasks"] == 1
+        assert progress["failed_subtasks"] == 1
+        assert progress["total_subtasks"] == 4
+        assert progress["percent_complete"] == 25.0
+        assert progress["is_complete"] is False
+
+    # =========================================================================
+    # SKIPPED Scenarios Tests (no explicit status, but behavior tests)
+    # =========================================================================
+
+    def test_phase_skipped_when_no_subtasks(self):
+        """Empty phase is considered complete (skipped)."""
+        phase = Phase(
+            phase=1,
+            name="Empty Phase",
+            subtasks=[],
+        )
+
+        # Empty phase counts as complete
+        assert phase.is_complete() is True
+        completed, total = phase.get_progress()
+        assert completed == 0
+        assert total == 0
+
+    def test_plan_skips_empty_phase_to_next(self):
+        """Plan skips empty phases when finding next subtask."""
+        plan = ImplementationPlan(
+            feature="Skip Empty Phase",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Empty Setup",
+                    subtasks=[],
+                ),
+                Phase(
+                    phase=2,
+                    name="Real Work",
+                    depends_on=[1],
+                    subtasks=[
+                        Chunk(id="c1", description="Actual task", status=ChunkStatus.PENDING),
+                    ],
+                ),
+            ],
+        )
+
+        result = plan.get_next_subtask()
+
+        assert result is not None
+        phase, subtask = result
+        assert phase.phase == 2
+        assert subtask.id == "c1"
+
+    def test_multiple_skipped_phases_chain(self):
+        """Chain of empty phases are all skipped correctly."""
+        plan = ImplementationPlan(
+            feature="Multi-Skip",
+            phases=[
+                Phase(phase=1, name="Empty 1", subtasks=[]),
+                Phase(phase=2, name="Empty 2", depends_on=[1], subtasks=[]),
+                Phase(phase=3, name="Empty 3", depends_on=[2], subtasks=[]),
+                Phase(
+                    phase=4,
+                    name="Work Phase",
+                    depends_on=[3],
+                    subtasks=[
+                        Chunk(id="c1", description="Task", status=ChunkStatus.PENDING),
+                    ],
+                ),
+            ],
+        )
+
+        # All empty phases count as complete, so phase 4 is available
+        available = plan.get_available_phases()
+        assert len(available) == 1
+        assert available[0].phase == 4
+
+    def test_completed_phase_skipped_for_next_work(self):
+        """Already completed phases are skipped when finding next work."""
+        plan = ImplementationPlan(
+            feature="Skip Completed",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Done Phase",
+                    subtasks=[
+                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
+                    ],
+                ),
+                Phase(
+                    phase=2,
+                    name="Work Phase",
+                    depends_on=[1],
+                    subtasks=[
+                        Chunk(id="c2", description="Pending", status=ChunkStatus.PENDING),
+                    ],
+                ),
+            ],
+        )
+
+        result = plan.get_next_subtask()
+
+        assert result is not None
+        phase, subtask = result
+        assert phase.phase == 2
+        assert subtask.id == "c2"
+
+    # =========================================================================
+    # Complex State Transition Scenarios
+    # =========================================================================
+
+    def test_blocked_unblocked_complete_transition(self):
+        """Full transition from blocked -> pending -> in_progress -> completed."""
+        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+
+        # Unblock
+        chunk.status = ChunkStatus.PENDING
+        assert chunk.status == ChunkStatus.PENDING
+
+        # Start
+        chunk.start(session_id=1)
+        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.started_at is not None
+
+        # Complete
+        chunk.complete(output="Done successfully")
+        assert chunk.status == ChunkStatus.COMPLETED
+        assert chunk.completed_at is not None
+        assert chunk.actual_output == "Done successfully"
+
+    def test_blocked_to_failed_transition(self):
+        """Blocked chunk can transition to failed without being started."""
+        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+
+        # Mark as failed directly (e.g., investigation revealed it's not feasible)
+        chunk.fail(reason="Investigation revealed task is not feasible")
+
+        assert chunk.status == ChunkStatus.FAILED
+        assert "FAILED: Investigation revealed task is not feasible" in chunk.actual_output
+
+    def test_in_progress_subtask_blocks_phase_completion(self):
+        """Phase with in_progress subtask is not complete."""
+        phase = Phase(
+            phase=1,
+            name="Active Phase",
+            subtasks=[
+                Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
+                Chunk(id="c2", description="Working", status=ChunkStatus.IN_PROGRESS),
+            ],
+        )
+
+        assert phase.is_complete() is False
+
+    def test_mixed_blocked_and_failed_prevents_completion(self):
+        """Phase with blocked and failed subtasks is not complete."""
+        phase = Phase(
+            phase=1,
+            name="Problematic Phase",
+            subtasks=[
+                Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
+                Chunk(id="c2", description="Failed", status=ChunkStatus.FAILED),
+            ],
+        )
+
+        assert phase.is_complete() is False
+        assert phase.get_pending_subtasks() == []
+
+    def test_plan_becomes_available_after_unblocking(self):
+        """Plan becomes unstuck when blocked subtask is unblocked."""
+        plan = ImplementationPlan(
+            feature="Unblock Test",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Blocked Phase",
+                    subtasks=[
+                        Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
+                    ],
+                ),
+            ],
+        )
+
+        # Initially stuck
+        assert plan.get_next_subtask() is None
+
+        # Unblock the subtask
+        plan.phases[0].subtasks[0].status = ChunkStatus.PENDING
+
+        # Now work is available
+        result = plan.get_next_subtask()
+        assert result is not None
+        phase, subtask = result
+        assert subtask.id == "c1"
+
+    def test_failed_subtask_retry_transition(self):
+        """Failed subtask can be reset to pending for retry."""
+        chunk = Chunk(id="test", description="Test", status=ChunkStatus.FAILED)
+        chunk.actual_output = "FAILED: Previous error"
+
+        # Reset for retry
+        chunk.status = ChunkStatus.PENDING
+        chunk.actual_output = None
+        chunk.started_at = None
+        chunk.completed_at = None
+
+        assert chunk.status == ChunkStatus.PENDING
+        assert chunk.actual_output is None
+
+        # Can be started again
+        chunk.start(session_id=2)
+        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.session_id == 2
+
+    def test_plan_status_update_with_blocked_subtasks(self):
+        """Plan status updates correctly with blocked subtasks."""
+        plan = ImplementationPlan(
+            feature="Status Test",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
+                        Chunk(id="c2", description="Blocked", status=ChunkStatus.BLOCKED),
+                    ],
+                ),
+            ],
+        )
+
+        plan.update_status_from_subtasks()
+
+        # With blocked subtask, plan is still in progress
+        assert plan.status == "in_progress"
+        assert plan.planStatus == "in_progress"
+
+    def test_all_blocked_subtasks_keeps_plan_in_backlog(self):
+        """Plan with all blocked (no completed) subtasks stays in backlog."""
+        plan = ImplementationPlan(
+            feature="All Blocked",
+            phases=[
+                Phase(
+                    phase=1,
+                    name="Phase 1",
+                    subtasks=[
+                        Chunk(id="c1", description="Blocked 1", status=ChunkStatus.BLOCKED),
+                        Chunk(id="c2", description="Blocked 2", status=ChunkStatus.BLOCKED),
+                    ],
+                ),
+            ],
+        )
+
+        plan.update_status_from_subtasks()
+
+        # All subtasks blocked = effectively pending state = backlog
+        assert plan.status == "backlog"
+        assert plan.planStatus == "pending"
