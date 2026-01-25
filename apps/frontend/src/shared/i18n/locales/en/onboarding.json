@@ -109,6 +109,8 @@
     "azureEmbeddingDeployment": "Embedding Deployment Name",
     "memoryInfo": "Memory stores discoveries, patterns, and insights about your codebase so future sessions start with context already loaded. No Docker required - uses an embedded database.",
     "learnMore": "Learn more about Memory",
+    "storedIn": "Stored in {{path}}",
+    "defaultDir": "memories directory",
     "back": "Back",
     "skip": "Skip",
     "saving": "Saving...",
@@ -249,5 +251,11 @@
       "retry": "Retry",
       "fallbackNote": "Memory will still work with keyword search even without embeddings."
     }
+  },
+  "ladybug": {
+    "notInstalled": "LadybugDB Not Installed",
+    "downloadBuildTools": "Download Visual Studio Build Tools",
+    "restartAfterInstall": "After installing build tools, restart the application to retry.",
+    "checkFailed": "Failed to check infrastructure status"
   }
 }

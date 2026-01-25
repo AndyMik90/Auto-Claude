@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Database, ExternalLink } from 'lucide-react';
 import type { InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
 
 interface InfrastructureStatusProps {
@@ -14,6 +14,9 @@ export function InfrastructureStatus({
   infrastructureStatus,
   isCheckingInfrastructure,
 }: InfrastructureStatusProps) {
+  const ladybugInstalled = infrastructureStatus?.memory.ladybugInstalled;
+  const ladybugError = infrastructureStatus?.memory.ladybugError;
+
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
       <div className="flex items-center justify-between">
@@ -23,24 +26,42 @@ export function InfrastructureStatus({
         )}
       </div>
 
-      {/* Kuzu Installation Status */}
+      {/* LadybugDB Installation Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {infrastructureStatus?.memory.kuzuInstalled ? (
+          {ladybugInstalled ? (
             <CheckCircle2 className="h-4 w-4 text-success" />
           ) : (
             <AlertCircle className="h-4 w-4 text-warning" />
           )}
-          <span className="text-xs text-foreground">Kuzu Database</span>
+          <span className="text-xs text-foreground">LadybugDB</span>
         </div>
         <div className="flex items-center gap-2">
-          {infrastructureStatus?.memory.kuzuInstalled ? (
+          {ladybugInstalled ? (
             <span className="text-xs text-success">Installed</span>
           ) : (
-            <span className="text-xs text-warning">Not Available</span>
+            <span className="text-xs text-warning">Not Installed</span>
           )}
         </div>
       </div>
+
+      {/* LadybugDB Error Details */}
+      {!ladybugInstalled && ladybugError && (
+        <div className="rounded-md bg-warning/10 border border-warning/30 p-2 space-y-1">
+          <p className="text-xs text-warning">{ladybugError}</p>
+          {ladybugError.includes('Visual Studio Build Tools') && (
+            <a
+              href="https://visualstudio.microsoft.com/visual-cpp-build-tools/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Download Visual Studio Build Tools
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Database Status */}
       <div className="flex items-center justify-between">
@@ -55,10 +76,10 @@ export function InfrastructureStatus({
         <div className="flex items-center gap-2">
           {infrastructureStatus?.memory.databaseExists ? (
             <span className="text-xs text-success">Ready</span>
-          ) : infrastructureStatus?.memory.kuzuInstalled ? (
+          ) : ladybugInstalled ? (
             <span className="text-xs text-muted-foreground">Will be created on first use</span>
           ) : (
-            <span className="text-xs text-muted-foreground">Requires Kuzu</span>
+            <span className="text-xs text-muted-foreground">Requires LadybugDB</span>
           )}
         </div>
       </div>
@@ -76,7 +97,7 @@ export function InfrastructureStatus({
           <CheckCircle2 className="h-3 w-3" />
           Graph memory is ready to use
         </div>
-      ) : infrastructureStatus && !infrastructureStatus.memory.kuzuInstalled && (
+      ) : infrastructureStatus && !ladybugInstalled && (
         <p className="text-xs text-muted-foreground">
           Graph memory requires Python 3.12+ with LadybugDB. No Docker needed.
         </p>

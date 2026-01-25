@@ -108,6 +108,8 @@
     "azureEmbeddingDeployment": "Nom du déploiement d'embedding",
     "memoryInfo": "La mémoire stocke les découvertes, motifs et informations sur votre codebase pour que les futures sessions démarrent avec le contexte déjà chargé. Pas de Docker requis - utilise une base de données intégrée.",
     "learnMore": "En savoir plus sur la mémoire",
+    "storedIn": "Stocké dans {{path}}",
+    "defaultDir": "répertoire des mémoires",
     "back": "Retour",
     "skip": "Passer",
     "saving": "Enregistrement...",
@@ -239,5 +241,11 @@
       "retry": "Réessayer",
       "fallbackNote": "La mémoire fonctionnera toujours avec la recherche par mots-clés même sans embeddings."
     }
+  },
+  "ladybug": {
+    "notInstalled": "LadybugDB non installé",
+    "downloadBuildTools": "Télécharger Visual Studio Build Tools",
+    "restartAfterInstall": "Après l'installation des outils de compilation, redémarrez l'application pour réessayer.",
+    "checkFailed": "Échec de la vérification du statut de l'infrastructure"
   }
 }

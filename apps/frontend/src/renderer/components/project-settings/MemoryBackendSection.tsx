@@ -9,6 +9,7 @@ import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import type { ProjectEnvConfig, ProjectSettings, InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
 
 interface OllamaEmbeddingModel {
@@ -47,6 +48,9 @@ export function MemoryBackendSection({
   const [ollamaModels, setOllamaModels] = useState<OllamaEmbeddingModel[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'checking' | 'connected' | 'disconnected'>('idle');
   const [ollamaError, setOllamaError] = useState<string | null>(null);
+
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   const embeddingProvider = envConfig.graphitiProviderConfig?.embeddingProvider || 'openai';
   const ollamaBaseUrl = envConfig.graphitiProviderConfig?.ollamaBaseUrl || 'http://localhost:11434';
@@ -478,7 +482,7 @@ export function MemoryBackendSection({
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">Database Name</Label>
             <p className="text-xs text-muted-foreground">
-              Name for the memory database (stored in ~/.auto-claude/memories/)
+              Name for the memory database (stored in {memoriesDir || 'memories directory'})
             </p>
             <Input
               placeholder="auto_claude_memory"
@@ -490,10 +494,10 @@ export function MemoryBackendSection({
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
             <p className="text-xs text-muted-foreground">
-              Custom storage location. Default: ~/.auto-claude/memories/
+              Custom storage location. Default: {memoriesDir || 'memories directory'}
             </p>
             <Input
-              placeholder="~/.auto-claude/memories"
+              placeholder={memoriesDir || 'memories directory'}
               value={envConfig.graphitiDbPath || ''}
               onChange={(e) => onUpdateConfig({ graphitiDbPath: e.target.value || undefined })}
             />

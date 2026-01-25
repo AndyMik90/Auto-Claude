@@ -17,7 +17,7 @@ import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import * as PtyManager from './pty-manager';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
-import { escapeShellArg, escapeForWindowsDoubleQuote, buildCdCommand } from '../../shared/utils/shell-escape';
+import { escapeShellArg, escapeForWindowsDoubleQuote, buildCdCommand, type WindowsShellType } from '../../shared/utils/shell-escape';
 import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
 import { isWindows } from '../platform';
 import type {
@@ -117,17 +117,28 @@ function normalizePathForBash(envPath: string): string {
 }
 
 /**
- * Generate temp file content for OAuth token based on platform
+ * Generate temp file content for OAuth token based on platform and shell type
  *
- * On Windows, creates a .bat file with set command using double-quote syntax;
+ * On Windows cmd.exe, creates a .bat file with set command using double-quote syntax;
+ * on Windows PowerShell, creates a .ps1 file with $env: syntax;
  * on Unix, creates a shell script with export.
  *
  * @param token - OAuth token value
+ * @param shellType - On Windows, specify 'powershell' or 'cmd' for correct syntax.
  * @returns Content string for the temp file
  */
-function generateTokenTempFileContent(token: string): string {
+function generateTokenTempFileContent(token: string, shellType?: WindowsShellType): string {
   if (isWindows()) {
-    // Windows: Use double-quote syntax for set command to handle special characters
+    if (shellType === 'powershell') {
+      // PowerShell: Use $env: syntax with single quotes to prevent variable expansion
+      // Single quotes in PowerShell prevent $var interpolation; escape embedded single quotes by doubling
+      const escapedToken = token
+        .replace(/\r/g, '')
+        .replace(/\n/g, '')
+        .replace(/'/g, "''");
+      return `$env:CLAUDE_CODE_OAUTH_TOKEN = '${escapedToken}'\r\n`;
+    }
+    // Windows cmd.exe: Use double-quote syntax for set command to handle special characters
     // Format: set "VARNAME=value" - quotes allow spaces and special chars in value
     // For values inside double quotes, use escapeForWindowsDoubleQuote() because
     // caret is literal inside double quotes in cmd.exe (only " needs escaping).
@@ -139,30 +150,45 @@ function generateTokenTempFileContent(token: string): string {
 }
 
 /**
- * Get the file extension for temp files based on platform
+ * Get the file extension for temp files based on platform and shell type
  *
- * @returns File extension including the dot (e.g., '.bat' on Windows, '' on Unix)
+ * @param shellType - On Windows, specify 'powershell' or 'cmd' for correct extension.
+ * @returns File extension including the dot (e.g., '.bat' on Windows cmd, '.ps1' on PowerShell, '' on Unix)
  */
-function getTempFileExtension(): string {
-  return isWindows() ? '.bat' : '';
+function getTempFileExtension(shellType?: WindowsShellType): string {
+  if (isWindows()) {
+    return shellType === 'powershell' ? '.ps1' : '.bat';
+  }
+  return '';
 }
 
 /**
  * Build PATH environment variable prefix for Claude CLI invocation.
  *
- * On Windows, uses semicolon separators and cmd.exe escaping.
+ * On Windows cmd.exe, uses semicolon separators and cmd.exe escaping.
+ * On Windows PowerShell, uses $env:PATH syntax with semicolon separators.
  * On Unix/macOS, uses colon separators and bash escaping.
  *
  * @param pathEnv - PATH environment variable value
+ * @param shellType - On Windows, specify 'powershell' or 'cmd' for correct syntax.
  * @returns Empty string if no PATH, otherwise platform-specific PATH prefix
  */
-function buildPathPrefix(pathEnv: string): string {
+function buildPathPrefix(pathEnv: string, shellType?: WindowsShellType): string {
   if (!pathEnv) {
     return '';
   }
 
   if (isWindows()) {
-    // Windows: Use semicolon-separated PATH with double-quote escaping
+    if (shellType === 'powershell') {
+      // PowerShell: Use $env:PATH syntax with single quotes to prevent variable expansion
+      // Single quotes in PowerShell prevent $var interpolation; escape embedded single quotes by doubling
+      const escapedPath = pathEnv
+        .replace(/\r/g, '')
+        .replace(/\n/g, '')
+        .replace(/'/g, "''");
+      return `$env:PATH = '${escapedPath}'; `;
+    }
+    // Windows cmd.exe: Use semicolon-separated PATH with double-quote escaping
     // Format: set "PATH=value" where value uses semicolons
     // For values inside double quotes, use escapeForWindowsDoubleQuote() because
     // caret is literal inside double quotes in cmd.exe (only " needs escaping).
@@ -179,18 +205,33 @@ function buildPathPrefix(pathEnv: string): string {
 /**
  * Escape a command for safe use in shell commands.
  *
- * On Windows, wraps in double quotes for cmd.exe. Since the value is inside
+ * On Windows cmd.exe, wraps in double quotes. Since the value is inside
  * double quotes, we use escapeForWindowsDoubleQuote() (only escapes embedded
  * double quotes as ""). Caret escaping is NOT used inside double quotes.
+ *
+ * For PowerShell, uses single quotes to prevent variable expansion and backtick
+ * interpretation, with the call operator (&) to handle -- flags correctly.
+ *
  * On Unix/macOS, wraps in single quotes for bash.
  *
  * @param cmd - The command to escape
+ * @param shellType - On Windows, specify 'powershell' or 'cmd' for correct syntax.
  * @returns The escaped command safe for use in shell commands
  */
-function escapeShellCommand(cmd: string): string {
+export function escapeShellCommand(cmd: string, shellType?: WindowsShellType): string {
   if (isWindows()) {
-    // Windows: Wrap in double quotes and escape only embedded double quotes
-    // Inside double quotes, caret is literal, so use escapeForWindowsDoubleQuote()
+    if (shellType === 'powershell') {
+      // PowerShell: Use single quotes to prevent variable expansion ($var) and
+      // backtick interpretation. Escape embedded single quotes by doubling them.
+      // Use call operator (&) so PowerShell doesn't interpret -- as decrement.
+      const escapedCmd = cmd
+        .replace(/\r/g, '')
+        .replace(/\n/g, '')
+        .replace(/'/g, "''");
+      return `& '${escapedCmd}'`;
+    }
+
+    // cmd.exe: Wrap in double quotes and escape embedded double quotes/percents
     const escapedCmd = escapeForWindowsDoubleQuote(cmd);
     return `"${escapedCmd}"`;
   }
@@ -220,6 +261,17 @@ type ClaudeCommandConfig =
   | { method: 'config-dir'; configDir: string };
 
 /**
+ * Escape a path for PowerShell single-quoted strings.
+ * Single quotes in PowerShell prevent variable expansion; embedded single quotes are doubled.
+ */
+function escapePowerShellPath(path: string): string {
+  return path
+    .replace(/\r/g, '')
+    .replace(/\n/g, '')
+    .replace(/'/g, "''");
+}
+
+/**
  * Build the shell command for invoking Claude CLI.
  *
  * Generates the appropriate command string based on the invocation method:
@@ -230,14 +282,15 @@ type ClaudeCommandConfig =
  * All non-default methods include history-safe prefixes (HISTFILE=, HISTCONTROL=)
  * to prevent sensitive data from appearing in shell history (Unix/macOS only).
  *
- * On Windows, uses cmd.exe/PowerShell compatible syntax without bash-specific commands.
- * The temp file method on Windows uses a batch file approach with inline environment setup.
+ * On Windows cmd.exe, uses batch file approach with inline environment setup.
+ * On Windows PowerShell, uses . (dot sourcing) for .ps1 files and $env: syntax.
  *
  * @param cwdCommand - Command to change directory (empty string if no change needed)
  * @param pathPrefix - PATH prefix for Claude CLI (empty string if not needed)
  * @param escapedClaudeCmd - Shell-escaped Claude CLI command
  * @param config - Configuration object with method and required options (discriminated union)
  * @param extraFlags - Optional extra flags to append to the command (e.g., '--dangerously-skip-permissions')
+ * @param shellType - On Windows, specify 'powershell' or 'cmd' for correct syntax.
  * @returns Complete shell command string ready for terminal.pty.write()
  *
  * @example
@@ -249,24 +302,41 @@ type ClaudeCommandConfig =
  * buildClaudeShellCommand('', '', 'claude', { method: 'temp-file', tempFile: '/tmp/token' });
  * // Returns: 'clear && HISTFILE= HISTCONTROL=ignorespace bash -c "source /tmp/token && rm -f /tmp/token && exec claude"\r'
  *
- * // Temp file method (Windows)
+ * // Temp file method (Windows cmd.exe)
  * buildClaudeShellCommand('', '', 'claude.cmd', { method: 'temp-file', tempFile: 'C:\\Users\\...\\token.bat' });
  * // Returns: 'cls && call C:\\Users\\...\\token.bat && claude.cmd\r'
+ *
+ * // Temp file method (Windows PowerShell)
+ * buildClaudeShellCommand('', '', '& claude.cmd', { method: 'temp-file', tempFile: 'C:\\Users\\...\\token.ps1' }, undefined, 'powershell');
+ * // Returns: 'cls; cd /d "..."; . 'C:\\...\\token.ps1'; Remove-Item '...'; & claude.cmd\r'
  */
 export function buildClaudeShellCommand(
   cwdCommand: string,
   pathPrefix: string,
   escapedClaudeCmd: string,
   config: ClaudeCommandConfig,
-  extraFlags?: string
+  extraFlags?: string,
+  shellType?: WindowsShellType
 ): string {
   const fullCmd = extraFlags ? `${escapedClaudeCmd}${extraFlags}` : escapedClaudeCmd;
   const isWin = isWindows();
+  const isPowerShell = shellType === 'powershell';
 
   switch (config.method) {
     case 'temp-file':
       if (isWin) {
-        // Windows: Use batch file approach with 'call' command
+        if (isPowerShell) {
+          // PowerShell: Use dot sourcing (.) to run the .ps1 file in current scope,
+          // then Remove-Item to delete it. Use single quotes for paths.
+          //
+          // SECURITY: Use -ErrorAction Stop to ensure that if Remove-Item fails
+          // (due to file lock, permissions, etc.), execution stops and the sensitive
+          // token file is not silently left on disk. This matches the safer behavior
+          // of cmd.exe which uses && to abort on failure.
+          const escapedTempFile = escapePowerShellPath(config.tempFile);
+          return `cls; ${cwdCommand}${pathPrefix}. '${escapedTempFile}'; Remove-Item -Path '${escapedTempFile}' -Force -ErrorAction Stop; ${fullCmd}\r`;
+        }
+        // Windows cmd.exe: Use batch file approach with 'call' command
         // The temp file on Windows is a .bat file that sets CLAUDE_CODE_OAUTH_TOKEN
         // We use 'cls' instead of 'clear', and 'call' to execute the batch file
         //
@@ -287,7 +357,12 @@ export function buildClaudeShellCommand(
 
     case 'config-dir':
       if (isWin) {
-        // Windows: Set environment variable using double-quote syntax
+        if (isPowerShell) {
+          // PowerShell: Set environment variable using $env: syntax with single quotes
+          const escapedConfigDir = escapePowerShellPath(config.configDir);
+          return `cls; ${cwdCommand}$env:CLAUDE_CONFIG_DIR = '${escapedConfigDir}'; ${pathPrefix}${fullCmd}\r`;
+        }
+        // Windows cmd.exe: Set environment variable using double-quote syntax
         // For values inside double quotes (set "VAR=value"), use
         // escapeForWindowsDoubleQuote() because caret is literal inside
         // double quotes in cmd.exe (only double quotes need escaping).
@@ -921,13 +996,16 @@ function executeProfileCommand(options: ExecuteProfileCommandOptions): boolean {
   // Prefer configDir over token because CLAUDE_CONFIG_DIR lets Claude Code
   // read full Keychain credentials including subscriptionType ("max") and rateLimitTier.
   // Using CLAUDE_CODE_OAUTH_TOKEN alone lacks tier info, causing "Claude API" display.
+  const shellType = terminal.shellType;
+
   if (activeProfile.configDir) {
     const command = buildClaudeShellCommand(
       cwdCommand,
       pathPrefix,
       escapedClaudeCmd,
       { method: 'config-dir', configDir: activeProfile.configDir },
-      extraFlags
+      extraFlags,
+      shellType
     );
     debugLog(`${logPrefix} Executing command (configDir method, history-safe)`);
     PtyManager.writeToPty(terminal, command);
@@ -947,17 +1025,18 @@ function executeProfileCommand(options: ExecuteProfileCommandOptions): boolean {
     const nonce = crypto.randomBytes(8).toString('hex');
     const tempFile = path.join(
       os.tmpdir(),
-      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`
+      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension(shellType)}`
     );
     debugLog(`${logPrefix} Writing token to temp file:`, tempFile);
-    fs.writeFileSync(tempFile, generateTokenTempFileContent(token), { mode: 0o600 });
+    fs.writeFileSync(tempFile, generateTokenTempFileContent(token, shellType), { mode: 0o600 });
 
     const command = buildClaudeShellCommand(
       cwdCommand,
       pathPrefix,
       escapedClaudeCmd,
       { method: 'temp-file', tempFile },
-      extraFlags
+      extraFlags,
+      shellType
     );
     debugLog(`${logPrefix} Executing command (temp file method, history-safe)`);
     PtyManager.writeToPty(terminal, command);
@@ -996,6 +1075,8 @@ async function executeProfileCommandAsync(options: ExecuteProfileCommandOptions)
     return false; // Use default method
   }
 
+  const shellType = terminal.shellType;
+
   // Prefer configDir over token because CLAUDE_CONFIG_DIR lets Claude Code
   // read full Keychain credentials including subscriptionType ("max") and rateLimitTier.
   // Using CLAUDE_CODE_OAUTH_TOKEN alone lacks tier info, causing "Claude API" display.
@@ -1005,7 +1086,8 @@ async function executeProfileCommandAsync(options: ExecuteProfileCommandOptions)
       pathPrefix,
       escapedClaudeCmd,
       { method: 'config-dir', configDir: activeProfile.configDir },
-      extraFlags
+      extraFlags,
+      shellType
     );
     debugLog(`${logPrefix} Executing command (configDir method, history-safe)`);
     PtyManager.writeToPty(terminal, command);
@@ -1025,17 +1107,18 @@ async function executeProfileCommandAsync(options: ExecuteProfileCommandOptions)
     const nonce = crypto.randomBytes(8).toString('hex');
     const tempFile = path.join(
       os.tmpdir(),
-      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`
+      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension(shellType)}`
     );
     debugLog(`${logPrefix} Writing token to temp file:`, tempFile);
-    await fsPromises.writeFile(tempFile, generateTokenTempFileContent(token), { mode: 0o600 });
+    await fsPromises.writeFile(tempFile, generateTokenTempFileContent(token, shellType), { mode: 0o600 });
 
     const command = buildClaudeShellCommand(
       cwdCommand,
       pathPrefix,
       escapedClaudeCmd,
       { method: 'temp-file', tempFile },
-      extraFlags
+      extraFlags,
+      shellType
     );
     debugLog(`${logPrefix} Executing command (temp file method, history-safe)`);
     PtyManager.writeToPty(terminal, command);
@@ -1098,10 +1181,11 @@ export function invokeClaude(
       isDefault: activeProfile?.isDefault
     });
 
-    const cwdCommand = buildCdCommand(cwd, terminal.shellType);
+    const shellType = terminal.shellType;
+    const cwdCommand = buildCdCommand(cwd, shellType);
     const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd, shellType);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '', shellType);
     const needsEnvOverride: boolean = !!(profileId && profileId !== previousProfileId);
 
     debugLog('[ClaudeIntegration:invokeClaude] Environment override check:', {
@@ -1136,7 +1220,7 @@ export function invokeClaude(
       debugLog('[ClaudeIntegration:invokeClaude] Using terminal environment for non-default profile:', activeProfile.name);
     }
 
-    const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
+    const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags, shellType);
     debugLog('[ClaudeIntegration:invokeClaude] Executing command (default method):', command);
     PtyManager.writeToPty(terminal, command);
 
@@ -1186,9 +1270,10 @@ export function resumeClaude(
     terminal.isClaudeMode = true;
     SessionHandler.releaseSessionId(terminal.id);
 
+    const shellType = terminal.shellType;
     const { command: claudeCmd, env: claudeEnv } = getClaudeCliInvocation();
-    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd, shellType);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '', shellType);
 
     // Always use --continue which resumes the most recent session in the current directory.
     // This is more reliable than --resume with session IDs since Auto Claude already restores
@@ -1291,7 +1376,8 @@ export async function invokeClaudeAsync(
     });
 
     // Async CLI invocation - non-blocking
-    const cwdCommand = buildCdCommand(cwd, terminal.shellType);
+    const shellType = terminal.shellType;
+    const cwdCommand = buildCdCommand(cwd, shellType);
 
     // Add timeout protection for CLI detection (10s timeout)
     const cliInvocationPromise = getClaudeCliInvocationAsync();
@@ -1304,8 +1390,8 @@ export async function invokeClaudeAsync(
         if (timeoutId) clearTimeout(timeoutId);
       });
 
-    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd, shellType);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '', shellType);
     const needsEnvOverride: boolean = !!(profileId && profileId !== previousProfileId);
 
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Environment override check:', {
@@ -1340,7 +1426,7 @@ export async function invokeClaudeAsync(
       debugLog('[ClaudeIntegration:invokeClaudeAsync] Using terminal environment for non-default profile:', activeProfile.name);
     }
 
-    const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags);
+    const command = buildClaudeShellCommand(cwdCommand, pathPrefix, escapedClaudeCmd, { method: 'default' }, extraFlags, shellType);
     debugLog('[ClaudeIntegration:invokeClaudeAsync] Executing command (default method):', command);
     PtyManager.writeToPty(terminal, command);
 
@@ -1400,8 +1486,9 @@ export async function resumeClaudeAsync(
         if (timeoutId) clearTimeout(timeoutId);
       });
 
-    const escapedClaudeCmd = escapeShellCommand(claudeCmd);
-    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '');
+    const shellType = terminal.shellType;
+    const escapedClaudeCmd = escapeShellCommand(claudeCmd, shellType);
+    const pathPrefix = buildPathPrefix(claudeEnv.PATH || '', shellType);
 
     // Always use --continue which resumes the most recent session in the current directory.
     // This is more reliable than --resume with session IDs since Auto Claude already restores

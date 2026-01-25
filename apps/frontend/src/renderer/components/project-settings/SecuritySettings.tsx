@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Globe
 } from 'lucide-react';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -53,6 +54,9 @@ export function SecuritySettings({
     google: false,
     azure: false
   });
+
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   // Sync parent's showOpenAIKey prop to local state
   useEffect(() => {
@@ -455,7 +459,7 @@ export function SecuritySettings({
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">Database Name</Label>
                 <p className="text-xs text-muted-foreground">
-                  Stored in ~/.auto-claude/memories/
+                  Stored in {memoriesDir || 'memories directory'}
                 </p>
                 <Input
                   placeholder="auto_claude_memory"
@@ -467,10 +471,10 @@ export function SecuritySettings({
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
                 <p className="text-xs text-muted-foreground">
-                  Custom storage location. Default: ~/.auto-claude/memories/
+                  Custom storage location. Default: {memoriesDir || 'memories directory'}
                 </p>
                 <Input
-                  placeholder="~/.auto-claude/memories"
+                  placeholder={memoriesDir || 'memories directory'}
                   value={envConfig.graphitiDbPath || ''}
                   onChange={(e) => updateEnvConfig({ graphitiDbPath: e.target.value || undefined })}
                 />

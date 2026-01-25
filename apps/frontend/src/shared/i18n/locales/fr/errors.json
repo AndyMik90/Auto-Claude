@@ -1,9 +1,22 @@
 {
+  "graphitiNotConfigured": "La mémoire Graphiti n'est pas configurée",
   "task": {
     "parseImplementationPlan": "Échec de l'analyse du fichier implementation_plan.json pour {{specId}} : {{error}}",
     "jsonError": {
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "ladybug": {
+    "pythonNotFound": "Python introuvable. Veuillez installer Python 3.12 ou une version ultérieure.",
+    "notInstalled": "LadybugDB (real_ladybug) n'est pas installé. Sur Windows, cela peut nécessiter Visual Studio Build Tools pour la compilation.",
+    "buildTools": "Échec de la compilation de LadybugDB. Veuillez installer Visual Studio Build Tools avec les outils C++.",
+    "checkFailed": "Échec de la vérification du statut d'installation de LadybugDB.",
+    "databaseNotFound": "Base de données introuvable. La base de données mémoire n'a pas encore été créée.",
+    "statusCheckFailed": "Échec de la vérification du statut de la base de données.",
+    "connectionFailed": "Échec de la connexion à la base de données."
+  },
+  "memory": {
+    "getDirFailed": "Échec de l'obtention du répertoire de la mémoire."
   }
 }

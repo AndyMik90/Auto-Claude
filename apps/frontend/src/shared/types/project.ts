@@ -154,6 +154,8 @@ export interface GraphitiMemoryStatus {
 // Memory Infrastructure Types
 export interface MemoryDatabaseStatus {
   kuzuInstalled: boolean;
+  ladybugInstalled: boolean;
+  ladybugError?: string;
   databasePath: string;
   databaseExists: boolean;
   databases: string[];

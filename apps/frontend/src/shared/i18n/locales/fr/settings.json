@@ -619,6 +619,14 @@
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
     }
   },
+  "memory": {
+    "database": "Base de données",
+    "path": "Chemin",
+    "fallbacks": {
+      "auto_claude_memory": "auto_claude_memory",
+      "memories_directory": "répertoire des mémoires"
+    }
+  },
   "mcp": {
     "title": "Aperçu des serveurs MCP",
     "titleWithProject": "Aperçu des serveurs MCP pour {{projectName}}",

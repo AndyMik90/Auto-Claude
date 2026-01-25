@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Database,
@@ -25,6 +26,7 @@ import {
   SelectValue
 } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
+import { useMemoriesDir } from '../../hooks/useMemoriesDir';
 import type { GraphitiLLMProvider, GraphitiEmbeddingProvider, AppSettings } from '../../../shared/types';
 
 interface GraphitiStepProps {
@@ -109,6 +111,7 @@ interface ValidationStatus {
  * Allows users to configure Graphiti memory backend with multiple provider options.
  */
 export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
+  const { t } = useTranslation(['onboarding', 'errors']);
   const { settings, updateSettings } = useSettingsStore();
   const [config, setConfig] = useState<GraphitiConfig>({
     enabled: true,  // Enabled by default for better first-time experience
@@ -141,11 +144,16 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
   const [success, setSuccess] = useState(false);
   const [isCheckingInfra, setIsCheckingInfra] = useState(true);
   const [kuzuAvailable, setKuzuAvailable] = useState<boolean | null>(null);
+  const [ladybugInstalled, setLadybugInstalled] = useState<boolean | null>(null);
+  const [ladybugError, setLadybugError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
     database: null,
     provider: null
   });
+
+  // Platform-specific memories directory path (extracted hook)
+  const memoriesDir = useMemoriesDir();
 
   // Check LadybugDB/Kuzu availability on mount
   useEffect(() => {
@@ -153,9 +161,14 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
       setIsCheckingInfra(true);
       try {
         const result = await window.electronAPI.getMemoryInfrastructureStatus();
-        setKuzuAvailable(result?.success && result?.data?.memory?.kuzuInstalled ? true : false);
-      } catch {
+        const memory = result?.data?.memory;
+        setKuzuAvailable(result?.success && memory?.kuzuInstalled ? true : false);
+        setLadybugInstalled(memory?.ladybugInstalled ?? null);
+        setLadybugError(memory?.ladybugError ?? null);
+      } catch (err) {
         setKuzuAvailable(false);
+        setLadybugInstalled(false);
+        setLadybugError(t('onboarding:ladybug.checkFailed'));
       } finally {
         setIsCheckingInfra(false);
       }
@@ -805,8 +818,41 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                   </Card>
                 )}
 
-                {/* Kuzu status notice */}
-                {kuzuAvailable === false && (
+                {/* LadybugDB installation status */}
+                {ladybugInstalled === false && ladybugError && (
+                  <Card className="border border-warning/30 bg-warning/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-warning">
+                            {t('onboarding:ladybug.notInstalled')}
+                          </p>
+                          <p className="text-sm text-warning/80 mt-1">
+                            {ladybugError.startsWith('errors:') ? t(ladybugError) : ladybugError}
+                          </p>
+                          {(ladybugError.includes('Visual Studio Build Tools') || ladybugError === 'errors:ladybug.buildTools') && (
+                            <a
+                              href="https://visualstudio.microsoft.com/visual-cpp-build-tools/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 mt-2"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              {t('onboarding:ladybug.downloadBuildTools')}
+                            </a>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {t('onboarding:ladybug.restartAfterInstall')}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Database will be created notice (when LadybugDB is installed but no DB yet) */}
+                {ladybugInstalled === true && kuzuAvailable === false && (
                   <Card className="border border-info/30 bg-info/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
@@ -818,6 +864,25 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                           <p className="text-sm text-info/80 mt-1">
                             LadybugDB uses an embedded database - no Docker required.
                             The database will be created when you first use memory features.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* LadybugDB ready notice */}
+                {ladybugInstalled === true && kuzuAvailable === true && (
+                  <Card className="border border-success/30 bg-success/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-success">
+                            LadybugDB Ready
+                          </p>
+                          <p className="text-sm text-success/80 mt-1">
+                            Memory database is installed and available.
                           </p>
                         </div>
                       </div>
@@ -919,7 +984,9 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
                         disabled={isSaving || isValidating}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Stored in ~/.auto-claude/graphs/
+                        {t('onboarding:memory.storedIn', {
+                          path: memoriesDir || t('onboarding:memory.defaultDir'),
+                        })}
                       </p>
                     </div>
 

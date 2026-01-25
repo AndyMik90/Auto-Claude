@@ -597,7 +597,7 @@ export class MemoryService {
     if (!result.success) {
       return {
         success: false,
-        message: result.error || 'Failed to check database status',
+        message: result.error || LADYBUG_ERROR_KEYS.statusCheckFailed,
       };
     }
 
@@ -606,21 +606,22 @@ export class MemoryService {
     if (!data.available) {
       return {
         success: false,
-        message: 'LadybugDB (real_ladybug) not installed. Requires Python 3.12+',
+        message: LADYBUG_ERROR_KEYS.notInstalled,
       };
     }
 
     if (!data.databaseExists) {
       return {
         success: false,
-        message: `Database not found at ${data.databasePath}/${data.database}`,
+        message: LADYBUG_ERROR_KEYS.databaseNotFound,
+        // Path info available via data.databasePath for logging if needed
       };
     }
 
     if (!data.connected) {
       return {
         success: false,
-        message: data.error || 'Failed to connect to database',
+        message: data.error || LADYBUG_ERROR_KEYS.connectionFailed,
       };
     }
 
@@ -746,15 +747,231 @@ export function isKuzuAvailable(): boolean {
 }
 
 /**
+ * Check if LadybugDB (real_ladybug) Python package is installed
+ * Returns detailed status about the installation
+ */
+export interface LadybugInstallStatus {
+  installed: boolean;
+  pythonAvailable: boolean;
+  error?: string;
+}
+
+let ladybugInstallCache: LadybugInstallStatus | null = null;
+
+// Track if an async check is in progress to avoid duplicate checks
+let ladybugCheckInProgress: Promise<LadybugInstallStatus> | null = null;
+
+/**
+ * Error key constants for i18n translation.
+ * These keys should be defined in errors.json translation files.
+ */
+export const LADYBUG_ERROR_KEYS = {
+  pythonNotFound: 'errors:ladybug.pythonNotFound',
+  notInstalled: 'errors:ladybug.notInstalled',
+  buildTools: 'errors:ladybug.buildTools',
+  checkFailed: 'errors:ladybug.checkFailed',
+  databaseNotFound: 'errors:ladybug.databaseNotFound',
+  statusCheckFailed: 'errors:ladybug.statusCheckFailed',
+  connectionFailed: 'errors:ladybug.connectionFailed',
+} as const;
+
+/**
+ * Check if LadybugDB (real_ladybug) Python package is installed (async version).
+ * Uses child_process.spawn wrapped in a Promise to avoid blocking the main process.
+ * Returns detailed status about the installation.
+ */
+export async function checkLadybugInstalledAsync(): Promise<LadybugInstallStatus> {
+  // Return cached result if available (avoid repeated slow checks)
+  if (ladybugInstallCache !== null) {
+    return ladybugInstallCache;
+  }
+
+  // If a check is already in progress, wait for it
+  if (ladybugCheckInProgress !== null) {
+    return ladybugCheckInProgress;
+  }
+
+  const pythonCmd = findPythonCommand();
+  if (!pythonCmd) {
+    ladybugInstallCache = {
+      installed: false,
+      pythonAvailable: false,
+      error: LADYBUG_ERROR_KEYS.pythonNotFound,
+    };
+    return ladybugInstallCache;
+  }
+
+  // Start the async check and track the promise
+  ladybugCheckInProgress = new Promise<LadybugInstallStatus>((resolve) => {
+    const [cmd, args] = parsePythonCommand(pythonCmd);
+    const checkArgs = [...args, '-c', 'import real_ladybug; print("OK")'];
+
+    // Use getMemoryPythonEnv() to ensure real_ladybug can be found
+    const pythonEnv = getMemoryPythonEnv();
+
+    const proc = spawn(cmd, checkArgs, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: pythonEnv,
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let resolved = false;
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    // Timeout after 10 seconds
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill();
+        ladybugInstallCache = {
+          installed: false,
+          pythonAvailable: true,
+          error: LADYBUG_ERROR_KEYS.checkFailed,
+        };
+        ladybugCheckInProgress = null;
+        resolve(ladybugInstallCache);
+      }
+    }, 10000);
+
+    proc.on('close', (code) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      ladybugCheckInProgress = null;
+
+      if (code === 0 && stdout.includes('OK')) {
+        ladybugInstallCache = {
+          installed: true,
+          pythonAvailable: true,
+        };
+      } else {
+        // Parse error to provide helpful message (using i18n keys)
+        let error: string = LADYBUG_ERROR_KEYS.notInstalled;
+
+        if (stderr.includes('ModuleNotFoundError') || stderr.includes('No module named')) {
+          error = LADYBUG_ERROR_KEYS.notInstalled;
+        } else if (stderr.includes('WinError 2') || stderr.includes('system cannot find')) {
+          error = LADYBUG_ERROR_KEYS.buildTools;
+        }
+
+        ladybugInstallCache = {
+          installed: false,
+          pythonAvailable: true,
+          error,
+        };
+      }
+
+      resolve(ladybugInstallCache);
+    });
+
+    proc.on('error', (err) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      ladybugCheckInProgress = null;
+
+      // Handle spawn failures (ENOENT/EACCES for missing/inaccessible Python)
+      const errorCode = (err as NodeJS.ErrnoException).code;
+      const pythonNotAvailable = errorCode === 'ENOENT' || errorCode === 'EACCES';
+      ladybugInstallCache = {
+        installed: false,
+        pythonAvailable: !pythonNotAvailable,
+        error: pythonNotAvailable ? LADYBUG_ERROR_KEYS.pythonNotFound : LADYBUG_ERROR_KEYS.checkFailed,
+      };
+      resolve(ladybugInstallCache);
+    });
+  });
+
+  return ladybugCheckInProgress;
+}
+
+/**
+ * Synchronous version that returns cached result or a "checking" status.
+ * Use checkLadybugInstalledAsync() for accurate results.
+ * @deprecated Use checkLadybugInstalledAsync() instead
+ */
+export function checkLadybugInstalled(): LadybugInstallStatus {
+  // Return cached result if available
+  if (ladybugInstallCache !== null) {
+    return ladybugInstallCache;
+  }
+
+  // Quick sync check for Python availability (doesn't block, just checks PATH)
+  const pythonAvailable = findPythonCommand() !== null;
+
+  // Return "checking" status and kick off async check
+  // This prevents blocking the main process
+  checkLadybugInstalledAsync().catch(() => {
+    // Error is handled inside the async function
+  });
+
+  // Return a temporary status indicating check is in progress
+  return {
+    installed: false,
+    pythonAvailable,
+    // No error - check is still in progress
+  };
+}
+
+/**
+ * Clear the LadybugDB installation cache (useful after installation attempt)
+ */
+export function clearLadybugInstallCache(): void {
+  ladybugInstallCache = null;
+}
+
+/**
  * Get memory service status
  */
 export interface MemoryServiceStatus {
   kuzuInstalled: boolean;
+  ladybugInstalled: boolean;
+  ladybugError?: string;
   databasePath: string;
   databaseExists: boolean;
   databases: string[];
 }
 
+/**
+ * Get memory service status (async version).
+ * This is the preferred version that doesn't block the main process.
+ */
+export async function getMemoryServiceStatusAsync(dbPath?: string): Promise<MemoryServiceStatus> {
+  const basePath = dbPath || getDefaultDbPath();
+
+  const databases = fs.existsSync(basePath)
+    ? fs.readdirSync(basePath).filter((name) => !name.startsWith('.'))
+    : [];
+
+  // Check if Python and script are available (findPythonCommand can return null)
+  const pythonAvailable = findPythonCommand() !== null;
+  const scriptAvailable = getQueryScriptPath() !== null;
+
+  // Check if LadybugDB is actually installed (async to avoid blocking)
+  const ladybugStatus = await checkLadybugInstalledAsync();
+
+  return {
+    kuzuInstalled: pythonAvailable && scriptAvailable,
+    ladybugInstalled: ladybugStatus.installed,
+    ladybugError: ladybugStatus.error,
+    databasePath: basePath,
+    databaseExists: databases.length > 0,
+    databases,
+  };
+}
+
+/**
+ * Get memory service status (sync version, may return cached/incomplete status).
+ * @deprecated Use getMemoryServiceStatusAsync() instead to avoid blocking the main process.
+ */
 export function getMemoryServiceStatus(dbPath?: string): MemoryServiceStatus {
   const basePath = dbPath || getDefaultDbPath();
 
@@ -766,8 +983,14 @@ export function getMemoryServiceStatus(dbPath?: string): MemoryServiceStatus {
   const pythonAvailable = findPythonCommand() !== null;
   const scriptAvailable = getQueryScriptPath() !== null;
 
+  // Check if LadybugDB is actually installed
+  // Note: This may return cached result or trigger async check
+  const ladybugStatus = checkLadybugInstalled();
+
   return {
     kuzuInstalled: pythonAvailable && scriptAvailable,
+    ladybugInstalled: ladybugStatus.installed,
+    ladybugError: ladybugStatus.error,
     databasePath: basePath,
     databaseExists: databases.length > 0,
     databases,

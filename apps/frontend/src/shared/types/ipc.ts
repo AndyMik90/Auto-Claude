@@ -415,6 +415,7 @@ export interface ElectronAPI {
   getMemoryInfrastructureStatus: (dbPath?: string) => Promise<IPCResult<InfrastructureStatus>>;
   listMemoryDatabases: (dbPath?: string) => Promise<IPCResult<string[]>>;
   testMemoryConnection: (dbPath?: string, database?: string) => Promise<IPCResult<GraphitiValidationResult>>;
+  getMemoriesDir: () => Promise<IPCResult<string>>;
 
   // Graphiti validation operations
   validateLLMApiKey: (provider: string, apiKey: string) => Promise<IPCResult<GraphitiValidationResult>>;

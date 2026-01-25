@@ -23,13 +23,37 @@ interface UseXtermOptions {
   onDimensionsReady?: (cols: number, rows: number) => void;
 }
 
-// Debounce helper function
-function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+// Debounce helper function with cancel support
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T & { cancel: () => void } {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: unknown[]) => {
+
+  const debounced = ((...args: unknown[]) => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
-  }) as T;
+  }) as T & { cancel: () => void };
+
+  debounced.cancel = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+
+  return debounced;
+}
+
+/**
+ * Calculate optimal font size based on device pixel ratio (Windows DPI scaling).
+ * devicePixelRatio > 1 indicates high-DPI displays (125%, 150%, 200% scaling).
+ * Base size: 13px for 100% scaling (devicePixelRatio = 1).
+ * Adjust font size using square root of scale factor for smoother scaling.
+ * This makes the reduction less aggressive on high-DPI displays.
+ * For 150% scaling (1.5x), use 13 * (1 / sqrt(1.5)) ~ 10.6 logical pixels.
+ * Minimum of 11px to maintain readability.
+ */
+function getAdjustedFontSize(baseFontSize: number = 13): number {
+  const scaleFactor = window.devicePixelRatio || 1;
+  const adjustedFontSize = scaleFactor > 1
+    ? Math.max(baseFontSize * (1 / Math.sqrt(scaleFactor)), 11)
+    : baseFontSize;
+  return Math.round(adjustedFontSize);
 }
 
 export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
@@ -41,6 +65,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const isDisposedRef = useRef<boolean>(false);
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
+  // Track device pixel ratio for DPI change detection
+  const [dpr, setDpr] = useState(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
 
   // Initialize xterm.js UI
   useEffect(() => {
@@ -49,7 +75,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     const xterm = new XTerm({
       cursorBlink: true,
       cursorStyle: 'block',
-      fontSize: 13,
+      fontSize: getAdjustedFontSize(),
       fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
@@ -341,11 +367,14 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     if (container) {
       const resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(container);
-      return () => resizeObserver.disconnect();
+      return () => {
+        handleResize.cancel();
+        resizeObserver.disconnect();
+      };
     }
   }, [onDimensionsReady]);
 
-  // Listen for terminal refit events (triggered after drag-drop reorder)
+// Listen for terminal refit events (triggered after drag-drop reorder)
   useEffect(() => {
     const handleRefitAll = () => {
       if (fitAddonRef.current && xtermRef.current && terminalRef.current) {
@@ -362,6 +391,44 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     window.addEventListener('terminal-refit-all', handleRefitAll);
     return () => window.removeEventListener('terminal-refit-all', handleRefitAll);
   }, []);
+
+  // Handle DPI/scale changes (Windows display scaling, moving between monitors)
+  // Uses matchMedia with { once: true } pattern - state update triggers re-registration
+  // This fixes the bug where only the first DPI change was detected
+  useEffect(() => {
+    // Guard for JSDOM/test environments where matchMedia is not available
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const handleDPIChange = debounce(() => {
+      if (xtermRef.current) {
+        const newScaleFactor = window.devicePixelRatio || 1;
+
+        // Update font size dynamically using the helper
+        xtermRef.current.options.fontSize = getAdjustedFontSize();
+
+        // Trigger a fit to recalculate terminal dimensions with new font size
+        if (fitAddonRef.current && terminalRef.current) {
+          const rect = terminalRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            fitAddonRef.current.fit();
+          }
+        }
+
+        // Update state to trigger re-registration with new dpr
+        setDpr(newScaleFactor);
+      }
+    }, 200);
+
+    const mediaQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    mediaQuery.addEventListener('change', handleDPIChange, { once: true });
+
+    return () => {
+      handleDPIChange.cancel();
+      mediaQuery.removeEventListener('change', handleDPIChange);
+    };
+  }, [dpr]); // Re-run when dpr changes
 
   const fit = useCallback(() => {
     if (fitAddonRef.current && xtermRef.current) {

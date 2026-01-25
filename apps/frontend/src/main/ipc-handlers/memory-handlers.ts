@@ -23,7 +23,7 @@ import type {
   GraphitiConnectionTestResult,
 } from '../../shared/types';
 import {
-  getMemoryServiceStatus,
+  getMemoryServiceStatusAsync,
   getMemoryService,
   getDefaultDbPath,
   isKuzuAvailable,
@@ -333,7 +333,7 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.MEMORY_STATUS,
     async (_): Promise<IPCResult<InfrastructureStatus>> => {
       try {
-        const status = getMemoryServiceStatus();
+        const status = await getMemoryServiceStatusAsync();
         return {
           success: true,
           data: {
@@ -355,12 +355,28 @@ export function registerMemoryHandlers(): void {
     IPC_CHANNELS.MEMORY_LIST_DATABASES,
     async (_, dbPath?: string): Promise<IPCResult<string[]>> => {
       try {
-        const status = getMemoryServiceStatus(dbPath);
+        const status = await getMemoryServiceStatusAsync(dbPath);
         return { success: true, data: status.databases };
       } catch (error) {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to list databases',
+        };
+      }
+    }
+  );
+
+  // Get platform-specific memories directory path
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_GET_DIR,
+    async (): Promise<IPCResult<string>> => {
+      try {
+        const memoriesDir = getDefaultDbPath();
+        return { success: true, data: memoriesDir };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'errors:memory.getDirFailed',
         };
       }
     }
