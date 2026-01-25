@@ -4,7 +4,7 @@ Tests for Implementation Plan Management
 ========================================
 
 Tests the implementation_plan.py module functionality including:
-- Data structures (Chunk, Phase, ImplementationPlan)
+- Data structures (Subtask, Phase, ImplementationPlan)
 - Status transitions
 - Progress tracking
 - Dependency resolution
@@ -19,11 +19,11 @@ from pathlib import Path
 from implementation_plan import (
     ImplementationPlan,
     Phase,
-    Chunk,
+    Subtask,
     Verification,
     WorkflowType,
     PhaseType,
-    ChunkStatus,
+    SubtaskStatus,
     VerificationType,
     create_feature_plan,
     create_investigation_plan,
@@ -31,29 +31,29 @@ from implementation_plan import (
 )
 
 
-class TestChunk:
-    """Tests for Chunk data structure."""
+class TestSubtask:
+    """Tests for Subtask data structure."""
 
     def test_create_simple_chunk(self):
         """Creates a simple chunk with defaults."""
-        chunk = Chunk(
+        chunk = Subtask(
             id="chunk-1",
             description="Implement user model",
         )
 
         assert chunk.id == "chunk-1"
         assert chunk.description == "Implement user model"
-        assert chunk.status == ChunkStatus.PENDING
+        assert chunk.status == SubtaskStatus.PENDING
         assert chunk.service is None
         assert chunk.files_to_modify == []
         assert chunk.files_to_create == []
 
     def test_create_full_chunk(self):
         """Creates a chunk with all fields."""
-        chunk = Chunk(
+        chunk = Subtask(
             id="chunk-2",
             description="Add API endpoint",
-            status=ChunkStatus.IN_PROGRESS,
+            status=SubtaskStatus.IN_PROGRESS,
             service="backend",
             files_to_modify=["app/routes.py"],
             files_to_create=["app/models/user.py"],
@@ -65,39 +65,39 @@ class TestChunk:
         assert "app/models/user.py" in chunk.files_to_create
 
     def test_chunk_start(self):
-        """Chunk can be started."""
-        chunk = Chunk(id="test", description="Test")
+        """Subtask can be started."""
+        chunk = Subtask(id="test", description="Test")
 
         chunk.start(session_id=1)
 
-        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.status == SubtaskStatus.IN_PROGRESS
         assert chunk.started_at is not None
         assert chunk.session_id == 1
 
     def test_chunk_complete(self):
-        """Chunk can be completed."""
-        chunk = Chunk(id="test", description="Test")
+        """Subtask can be completed."""
+        chunk = Subtask(id="test", description="Test")
         chunk.start(session_id=1)
 
         chunk.complete(output="Done successfully")
 
-        assert chunk.status == ChunkStatus.COMPLETED
+        assert chunk.status == SubtaskStatus.COMPLETED
         assert chunk.completed_at is not None
         assert chunk.actual_output == "Done successfully"
 
     def test_chunk_fail(self):
-        """Chunk can be marked as failed."""
-        chunk = Chunk(id="test", description="Test")
+        """Subtask can be marked as failed."""
+        chunk = Subtask(id="test", description="Test")
         chunk.start(session_id=1)
 
         chunk.fail(reason="Test error")
 
-        assert chunk.status == ChunkStatus.FAILED
+        assert chunk.status == SubtaskStatus.FAILED
         assert "FAILED: Test error" in chunk.actual_output
 
     def test_chunk_to_dict(self):
-        """Chunk serializes to dict correctly."""
-        chunk = Chunk(
+        """Subtask serializes to dict correctly."""
+        chunk = Subtask(
             id="chunk-1",
             description="Test chunk",
             service="backend",
@@ -113,7 +113,7 @@ class TestChunk:
         assert "file.py" in data["files_to_modify"]
 
     def test_chunk_from_dict(self):
-        """Chunk deserializes from dict correctly."""
+        """Subtask deserializes from dict correctly."""
         data = {
             "id": "chunk-1",
             "description": "Test chunk",
@@ -121,10 +121,10 @@ class TestChunk:
             "service": "frontend",
         }
 
-        chunk = Chunk.from_dict(data)
+        chunk = Subtask.from_dict(data)
 
         assert chunk.id == "chunk-1"
-        assert chunk.status == ChunkStatus.COMPLETED
+        assert chunk.status == SubtaskStatus.COMPLETED
         assert chunk.service == "frontend"
 
 
@@ -184,8 +184,8 @@ class TestPhase:
 
     def test_create_phase(self):
         """Creates a phase with chunks."""
-        chunk1 = Chunk(id="c1", description="Chunk 1")
-        chunk2 = Chunk(id="c2", description="Chunk 2")
+        chunk1 = Subtask(id="c1", description="Chunk 1")
+        chunk2 = Subtask(id="c2", description="Chunk 2")
 
         phase = Phase(
             phase=1,
@@ -200,37 +200,37 @@ class TestPhase:
 
     def test_phase_is_complete(self):
         """Phase completion checks all chunks."""
-        chunk1 = Chunk(id="c1", description="Chunk 1", status=ChunkStatus.COMPLETED)
-        chunk2 = Chunk(id="c2", description="Chunk 2", status=ChunkStatus.COMPLETED)
+        chunk1 = Subtask(id="c1", description="Chunk 1", status=SubtaskStatus.COMPLETED)
+        chunk2 = Subtask(id="c2", description="Chunk 2", status=SubtaskStatus.COMPLETED)
         phase = Phase(phase=1, name="Test", subtasks=[chunk1, chunk2])
 
         assert phase.is_complete() is True
 
     def test_phase_not_complete_with_pending(self):
         """Phase not complete with pending chunks."""
-        chunk1 = Chunk(id="c1", description="Chunk 1", status=ChunkStatus.COMPLETED)
-        chunk2 = Chunk(id="c2", description="Chunk 2", status=ChunkStatus.PENDING)
+        chunk1 = Subtask(id="c1", description="Chunk 1", status=SubtaskStatus.COMPLETED)
+        chunk2 = Subtask(id="c2", description="Chunk 2", status=SubtaskStatus.PENDING)
         phase = Phase(phase=1, name="Test", subtasks=[chunk1, chunk2])
 
         assert phase.is_complete() is False
 
     def test_phase_get_pending_chunks(self):
         """Gets pending chunks from phase."""
-        chunk1 = Chunk(id="c1", description="Chunk 1", status=ChunkStatus.COMPLETED)
-        chunk2 = Chunk(id="c2", description="Chunk 2", status=ChunkStatus.PENDING)
-        chunk3 = Chunk(id="c3", description="Chunk 3", status=ChunkStatus.PENDING)
+        chunk1 = Subtask(id="c1", description="Chunk 1", status=SubtaskStatus.COMPLETED)
+        chunk2 = Subtask(id="c2", description="Chunk 2", status=SubtaskStatus.PENDING)
+        chunk3 = Subtask(id="c3", description="Chunk 3", status=SubtaskStatus.PENDING)
         phase = Phase(phase=1, name="Test", subtasks=[chunk1, chunk2, chunk3])
 
         pending = phase.get_pending_chunks()
 
         assert len(pending) == 2
-        assert all(c.status == ChunkStatus.PENDING for c in pending)
+        assert all(c.status == SubtaskStatus.PENDING for c in pending)
 
     def test_phase_get_progress(self):
         """Gets progress counts from phase."""
-        chunk1 = Chunk(id="c1", description="Chunk 1", status=ChunkStatus.COMPLETED)
-        chunk2 = Chunk(id="c2", description="Chunk 2", status=ChunkStatus.COMPLETED)
-        chunk3 = Chunk(id="c3", description="Chunk 3", status=ChunkStatus.PENDING)
+        chunk1 = Subtask(id="c1", description="Chunk 1", status=SubtaskStatus.COMPLETED)
+        chunk2 = Subtask(id="c2", description="Chunk 2", status=SubtaskStatus.COMPLETED)
+        chunk3 = Subtask(id="c3", description="Chunk 3", status=SubtaskStatus.PENDING)
         phase = Phase(phase=1, name="Test", subtasks=[chunk1, chunk2, chunk3])
 
         completed, total = phase.get_progress()
@@ -240,7 +240,7 @@ class TestPhase:
 
     def test_phase_to_dict(self):
         """Phase serializes to dict."""
-        chunk = Chunk(id="c1", description="Test")
+        chunk = Subtask(id="c1", description="Test")
         phase = Phase(
             phase=1,
             name="Setup",
@@ -295,7 +295,7 @@ class TestImplementationPlan:
 
         # Mark phase 1 as complete
         for chunk in plan.phases[0].subtasks:
-            chunk.status = ChunkStatus.COMPLETED
+            chunk.status = SubtaskStatus.COMPLETED
 
         available = plan.get_available_phases()
 
@@ -314,14 +314,14 @@ class TestImplementationPlan:
         phase, subtask = result
         # Should be first pending subtask in phase 1
         assert phase.phase == 1
-        assert subtask.status == ChunkStatus.PENDING
+        assert subtask.status == SubtaskStatus.PENDING
 
     def test_plan_get_progress(self, sample_implementation_plan: dict):
         """Gets overall progress."""
         plan = ImplementationPlan.from_dict(sample_implementation_plan)
 
         # Complete some subtasks
-        plan.phases[0].subtasks[0].status = ChunkStatus.COMPLETED
+        plan.phases[0].subtasks[0].status = SubtaskStatus.COMPLETED
 
         progress = plan.get_progress()
 
@@ -449,7 +449,7 @@ class TestCreateInvestigationPlan:
 
         # Fix phase should have blocked chunks
         fix_phase = plan.phases[2]  # Phase 3 - Fix
-        assert any(c.status == ChunkStatus.BLOCKED for c in fix_phase.subtasks)
+        assert any(c.status == SubtaskStatus.BLOCKED for c in fix_phase.subtasks)
 
 
 class TestCreateRefactorPlan:
@@ -500,10 +500,10 @@ class TestDependencyResolution:
             feature="Test",
             phases=[
                 Phase(phase=1, name="Setup", subtasks=[
-                    Chunk(id="c1", description="Setup", status=ChunkStatus.PENDING)
+                    Subtask(id="c1", description="Setup", status=SubtaskStatus.PENDING)
                 ]),
                 Phase(phase=2, name="Build", depends_on=[1], subtasks=[
-                    Chunk(id="c2", description="Build")
+                    Subtask(id="c2", description="Build")
                 ]),
             ],
         )
@@ -520,13 +520,13 @@ class TestDependencyResolution:
             feature="Test",
             phases=[
                 Phase(phase=1, name="Setup", subtasks=[
-                    Chunk(id="c1", description="Setup", status=ChunkStatus.COMPLETED)
+                    Subtask(id="c1", description="Setup", status=SubtaskStatus.COMPLETED)
                 ]),
                 Phase(phase=2, name="Backend", depends_on=[1], subtasks=[
-                    Chunk(id="c2", description="Backend")
+                    Subtask(id="c2", description="Backend")
                 ]),
                 Phase(phase=3, name="Frontend", depends_on=[1], subtasks=[
-                    Chunk(id="c3", description="Frontend")
+                    Subtask(id="c3", description="Frontend")
                 ]),
             ],
         )
@@ -545,13 +545,13 @@ class TestDependencyResolution:
             feature="Test",
             phases=[
                 Phase(phase=1, name="Phase1", subtasks=[
-                    Chunk(id="c1", description="C1", status=ChunkStatus.COMPLETED)
+                    Subtask(id="c1", description="C1", status=SubtaskStatus.COMPLETED)
                 ]),
                 Phase(phase=2, name="Phase2", subtasks=[
-                    Chunk(id="c2", description="C2", status=ChunkStatus.PENDING)
+                    Subtask(id="c2", description="C2", status=SubtaskStatus.PENDING)
                 ]),
                 Phase(phase=3, name="Phase3", depends_on=[1, 2], subtasks=[
-                    Chunk(id="c3", description="C3")
+                    Subtask(id="c3", description="C3")
                 ]),
             ],
         )
@@ -563,12 +563,12 @@ class TestDependencyResolution:
         assert 3 not in phase_nums
 
 
-class TestChunkCritique:
-    """Tests for self-critique functionality on chunks."""
+class TestSubtaskCritique:
+    """Tests for self-critique functionality on subtasks."""
 
     def test_chunk_stores_critique_result(self):
-        """Chunk can store critique results."""
-        chunk = Chunk(id="test", description="Test")
+        """Subtask can store critique results."""
+        chunk = Subtask(id="test", description="Test")
 
         chunk.critique_result = {
             "passed": True,
@@ -580,7 +580,7 @@ class TestChunkCritique:
 
     def test_critique_serializes(self):
         """Critique result serializes correctly."""
-        chunk = Chunk(id="test", description="Test")
+        chunk = Subtask(id="test", description="Test")
         chunk.critique_result = {"passed": False, "issues": ["Missing tests"]}
 
         data = chunk.to_dict()
@@ -596,7 +596,7 @@ class TestChunkCritique:
             "critique_result": {"passed": True, "score": 8},
         }
 
-        chunk = Chunk.from_dict(data)
+        chunk = Subtask.from_dict(data)
 
         assert chunk.critique_result is not None
         assert chunk.critique_result["score"] == 8

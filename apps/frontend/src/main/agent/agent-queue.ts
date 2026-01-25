@@ -18,6 +18,7 @@ import { pythonEnvManager } from '../python-env-manager';
 import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
+import { getPathDelimiter } from '../platform';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -348,7 +349,7 @@ export class AgentQueueManager {
     if (autoBuildSource) {
       pythonPathParts.push(autoBuildSource);
     }
-    const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
+    const combinedPythonPath = pythonPathParts.join(getPathDelimiter());
 
     // Build final environment with proper precedence:
     // 1. process.env (system)
@@ -675,7 +676,7 @@ export class AgentQueueManager {
     if (autoBuildSource) {
       pythonPathParts.push(autoBuildSource);
     }
-    const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
+    const combinedPythonPath = pythonPathParts.join(getPathDelimiter());
 
     // Build final environment with proper precedence:
     // 1. process.env (system)
