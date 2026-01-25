@@ -14,7 +14,7 @@ Transform the AI PR review system from 57% false positive rate to under 5% by fo
 - [x] **Phase 2: Schema Enforcement** - Add VerificationEvidence class and make it required
 - [x] **Phase 3: Prompt Improvements** - Add "Understand Intent" and "Evidence Requirements" to prompts
 - [x] **Phase 4: Validation Pipeline** - Run finding-validator for ALL reviews, add line verification
-- [ ] **Phase 5: Code Simplification** - Remove programmatic filters that are now redundant
+- [x] **Phase 5: Code Simplification** - Remove programmatic filters that are now redundant
 - [ ] **Phase 6: Measurement** - Run 5 PRs, calculate FP rate, iterate
 
 ## Phase Details
@@ -93,8 +93,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md - Remove filters from parallel_orchestrator_reviewer.py (evidence filter, confidence routing, simplify scope check)
-- [ ] 05-02-PLAN.md - Remove patterns from output_validator.py (VAGUE/GENERIC patterns, _is_false_positive, update tests)
+- [x] 05-01-PLAN.md - Remove filters from parallel_orchestrator_reviewer.py (evidence filter, confidence routing, simplify scope check)
+- [x] 05-02-PLAN.md - Remove patterns from output_validator.py (VAGUE/GENERIC patterns, _is_false_positive, update tests)
 
 ### Phase 6: Measurement
 **Goal**: Validate the changes work by running real PRs and measuring FP rate
@@ -105,10 +105,10 @@ Plans:
   2. False positive rate calculated and documented (target: <15%)
   3. Patterns in remaining false positives documented
   4. Prompt iterations applied if FP rate exceeds target
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD (Run and measure)
+- [ ] 06-01-PLAN.md - Run 5 PRs, classify findings, calculate FP rate, document patterns
 
 ## Progress
 
@@ -121,9 +121,9 @@ Phases 1 and 2 can run in parallel. Then 3, 4, 5, 6 in sequence.
 | 2. Schema Enforcement | 1/1 | Complete | 2026-01-25 |
 | 3. Prompt Improvements | 2/2 | Complete | 2026-01-25 |
 | 4. Validation Pipeline | 2/2 | Complete | 2026-01-25 |
-| 5. Code Simplification | 0/2 | Planned | - |
+| 5. Code Simplification | 2/2 | Complete | 2026-01-25 |
 | 6. Measurement | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-25*
-*Last updated: 2026-01-25 - Phase 5 planned (2 plans)*
+*Last updated: 2026-01-25 - Phase 6 planned*
