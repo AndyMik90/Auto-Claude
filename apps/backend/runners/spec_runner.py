@@ -111,6 +111,13 @@ from phase_config import resolve_model_id
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, muted, print_section, print_status
+from integrations.telegram import (
+    is_telegram_enabled,
+    telegram_task_created,
+    telegram_task_started,
+    telegram_task_completed,
+    telegram_task_failed,
+)
 
 
 def main():
@@ -291,6 +298,16 @@ Examples:
         use_ai_assessment=not args.no_ai_assessment,
     )
 
+    # Send Telegram notification for task start
+    spec_name = orchestrator.spec_dir.name if orchestrator.spec_dir else "new-spec"
+    if is_telegram_enabled():
+        telegram_task_created(
+            task_title=task_description[:100] if task_description else spec_name,
+            spec_id=spec_name,
+            description=task_description[:200] if task_description else None,
+        )
+        debug("spec_runner", "Telegram notification sent: task created")
+
     try:
         debug("spec_runner", "Starting spec orchestrator run...")
         success = asyncio.run(
@@ -302,6 +319,13 @@ Examples:
 
         if not success:
             debug_error("spec_runner", "Spec creation failed")
+            # Send Telegram failure notification
+            if is_telegram_enabled():
+                telegram_task_failed(
+                    task_title=task_description[:100] if task_description else spec_name,
+                    spec_id=spec_name,
+                    error_summary="Spec creation failed",
+                )
             sys.exit(1)
 
         debug_success(
@@ -338,6 +362,14 @@ Examples:
             print()
             print_section("STARTING BUILD", Icons.LIGHTNING)
             print()
+
+            # Send Telegram notification for build start
+            if is_telegram_enabled():
+                telegram_task_started(
+                    task_title=task_description[:100] if task_description else spec_name,
+                    spec_id=orchestrator.spec_dir.name,
+                )
+                debug("spec_runner", "Telegram notification sent: build starting")
 
             # Build the run.py command
             run_script = Path(__file__).parent.parent / "run.py"
@@ -402,6 +434,13 @@ Examples:
 
     except KeyboardInterrupt:
         debug_error("spec_runner", "Spec creation interrupted by user")
+        # Send Telegram notification for interruption
+        if is_telegram_enabled():
+            telegram_task_failed(
+                task_title=task_description[:100] if task_description else spec_name,
+                spec_id=orchestrator.spec_dir.name if orchestrator.spec_dir else "unknown",
+                error_summary="Spec creation interrupted by user",
+            )
         print("\n\nSpec creation interrupted.")
         print(
             f"To continue: python auto-claude/spec_runner.py --continue {orchestrator.spec_dir.name}"
@@ -413,6 +452,13 @@ Examples:
             e, spec_dir=str(orchestrator.spec_dir) if orchestrator else None
         )
         debug_error("spec_runner", f"Unexpected error: {e}")
+        # Send Telegram notification for unexpected errors
+        if is_telegram_enabled():
+            telegram_task_failed(
+                task_title=task_description[:100] if task_description else spec_name,
+                spec_id=orchestrator.spec_dir.name if orchestrator.spec_dir else "unknown",
+                error_summary=f"Unexpected error: {str(e)[:200]}",
+            )
         print(f"\n\nUnexpected error: {e}")
         sys.exit(1)
 
