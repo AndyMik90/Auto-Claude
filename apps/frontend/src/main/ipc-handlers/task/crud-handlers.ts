@@ -7,7 +7,7 @@ import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
-import { findAllSpecPaths } from '../../utils/spec-path-helpers';
+import { findAllSpecPaths, isValidTaskId } from '../../utils/spec-path-helpers';
 import { isPathWithinBase } from '../../worktree-paths';
 
 /**
@@ -486,10 +486,20 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       imagePath: string
     ): Promise<IPCResult<string>> => {
       try {
-        // Get project to determine auto-build path
+        // Validate specId to prevent path traversal attacks
+        if (!isValidTaskId(specId)) {
+          console.error(`[IPC] TASK_LOAD_IMAGE_THUMBNAIL: Invalid specId rejected: "${specId}"`);
+          return { success: false, error: 'Invalid spec ID' };
+        }
+
+        // Get project to determine auto-build path - validate projectPath exists
         const projects = projectStore.getProjects();
         const project = projects.find((p) => p.path === projectPath);
-        const autoBuildPath = project?.autoBuildPath || '.auto-claude';
+        if (!project) {
+          console.error(`[IPC] TASK_LOAD_IMAGE_THUMBNAIL: Unknown project: "${projectPath}"`);
+          return { success: false, error: 'Unknown project' };
+        }
+        const autoBuildPath = project.autoBuildPath || '.auto-claude';
 
         // Build full path to the image
         const specsDir = getSpecsDir(autoBuildPath);

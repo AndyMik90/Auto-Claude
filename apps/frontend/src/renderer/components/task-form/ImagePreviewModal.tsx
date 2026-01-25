@@ -31,6 +31,7 @@ export function ImagePreviewModal({ open, onOpenChange, image }: ImagePreviewMod
 
   // Determine the image source - prefer full-resolution data for enlarged preview, fall back to thumbnail
   const imageSrc = image.data ? `data:${image.mimeType};base64,${image.data}` : image.thumbnail || null;
+  const isThumbnailFallback = !image.data && image.thumbnail;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -75,13 +76,21 @@ export function ImagePreviewModal({ open, onOpenChange, image }: ImagePreviewMod
           </div>
 
           {/* Image display */}
-          <div className="flex items-center justify-center w-full h-full p-8">
+          <div className="flex flex-col items-center justify-center w-full h-full p-8 gap-4">
             {imageSrc ? (
-              <img
-                src={imageSrc}
-                alt={image.filename}
-                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              />
+              <>
+                <img
+                  src={imageSrc}
+                  alt={image.filename}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+                {/* Show indicator when displaying thumbnail fallback */}
+                {isThumbnailFallback && (
+                  <div className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm">
+                    <p className="text-xs text-white/70">{t('tasks:imagePreview.lowResolution')}</p>
+                  </div>
+                )}
+              </>
             ) : (
               // Fallback when no image data is available
               <div className="flex flex-col items-center justify-center text-white/50">

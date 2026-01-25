@@ -174,7 +174,8 @@
     "close": "Fermer l'aperçu",
     "unavailable": "Image indisponible",
     "description": "Aperçu de {{filename}}",
-    "doubleClickHint": "Double-cliquez pour agrandir"
+    "doubleClickHint": "Double-cliquez pour agrandir",
+    "lowResolution": "Aperçu basse résolution"
   },
   "notifications": {
     "backgroundTaskTitle": "La tâche continue en arrière-plan",

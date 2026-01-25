@@ -175,7 +175,8 @@
     "close": "Close preview",
     "unavailable": "Image unavailable",
     "description": "Preview of {{filename}}",
-    "doubleClickHint": "Double-click to enlarge"
+    "doubleClickHint": "Double-click to enlarge",
+    "lowResolution": "Low resolution preview"
   },
   "notifications": {
     "backgroundTaskTitle": "Task continues in background",

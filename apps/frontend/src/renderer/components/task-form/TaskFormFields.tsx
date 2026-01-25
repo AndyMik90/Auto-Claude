@@ -164,6 +164,8 @@ export function TaskFormFields({
   }, [images.length]);
 
   // Track images we've attempted to load thumbnails for to prevent infinite loops
+  // Note: Failed thumbnail loads are not retried (persists across re-renders)
+  // This prevents repeated failed IPC calls for missing/corrupt images
   const loadedThumbnailsRef = useRef<Set<string>>(new Set());
 
   // Track the latest images to avoid stale closure issues
