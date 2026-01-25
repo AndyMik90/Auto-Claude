@@ -29,6 +29,8 @@ import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
 import { TaskStateMachine } from "../task-state-machine";
+import { getTaskStateManager } from '../task-state-manager';
+import { isXstateEnabled } from '../task-state-utils';
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -253,6 +255,41 @@ export function registerAgenteventsHandlers(
         const allSubtasksDone = hasSubtasks && task.subtasks.every((s) => s.status === "completed");
         const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
 
+        if (isXstateEnabled()) {
+          if (code === 0) {
+            notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+          } else {
+            notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
+          }
+
+          const manager = getTaskStateManager(getMainWindow);
+          manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
+
+          const decision = taskStateMachine.getStatusForProcessExit({
+            taskId,
+            exitCode: code ?? 0,
+            task,
+            hasSubtasks,
+            allSubtasksDone,
+            requireReviewBeforeCoding,
+          });
+          const decisionWithFallback =
+            requireReviewBeforeCoding && !decision.status
+              ? { status: "human_review", reviewReason: "plan_review" }
+              : decision;
+          if (decisionWithFallback.status) {
+            persistStatus(decisionWithFallback.status);
+            taskStateMachine.emitStatusChange(
+              getMainWindow,
+              taskId,
+              decisionWithFallback.status,
+              projectId,
+              decisionWithFallback.reviewReason
+            );
+          }
+          return;
+        }
+
         taskStateMachine.logProcessExit({
           taskId,
           exitCode: code ?? 0,
@@ -342,6 +379,37 @@ export function registerAgenteventsHandlers(
       progress,
       taskProjectId
     );
+
+    if (task && project && isXstateEnabled()) {
+      const manager = getTaskStateManager(getMainWindow);
+      manager.handleExecutionProgress(task, project, progress);
+
+      const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
+      if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {
+        taskStateMachine.emitStatusChange(getMainWindow, taskId, fallbackStatus, taskProjectId);
+        try {
+          const mainPlanPath = getPlanPath(project, task);
+          persistPlanStatusSync(mainPlanPath, fallbackStatus, project.id);
+
+          const worktreePath = findTaskWorktree(project.path, task.specId);
+          if (worktreePath) {
+            const specsBaseDir = getSpecsDir(project.autoBuildPath);
+            const worktreePlanPath = path.join(
+              worktreePath,
+              specsBaseDir,
+              task.specId,
+              AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
+            );
+            if (existsSync(worktreePlanPath)) {
+              persistPlanStatusSync(worktreePlanPath, fallbackStatus, project.id);
+            }
+          }
+        } catch (err) {
+          console.warn("[execution-progress] Could not persist xstate fallback:", err);
+        }
+      }
+      return;
+    }
 
     const newStatus = taskStateMachine.getStatusForExecutionProgress(progress);
     // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting

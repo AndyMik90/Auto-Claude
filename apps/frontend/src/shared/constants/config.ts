@@ -58,6 +58,8 @@ export const DEFAULT_APP_SETTINGS = {
   language: 'en' as const,
   // Anonymous error reporting (Sentry) - enabled by default to help improve the app
   sentryEnabled: true,
+  // Use xstate task machine for status transitions (Phase 2 default)
+  useXstateTaskMachine: true,
   // Auto-name Claude terminals based on initial message (enabled by default)
   autoNameClaudeTerminals: true
 };

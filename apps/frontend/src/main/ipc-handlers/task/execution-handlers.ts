@@ -19,6 +19,8 @@ import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { TaskStateMachine } from '../../task-state-machine';
+import { getTaskStateManager } from '../../task-state-manager';
+import { isXstateEnabled } from '../../task-state-utils';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -188,6 +190,17 @@ export function registerTaskExecutionHandlers(
 
       console.warn('[TASK_START] Found task:', task.specId, 'status:', task.status, 'subtasks:', task.subtasks.length);
 
+      if (isXstateEnabled()) {
+        const shouldResume =
+          task.status === 'human_review' &&
+          task.reviewReason !== 'completed';
+
+        if (shouldResume || task.status === 'error') {
+          const taskStateManager = getTaskStateManager(getMainWindow);
+          taskStateManager.handleUserResumed(task, project);
+        }
+      }
+
       // Start file watcher for this task
       const specsBaseDir = getSpecsDir(project.autoBuildPath);
       const specDir = path.join(
@@ -309,6 +322,13 @@ export function registerTaskExecutionHandlers(
     agentManager.killTask(taskId);
     fileWatcher.unwatch(taskId);
 
+    const { task, project } = findTaskAndProject(taskId);
+    if (task && project && isXstateEnabled()) {
+      const manager = getTaskStateManager(getMainWindow);
+      manager.handleUserStopped(task, project);
+      return;
+    }
+
     // Notify status change IMMEDIATELY for instant UI feedback
     const ipcSentAt = Date.now();
     const mainWindow = getMainWindow();
@@ -320,9 +340,6 @@ export function registerTaskExecutionHandlers(
     if (DEBUG) {
       console.log(`[TASK_STOP] IPC sent immediately for task ${taskId}, deferring file persistence`);
     }
-
-    // Find task and project to update the plan file (async, non-blocking)
-    const { task, project } = findTaskAndProject(taskId);
 
     if (task && project) {
       // Persist status to implementation_plan.json to prevent status flip-flop on refresh
