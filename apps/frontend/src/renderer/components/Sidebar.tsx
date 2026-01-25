@@ -134,20 +134,31 @@ export function Sidebar({
   // Track the last loaded project ID to avoid redundant loads
   const lastLoadedProjectIdRef = useRef<string | null>(null);
 
-  // Compute visible nav items based on GitHub/GitLab enabled state from store
+  // Compute visible nav items based on GitHub/GitLab enabled state and issue tracker provider
   const visibleNavItems = useMemo(() => {
     const items = [...baseNavItems];
 
+    // Get the issue tracker provider from settings (default: based on what's configured)
+    const issueTrackerProvider = settings.issueTrackerProvider;
+
+    // Show GitHub issues/PRs only if GitHub is enabled AND it's the issue tracker provider (or not explicitly set)
     if (githubEnabled) {
-      items.push(...githubNavItems);
+      // If no provider is set, or if github is the provider, show GitHub nav items
+      if (!issueTrackerProvider || issueTrackerProvider === 'github') {
+        items.push(...githubNavItems);
+      }
     }
 
+    // Show GitLab issues/MRs only if GitLab is enabled AND it's the issue tracker provider (or not explicitly set)
     if (gitlabEnabled) {
-      items.push(...gitlabNavItems);
+      // If no provider is set, or if gitlab is the provider, show GitLab nav items
+      if (!issueTrackerProvider || issueTrackerProvider === 'gitlab') {
+        items.push(...gitlabNavItems);
+      }
     }
 
     return items;
-  }, [githubEnabled, gitlabEnabled]);
+  }, [githubEnabled, gitlabEnabled, settings.issueTrackerProvider]);
 
   // Load envConfig when project changes to ensure store is populated
   useEffect(() => {

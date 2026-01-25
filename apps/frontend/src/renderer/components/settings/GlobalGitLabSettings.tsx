@@ -69,30 +69,42 @@ export function GlobalGitLabSettings({ settings, onSettingsChange }: GlobalGitLa
       // Normalize URL
       const baseUrl = instanceUrl.replace(/\/$/, '');
 
-      // Test the connection by fetching user info
-      const response = await fetch(`${baseUrl}/api/v4/user`, {
-        headers: {
-          'PRIVATE-TOKEN': token,
-        },
-      });
+      // Use Electron IPC to test connection (avoids CORS issues)
+      // The main process can make HTTP requests without CORS restrictions
+      const result = await window.electronAPI.testGitLabConnection(baseUrl, token);
 
-      if (response.ok) {
-        const user = await response.json();
+      if (result?.success) {
         setConnectionStatus({
           success: true,
           message: 'Connected successfully',
-          username: user.username,
-        });
-      } else if (response.status === 401) {
-        setConnectionStatus({
-          success: false,
-          message: 'Invalid token or token expired',
+          username: result.data?.username,
         });
       } else {
-        setConnectionStatus({
-          success: false,
-          message: `Connection failed: ${response.statusText}`,
+        // Fallback: try direct fetch (works if CORS is configured on server)
+        const response = await fetch(`${baseUrl}/api/v4/user`, {
+          headers: {
+            'PRIVATE-TOKEN': token,
+          },
         });
+
+        if (response.ok) {
+          const user = await response.json();
+          setConnectionStatus({
+            success: true,
+            message: 'Connected successfully',
+            username: user.username,
+          });
+        } else if (response.status === 401) {
+          setConnectionStatus({
+            success: false,
+            message: 'Invalid token or token expired',
+          });
+        } else {
+          setConnectionStatus({
+            success: false,
+            message: result?.error || `Connection failed: ${response.statusText}`,
+          });
+        }
       }
     } catch (error) {
       setConnectionStatus({

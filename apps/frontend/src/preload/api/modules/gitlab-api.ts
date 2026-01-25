@@ -30,6 +30,7 @@ export interface GitLabAPI {
   // Project operations
   getGitLabProjects: (projectId: string) => Promise<IPCResult<GitLabProject[]>>;
   checkGitLabConnection: (projectId: string) => Promise<IPCResult<GitLabSyncStatus>>;
+  testGitLabConnection: (instanceUrl: string, token: string) => Promise<IPCResult<{ username: string }>>;
 
   // Issue operations
   getGitLabIssues: (projectId: string, state?: 'opened' | 'closed' | 'all') => Promise<IPCResult<GitLabIssue[]>>;
@@ -192,6 +193,9 @@ export const createGitLabAPI = (): GitLabAPI => ({
 
   checkGitLabConnection: (projectId: string): Promise<IPCResult<GitLabSyncStatus>> =>
     invokeIpc(IPC_CHANNELS.GITLAB_CHECK_CONNECTION, projectId),
+
+  testGitLabConnection: (instanceUrl: string, token: string): Promise<IPCResult<{ username: string }>> =>
+    invokeIpc(IPC_CHANNELS.GITLAB_TEST_GLOBAL_CONNECTION, instanceUrl, token),
 
   // Issue operations
   getGitLabIssues: (projectId: string, state?: 'opened' | 'closed' | 'all'): Promise<IPCResult<GitLabIssue[]>> =>
