@@ -1,0 +1,305 @@
+{
+  "refreshTasks": "Atualizar Tarefas",
+  "status": {
+    "backlog": "Backlog",
+    "queue": "Fila",
+    "todo": "A Fazer",
+    "in_progress": "Em Andamento",
+    "review": "Revisão",
+    "prCreated": "PR Criado",
+    "complete": "Completo",
+    "archived": "Arquivado"
+  },
+  "actions": {
+    "start": "Iniciar",
+    "stop": "Parar",
+    "recover": "Recuperar",
+    "resume": "Retomar",
+    "archive": "Arquivar",
+    "delete": "Excluir",
+    "view": "Ver Detalhes",
+    "viewPR": "Ver PR",
+    "moveTo": "Mover para",
+    "taskActions": "Ações da tarefa",
+    "selectTask": "Selecionar tarefa: {{title}}"
+  },
+  "labels": {
+    "running": "Executando",
+    "aiReview": "Revisão IA",
+    "needsReview": "Precisa Revisão",
+    "pending": "Pendente",
+    "stuck": "Travado",
+    "incomplete": "Incompleto",
+    "recovering": "Recuperando...",
+    "needsRecovery": "Precisa Recuperação",
+    "needsResume": "Precisa Retomar"
+  },
+  "reviewReason": {
+    "completed": "Completado",
+    "hasErrors": "Tem Erros",
+    "qaIssues": "Problemas de QA",
+    "approvePlan": "Aprovar Plano"
+  },
+  "tooltips": {
+    "archiveTask": "Arquivar tarefa",
+    "archiveAllDone": "Arquivar todas as tarefas concluídas",
+    "viewPR": "Abrir pull request no navegador"
+  },
+  "creation": {
+    "title": "Criar Nova Tarefa",
+    "description": "Descreva o que você quer construir",
+    "placeholder": "Descreva sua tarefa..."
+  },
+  "empty": {
+    "title": "Nenhuma tarefa ainda",
+    "description": "Crie sua primeira tarefa para começar"
+  },
+  "columns": {
+    "backlog": "Planejamento",
+    "queue": "Fila",
+    "in_progress": "Em Andamento",
+    "ai_review": "Revisão IA",
+    "human_review": "Revisão Humana",
+    "done": "Concluído",
+    "pr_created": "PR Criado",
+    "error": "Erro"
+  },
+  "kanban": {
+    "emptyBacklog": "Nenhuma tarefa planejada",
+    "emptyBacklogHint": "Adicione uma tarefa para começar",
+    "emptyQueue": "Fila está vazia",
+    "emptyQueueHint": "Tarefas aguardarão aqui quando o limite de tarefas paralelas for atingido",
+    "emptyInProgress": "Nada executando",
+    "emptyInProgressHint": "Inicie uma tarefa do Planejamento",
+    "emptyAiReview": "Nenhuma tarefa em revisão",
+    "emptyAiReviewHint": "IA revisará tarefas completadas",
+    "emptyHumanReview": "Nada para revisar",
+    "emptyHumanReviewHint": "Tarefas aguardam sua aprovação aqui",
+    "emptyDone": "Nenhuma tarefa completada",
+    "emptyDoneHint": "Tarefas aprovadas aparecem aqui",
+    "emptyDefault": "Sem tarefas",
+    "dropHere": "Solte aqui",
+    "showArchived": "Mostrar arquivados",
+    "addTaskAriaLabel": "Adicionar nova tarefa ao backlog",
+    "queueAllAriaLabel": "Mover todas as tarefas para a fila",
+    "closeTaskDetailsAriaLabel": "Fechar detalhes da tarefa",
+    "editTask": "Editar tarefa",
+    "cannotEditWhileRunning": "Não é possível editar enquanto a tarefa está executando",
+    "worktreeCleanupTitle": "Limpeza de Worktree",
+    "worktreeCleanupStaged": "Esta tarefa foi preparada e tem uma worktree. Gostaria de limpar a worktree?",
+    "worktreeCleanupNotStaged": "Esta tarefa tem uma worktree com alterações que não foram mescladas. Exclua a worktree para marcar como concluída, ou cancele para revisar as alterações primeiro.",
+    "keepWorktree": "Manter Worktree",
+    "deleteWorktree": "Excluir Worktree e Marcar Concluída",
+    "refreshTasks": "Atualizar Tarefas",
+    "queueSettings": "Configurações da Fila",
+    "orderSaveFailedTitle": "Reordenação não salva",
+    "orderSaveFailedDescription": "Sua alteração na ordem das tarefas foi aplicada mas não pôde ser salva no armazenamento. Será perdida ao atualizar.",
+    "selectAll": "Selecionar tudo",
+    "deselectAll": "Desmarcar tudo",
+    "selectedCount": "{{count}} selecionados",
+    "selectedCountOne": "{{count}} tarefa selecionada",
+    "selectedCountOther": "{{count}} tarefas selecionadas",
+    "createPRs": "Criar PRs",
+    "clearSelection": "Limpar Seleção"
+  },
+  "queue": {
+    "limitReached": "Limite de tarefas paralelas atingido ({{current}}/{{max}}). Tarefa movida para a fila.",
+    "movedToQueue": "Tarefa movida para a fila.",
+    "autoPromoted": "Tarefa auto-promovida da fila para Em Andamento.",
+    "capacityAvailable": "{{count}} vaga(s) disponível(is) em Em Andamento.",
+    "queueAll": "Adicionar Todas à Fila",
+    "queueAllSuccess": "Movidas {{count}} tarefas para a fila.",
+    "settings": {
+      "title": "Configurações da Fila",
+      "description": "Configure o número máximo de tarefas que podem executar em paralelo no quadro \"Em Andamento\"",
+      "maxParallelLabel": "Máximo de Tarefas Paralelas",
+      "minValueError": "Deve ser pelo menos 1",
+      "maxValueError": "Não pode exceder 10",
+      "hint": "Quando este limite for atingido, novas tarefas aguardarão na fila antes de mover para \"Em Andamento\"",
+      "saved": "Configurações da fila salvas",
+      "saveFailed": "Falha ao salvar configurações da fila",
+      "retry": "Por favor, tente novamente"
+    }
+  },
+  "execution": {
+    "phases": {
+      "idle": "Ocioso",
+      "planning": "Planejando",
+      "coding": "Codificando",
+      "reviewing": "Revisando",
+      "fixing": "Corrigindo",
+      "complete": "Completo",
+      "failed": "Falhou"
+    },
+    "labels": {
+      "interrupted": "Interrompido",
+      "progress": "Progresso",
+      "entry": "entrada",
+      "entries": "entradas"
+    },
+    "shortPhases": {
+      "plan": "Plano",
+      "code": "Código",
+      "qa": "QA"
+    }
+  },
+  "files": {
+    "title": "Arquivos",
+    "tab": "Arquivos",
+    "noSpecPath": "Nenhum arquivo de spec disponível",
+    "noFiles": "Nenhum arquivo encontrado",
+    "loading": "Carregando arquivos...",
+    "loadingContent": "Carregando conteúdo...",
+    "errorLoading": "Falha ao carregar arquivos",
+    "errorLoadingContent": "Falha ao carregar conteúdo do arquivo",
+    "retry": "Tentar novamente",
+    "selectFile": "Selecione um arquivo para ver seu conteúdo",
+    "openInIDE": "Abrir no IDE"
+  },
+  "metadata": {
+    "severity": "severidade",
+    "pullRequest": "Pull Request"
+  },
+  "images": {
+    "removeImageAriaLabel": "Remover imagem {{filename}}",
+    "pasteHint": "Dica: Cole screenshots diretamente com {{shortcut}} para adicionar imagens de referência."
+  },
+  "notifications": {
+    "backgroundTaskTitle": "Tarefa continua em segundo plano",
+    "backgroundTaskDescription": "A tarefa ainda está executando. Você pode reabrir este diálogo para monitorar o progresso."
+  },
+  "wizard": {
+    "createTitle": "Criar Nova Tarefa",
+    "createDescription": "Descreva o que você quer construir. A IA analisará seu pedido e criará uma especificação detalhada.",
+    "descriptionPlaceholder": "Descreva a funcionalidade, correção de bug ou melhoria que você quer implementar. Seja o mais específico possível sobre requisitos, restrições e comportamento esperado. Digite @ para referenciar arquivos.",
+    "draftRestored": "Rascunho restaurado",
+    "startFresh": "Começar do Zero",
+    "hideFiles": "Ocultar Arquivos",
+    "browseFiles": "Navegar Arquivos",
+    "creating": "Criando...",
+    "createTask": "Criar Tarefa",
+    "worktreeNotice": {
+      "title": "Espaço de Trabalho Isolado",
+      "description": "Esta tarefa executa em uma worktree git isolada. Seu branch principal permanece seguro até você escolher mesclar."
+    },
+    "gitOptions": {
+      "title": "Opções Git (opcional)",
+      "baseBranchLabel": "Branch Base (opcional)",
+      "useProjectDefault": "Usar padrão do projeto",
+      "useProjectDefaultWithBranch": "Usar padrão do projeto ({{branch}})",
+      "searchBranches": "Buscar branches...",
+      "noBranchesFound": "Nenhum branch encontrado",
+      "helpText": "Sobrescreva o branch a partir do qual a worktree desta tarefa será criada. Deixe vazio para usar o branch padrão configurado do projeto.",
+      "useWorktreeLabel": "Usar espaço de trabalho isolado (recomendado)",
+      "useWorktreeDescription": "Cria alterações em uma worktree git separada para revisão segura antes de mesclar. Desabilite para construir diretamente no seu projeto (mais rápido mas mais arriscado)."
+    },
+    "errors": {
+      "createFailed": "Falha ao criar tarefa. Por favor, tente novamente."
+    }
+  },
+  "feedback": {
+    "dragDropHint": "Arraste e solte imagens ou cole screenshots",
+    "imageAdded": "Imagem adicionada com sucesso",
+    "maxImagesError": "Máximo de {{count}} imagens permitidas",
+    "invalidTypeError": "Tipo de imagem inválido. Permitidos: {{types}}",
+    "removeImage": "Remover imagem",
+    "processingError": "Falha ao processar imagem"
+  },
+  "review": {
+    "mergeTooltip": "Mescla alterações do branch da worktree da tarefa de volta ao seu branch base. IA resolverá quaisquer conflitos. Você pode então escolher se mantém ou remove a worktree."
+  },
+  "edit": {
+    "title": "Editar Tarefa",
+    "description": "Atualize detalhes da tarefa incluindo título, descrição, classificação, imagens e configurações. Alterações serão salvas nos arquivos de spec.",
+    "saveChanges": "Salvar Alterações",
+    "errors": {
+      "updateFailed": "Falha ao atualizar tarefa. Por favor, tente novamente."
+    }
+  },
+  "form": {
+    "description": "Descrição",
+    "descriptionPlaceholder": "Descreva a funcionalidade, correção de bug ou melhoria que você quer implementar. Seja o mais específico possível sobre requisitos, restrições e comportamento esperado.",
+    "imageAddedSuccess": "Imagem adicionada com sucesso!",
+    "taskTitle": "Título da Tarefa",
+    "titlePlaceholder": "Deixe vazio para auto-gerar a partir da descrição",
+    "titleHelpText": "Um título curto e descritivo será gerado automaticamente se deixado vazio.",
+    "classificationOptional": "Classificação (opcional)",
+    "requireReviewLabel": "Exigir revisão humana antes de codificar",
+    "requireReviewDescription": "Quando habilitado, você será solicitado a revisar o spec e plano de implementação antes da fase de codificação começar. Isso permite aprovar, solicitar alterações ou fornecer feedback.",
+    "errors": {
+      "descriptionRequired": "Por favor, forneça uma descrição",
+      "maxImagesReached": "Máximo de 5 imagens permitidas",
+      "invalidImageType": "Tipo de imagem inválido. Permitidos: PNG, JPEG, GIF, WebP",
+      "processPasteFailed": "Falha ao processar imagem colada",
+      "processDropFailed": "Falha ao processar imagem solta"
+    },
+    "classification": {
+      "category": "Categoria",
+      "selectCategory": "Selecionar categoria",
+      "priority": "Prioridade",
+      "selectPriority": "Selecionar prioridade",
+      "complexity": "Complexidade",
+      "selectComplexity": "Selecionar complexidade",
+      "impact": "Impacto",
+      "selectImpact": "Selecionar impacto",
+      "helpText": "Esses rótulos ajudam a organizar e priorizar tarefas. São opcionais mas úteis para filtragem.",
+      "values": {
+        "category": {
+          "feature": "Funcionalidade",
+          "bug_fix": "Correção de Bug",
+          "refactoring": "Refatoração",
+          "documentation": "Documentação",
+          "security": "Segurança"
+        },
+        "priority": {
+          "low": "Baixa",
+          "medium": "Média",
+          "high": "Alta",
+          "urgent": "Urgente"
+        },
+        "complexity": {
+          "trivial": "Trivial",
+          "small": "Pequena",
+          "medium": "Média",
+          "large": "Grande",
+          "complex": "Complexa"
+        },
+        "impact": {
+          "low": "Baixo Impacto",
+          "medium": "Médio Impacto",
+          "high": "Alto Impacto",
+          "critical": "Impacto Crítico"
+        }
+      }
+    }
+  },
+  "subtasks": {
+    "untitled": "Subtarefa sem título"
+  },
+  "bulkPR": {
+    "selectAllInColumn": "Selecionar todas as tarefas na coluna",
+    "deselectAllInColumn": "Desmarcar todas as tarefas",
+    "selectionMode": "Modo de seleção ativo",
+    "exitSelectionMode": "Sair do modo de seleção",
+    "noTasksToSelect": "Nenhuma tarefa disponível para selecionar",
+    "confirmBulkAction": "Confirmar ação em lote para {{count}} tarefas",
+    "processingTasks": "Processando tarefas selecionadas..."
+  },
+  "screenshot": {
+    "title": "Capturar Screenshot",
+    "description": "Selecione uma tela ou janela para capturar como imagem de referência",
+    "capture": "Capturar",
+    "capturing": "Capturando...",
+    "noSources": "Nenhuma tela ou janela encontrada",
+    "errors": {
+      "getSources": "Falha ao obter fontes de screenshot",
+      "fetchSources": "Falha ao buscar fontes de screenshot",
+      "capture": "Falha ao capturar screenshot",
+      "captureFailed": "Falha ao capturar screenshot"
+    }
+  },
+  "referenceImages": {
+    "title": "Imagens de Referência (opcional)",
+    "description": "Adicione referências visuais como screenshots ou designs para ajudar a IA a entender seus requisitos."
+  }
+}

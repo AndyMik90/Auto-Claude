@@ -1,0 +1,83 @@
+{
+  "terminal": {
+    "openTerminal": "Abrir terminal",
+    "openInbuilt": "Abrir no Terminal Integrado",
+    "openExternal": "Abrir no Terminal Externo"
+  },
+  "merge": {
+    "branchHasNewCommits": "O branch {{branch}} tem {{count}} novo commit.",
+    "branchHasNewCommits_other": "O branch {{branch}} tem {{count}} novos commits.",
+    "branchHasNewCommitsSinceWorktree": "O branch {{branch}} tem {{count}} novo commit desde que esta worktree foi criada.",
+    "branchHasNewCommitsSinceWorktree_other": "O branch {{branch}} tem {{count}} novos commits desde que esta worktree foi criada.",
+    "filesNeedMerging": "{{count}} arquivo precisa de merge.",
+    "filesNeedMerging_other": "{{count}} arquivos precisam de merge.",
+    "filesNeedIntelligentMerging": "{{count}} arquivo precisará de merge inteligente:",
+    "filesNeedIntelligentMerging_other": "{{count}} arquivos precisarão de merge inteligente:",
+    "branchHasNewCommitsSinceBuild": "O branch {{branch}} tem {{count}} novo commit desde que este build começou.",
+    "branchHasNewCommitsSinceBuild_other": "O branch {{branch}} tem {{count}} novos commits desde que este build começou.",
+    "filesNeedAIMergeDueToRenames": "{{count}} arquivo precisa de merge IA devido a {{renameCount}} renomeação de arquivo.",
+    "filesNeedAIMergeDueToRenames_other": "{{count}} arquivos precisam de merge IA devido a {{renameCount}} renomeações de arquivo.",
+    "filesNeedAIMergeDueToRenamesPlural": "{{count}} arquivo precisa de merge IA devido a {{renameCount}} renomeações de arquivo.",
+    "filesNeedAIMergeDueToRenamesPlural_other": "{{count}} arquivos precisam de merge IA devido a {{renameCount}} renomeações de arquivo.",
+    "fileRenamesDetected": "{{count}} renomeação de arquivo detectada - IA cuidará do merge.",
+    "fileRenamesDetected_other": "{{count}} renomeações de arquivo detectadas - IA cuidará do merge.",
+    "filesRenamedOrMoved": "Arquivos podem ter sido renomeados ou movidos - IA cuidará do merge.",
+    "buttons": {
+      "stageWithAIMerge": "Preparar com Merge IA",
+      "mergeWithAI": "Mesclar com IA",
+      "stageTo": "Preparar para {{branch}}",
+      "mergeTo": "Mesclar em {{branch}}",
+      "resolving": "Resolvendo...",
+      "staging": "Preparando...",
+      "merging": "Mesclando..."
+    }
+  },
+  "pr": {
+    "title": "Criar Pull Request",
+    "description": "Enviar branch e criar um pull request para \"{{taskTitle}}\"",
+    "errors": {
+      "unknown": "Ocorreu um erro desconhecido ao criar o pull request",
+      "invalidBranchName": "Nome do branch contém caracteres inválidos. Use apenas letras, números, hífens (-), underscores (_) e barras (/).",
+      "emptyTitle": "Título do pull request não pode estar vazio."
+    },
+    "success": {
+      "created": "Pull request criado com sucesso!",
+      "alreadyExists": "Um pull request já existe para este branch"
+    },
+    "actions": {
+      "retry": "Tentar novamente",
+      "creating": "Criando PR...",
+      "create": "Criar Pull Request"
+    },
+    "labels": {
+      "sourceBranch": "Branch de origem",
+      "targetBranch": "Branch de destino",
+      "commits": "Commits",
+      "changes": "Alterações",
+      "prTitle": "Título do PR (opcional)",
+      "draftPR": "Criar como PR rascunho",
+      "unknown": "Desconhecido"
+    },
+    "hints": {
+      "targetBranch": "Deixe vazio para usar o branch padrão",
+      "prTitle": "Deixe vazio para usar o título da tarefa"
+    }
+  },
+  "bulkPR": {
+    "title": "Criar Pull Requests",
+    "description": "Criar pull requests para {{count}} tarefas selecionadas",
+    "creating": "Criando PR {{current}} de {{total}}...",
+    "creatingPR": "Criando PR {{current}} de {{total}}",
+    "resultsDescription": "{{success}} com sucesso, {{failed}} falharam",
+    "tasksToProcess": "Tarefas a processar",
+    "targetBranchHint": "Deixe vazio para usar o branch padrão de cada tarefa. Isso será aplicado a todos os PRs.",
+    "createAll": "Criar {{count}} PRs",
+    "completed": "completado",
+    "succeeded": "com sucesso",
+    "failed": "falhou",
+    "skipped": "pulado",
+    "alreadyExisted": "já existia",
+    "noWorktree": "Nenhuma worktree encontrada para esta tarefa",
+    "resultsDescriptionWithSkipped": "{{success}} com sucesso, {{skipped}} pulados, {{failed}} falharam"
+  }
+}
