@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** When the system flags something, it's a real issue. Trust comes from proof, not filters.
-**Current focus:** Phase 2 - Schema Enforcement (Complete)
+**Current focus:** Phase 3 - Prompt Improvements (In Progress)
 
 ## Current Position
 
-Phase: 2 of 6 (Schema Enforcement)
-Plan: 1 of 1 in current phase
-Status: Phase 2 complete
-Last activity: 2026-01-25 - Completed 02-01-PLAN.md
+Phase: 3 of 6 (Prompt Improvements)
+Plan: 2 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-25 - Completed 03-02-PLAN.md
 
-Progress: [███░░░░░░░] 25% (3/12 plans)
+Progress: [████░░░░░░] 33% (4/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 2.3 min
-- Total execution time: 7 min
+- Total plans completed: 4
+- Average duration: 2 min
+- Total execution time: 8 min
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [███░░░░░░░] 25% (3/12 plans)
 |-------|-------|-------|----------|
 | Phase 1 | 2 | 4 min | 2 min |
 | Phase 2 | 1 | 3 min | 3 min |
+| Phase 3 | 1 | 1 min | 1 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 01-02 (2 min), 02-01 (3 min)
-- Trend: Consistent
+- Last 5 plans: 01-01 (2 min), 01-02 (2 min), 02-01 (3 min), 03-02 (1 min)
+- Trend: Consistent, slightly faster
 
 *Updated after each plan completion*
 
@@ -52,6 +53,7 @@ Recent decisions affecting current work:
 - [01-02]: Example delegation shows concrete file references
 - [02-01]: Mark old evidence field as DEPRECATED, don't remove yet (backwards compatibility)
 - [02-01]: Use Literal type for verification_method to constrain at schema level
+- [03-02]: Require 3 elements in specialist delegation (intent, concerns, files)
 
 ### Pending Todos
 
@@ -63,6 +65,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-25T21:27:14Z
-Stopped at: Completed 02-01-PLAN.md (Phase 2 complete)
+Last session: 2026-01-25T21:43:14Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
