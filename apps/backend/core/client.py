@@ -338,6 +338,10 @@ def load_project_mcp_config(project_dir: Path) -> dict:
         "LINEAR_MCP_ENABLED",
         "ELECTRON_MCP_ENABLED",
         "PUPPETEER_MCP_ENABLED",
+        # External integrations
+        "JIRA_MCP_ENABLED",
+        "GITLAB_MCP_ENABLED",
+        "OBSIDIAN_MCP_ENABLED",
     }
 
     try:
