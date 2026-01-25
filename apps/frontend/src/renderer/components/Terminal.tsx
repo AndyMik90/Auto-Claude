@@ -8,7 +8,6 @@ import { useSettingsStore } from '../stores/settings-store';
 import { useToast } from '../hooks/use-toast';
 import type { TerminalProps } from './terminal/types';
 import type { TerminalWorktreeConfig } from '../../shared/types';
-import { TERMINAL_DOM_UPDATE_DELAY_MS } from '../../shared/constants';
 import { TerminalHeader } from './terminal/TerminalHeader';
 import { CreateWorktreeDialog } from './terminal/CreateWorktreeDialog';
 import { useXterm } from './terminal/useXterm';
@@ -210,11 +209,103 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   }, [isActive, focus]);
 
   // Refit terminal when expansion state changes
+  // Uses transitionend event listener and RAF-based retry logic instead of fixed timeout
+  // for more reliable resizing after CSS transitions complete
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fit();
-    }, TERMINAL_DOM_UPDATE_DELAY_MS);
-    return () => clearTimeout(timeoutId);
+    // RAF fallback for test environments where requestAnimationFrame may not be defined
+    const raf = typeof requestAnimationFrame !== 'undefined'
+      ? requestAnimationFrame
+      : (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0) as unknown as number;
+
+    const cancelRaf = typeof cancelAnimationFrame !== 'undefined'
+      ? cancelAnimationFrame
+      : (id: number) => clearTimeout(id);
+
+    let rafId: number | null = null;
+    let retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let fallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let isCleanedUp = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 50;
+    const FALLBACK_TIMEOUT_MS = 300;
+
+    // Perform fit with RAF and retry logic, following the pattern from useXterm.ts performInitialFit
+    const performFit = () => {
+      if (isCleanedUp) return;
+
+      rafId = raf(() => {
+        if (isCleanedUp) return;
+
+        // fit() returns boolean indicating success (true if container had valid dimensions)
+        const success = fit();
+
+        if (!success && retryCount < MAX_RETRIES) {
+          // Container not ready yet, retry after a short delay
+          retryCount++;
+          retryTimeoutId = setTimeout(performFit, RETRY_DELAY_MS);
+        }
+      });
+    };
+
+    // Get terminal container element for transition listening
+    const container = terminalRef.current;
+
+    // Handler for transitionend event - fits terminal after CSS transition completes
+    const handleTransitionEnd = (e: TransitionEvent) => {
+      // Only react to relevant transitions (height, width, flex changes)
+      const relevantProps = ['height', 'width', 'flex', 'max-height', 'max-width'];
+      if (relevantProps.some(prop => e.propertyName.includes(prop))) {
+        // Reset retry count for new transition
+        retryCount = 0;
+        performFit();
+      }
+    };
+
+    // Listen for transitionend on the terminal container and its parent
+    // (expansion may trigger transitions on either element)
+    if (container) {
+      container.addEventListener('transitionend', handleTransitionEnd);
+      container.parentElement?.addEventListener('transitionend', handleTransitionEnd);
+    }
+
+    // Start the fit process immediately with RAF-based retry
+    // This handles cases where expansion is instant (no CSS transition)
+    performFit();
+
+    // Fallback timeout to ensure fit happens even if transitionend doesn't fire
+    // This is a safety net for edge cases
+    fallbackTimeoutId = setTimeout(() => {
+      if (!isCleanedUp) {
+        retryCount = 0;
+        performFit();
+      }
+    }, FALLBACK_TIMEOUT_MS);
+
+    return () => {
+      isCleanedUp = true;
+
+      // Clean up RAF
+      if (rafId !== null) {
+        cancelRaf(rafId);
+      }
+
+      // Clean up retry timeout
+      if (retryTimeoutId !== null) {
+        clearTimeout(retryTimeoutId);
+      }
+
+      // Clean up fallback timeout
+      if (fallbackTimeoutId !== null) {
+        clearTimeout(fallbackTimeoutId);
+      }
+
+      // Remove event listeners
+      if (container) {
+        container.removeEventListener('transitionend', handleTransitionEnd);
+        container.parentElement?.removeEventListener('transitionend', handleTransitionEnd);
+      }
+    };
   }, [isExpanded, fit]);
 
   // Trigger deferred Claude resume when terminal becomes active
