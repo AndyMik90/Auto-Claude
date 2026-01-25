@@ -300,7 +300,8 @@ class FeaturesPhase:
         """Merge new AI-generated features with preserved features.
 
         Preserved features take priority - if a new feature has the same ID
-        as a preserved feature, the new feature is skipped.
+        as a preserved feature, the new feature is skipped. For features
+        without IDs, title-based deduplication is used as a fallback.
 
         Args:
             new_features: List of newly generated features from AI
@@ -314,6 +315,12 @@ class FeaturesPhase:
             return new_features
 
         preserved_ids = {f.get("id") for f in preserved if f.get("id")}
+        # Build normalized title set for fallback deduplication
+        preserved_titles = {
+            f.get("title", "").strip().lower()
+            for f in preserved
+            if f.get("title")
+        }
 
         # Start with all preserved features
         merged = list(preserved)
@@ -323,21 +330,25 @@ class FeaturesPhase:
         # Add new features that don't conflict with preserved ones
         for feature in new_features:
             feature_id = feature.get("id")
+            feature_title = feature.get("title", "").strip()
+            normalized_title = feature_title.lower()
+
             if feature_id and feature_id in preserved_ids:
                 debug_detailed(
                     "roadmap_phase",
-                    "Skipping duplicate feature",
+                    "Skipping duplicate feature (by ID)",
                     feature_id=feature_id,
                 )
                 skipped_count += 1
+            elif normalized_title and normalized_title in preserved_titles:
+                # Title-based fallback deduplication for features without IDs
+                debug_detailed(
+                    "roadmap_phase",
+                    "Skipping duplicate feature (by title)",
+                    title=feature_title,
+                )
+                skipped_count += 1
             else:
-                # Warn about features without IDs - they cannot be deduplicated
-                if not feature_id:
-                    debug_warning(
-                        "roadmap_phase",
-                        "Feature without ID - cannot deduplicate",
-                        title=feature.get("title", "Untitled"),
-                    )
                 merged.append(feature)
                 added_count += 1
 
@@ -502,24 +513,28 @@ Output the complete roadmap to roadmap.json.
                     try:
                         with open(self.roadmap_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
-                    except OSError as e:
-                        debug_error(
+                        debug_success(
                             "roadmap_phase",
-                            "Failed to write merged roadmap",
+                            "Merged preserved features into roadmap.json",
+                            preserved_count=len(self._preserved_features),
+                            final_count=len(merged_features),
+                        )
+                        print_status(
+                            f"Merged {len(self._preserved_features)} preserved features",
+                            "success",
+                        )
+                    except OSError as e:
+                        # Write failed but the original AI-generated roadmap is still valid
+                        # Don't fail the whole phase - succeed without the merge
+                        debug_warning(
+                            "roadmap_phase",
+                            "Failed to write merged roadmap - proceeding with AI-generated version",
                             error=str(e),
                         )
-                        return None
-
-                    debug_success(
-                        "roadmap_phase",
-                        "Merged preserved features into roadmap.json",
-                        preserved_count=len(self._preserved_features),
-                        final_count=len(merged_features),
-                    )
-                    print_status(
-                        f"Merged {len(self._preserved_features)} preserved features",
-                        "success",
-                    )
+                        print_status(
+                            "Warning: Could not merge preserved features (disk write failed)",
+                            "warning",
+                        )
 
                 debug_success(
                     "roadmap_phase",

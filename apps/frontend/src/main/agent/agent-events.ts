@@ -244,10 +244,8 @@ export class AgentEvents {
       progress = 100;
     }
 
-    // Ensure progress only moves forward, never backward
-    if (progress < currentProgress) {
-      progress = currentProgress;
-    }
+    // Ensure progress only moves forward (never backward) and stays within bounds (0-100)
+    progress = Math.min(100, Math.max(progress, currentProgress));
 
     return { phase, progress };
   }
