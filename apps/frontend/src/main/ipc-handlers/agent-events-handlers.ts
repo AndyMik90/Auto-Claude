@@ -28,6 +28,7 @@ import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
+import { TaskStateMachine } from "../task-state-machine";
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -109,6 +110,7 @@ export function registerAgenteventsHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const taskStateMachine = new TaskStateMachine();
   // ============================================
   // Agent Manager Events → Renderer
   // ============================================
@@ -247,6 +249,19 @@ export function registerAgenteventsHandlers(
           }
         };
 
+        const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+        const allSubtasksDone = hasSubtasks && task.subtasks.every((s) => s.status === "completed");
+        const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+
+        taskStateMachine.logProcessExit({
+          taskId,
+          exitCode: code ?? 0,
+          task,
+          hasSubtasks,
+          allSubtasksDone,
+          requireReviewBeforeCoding,
+        });
+
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
 
@@ -255,41 +270,47 @@ export function registerAgenteventsHandlers(
           // FIX (ACS-71): Only move to human_review if subtasks exist AND are all completed
           // If no subtasks exist, the task is still in planning and shouldn't move to human_review
           const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";
-          const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-          const hasIncompleteSubtasks =
-            hasSubtasks && task.subtasks.some((s) => s.status !== "completed");
+          const decision = taskStateMachine.getStatusForProcessExit({
+            taskId,
+            exitCode: code ?? 0,
+            task,
+            hasSubtasks,
+            allSubtasksDone,
+            requireReviewBeforeCoding,
+          });
 
-          if (isActiveStatus && hasSubtasks && !hasIncompleteSubtasks) {
-            // All subtasks completed - safe to move to human_review
-            console.warn(
-              `[Task ${taskId}] Fallback: Moving to human_review (process exited successfully, all ${task.subtasks.length} subtasks completed)`
-            );
-            persistStatus("human_review");
-            // Include projectId for multi-project filtering (issue #723)
-            safeSendToRenderer(
+          if (isActiveStatus && decision.status) {
+            persistStatus(decision.status);
+            taskStateMachine.emitStatusChange(
               getMainWindow,
-              IPC_CHANNELS.TASK_STATUS_CHANGE,
               taskId,
-              "human_review" as TaskStatus,
-              projectId
+              decision.status,
+              projectId,
+              decision.reviewReason
             );
-          } else if (isActiveStatus && !hasSubtasks) {
-            // No subtasks yet - task is still in planning phase, don't change status
-            // This prevents the bug where tasks jump to human_review before planning completes
+          } else if (isActiveStatus && !decision.status) {
             console.warn(
-              `[Task ${taskId}] Process exited but no subtasks created yet - keeping current status (${task.status})`
+              `[Task ${taskId}] Process exited but status unchanged (current status: ${task.status})`
             );
           }
         } else {
           notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          persistStatus("human_review");
-          // Include projectId for multi-project filtering (issue #723)
-          safeSendToRenderer(
-            getMainWindow,
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
+          const decision = taskStateMachine.getStatusForProcessExit({
             taskId,
-            "human_review" as TaskStatus,
-            projectId
+            exitCode: code ?? 0,
+            task,
+            hasSubtasks,
+            allSubtasksDone,
+            requireReviewBeforeCoding,
+          });
+          const nextStatus = decision.status ?? "human_review";
+          persistStatus(nextStatus);
+          taskStateMachine.emitStatusChange(
+            getMainWindow,
+            taskId,
+            nextStatus,
+            projectId,
+            decision.reviewReason
           );
         }
       }
@@ -303,6 +324,8 @@ export function registerAgenteventsHandlers(
     const { task, project } = findTaskAndProject(taskId);
     const taskProjectId = project?.id;
 
+    taskStateMachine.logExecutionProgress(taskId, progress, taskProjectId);
+
     // Include projectId in execution progress event for multi-project filtering
     safeSendToRenderer(
       getMainWindow,
@@ -312,27 +335,11 @@ export function registerAgenteventsHandlers(
       taskProjectId
     );
 
-    const phaseToStatus: Record<string, TaskStatus | null> = {
-      idle: null,
-      planning: "in_progress",
-      coding: "in_progress",
-      qa_review: "ai_review",
-      qa_fixing: "ai_review",
-      complete: "human_review",
-      failed: "human_review",
-    };
-
-    const newStatus = phaseToStatus[progress.phase];
+    const newStatus = taskStateMachine.getStatusForExecutionProgress(progress);
     // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
     if (newStatus && validateStatusTransition(task, newStatus, progress.phase)) {
       // Include projectId in status change event for multi-project filtering
-      safeSendToRenderer(
-        getMainWindow,
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        newStatus,
-        taskProjectId
-      );
+      taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus, taskProjectId);
 
       // CRITICAL: Persist status to plan file(s) to prevent flip-flop on task list refresh
       // When getTasks() is called, it reads status from the plan file. Without persisting,

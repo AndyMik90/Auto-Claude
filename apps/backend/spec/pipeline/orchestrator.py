@@ -6,6 +6,7 @@ Main orchestration logic for spec creation with dynamic complexity adaptation.
 """
 
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -283,17 +284,28 @@ class SpecOrchestrator:
             )
             return phase_fn()
 
+        skip_discovery = os.getenv("SKIP_DISCOVERY", "").lower() == "true"
+
         # === PHASE 1: DISCOVERY ===
-        result = await run_phase("discovery", phase_executor.phase_discovery)
-        results.append(result)
-        if not result.success:
-            print_status("Discovery failed", "error")
-            task_logger.end_phase(
-                LogPhase.PLANNING, success=False, message="Discovery failed"
+        if skip_discovery:
+            task_logger.log(
+                "Skipping discovery phase (flag enabled)",
+                LogEntryType.INFO,
+                LogPhase.PLANNING,
             )
-            return False
-        # Store summary for subsequent phases (compaction)
-        await self._store_phase_summary("discovery")
+            print_status("Skipping discovery phase (flag enabled)", "info")
+            results.append(phases.PhaseResult("discovery", True, [], [], 0))
+        else:
+            result = await run_phase("discovery", phase_executor.phase_discovery)
+            results.append(result)
+            if not result.success:
+                print_status("Discovery failed", "error")
+                task_logger.end_phase(
+                    LogPhase.PLANNING, success=False, message="Discovery failed"
+                )
+                return False
+            # Store summary for subsequent phases (compaction)
+            await self._store_phase_summary("discovery")
 
         # === PHASE 2: REQUIREMENTS GATHERING ===
         result = await run_phase(
@@ -409,7 +421,7 @@ class SpecOrchestrator:
         )
 
         # === HUMAN REVIEW CHECKPOINT ===
-        return self._run_review_checkpoint(auto_approve)
+        return self._run_review_checkpoint(auto_approve, interactive)
 
     async def _create_linear_task_if_enabled(self) -> None:
         """Create a Linear task if Linear integration is enabled."""
@@ -613,17 +625,22 @@ class SpecOrchestrator:
             )
         )
 
-    def _run_review_checkpoint(self, auto_approve: bool) -> bool:
+    def _run_review_checkpoint(self, auto_approve: bool, interactive: bool) -> bool:
         """Run the human review checkpoint.
 
         Args:
             auto_approve: Whether to auto-approve without human review
+            interactive: Whether to run in interactive mode
 
         Returns:
             True if approved, False otherwise
         """
         print()
         print_section("HUMAN REVIEW CHECKPOINT", Icons.SEARCH)
+
+        if not auto_approve and not interactive:
+            print_status("Skipping interactive review (non-interactive mode)", "info")
+            return True
 
         try:
             review_state = run_review_checkpoint(

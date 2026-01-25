@@ -303,7 +303,8 @@ app.whenReady().then(() => {
 
     // Validate and migrate autoBuildPath - must contain runners/spec_runner.py
     // Uses EAFP pattern (try/catch with accessSync) instead of existsSync to avoid TOCTOU race conditions
-    let validAutoBuildPath = settings.autoBuildPath;
+    const envAutoBuildPath = (process.env.AUTO_CLAUDE_BACKEND_PATH || '').trim() || undefined;
+    let validAutoBuildPath = envAutoBuildPath || settings.autoBuildPath;
     if (validAutoBuildPath) {
       const specRunnerPath = join(validAutoBuildPath, 'runners', 'spec_runner.py');
       let specRunnerExists = false;
@@ -315,42 +316,47 @@ app.whenReady().then(() => {
       }
 
       if (!specRunnerExists) {
-        // Migration: Try to fix stale paths from old project structure
-        // Old structure: /path/to/project/auto-claude
-        // New structure: /path/to/project/apps/backend
-        let migrated = false;
-        if (validAutoBuildPath.endsWith('/auto-claude') || validAutoBuildPath.endsWith('\\auto-claude')) {
-          const basePath = validAutoBuildPath.replace(/[/\\]auto-claude$/, '');
-          const correctedPath = join(basePath, 'apps', 'backend');
-          const correctedSpecRunnerPath = join(correctedPath, 'runners', 'spec_runner.py');
+        if (envAutoBuildPath) {
+          console.warn('[main] AUTO_CLAUDE_BACKEND_PATH is invalid (missing runners/spec_runner.py), will use auto-detection:', validAutoBuildPath);
+          validAutoBuildPath = undefined; // Let auto-detection find the correct path
+        } else {
+          // Migration: Try to fix stale paths from old project structure
+          // Old structure: /path/to/project/auto-claude
+          // New structure: /path/to/project/apps/backend
+          let migrated = false;
+          if (validAutoBuildPath.endsWith('/auto-claude') || validAutoBuildPath.endsWith('\\auto-claude')) {
+            const basePath = validAutoBuildPath.replace(/[/\\]auto-claude$/, '');
+            const correctedPath = join(basePath, 'apps', 'backend');
+            const correctedSpecRunnerPath = join(correctedPath, 'runners', 'spec_runner.py');
 
-          let correctedPathExists = false;
-          try {
-            accessSync(correctedSpecRunnerPath);
-            correctedPathExists = true;
-          } catch {
-            // Corrected path doesn't exist
-          }
-
-          if (correctedPathExists) {
-            console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
-            settings.autoBuildPath = correctedPath;
-            validAutoBuildPath = correctedPath;
-            migrated = true;
-
-            // Save the corrected setting - we're the only process modifying settings at startup
+            let correctedPathExists = false;
             try {
-              writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-              console.log('[main] Successfully saved migrated autoBuildPath to settings');
-            } catch (writeError) {
-              console.warn('[main] Failed to save migrated autoBuildPath:', writeError);
+              accessSync(correctedSpecRunnerPath);
+              correctedPathExists = true;
+            } catch {
+              // Corrected path doesn't exist
+            }
+
+            if (correctedPathExists) {
+              console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
+              settings.autoBuildPath = correctedPath;
+              validAutoBuildPath = correctedPath;
+              migrated = true;
+
+              // Save the corrected setting - we're the only process modifying settings at startup
+              try {
+                writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+                console.log('[main] Successfully saved migrated autoBuildPath to settings');
+              } catch (writeError) {
+                console.warn('[main] Failed to save migrated autoBuildPath:', writeError);
+              }
             }
           }
-        }
 
-        if (!migrated) {
-          console.warn('[main] Configured autoBuildPath is invalid (missing runners/spec_runner.py), will use auto-detection:', validAutoBuildPath);
-          validAutoBuildPath = undefined; // Let auto-detection find the correct path
+          if (!migrated) {
+            console.warn('[main] Configured autoBuildPath is invalid (missing runners/spec_runner.py), will use auto-detection:', validAutoBuildPath);
+            validAutoBuildPath = undefined; // Let auto-detection find the correct path
+          }
         }
       }
     }

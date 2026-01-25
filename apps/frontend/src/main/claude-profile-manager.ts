@@ -44,6 +44,7 @@ import {
 } from './claude-profile/profile-scorer';
 import {
   DEFAULT_CLAUDE_CONFIG_DIR,
+  getEmailFromConfigDir,
   generateProfileId as generateProfileIdImpl,
   createProfileDirectory as createProfileDirectoryImpl,
   isProfileAuthenticated as isProfileAuthenticatedImpl,
@@ -111,8 +112,6 @@ export class ClaudeProfileManager {
         continue;
       }
 
-      // Import dynamically to avoid circular dependency issues
-      const { getEmailFromConfigDir } = require('./claude-profile/profile-utils');
       const configEmail = getEmailFromConfigDir(profile.configDir);
 
       if (configEmail && profile.email !== configEmail) {

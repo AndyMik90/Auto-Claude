@@ -18,6 +18,7 @@ import {
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { TaskStateMachine } from '../../task-state-machine';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -53,6 +54,13 @@ function safeReadFileSync(filePath: string): string | null {
       console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
     }
     return null;
+  }
+}
+
+function logTaskStatusChange(taskId: string, status: TaskStatus, reviewReason?: string | null): void {
+  if (process.env.DEBUG === 'true') {
+    const reason = reviewReason || 'none';
+    console.log(`[TASK_STATUS_CHANGE] taskId=${taskId} status=${status} reviewReason=${reason}`);
   }
 }
 
@@ -106,6 +114,7 @@ export function registerTaskExecutionHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const taskStateMachine = new TaskStateMachine();
   /**
    * Start a task
    */
@@ -256,11 +265,8 @@ export function registerTaskExecutionHandlers(
       // Notify status change IMMEDIATELY (don't wait for file write)
       // This provides instant UI feedback while file persistence happens in background
       const ipcSentAt = Date.now();
-      mainWindow.webContents.send(
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        'in_progress'
-      );
+      logTaskStatusChange(taskId, 'in_progress');
+      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
 
       const DEBUG = process.env.DEBUG === 'true';
       if (DEBUG) {
@@ -307,11 +313,8 @@ export function registerTaskExecutionHandlers(
     const ipcSentAt = Date.now();
     const mainWindow = getMainWindow();
     if (mainWindow) {
-      mainWindow.webContents.send(
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        'backlog'
-      );
+      logTaskStatusChange(taskId, 'backlog');
+      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'backlog');
     }
 
     if (DEBUG) {
@@ -394,11 +397,8 @@ export function registerTaskExecutionHandlers(
         // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            'done'
-          );
+          logTaskStatusChange(taskId, 'done');
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, 'done');
         }
 
         // CRITICAL: Persist 'done' status to implementation_plan.json
@@ -537,11 +537,8 @@ export function registerTaskExecutionHandlers(
         // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            'in_progress'
-          );
+          logTaskStatusChange(taskId, 'in_progress');
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
         }
 
         // CRITICAL: Persist 'in_progress' status to implementation_plan.json
@@ -817,11 +814,8 @@ export function registerTaskExecutionHandlers(
 
           // Notify renderer about status change
           if (mainWindow) {
-            mainWindow.webContents.send(
-              IPC_CHANNELS.TASK_STATUS_CHANGE,
-              taskId,
-              'in_progress'
-            );
+            logTaskStatusChange(taskId, 'in_progress');
+            taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
           }
         }
 
@@ -1191,11 +1185,8 @@ export function registerTaskExecutionHandlers(
         // Notify renderer of status change
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            newStatus
-          );
+          logTaskStatusChange(taskId, newStatus);
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus);
         }
 
         return {

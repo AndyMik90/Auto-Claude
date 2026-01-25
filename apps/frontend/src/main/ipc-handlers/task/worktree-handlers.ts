@@ -21,6 +21,7 @@ import {
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
+import { TaskStateMachine } from '../../task-state-machine';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -1624,6 +1625,7 @@ export function registerWorktreeHandlers(
   pythonEnvManager: PythonEnvManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const taskStateMachine = new TaskStateMachine();
   /**
    * Get the worktree status for a task
    * Per-spec architecture: Each spec has its own worktree at .auto-claude/worktrees/tasks/{spec-name}/
@@ -2296,7 +2298,7 @@ export function registerWorktreeHandlers(
 
               const mainWindow = getMainWindow();
               if (mainWindow) {
-                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, newStatus);
+                taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus);
               }
 
               resolve({
@@ -2609,7 +2611,7 @@ export function registerWorktreeHandlers(
           if (!skipStatusChange) {
             const mainWindow = getMainWindow();
             if (mainWindow) {
-              mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog');
+              taskStateMachine.emitStatusChange(getMainWindow, taskId, 'backlog');
             }
           }
 
