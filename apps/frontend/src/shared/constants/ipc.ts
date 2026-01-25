@@ -119,6 +119,10 @@ export const IPC_CHANNELS = {
   CLAUDE_PROFILE_FETCH_USAGE: 'claude:fetchUsage',
   CLAUDE_PROFILE_GET_BEST_PROFILE: 'claude:getBestProfile',
 
+  // Account priority order (unified OAuth + API profile ordering)
+  ACCOUNT_PRIORITY_GET: 'account:priorityGet',
+  ACCOUNT_PRIORITY_SET: 'account:prioritySet',
+
   // SDK/CLI rate limit event (for non-terminal Claude invocations)
   CLAUDE_SDK_RATE_LIMIT: 'claude:sdkRateLimit',
   // Auth failure event (401 errors requiring re-authentication)
@@ -129,6 +133,8 @@ export const IPC_CHANNELS = {
   // Usage monitoring (proactive account switching)
   USAGE_UPDATED: 'claude:usageUpdated',  // Event: usage data updated (main -> renderer)
   USAGE_REQUEST: 'claude:usageRequest',  // Request current usage snapshot
+  ALL_PROFILES_USAGE_REQUEST: 'claude:allProfilesUsageRequest',  // Request all profiles usage immediately
+  ALL_PROFILES_USAGE_UPDATED: 'claude:allProfilesUsageUpdated',  // Event: all profiles usage data (main -> renderer)
   PROACTIVE_SWAP_NOTIFICATION: 'claude:proactiveSwapNotification',  // Event: proactive swap occurred
 
   // Settings
@@ -175,6 +181,11 @@ export const IPC_CHANNELS = {
   ROADMAP_COMPLETE: 'roadmap:complete',
   ROADMAP_ERROR: 'roadmap:error',
   ROADMAP_STOPPED: 'roadmap:stopped',
+
+  // Roadmap progress persistence (per-project state)
+  ROADMAP_PROGRESS_SAVE: 'roadmap:progressSave',
+  ROADMAP_PROGRESS_LOAD: 'roadmap:progressLoad',
+  ROADMAP_PROGRESS_CLEAR: 'roadmap:progressClear',
 
   // Context operations
   CONTEXT_GET: 'context:get',
@@ -243,6 +254,7 @@ export const IPC_CHANNELS = {
 
   // GitHub OAuth events (main -> renderer) - for streaming device code during auth
   GITHUB_AUTH_DEVICE_CODE: 'github:authDeviceCode',
+  GITHUB_AUTH_CHANGED: 'github:authChanged',  // Event: GitHub auth state changed (account swap)
 
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',

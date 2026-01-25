@@ -56,6 +56,8 @@ export interface ClaudeUsageSnapshot {
   profileId: string;
   /** Profile name for display */
   profileName: string;
+  /** Email address associated with the profile (from Keychain or profile data) */
+  profileEmail?: string;
   /** When this snapshot was captured */
   fetchedAt: Date;
   /** Which limit is closest to threshold ('session' or 'weekly') */
@@ -75,6 +77,54 @@ export interface ClaudeUsageSnapshot {
   weeklyUsageValue?: number;
   /** Weekly usage limit (total quota) */
   weeklyUsageLimit?: number;
+}
+
+/**
+ * Profile usage summary for multi-profile display
+ * Contains the essential data needed to rank and display profiles in the usage indicator
+ */
+export interface ProfileUsageSummary {
+  /** Profile ID */
+  profileId: string;
+  /** Profile name for display */
+  profileName: string;
+  /** Email address (from Keychain or profile) */
+  profileEmail?: string;
+  /** Session usage percentage (0-100) */
+  sessionPercent: number;
+  /** Weekly usage percentage (0-100) */
+  weeklyPercent: number;
+  /** ISO timestamp of when the session limit resets */
+  sessionResetTimestamp?: string;
+  /** ISO timestamp of when the weekly limit resets */
+  weeklyResetTimestamp?: string;
+  /** Whether this profile is authenticated */
+  isAuthenticated: boolean;
+  /** Whether this profile is currently rate limited */
+  isRateLimited: boolean;
+  /** Type of rate limit if limited */
+  rateLimitType?: 'session' | 'weekly';
+  /** Availability score (higher = more available, used for sorting) */
+  availabilityScore: number;
+  /** Whether this is the currently active profile */
+  isActive: boolean;
+  /** When this data was last fetched (ISO timestamp) */
+  lastFetchedAt?: string;
+  /** Error message if usage fetch failed */
+  fetchError?: string;
+}
+
+/**
+ * All profiles usage data for the usage indicator
+ * Emitted alongside the active profile's detailed snapshot
+ */
+export interface AllProfilesUsage {
+  /** Detailed snapshot for the active profile */
+  activeProfile: ClaudeUsageSnapshot;
+  /** Summary usage data for all profiles (sorted by availability, best first) */
+  allProfiles: ProfileUsageSummary[];
+  /** When this data was collected */
+  fetchedAt: Date;
 }
 
 /**

@@ -14,6 +14,7 @@ import { getCommits, getBranchDiffCommits } from './git-integration';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { parsePythonCommand } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
+import { isWindows } from '../platform';
 
 /**
  * Core changelog generation logic
@@ -245,7 +246,6 @@ export class ChangelogGenerator extends EventEmitter {
    */
   private buildSpawnEnvironment(): Record<string, string> {
     const homeDir = os.homedir();
-    const isWindows = process.platform === 'win32';
 
     // Use getAugmentedEnv() to ensure common tool paths are available
     // even when app is launched from Finder/Dock
@@ -265,7 +265,7 @@ export class ChangelogGenerator extends EventEmitter {
       ...profileEnv, // Include active Claude profile config
       // Ensure critical env vars are set for claude CLI
       // Use USERPROFILE on Windows, HOME on Unix
-      ...(isWindows ? { USERPROFILE: homeDir } : { HOME: homeDir }),
+      ...(isWindows() ? { USERPROFILE: homeDir } : { HOME: homeDir }),
       USER: process.env.USER || process.env.USERNAME || 'user',
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',

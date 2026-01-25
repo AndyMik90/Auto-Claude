@@ -5,6 +5,7 @@ import path from 'path';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
@@ -18,7 +19,7 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 
 // Regex pattern for validating git branch names
@@ -951,7 +952,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1021,7 +1022,7 @@ function isAppInstalled(
   for (const checkPath of specificPaths) {
     const expandedPath = checkPath
       .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+      .replace('~', homedir());
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {
@@ -2401,6 +2402,8 @@ export function registerWorktreeHandlers(
         let uncommittedFiles: string[] = [];
         if (isGitWorkTree(project.path)) {
           try {
+            refreshGitIndex(project.path);
+
             const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
               cwd: project.path,
               encoding: 'utf-8'
@@ -2412,7 +2415,8 @@ export function registerWorktreeHandlers(
               uncommittedFiles = gitStatus
                 .split('\n')
                 .filter(line => line.trim())
-                .map(line => line.substring(3).trim()); // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .map(line => line.substring(3).trim()) // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .filter(file => file); // Remove empty strings from short/malformed status lines
 
               hasUncommittedChanges = uncommittedFiles.length > 0;
             }
