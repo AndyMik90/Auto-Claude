@@ -8,15 +8,21 @@ Simple HTTP client for Telegram Bot API.
 import asyncio
 import json
 from typing import Optional, Any
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
-from urllib.parse import urlencode
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    from urllib.request import Request, urlopen
+    from urllib.error import URLError, HTTPError
+    from urllib.parse import urlencode
 
 from .config import TelegramConfig
 
 
 class TelegramClient:
-    """Simple Telegram Bot API client using urllib (no external dependencies)."""
+    """Telegram Bot API client using requests (with urllib fallback)."""
 
     BASE_URL = "https://api.telegram.org/bot"
 
@@ -43,6 +49,38 @@ class TelegramClient:
         """
         url = f"{self.api_url}/{method}"
 
+        if HAS_REQUESTS:
+            return self._make_request_with_requests(url, params, timeout)
+        else:
+            return self._make_request_with_urllib(url, params, timeout)
+
+    def _make_request_with_requests(
+        self,
+        url: str,
+        params: Optional[dict] = None,
+        timeout: int = 30,
+    ) -> Optional[dict]:
+        """Make request using requests library."""
+        try:
+            if params:
+                response = requests.post(url, data=params, timeout=timeout)
+            else:
+                response = requests.get(url, timeout=timeout)
+
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.RequestException as e:
+            print(f"Telegram API error: {e}")
+            return None
+
+    def _make_request_with_urllib(
+        self,
+        url: str,
+        params: Optional[dict] = None,
+        timeout: int = 30,
+    ) -> Optional[dict]:
+        """Make request using urllib (fallback)."""
         try:
             if params:
                 data = urlencode(params).encode("utf-8")
@@ -58,11 +96,6 @@ class TelegramClient:
 
         except HTTPError as e:
             print(f"Telegram API HTTP error: {e.code} - {e.reason}")
-            try:
-                error_body = json.loads(e.read().decode("utf-8"))
-                print(f"Error details: {error_body}")
-            except (json.JSONDecodeError, AttributeError):
-                pass
             return None
 
         except URLError as e:

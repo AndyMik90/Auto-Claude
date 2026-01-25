@@ -28,6 +28,10 @@ _PARENT_DIR = Path(__file__).parent
 if str(_PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(_PARENT_DIR))
 
+# Load environment variables from .env
+from dotenv import load_dotenv
+load_dotenv(_PARENT_DIR / ".env")
+
 
 def main():
     from integrations.telegram import run_telegram_bot, is_telegram_enabled
