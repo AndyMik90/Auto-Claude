@@ -70,7 +70,7 @@ export interface TaskAPI {
   onTaskProgress: (callback: (taskId: string, plan: ImplementationPlan, projectId?: string) => void) => () => void;
   onTaskError: (callback: (taskId: string, error: string, projectId?: string) => void) => () => void;
   onTaskLog: (callback: (taskId: string, log: string, projectId?: string) => void) => () => void;
-  onTaskStatusChange: (callback: (taskId: string, status: TaskStatus, projectId?: string) => void) => () => void;
+  onTaskStatusChange: (callback: (taskId: string, status: TaskStatus, projectId?: string, reviewReason?: import('../../shared/types').ReviewReason) => void) => () => void;
   onTaskExecutionProgress: (
     callback: (taskId: string, progress: import('../../shared/types').ExecutionProgress, projectId?: string) => void
   ) => () => void;
@@ -228,15 +228,16 @@ export const createTaskAPI = (): TaskAPI => ({
   },
 
   onTaskStatusChange: (
-    callback: (taskId: string, status: TaskStatus, projectId?: string) => void
+    callback: (taskId: string, status: TaskStatus, projectId?: string, reviewReason?: import('../../shared/types').ReviewReason) => void
   ): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       taskId: string,
       status: TaskStatus,
-      projectId?: string
+      projectId?: string,
+      reviewReason?: import('../../shared/types').ReviewReason
     ): void => {
-      callback(taskId, status, projectId);
+      callback(taskId, status, projectId, reviewReason);
     };
     ipcRenderer.on(IPC_CHANNELS.TASK_STATUS_CHANGE, handler);
     return () => {

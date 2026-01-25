@@ -23,7 +23,7 @@ export class TaskStateMachine {
   ): void {
     const reason = reviewReason ?? 'none';
     logger.info(`[TASK_STATUS_CHANGE] taskId=${taskId} status=${status} reviewReason=${reason}`);
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, status, projectId);
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, status, projectId, reviewReason);
   }
 
   logExecutionProgress(taskId: string, progress: ExecutionProgress, projectId?: string): void {
