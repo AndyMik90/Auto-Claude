@@ -90,6 +90,11 @@ const browserMockAPI: ElectronAPI = {
 
   stopRoadmap: async () => ({ success: true }),
 
+  // Roadmap Progress Persistence
+  saveRoadmapProgress: async () => ({ success: true }),
+  loadRoadmapProgress: async () => ({ success: true, data: null }),
+  clearRoadmapProgress: async () => ({ success: true }),
+
   // Roadmap Event Listeners
   onRoadmapProgress: () => () => {},
   onRoadmapComplete: () => () => {},
@@ -184,6 +189,7 @@ const browserMockAPI: ElectronAPI = {
     addGitRemote: async () => ({ success: true, data: { remoteUrl: '' } }),
     listGitHubOrgs: async () => ({ success: true, data: { orgs: [] } }),
     onGitHubAuthDeviceCode: () => () => {},
+    onGitHubAuthChanged: () => () => {},
     onGitHubInvestigationProgress: () => () => {},
     onGitHubInvestigationComplete: () => () => {},
     onGitHubInvestigationError: () => () => {},
@@ -196,7 +202,7 @@ const browserMockAPI: ElectronAPI = {
     onAutoFixProgress: () => () => {},
     onAutoFixComplete: () => () => {},
     onAutoFixError: () => () => {},
-    listPRs: async () => [],
+    listPRs: async () => ({ prs: [], hasNextPage: false }),
     getPR: async () => null,
     runPRReview: () => {},
     cancelPRReview: async () => true,
