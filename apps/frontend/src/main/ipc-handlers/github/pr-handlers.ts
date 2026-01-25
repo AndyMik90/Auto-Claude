@@ -89,14 +89,18 @@ async function githubGraphQL<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub GraphQL error: ${response.status} ${response.statusText}`);
+    // Log detailed error for debugging, throw generic message for safety
+    console.error(`GitHub GraphQL HTTP error: ${response.status} ${response.statusText}`);
+    throw new Error("Failed to connect to GitHub API");
   }
 
   const result = await response.json() as T & { errors?: Array<{ message: string }> };
 
   // Check for GraphQL-level errors
   if (result.errors && result.errors.length > 0) {
-    throw new Error(`GitHub GraphQL error: ${result.errors.map(e => e.message).join(", ")}`);
+    // Log detailed errors for debugging, throw generic message for safety
+    console.error(`GitHub GraphQL errors: ${result.errors.map(e => e.message).join(", ")}`);
+    throw new Error("GitHub API request failed");
   }
 
   return result;
@@ -1347,13 +1351,14 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         }
 
         try {
-          // Parse owner/repo from config
+          // Parse owner/repo from config - must be exactly "owner/repo" format
           const normalizedRepo = normalizeRepoReference(config.repo);
-          const [owner, repo] = normalizedRepo.split("/");
-          if (!owner || !repo) {
-            debugLog("Invalid repo format", { repo: config.repo });
+          const repoParts = normalizedRepo.split("/");
+          if (repoParts.length !== 2 || !repoParts[0] || !repoParts[1]) {
+            debugLog("Invalid repo format - expected 'owner/repo'", { repo: config.repo, normalized: normalizedRepo });
             return { prs: [], hasNextPage: false };
           }
+          const [owner, repo] = repoParts;
 
           // Use GraphQL API to get PRs with diff stats (REST list endpoint doesn't include them)
           // Fetches up to 100 open PRs (GitHub GraphQL max per request)
