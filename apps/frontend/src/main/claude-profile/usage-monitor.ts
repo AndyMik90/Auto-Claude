@@ -376,7 +376,7 @@ export class UsageMonitor extends EventEmitter {
       for (const profile of settings.profiles) {
         if (profile.configDir) {
           const expandedConfigDir = profile.configDir.startsWith('~')
-            ? profile.configDir.replace(/^~/, require('os').homedir())
+            ? profile.configDir.replace(/^~/, homedir())
             : profile.configDir;
           const creds = getCredentialsFromKeychain(expandedConfigDir);
           if (!creds.token) {
