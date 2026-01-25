@@ -18,7 +18,7 @@
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
+import { homedir, userInfo } from 'os';
 import { join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
@@ -1362,10 +1362,41 @@ function updateMacOSKeychainCredentials(
 
     const credentialsJson = JSON.stringify(newCredentialData);
 
-    // Use -U flag to update existing or add if not exists
+    // CRITICAL FIX: The -U flag only updates if the account name matches exactly.
+    // Claude Code CLI stores credentials with the system username as the account,
+    // but we were using 'claude-ai-oauth'. This mismatch caused updates to create
+    // a NEW entry instead of updating the existing one, leading to stale tokens.
+    //
+    // Solution: Delete any existing entry first, then add fresh.
+    // This ensures we don't end up with multiple entries with different account names.
+
+    // Step 1: Delete existing entry (ignore errors if not found)
+    try {
+      execFileSync(
+        securityPath,
+        ['delete-generic-password', '-s', serviceName],
+        {
+          encoding: 'utf-8',
+          timeout: MACOS_KEYCHAIN_TIMEOUT_MS,
+          windowsHide: true,
+        }
+      );
+      if (isDebug) {
+        console.warn('[CredentialUtils:macOS:Update] Deleted existing Keychain entry for service:', serviceName);
+      }
+    } catch {
+      // Entry didn't exist - that's fine, we'll create it
+      if (isDebug) {
+        console.warn('[CredentialUtils:macOS:Update] No existing entry to delete for service:', serviceName);
+      }
+    }
+
+    // Step 2: Add new entry with system username as account name
+    // Claude Code CLI uses the system username, so we must match that for compatibility
+    const accountName = userInfo().username;
     execFileSync(
       securityPath,
-      ['add-generic-password', '-U', '-s', serviceName, '-a', 'claude-ai-oauth', '-w', credentialsJson],
+      ['add-generic-password', '-s', serviceName, '-a', accountName, '-w', credentialsJson],
       {
         encoding: 'utf-8',
         timeout: MACOS_KEYCHAIN_TIMEOUT_MS,

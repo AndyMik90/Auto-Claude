@@ -456,6 +456,7 @@
     "reauthRequired": "Re-authentication required",
     "reauthRequiredDescription": "Your session has expired. Re-authenticate to view usage and continue using this account.",
     "reauthButton": "Re-authenticate",
+    "clickToOpenSettings": "Click to open Settings →",
     "sessionShort": "5-hour session usage",
     "weeklyShort": "7-day weekly usage",
     "swap": "Swap"

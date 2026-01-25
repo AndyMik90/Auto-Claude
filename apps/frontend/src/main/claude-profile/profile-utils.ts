@@ -7,6 +7,7 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { existsSync, readFileSync, readdirSync, mkdirSync } from 'fs';
 import type { ClaudeProfile } from '../../shared/types';
+import { getCredentialsFromKeychain } from './credential-utils';
 
 /**
  * Default Claude config directory
@@ -79,6 +80,21 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
       const data = JSON.parse(content);
       // Check for oauthAccount which indicates successful OAuth authentication
       if (data && typeof data === 'object' && (data.oauthAccount?.accountUuid || data.oauthAccount?.emailAddress)) {
+        // The actual OAuth tokens are stored in platform-specific credential storage:
+        // - macOS: Keychain
+        // - Windows: Credential Manager
+        // - Linux: Secret Service or .credentials.json file
+        // We need to verify that the credential store actually has the tokens
+        // Expand ~ in configDir before checking credentials
+        const expandedConfigDir = configDir.startsWith('~')
+          ? configDir.replace(/^~/, homedir())
+          : configDir;
+        const platformCreds = getCredentialsFromKeychain(expandedConfigDir);
+        if (!platformCreds.token) {
+          // .claude.json exists but credential store is missing tokens - NOT authenticated
+          console.warn(`[profile-utils] Profile has .claude.json but no platform credentials for: ${configDir}`);
+          return false;
+        }
         return true;
       }
     } catch (error) {

@@ -202,6 +202,7 @@ export class UsageMonitor extends EventEmitter {
   private static instance: UsageMonitor;
   private intervalId: NodeJS.Timeout | null = null;
   private currentUsage: ClaudeUsageSnapshot | null = null;
+  private currentUsageProfileId: string | null = null; // Track which profile's usage is in currentUsage
   private isChecking = false;
 
   // Per-profile API failure tracking with cooldown-based retry
@@ -305,9 +306,20 @@ export class UsageMonitor extends EventEmitter {
    */
   clearProfileUsageCache(profileId: string): void {
     const deleted = this.allProfilesUsageCache.delete(profileId);
+
+    // Also clear currentUsage if it belongs to this profile
+    // This prevents stale data from being displayed when getAllProfilesUsage()
+    // uses this.currentUsage for the active profile
+    const clearedCurrentUsage = this.currentUsageProfileId === profileId;
+    if (clearedCurrentUsage) {
+      this.currentUsage = null;
+      this.currentUsageProfileId = null;
+    }
+
     this.debugLog('[UsageMonitor] Cleared usage cache for profile:', {
       profileId,
-      wasInCache: deleted
+      wasInCache: deleted,
+      clearedCurrentUsage
     });
   }
 
@@ -356,8 +368,52 @@ export class UsageMonitor extends EventEmitter {
     const settings = profileManager.getSettings();
     const activeProfileId = settings.activeProfileId;
 
+    // CRITICAL: On startup, currentUsage may be null, but we still need to check for
+    // missing credentials to show the re-auth indicator. Proactively check all profiles
+    // for missing credentials and populate needsReauthProfiles.
     if (!this.currentUsage) {
-      return null;
+      // Check all OAuth profiles for missing credentials
+      for (const profile of settings.profiles) {
+        if (profile.configDir) {
+          const expandedConfigDir = profile.configDir.startsWith('~')
+            ? profile.configDir.replace(/^~/, require('os').homedir())
+            : profile.configDir;
+          const creds = getCredentialsFromKeychain(expandedConfigDir);
+          if (!creds.token) {
+            // Credentials are missing - mark for re-auth
+            this.needsReauthProfiles.add(profile.id);
+            this.debugLog('[UsageMonitor:getAllProfilesUsage] Profile needs re-auth (no credentials): ' + profile.name);
+          }
+        }
+      }
+
+      // Build a minimal response with needsReauthentication flags even without usage data
+      const allProfiles: ProfileUsageSummary[] = settings.profiles.map(profile => ({
+        profileId: profile.id,
+        profileName: profile.name,
+        profileEmail: profile.email,
+        sessionPercent: 0,
+        weeklyPercent: 0,
+        isAuthenticated: profile.isAuthenticated ?? false,
+        isRateLimited: false,
+        availabilityScore: profile.isAuthenticated ? 100 : 0,
+        isActive: profile.id === activeProfileId,
+        needsReauthentication: this.needsReauthProfiles.has(profile.id)
+      }));
+
+      // Return minimal data with auth status - don't return null!
+      return {
+        activeProfile: {
+          profileId: activeProfileId || '',
+          profileName: settings.profiles.find(p => p.id === activeProfileId)?.name || '',
+          sessionPercent: 0,
+          weeklyPercent: 0,
+          fetchedAt: new Date(),
+          needsReauthentication: this.needsReauthProfiles.has(activeProfileId || '')
+        },
+        allProfiles,
+        fetchedAt: new Date()
+      };
     }
 
     const now = Date.now();
@@ -559,6 +615,13 @@ export class UsageMonitor extends EventEmitter {
             this.debugLog('[UsageMonitor] Profile needs re-authentication (invalid refresh token): ' + profile.name);
             this.needsReauthProfiles.add(profile.id);
           }
+
+          // Check for missing_credentials error - indicates no token in credential store
+          // User needs to authenticate via /login
+          if (tokenResult.errorCode === 'missing_credentials') {
+            this.debugLog('[UsageMonitor] Profile needs authentication (no credentials found): ' + profile.name);
+            this.needsReauthProfiles.add(profile.id);
+          }
         }
       } catch (error) {
         this.debugLog('[UsageMonitor] ensureValidToken failed for inactive profile: ' + profile.name, error);
@@ -571,6 +634,8 @@ export class UsageMonitor extends EventEmitter {
 
         if (!token) {
           this.debugLog('[UsageMonitor] No keychain credentials for inactive profile: ' + profile.name);
+          // Mark profile as needing re-authentication since credentials are missing
+          this.needsReauthProfiles.add(profile.id);
           return null;
         }
       }
@@ -757,6 +822,20 @@ export class UsageMonitor extends EventEmitter {
         // Token unavailable - log the error
         if (tokenResult.error) {
           this.debugLog('[UsageMonitor] Token validation failed:', tokenResult.error);
+
+          // Check for invalid_grant error - indicates refresh token is permanently invalid
+          // and user needs to manually re-authenticate
+          if (tokenResult.errorCode === 'invalid_grant') {
+            this.debugLog('[UsageMonitor] Profile needs re-authentication (invalid refresh token): ' + activeProfile.name);
+            this.needsReauthProfiles.add(activeProfile.id);
+          }
+
+          // Check for missing_credentials error - indicates no token in credential store
+          // User needs to authenticate via /login
+          if (tokenResult.errorCode === 'missing_credentials') {
+            this.debugLog('[UsageMonitor] Profile needs authentication (no credentials found): ' + activeProfile.name);
+            this.needsReauthProfiles.add(activeProfile.id);
+          }
         }
       } catch (error) {
         console.error('[UsageMonitor] ensureValidToken threw error:', error);
@@ -778,6 +857,9 @@ export class UsageMonitor extends EventEmitter {
         this.debugLog('[UsageMonitor:TRACE] No token in Keychain for profile: ' + activeProfile.name +
           ' - user may need to re-authenticate with claude /login');
       }
+
+      // Mark profile as needing re-authentication since credentials are missing
+      this.needsReauthProfiles.add(activeProfile.id);
     }
 
     // No credential available
@@ -824,6 +906,7 @@ export class UsageMonitor extends EventEmitter {
       usage.needsReauthentication = this.needsReauthProfiles.has(profileId);
 
       this.currentUsage = usage;
+      this.currentUsageProfileId = profileId; // Track which profile this usage belongs to
 
       // Step 2.5: Persist usage to profile for caching (so other profiles can display cached usage)
       const profileManager = getClaudeProfileManager();
@@ -1050,6 +1133,13 @@ export class UsageMonitor extends EventEmitter {
 
           if (refreshResult.error) {
             this.debugLog('[UsageMonitor] Token refresh failed:', refreshResult.error);
+
+            // Check for invalid_grant error - indicates refresh token is permanently invalid
+            // and user needs to manually re-authenticate (matches inactive profile handling)
+            if (refreshResult.errorCode === 'invalid_grant') {
+              this.debugLog('[UsageMonitor] Profile needs re-authentication (invalid refresh token): ' + profileId);
+              this.needsReauthProfiles.add(profileId);
+            }
           }
         } catch (refreshError) {
           console.error('[UsageMonitor] Token refresh threw error:', refreshError);

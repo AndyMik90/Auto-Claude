@@ -340,7 +340,8 @@ export async function ensureValidToken(
     return {
       token: null,
       wasRefreshed: false,
-      error: 'No access token found in credentials'
+      error: 'No access token found in credentials',
+      errorCode: 'missing_credentials'
     };
   }
 

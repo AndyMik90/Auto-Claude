@@ -78,6 +78,7 @@ export function UsageIndicator() {
   const [otherProfiles, setOtherProfiles] = useState<ProfileUsageSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
+  const [activeProfileNeedsReauth, setActiveProfileNeedsReauth] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -321,6 +322,9 @@ export function UsageIndicator() {
       // Filter out the active profile - we only want to show "other" profiles
       const nonActiveProfiles = allProfilesUsage.allProfiles.filter(p => !p.isActive);
       setOtherProfiles(nonActiveProfiles);
+      // Track if active profile needs re-auth
+      const activeProfile = allProfilesUsage.allProfiles.find(p => p.isActive);
+      setActiveProfileNeedsReauth(activeProfile?.needsReauthentication ?? false);
     });
 
     // Request initial usage on mount
@@ -343,6 +347,11 @@ export function UsageIndicator() {
       if (result.success && result.data) {
         const nonActiveProfiles = result.data.allProfiles.filter(p => !p.isActive);
         setOtherProfiles(nonActiveProfiles);
+        // Track if active profile needs re-auth (even if main usage is unavailable)
+        const activeProfile = result.data.allProfiles.find(p => p.isActive);
+        if (activeProfile?.needsReauthentication) {
+          setActiveProfileNeedsReauth(true);
+        }
       }
     }).catch((error) => {
       console.warn('[UsageIndicator] Failed to fetch all profiles usage:', error);
@@ -364,23 +373,59 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state
+  // Show unavailable state - with better messaging based on cause
   if (!isAvailable || !usage) {
+    // Check if it's a re-auth issue (better UX than generic "not supported")
+    const needsReauth = activeProfileNeedsReauth;
+
     return (
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground cursor-help">
-              <Activity className="h-3.5 w-3.5" />
-              <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
-            </div>
+            <button
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border cursor-help ${
+                needsReauth
+                  ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                  : 'bg-muted/50 text-muted-foreground'
+              }`}
+              aria-label={needsReauth ? t('common:usage.reauthRequired') : t('common:usage.dataUnavailable')}
+            >
+              {needsReauth ? (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span className="text-xs font-semibold">!</span>
+                </>
+              ) : (
+                <>
+                  <Activity className="h-3.5 w-3.5" />
+                  <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
+                </>
+              )}
+            </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs w-64">
             <div className="space-y-1">
-              <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
-              <p className="text-muted-foreground text-[10px]">
-                {t('common:usage.dataUnavailableDescription')}
-              </p>
+              {needsReauth ? (
+                <>
+                  <p className="font-medium text-red-500">{t('common:usage.reauthRequired')}</p>
+                  <p className="text-muted-foreground text-[10px]">
+                    {t('common:usage.reauthRequiredDescription')}
+                  </p>
+                  <button
+                    onClick={handleOpenAccounts}
+                    className="text-[10px] text-primary mt-1 font-medium underline hover:text-primary/80 cursor-pointer"
+                  >
+                    {t('common:usage.clickToOpenSettings')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
+                  <p className="text-muted-foreground text-[10px]">
+                    {t('common:usage.dataUnavailableDescription')}
+                  </p>
+                </>
+              )}
             </div>
           </TooltipContent>
         </Tooltip>
