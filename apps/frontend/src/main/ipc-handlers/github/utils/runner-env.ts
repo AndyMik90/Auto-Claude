@@ -1,6 +1,6 @@
 import { getOAuthModeClearVars } from '../../../agent/env-utils';
 import { getAPIProfileEnv } from '../../../services/profile';
-import { getProfileEnv } from '../../../rate-limit-detector';
+import { getBestAvailableProfileEnv } from '../../../rate-limit-detector';
 import { pythonEnvManager } from '../../../python-env-manager';
 import { getGitHubTokenForSubprocess } from '../utils';
 
@@ -34,7 +34,9 @@ export async function getRunnerEnv(
   const pythonEnv = pythonEnvManager.getPythonEnv();
   const apiProfileEnv = await getAPIProfileEnv();
   const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
-  const profileEnv = getProfileEnv();
+  // Get best available Claude profile environment (automatically handles rate limits)
+  const profileResult = getBestAvailableProfileEnv();
+  const profileEnv = profileResult.env;
 
   // Fetch fresh GitHub token from gh CLI (no caching to reflect account changes)
   const githubToken = await getGitHubTokenForSubprocess();
@@ -44,7 +46,7 @@ export async function getRunnerEnv(
     ...pythonEnv,  // Python environment including PYTHONPATH (fixes #139)
     ...apiProfileEnv,
     ...oauthModeClearVars,
-    ...profileEnv,  // OAuth token from profile manager (fixes #563)
+    ...profileEnv,  // OAuth token from profile manager (fixes #563, rate-limit aware)
     ...githubEnv,  // Fresh GitHub token from gh CLI (fixes #151)
     ...extraEnv,
   };

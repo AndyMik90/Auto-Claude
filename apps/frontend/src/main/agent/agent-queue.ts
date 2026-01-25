@@ -8,7 +8,7 @@ import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig, Idea } from '../../shared/types';
 import { AUTO_BUILD_PATHS } from '../../shared/constants';
-import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
@@ -18,6 +18,7 @@ import { pythonEnvManager } from '../python-env-manager';
 import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ipc-handlers/ideation/transformers';
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
+import { getPathDelimiter } from '../platform';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -325,8 +326,9 @@ export class AgentQueueManager {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
-    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
-    const profileEnv = getProfileEnv();
+    // Get best available Claude profile environment (automatically handles rate limits)
+    const profileResult = getBestAvailableProfileEnv();
+    const profileEnv = profileResult.env;
 
     // Get active API profile environment variables
     const apiProfileEnv = await getAPIProfileEnv();
@@ -348,7 +350,7 @@ export class AgentQueueManager {
     if (autoBuildSource) {
       pythonPathParts.push(autoBuildSource);
     }
-    const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
+    const combinedPythonPath = pythonPathParts.join(getPathDelimiter());
 
     // Build final environment with proper precedence:
     // 1. process.env (system)
@@ -652,8 +654,9 @@ export class AgentQueueManager {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
-    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
-    const profileEnv = getProfileEnv();
+    // Get best available Claude profile environment (automatically handles rate limits)
+    const profileResult = getBestAvailableProfileEnv();
+    const profileEnv = profileResult.env;
 
     // Get active API profile environment variables
     const apiProfileEnv = await getAPIProfileEnv();
@@ -675,7 +678,7 @@ export class AgentQueueManager {
     if (autoBuildSource) {
       pythonPathParts.push(autoBuildSource);
     }
-    const combinedPythonPath = pythonPathParts.join(process.platform === 'win32' ? ';' : ':');
+    const combinedPythonPath = pythonPathParts.join(getPathDelimiter());
 
     // Build final environment with proper precedence:
     // 1. process.env (system)
