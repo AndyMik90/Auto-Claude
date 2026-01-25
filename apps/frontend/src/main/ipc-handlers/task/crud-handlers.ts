@@ -8,6 +8,7 @@ import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
 import { findAllSpecPaths } from '../../utils/spec-path-helpers';
+import { isPathWithinBase } from '../../worktree-paths';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -493,6 +494,14 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         // Build full path to the image
         const specsDir = getSpecsDir(autoBuildPath);
         const fullImagePath = path.join(projectPath, specsDir, specId, imagePath);
+
+        // Validate path to prevent path traversal attacks
+        const expectedBase = path.resolve(path.join(projectPath, specsDir, specId));
+        const resolvedPath = path.resolve(fullImagePath);
+        if (!isPathWithinBase(resolvedPath, expectedBase)) {
+          console.error(`[IPC] Path traversal detected: imagePath "${imagePath}" resolves outside spec directory`);
+          return { success: false, error: 'Invalid image path' };
+        }
 
         if (!existsSync(fullImagePath)) {
           return { success: false, error: `Image not found: ${imagePath}` };

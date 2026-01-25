@@ -29,8 +29,8 @@ export function ImagePreviewModal({ open, onOpenChange, image }: ImagePreviewMod
 
   if (!image) return null;
 
-  // Determine the image source - prefer thumbnail for display, fall back to data
-  const imageSrc = image.thumbnail || (image.data ? `data:${image.mimeType};base64,${image.data}` : null);
+  // Determine the image source - prefer full-resolution data for enlarged preview, fall back to thumbnail
+  const imageSrc = image.data ? `data:${image.mimeType};base64,${image.data}` : image.thumbnail || null;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

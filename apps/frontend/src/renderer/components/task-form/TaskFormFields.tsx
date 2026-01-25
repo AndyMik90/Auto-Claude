@@ -166,9 +166,17 @@ export function TaskFormFields({
   // Track images we've attempted to load thumbnails for to prevent infinite loops
   const loadedThumbnailsRef = useRef<Set<string>>(new Set());
 
+  // Track the latest images to avoid stale closure issues
+  const imagesRef = useRef<ImageAttachment[]>(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
   // Load thumbnails for images that have path but no thumbnail (fix placeholder bug)
   // This handles the case when TaskFormFields mounts with persisted images from disk
   useEffect(() => {
+    let cancelled = false;
+
     const loadMissingThumbnails = async () => {
       // Need project context to load images from disk
       if (!projectPath || !specId) return;
@@ -183,30 +191,36 @@ export function TaskFormFields({
       // Mark these as attempted before loading to prevent re-entry
       imagesToLoad.forEach(img => loadedThumbnailsRef.current.add(img.id));
 
-      const updatedImages = [...images];
-      let hasUpdates = false;
+      // Collect loaded thumbnails into a Map to avoid stale closure issues
+      const thumbnailMap = new Map<string, string>();
 
       for (const image of imagesToLoad) {
         try {
           const result = await window.electronAPI.loadImageThumbnail(projectPath, specId, image.path!);
           if (result.success && result.data) {
-            const idx = updatedImages.findIndex(img => img.id === image.id);
-            if (idx !== -1) {
-              updatedImages[idx] = { ...updatedImages[idx], thumbnail: result.data };
-              hasUpdates = true;
-            }
+            thumbnailMap.set(image.id, result.data);
           }
-        } catch {
-          // Silently fail for individual images - they'll show placeholder
+        } catch (error) {
+          // Log for debugging but don't block other images
+          console.debug('Failed to load thumbnail for image', image.id, error);
         }
       }
 
-      if (hasUpdates) {
+      // Merge thumbnails into current state without overwriting user changes
+      if (thumbnailMap.size > 0 && !cancelled) {
+        const updatedImages = imagesRef.current.map(img => ({
+          ...img,
+          thumbnail: thumbnailMap.get(img.id) ?? img.thumbnail
+        }));
         onImagesChange(updatedImages);
       }
     };
 
     loadMissingThumbnails();
+
+    return () => {
+      cancelled = true;
+    };
   }, [images, onImagesChange, projectPath, specId]);
 
   // Use the shared image upload hook with translated error messages
