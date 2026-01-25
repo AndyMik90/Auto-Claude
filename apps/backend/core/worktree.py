@@ -380,15 +380,18 @@ class WorktreeManager:
 
     def _branch_exists(self, branch_name: str) -> bool:
         """
-        Check if a branch exists in the repository.
+        Check if a local branch exists in the repository.
+
+        Uses git show-ref to specifically check for local branches, avoiding
+        false positives from tags or other refs with the same name.
 
         Args:
             branch_name: The name of the branch to check (e.g., 'auto-claude/my-spec')
 
         Returns:
-            True if the branch exists, False otherwise.
+            True if the local branch exists, False otherwise.
         """
-        result = self._run_git(["rev-parse", "--verify", branch_name])
+        result = self._run_git(["show-ref", "--verify", f"refs/heads/{branch_name}"])
         return result.returncode == 0
 
     def _worktree_is_registered(self, worktree_path: Path) -> bool:
@@ -580,12 +583,23 @@ class WorktreeManager:
                 # Worktree is registered but corrupted (e.g., unreadable HEAD)
                 # Force remove the registration and let it be recreated
                 print(f"Removing corrupted worktree registration: {worktree_path.name}")
-                self._run_git(["worktree", "remove", "--force", str(worktree_path)])
+                remove_result = self._run_git(
+                    ["worktree", "remove", "--force", str(worktree_path)]
+                )
+                if remove_result.returncode != 0:
+                    raise WorktreeError(
+                        f"Failed to remove corrupted worktree: {remove_result.stderr}"
+                    )
 
         # Step 4: Handle stale worktree directory (exists but not registered with git)
         if worktree_path.exists() and not self._worktree_is_registered(worktree_path):
             print(f"Removing stale worktree directory: {worktree_path.name}")
             shutil.rmtree(worktree_path, ignore_errors=True)
+            if worktree_path.exists():
+                raise WorktreeError(
+                    f"Failed to remove stale worktree directory: {worktree_path}\n"
+                    f"This may be due to permission issues or file locks."
+                )
 
         # Step 5: Check if branch already exists
         branch_exists = self._branch_exists(branch_name)
