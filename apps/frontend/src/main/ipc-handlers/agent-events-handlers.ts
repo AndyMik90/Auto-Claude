@@ -30,7 +30,6 @@ import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
 import { TaskStateMachine } from "../task-state-machine";
 import { getTaskStateManager } from '../task-state-manager';
-import { isXstateEnabled } from '../task-state-utils';
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -255,41 +254,6 @@ export function registerAgenteventsHandlers(
         const allSubtasksDone = hasSubtasks && task.subtasks.every((s) => s.status === "completed");
         const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
 
-        if (isXstateEnabled()) {
-          if (code === 0) {
-            notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
-          } else {
-            notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          }
-
-          const manager = getTaskStateManager(getMainWindow);
-          manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
-
-          const decision = taskStateMachine.getStatusForProcessExit({
-            taskId,
-            exitCode: code ?? 0,
-            task,
-            hasSubtasks,
-            allSubtasksDone,
-            requireReviewBeforeCoding,
-          });
-          const decisionWithFallback =
-            requireReviewBeforeCoding && !decision.status
-              ? { status: "human_review", reviewReason: "plan_review" }
-              : decision;
-          if (decisionWithFallback.status) {
-            persistStatus(decisionWithFallback.status);
-            taskStateMachine.emitStatusChange(
-              getMainWindow,
-              taskId,
-              decisionWithFallback.status,
-              projectId,
-              decisionWithFallback.reviewReason
-            );
-          }
-          return;
-        }
-
         taskStateMachine.logProcessExit({
           taskId,
           exitCode: code ?? 0,
@@ -299,27 +263,30 @@ export function registerAgenteventsHandlers(
           requireReviewBeforeCoding,
         });
 
+        const manager = getTaskStateManager(getMainWindow);
+        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
+
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+        } else {
+          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
+        }
 
-          // Fallback: Ensure status is updated even if COMPLETE phase event was missed
-          // This prevents tasks from getting stuck in ai_review status
-          // FIX (ACS-71): Only move to human_review if subtasks exist AND are all completed
-          // If no subtasks exist, the task is still in planning and shouldn't move to human_review
+        const decision = taskStateMachine.getStatusForProcessExit({
+          taskId,
+          exitCode: code ?? 0,
+          task,
+          hasSubtasks,
+          allSubtasksDone,
+          requireReviewBeforeCoding,
+        });
+        const decisionWithFallback =
+          requireReviewBeforeCoding && !decision.status
+            ? { status: "human_review", reviewReason: "plan_review" }
+            : decision;
+
+        if (code === 0) {
           const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";
-          const decision = taskStateMachine.getStatusForProcessExit({
-            taskId,
-            exitCode: code ?? 0,
-            task,
-            hasSubtasks,
-            allSubtasksDone,
-            requireReviewBeforeCoding,
-          });
-          const decisionWithFallback =
-            requireReviewBeforeCoding && !decision.status
-              ? { status: "human_review", reviewReason: "plan_review" }
-              : decision;
-
           if (decisionWithFallback.status) {
             persistStatus(decisionWithFallback.status);
             taskStateMachine.emitStatusChange(
@@ -335,19 +302,6 @@ export function registerAgenteventsHandlers(
             );
           }
         } else {
-          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          const decision = taskStateMachine.getStatusForProcessExit({
-            taskId,
-            exitCode: code ?? 0,
-            task,
-            hasSubtasks,
-            allSubtasksDone,
-            requireReviewBeforeCoding,
-          });
-          const decisionWithFallback =
-            requireReviewBeforeCoding && !decision.status
-              ? { status: "human_review", reviewReason: "plan_review" }
-              : decision;
           const nextStatus = decisionWithFallback.status ?? "human_review";
           persistStatus(nextStatus);
           taskStateMachine.emitStatusChange(
@@ -380,13 +334,15 @@ export function registerAgenteventsHandlers(
       taskProjectId
     );
 
-    if (task && project && isXstateEnabled()) {
+    if (task && project) {
       const manager = getTaskStateManager(getMainWindow);
       manager.handleExecutionProgress(task, project, progress);
 
       const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
       if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {
-        taskStateMachine.emitStatusChange(getMainWindow, taskId, fallbackStatus, taskProjectId);
+        if (validateStatusTransition(task, fallbackStatus, progress.phase)) {
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, fallbackStatus, taskProjectId);
+        }
         try {
           const mainPlanPath = getPlanPath(project, task);
           persistPlanStatusSync(mainPlanPath, fallbackStatus, project.id);
@@ -406,47 +362,6 @@ export function registerAgenteventsHandlers(
           }
         } catch (err) {
           console.warn("[execution-progress] Could not persist xstate fallback:", err);
-        }
-      }
-      return;
-    }
-
-    const newStatus = taskStateMachine.getStatusForExecutionProgress(progress);
-    // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
-    if (newStatus && validateStatusTransition(task, newStatus, progress.phase)) {
-      // Include projectId in status change event for multi-project filtering
-      taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus, taskProjectId);
-
-      // CRITICAL: Persist status to plan file(s) to prevent flip-flop on task list refresh
-      // When getTasks() is called, it reads status from the plan file. Without persisting,
-      // the status in the file might differ from the UI, causing inconsistent state.
-      // Uses shared utility with locking to prevent race conditions.
-      // IMPORTANT: We persist to BOTH main project AND worktree (if exists) to ensure
-      // consistency, since getTasks() prefers the worktree version.
-      if (task && project) {
-        try {
-          // Persist to main project plan file
-          const mainPlanPath = getPlanPath(project, task);
-          persistPlanStatusSync(mainPlanPath, newStatus, project.id);
-
-          // Also persist to worktree plan file if it exists
-          // This ensures consistency since getTasks() prefers worktree version
-          const worktreePath = findTaskWorktree(project.path, task.specId);
-          if (worktreePath) {
-            const specsBaseDir = getSpecsDir(project.autoBuildPath);
-            const worktreePlanPath = path.join(
-              worktreePath,
-              specsBaseDir,
-              task.specId,
-              AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
-            );
-            if (existsSync(worktreePlanPath)) {
-              persistPlanStatusSync(worktreePlanPath, newStatus, project.id);
-            }
-          }
-        } catch (err) {
-          // Ignore persistence errors - UI will still work, just might flip on refresh
-          console.warn("[execution-progress] Could not persist status:", err);
         }
       }
     }

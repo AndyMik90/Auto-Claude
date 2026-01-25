@@ -23,7 +23,6 @@ import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 import { TaskStateMachine } from '../../task-state-machine';
 import { getTaskStateManager } from '../../task-state-manager';
-import { isXstateEnabled } from '../../task-state-utils';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2299,18 +2298,14 @@ export function registerWorktreeHandlers(
               }
 
               const mainWindow = getMainWindow();
-              if (mainWindow) {
-                if (isXstateEnabled()) {
+                if (mainWindow) {
                   const taskStateManager = getTaskStateManager(getMainWindow);
                   taskStateManager.handleManualStatus(
                     task,
                     project,
                     newStatus as 'human_review' | 'done'
                   );
-                } else {
-                  taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus);
                 }
-              }
 
               resolve({
                 success: true,
@@ -2621,14 +2616,10 @@ export function registerWorktreeHandlers(
           // (skip when caller will set a different status, e.g., 'done')
           if (!skipStatusChange) {
             const mainWindow = getMainWindow();
-            if (mainWindow) {
-              if (isXstateEnabled()) {
+              if (mainWindow) {
                 const taskStateManager = getTaskStateManager(getMainWindow);
                 taskStateManager.handleManualStatus(task, project, 'backlog');
-              } else {
-                taskStateMachine.emitStatusChange(getMainWindow, taskId, 'backlog');
               }
-            }
           }
 
           return {

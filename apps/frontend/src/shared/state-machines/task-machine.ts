@@ -46,33 +46,33 @@ export const taskMachine = createMachine(
             { target: 'awaitingPlanReview', guard: 'requiresReview', actions: 'setReviewReasonPlan' },
             { target: 'coding', actions: 'clearReviewReason' }
           ],
-          USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' }
+          USER_STOPPED: { target: 'backlog', actions: 'clearReviewReason' }
         }
       },
       awaitingPlanReview: {
         on: {
           USER_RESUMED: { target: 'coding', actions: 'clearReviewReason' },
-          USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' }
+          USER_STOPPED: { target: 'backlog', actions: 'clearReviewReason' }
         }
       },
       coding: {
         on: {
           QA_STARTED: 'qa_review',
-          USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' }
+          USER_STOPPED: { target: 'backlog', actions: 'clearReviewReason' }
         }
       },
       qa_review: {
         on: {
           QA_PASSED: { target: 'human_review', actions: 'setReviewReasonCompleted' },
           QA_FAILED: { target: 'qa_fixing', actions: 'setReviewReasonQaRejected' },
-          USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' }
+          USER_STOPPED: { target: 'backlog', actions: 'clearReviewReason' }
         }
       },
       qa_fixing: {
         on: {
           QA_PASSED: { target: 'human_review', actions: 'setReviewReasonCompleted' },
           QA_FAILED: { target: 'human_review', actions: 'setReviewReasonQaRejected' },
-          USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' }
+          USER_STOPPED: { target: 'backlog', actions: 'clearReviewReason' }
         }
       },
       human_review: {
@@ -120,7 +120,6 @@ export const taskMachine = createMachine(
       setReviewReasonPlan: assign({ reviewReason: () => 'plan_review' }),
       setReviewReasonCompleted: assign({ reviewReason: () => 'completed' }),
       setReviewReasonErrors: assign({ reviewReason: () => 'errors' }),
-      setReviewReasonStopped: assign({ reviewReason: () => 'stopped' }),
       setReviewReasonQaRejected: assign({ reviewReason: () => 'qa_rejected' }),
       setReviewReasonFromEvent: assign({
         reviewReason: ({ event }) =>

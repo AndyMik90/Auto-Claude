@@ -20,7 +20,6 @@ import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { TaskStateMachine } from '../../task-state-machine';
 import { getTaskStateManager } from '../../task-state-manager';
-import { isXstateEnabled } from '../../task-state-utils';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -190,15 +189,13 @@ export function registerTaskExecutionHandlers(
 
       console.warn('[TASK_START] Found task:', task.specId, 'status:', task.status, 'subtasks:', task.subtasks.length);
 
-      if (isXstateEnabled()) {
-        const shouldResume =
-          task.status === 'human_review' &&
-          task.reviewReason !== 'completed';
+      const shouldResume =
+        task.status === 'human_review' &&
+        task.reviewReason !== 'completed';
 
-        if (shouldResume || task.status === 'error') {
-          const taskStateManager = getTaskStateManager(getMainWindow);
-          taskStateManager.handleUserResumed(task, project);
-        }
+      if (shouldResume || task.status === 'error') {
+        const taskStateManager = getTaskStateManager(getMainWindow);
+        taskStateManager.handleUserResumed(task, project);
       }
 
       // Start file watcher for this task
@@ -317,52 +314,14 @@ export function registerTaskExecutionHandlers(
    * Stop a task
    */
   ipcMain.on(IPC_CHANNELS.TASK_STOP, (_, taskId: string) => {
-    const DEBUG = process.env.DEBUG === 'true';
-
     agentManager.killTask(taskId);
     fileWatcher.unwatch(taskId);
 
     const { task, project } = findTaskAndProject(taskId);
-    if (task && project && isXstateEnabled()) {
+    if (task && project) {
       const manager = getTaskStateManager(getMainWindow);
       manager.handleUserStopped(task, project);
       return;
-    }
-
-    // Notify status change IMMEDIATELY for instant UI feedback
-    const ipcSentAt = Date.now();
-    const mainWindow = getMainWindow();
-    if (mainWindow) {
-      logTaskStatusChange(taskId, 'backlog');
-      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'backlog');
-    }
-
-    if (DEBUG) {
-      console.log(`[TASK_STOP] IPC sent immediately for task ${taskId}, deferring file persistence`);
-    }
-
-    if (task && project) {
-      // Persist status to implementation_plan.json to prevent status flip-flop on refresh
-      // Uses shared utility for consistency with agent-events-handlers.ts
-      // NOTE: This is now async and non-blocking for better UI responsiveness
-      const planPath = getPlanPath(project, task);
-      setImmediate(async () => {
-        const persistStart = Date.now();
-        try {
-          const persisted = await persistPlanStatus(planPath, 'backlog', project.id);
-          if (persisted) {
-            console.warn('[TASK_STOP] Updated plan status to backlog');
-          }
-          if (DEBUG) {
-            const delay = persistStart - ipcSentAt;
-            const duration = Date.now() - persistStart;
-            console.log(`[TASK_STOP] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
-          }
-        } catch (err) {
-          console.error('[TASK_STOP] Failed to persist plan status:', err);
-        }
-      });
-      // Note: File not found is expected for tasks without a plan file (persistPlanStatus handles ENOENT)
     }
   });
 
