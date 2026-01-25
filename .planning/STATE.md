@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** When the system flags something, it's a real issue. Trust comes from proof, not filters.
-**Current focus:** Phase 3 - Prompt Improvements (In Progress)
+**Current focus:** Phase 3 - Prompt Improvements (Complete)
 
 ## Current Position
 
 Phase: 3 of 6 (Prompt Improvements)
 Plan: 2 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-25 - Completed 03-02-PLAN.md
+Status: Phase 3 complete
+Last activity: 2026-01-25 - Completed 03-01-PLAN.md
 
-Progress: [████░░░░░░] 33% (4/12 plans)
+Progress: [█████░░░░░] 42% (5/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 2 min
-- Total execution time: 8 min
+- Total plans completed: 5
+- Average duration: 2.2 min
+- Total execution time: 11 min
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [████░░░░░░] 33% (4/12 plans)
 |-------|-------|-------|----------|
 | Phase 1 | 2 | 4 min | 2 min |
 | Phase 2 | 1 | 3 min | 3 min |
-| Phase 3 | 1 | 1 min | 1 min |
+| Phase 3 | 2 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 01-02 (2 min), 02-01 (3 min), 03-02 (1 min)
-- Trend: Consistent, slightly faster
+- Last 5 plans: 01-02 (2 min), 02-01 (3 min), 03-02 (1 min), 03-01 (3 min)
+- Trend: Consistent
 
 *Updated after each plan completion*
 
@@ -54,6 +54,8 @@ Recent decisions affecting current work:
 - [02-01]: Mark old evidence field as DEPRECATED, don't remove yet (backwards compatibility)
 - [02-01]: Use Literal type for verification_method to constrain at schema level
 - [03-02]: Require 3 elements in specialist delegation (intent, concerns, files)
+- [03-01]: Position Understand Intent after Your Mission, before CRITICAL sections
+- [03-01]: Use identical text for shared sections across all 4 prompts
 
 ### Pending Todos
 
@@ -65,6 +67,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-25T21:43:14Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-01-25T21:45:17Z
+Stopped at: Completed 03-01-PLAN.md (Phase 3 complete)
 Resume file: None
