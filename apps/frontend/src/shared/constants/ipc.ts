@@ -254,6 +254,7 @@ export const IPC_CHANNELS = {
 
   // GitHub OAuth events (main -> renderer) - for streaming device code during auth
   GITHUB_AUTH_DEVICE_CODE: 'github:authDeviceCode',
+  GITHUB_AUTH_CHANGED: 'github:authChanged',  // Event: GitHub auth state changed (account swap)
 
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
