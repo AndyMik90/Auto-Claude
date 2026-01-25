@@ -81,22 +81,6 @@ def get_insights_allowed_tools() -> list[str]:
     return tools
 
 
-def get_insights_mcp_servers() -> list[str]:
-    """Get MCP servers needed for Insights agent based on configured integrations."""
-    servers = []
-
-    if is_obsidian_mcp_enabled():
-        servers.append("obsidian")
-
-    if is_jira_mcp_enabled():
-        servers.append("jira")
-
-    if is_gitlab_mcp_enabled():
-        servers.append("gitlab")
-
-    return servers
-
-
 def load_vault_context() -> str:
     """Load context from configured Obsidian vault if enabled."""
     import os
@@ -301,15 +285,16 @@ Current question: {message}"""
     try:
         # Get dynamic tools list based on configured integrations
         allowed_tools = get_insights_allowed_tools()
-        mcp_servers = get_insights_mcp_servers()
 
         # Log integration status visibly for user feedback
+        # Note: External MCP servers (jira, gitlab, obsidian) are loaded automatically
+        # from the user's ~/.claude/settings.json by the Claude SDK, not passed explicitly
         integrations_status = []
-        if "obsidian" in mcp_servers:
+        if is_obsidian_mcp_enabled():
             integrations_status.append("Vault/Obsidian")
-        if "jira" in mcp_servers:
+        if is_jira_mcp_enabled():
             integrations_status.append("JIRA")
-        if "gitlab" in mcp_servers:
+        if is_gitlab_mcp_enabled():
             integrations_status.append("GitLab")
 
         if integrations_status:
@@ -321,10 +306,12 @@ Current question: {message}"""
             "insights_runner",
             "Tools configuration",
             allowed_tools=allowed_tools,
-            mcp_servers=mcp_servers,
+            integrations=integrations_status,
         )
 
         # Build options dict - only include max_thinking_tokens if not None
+        # Note: External MCP servers (jira, gitlab, obsidian) are automatically loaded
+        # from ~/.claude/settings.json by the SDK - we don't pass them explicitly
         options_kwargs = {
             "model": resolve_model_id(model),  # Resolve via API Profile if configured
             "system_prompt": system_prompt,
@@ -332,10 +319,6 @@ Current question: {message}"""
             "max_turns": 30,  # Allow sufficient turns for codebase exploration
             "cwd": str(project_path),
         }
-
-        # Add MCP servers if any integrations are configured
-        if mcp_servers:
-            options_kwargs["mcp_servers"] = mcp_servers
 
         # Only add thinking tokens if the thinking level is not "none"
         if max_thinking_tokens is not None:
