@@ -2413,7 +2413,8 @@ export function registerWorktreeHandlers(
               uncommittedFiles = gitStatus
                 .split('\n')
                 .filter(line => line.trim())
-                .map(line => line.substring(3).trim()); // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .map(line => line.substring(3).trim()) // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .filter(file => file); // Remove empty strings from short/malformed status lines
 
               hasUncommittedChanges = uncommittedFiles.length > 0;
             }
