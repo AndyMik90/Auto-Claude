@@ -5,3 +5,5 @@
 
 export { LinearIntegration } from './LinearIntegration';
 export { GitHubIntegration } from './GitHubIntegration';
+export { GitLabIntegration } from './GitLabIntegration';
+export { TelegramIntegration } from './TelegramIntegration';

@@ -12,7 +12,9 @@ import {
   Radio,
   Github,
   RefreshCw,
-  GitBranch
+  GitBranch,
+  MessageCircle,
+  Bell
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -53,6 +55,12 @@ interface IntegrationSettingsProps {
   isCheckingGitHub: boolean;
   githubExpanded: boolean;
   onGitHubToggle: () => void;
+
+  // Telegram state
+  telegramExpanded: boolean;
+  onTelegramToggle: () => void;
+  showTelegramToken: boolean;
+  setShowTelegramToken: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function IntegrationSettings({
@@ -73,7 +81,11 @@ export function IntegrationSettings({
   gitHubConnectionStatus,
   isCheckingGitHub,
   githubExpanded,
-  onGitHubToggle
+  onGitHubToggle,
+  telegramExpanded,
+  onTelegramToggle,
+  showTelegramToken,
+  setShowTelegramToken
 }: IntegrationSettingsProps) {
   // Branch selection state
   const [branches, setBranches] = useState<string[]>([]);
@@ -475,6 +487,177 @@ export function IntegrationSettings({
                       Tasks will be created on branches like <code className="px-1 bg-muted rounded">auto-claude/task-name</code> from <code className="px-1 bg-muted rounded">{settings.mainBranch}</code>
                     </p>
                   )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* Telegram Integration Section */}
+      <section className="space-y-3">
+        <button
+          onClick={onTelegramToggle}
+          className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
+        >
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Telegram Notifications
+            {envConfig.telegramEnabled && (
+              <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
+                Enabled
+              </span>
+            )}
+          </div>
+          {telegramExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+
+        {telegramExpanded && (
+          <div className="space-y-4 pl-6 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="font-normal text-foreground">Enable Telegram Notifications</Label>
+                <p className="text-xs text-muted-foreground">
+                  Get notified about task status changes via Telegram
+                </p>
+              </div>
+              <Switch
+                checked={envConfig.telegramEnabled}
+                onCheckedChange={(checked) => updateEnvConfig({ telegramEnabled: checked })}
+              />
+            </div>
+
+            {envConfig.telegramEnabled && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Bot Token</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Create a bot via{' '}
+                    <a
+                      href="https://t.me/BotFather"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info hover:underline"
+                    >
+                      @BotFather
+                    </a>{' '}
+                    on Telegram
+                  </p>
+                  <div className="relative">
+                    <Input
+                      type={showTelegramToken ? 'text' : 'password'}
+                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                      value={envConfig.telegramBotToken || ''}
+                      onChange={(e) => updateEnvConfig({ telegramBotToken: e.target.value })}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTelegramToken(!showTelegramToken)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showTelegramToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Chat ID</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Your Telegram user ID or group chat ID. Use{' '}
+                    <a
+                      href="https://t.me/userinfobot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info hover:underline"
+                    >
+                      @userinfobot
+                    </a>{' '}
+                    to find your ID
+                  </p>
+                  <Input
+                    type="text"
+                    placeholder="-1001234567890"
+                    value={envConfig.telegramChatId || ''}
+                    onChange={(e) => updateEnvConfig({ telegramChatId: e.target.value })}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Notification Preferences */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-foreground">Notification Preferences</Label>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Bell className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="font-normal text-sm text-foreground">Task Started</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-5">
+                        Notify when a task begins execution
+                      </p>
+                    </div>
+                    <Switch
+                      checked={envConfig.telegramNotifyOnStart ?? true}
+                      onCheckedChange={(checked) => updateEnvConfig({ telegramNotifyOnStart: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="font-normal text-sm text-foreground">Task Completed</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-5">
+                        Notify when a task completes successfully
+                      </p>
+                    </div>
+                    <Switch
+                      checked={envConfig.telegramNotifyOnComplete ?? true}
+                      onCheckedChange={(checked) => updateEnvConfig({ telegramNotifyOnComplete: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="font-normal text-sm text-foreground">Task Failed</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-5">
+                        Notify when a task fails or encounters errors
+                      </p>
+                    </div>
+                    <Switch
+                      checked={envConfig.telegramNotifyOnFail ?? true}
+                      onCheckedChange={(checked) => updateEnvConfig({ telegramNotifyOnFail: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="font-normal text-sm text-foreground">Human Review Needed</Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-5">
+                        Notify when a task requires human review
+                      </p>
+                    </div>
+                    <Switch
+                      checked={envConfig.telegramNotifyOnReview ?? true}
+                      onCheckedChange={(checked) => updateEnvConfig({ telegramNotifyOnReview: checked })}
+                    />
+                  </div>
                 </div>
               </>
             )}
