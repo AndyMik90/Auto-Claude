@@ -551,6 +551,41 @@
     "step3": "Click \"Authenticate\" to complete login",
     "footer": "The account will be available once you complete authentication."
   },
+  "roadmapGeneration": {
+    "progress": "Progress",
+    "elapsed": "Elapsed: {{time}}",
+    "stillWorking": "Still working...",
+    "stopping": "Stopping...",
+    "stop": "Stop",
+    "stopTooltip": "Stop generation",
+    "phases": {
+      "analyzing": {
+        "label": "Analyzing",
+        "description": "Analyzing project structure and codebase..."
+      },
+      "discovering": {
+        "label": "Discovering",
+        "description": "Discovering target audience and user needs..."
+      },
+      "generating": {
+        "label": "Generating",
+        "description": "Generating feature roadmap..."
+      },
+      "complete": {
+        "label": "Complete",
+        "description": "Roadmap generation complete!"
+      },
+      "error": {
+        "label": "Error",
+        "description": "Generation failed"
+      }
+    },
+    "steps": {
+      "analyze": "Analyze",
+      "discover": "Discover",
+      "generate": "Generate"
+    }
+  },
   "auth": {
     "failure": {
       "title": "Authentication Required",
