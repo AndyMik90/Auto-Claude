@@ -286,8 +286,8 @@ export function getNpxCommand(): string {
  * or environment variable expansion.
  */
 export function isSecurePath(candidatePath: string): boolean {
-  // Reject empty strings to maintain cross-platform consistency
-  if (!candidatePath) return false;
+  // Reject empty or whitespace-only strings to maintain cross-platform consistency with backend
+  if (!candidatePath || !candidatePath.trim()) return false;
 
   // Security validation: reject paths with dangerous patterns
   const dangerousPatterns = [

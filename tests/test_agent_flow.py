@@ -1691,7 +1691,6 @@ class TestWorktreeIsolation:
 
 def run_all_tests():
     """Run all tests using pytest."""
-    import sys
     sys.exit(pytest.main([__file__, "-v", "--tb=short"]))
 
 

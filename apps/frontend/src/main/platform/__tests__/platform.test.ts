@@ -450,6 +450,14 @@ describe('Platform Module', () => {
   });
 
   describe('isSecurePath', () => {
+    it('rejects empty and whitespace-only strings', () => {
+      mockPlatform('darwin');
+      expect(isSecurePath('')).toBe(false);
+      expect(isSecurePath('   ')).toBe(false);
+      expect(isSecurePath('\t')).toBe(false);
+      expect(isSecurePath('\n')).toBe(false);
+    });
+
     it('rejects paths with .. on all platforms', () => {
       mockPlatform('win32');
       expect(isSecurePath('../etc/passwd')).toBe(false);

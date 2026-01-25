@@ -890,13 +890,23 @@ class TestWindowsEnvExpansionEdgeCases:
         assert validate_cli_path('%PATH%') is False
         assert validate_cli_path('prefix%VAR%suffix') is False
 
-    def test_allows_literal_percent_in_valid_context(self):
-        """Single percent signs (not env vars) should be allowed."""
+    @patch('core.platform.is_windows', return_value=False)
+    def test_allows_literal_percent_in_valid_context_unix(self, mock_is_windows):
+        """Single percent signs (not env vars) should be allowed on Unix."""
         # Our pattern is r"%[^%]+%" which requires %...% format
-        # Single percent signs that don't form env var patterns are allowed
+        # Single percent signs that don't form env var patterns are allowed on Unix
         assert validate_cli_path('file100%.txt') is True  # Single % without VAR pattern
         assert validate_cli_path('100%done') is True  # Trailing percent
         assert validate_cli_path('%file.txt') is True  # Leading single percent
+
+    @patch('core.platform.is_windows', return_value=True)
+    def test_rejects_percent_in_executable_name_windows(self, mock_is_windows):
+        """Windows rejects percent signs in executable names for security."""
+        # Windows has stricter executable name validation that rejects %
+        # even when not forming %VAR% patterns (part of Windows security model)
+        assert validate_cli_path('file100%.txt') is False
+        assert validate_cli_path('100%done') is False
+        assert validate_cli_path('%file.txt') is False
 
 
 # ============================================================================
