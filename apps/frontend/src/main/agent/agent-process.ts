@@ -19,6 +19,7 @@ import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
 import { buildMemoryEnvVars } from '../memory-env-builder';
+import { buildIntegrationsEnvVars } from '../integrations-env-builder';
 import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
@@ -855,18 +856,21 @@ export class AgentProcessManager {
    * 4. Project settings (graphitiMcpUrl, useClaudeMd) - Runtime overrides
    */
   getCombinedEnv(projectPath: string): Record<string, string> {
-    // Load app-wide memory settings from settings.json
-    // This bridges onboarding config to backend agents
+    // Load app-wide settings from settings.json
+    // This bridges onboarding/UI config to backend agents
     const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+
+    // Build environment variables from UI settings
     const memoryEnv = buildMemoryEnvVars(appSettings as AppSettings);
+    const integrationsEnv = buildIntegrationsEnvVars(appSettings as AppSettings);
 
     // Existing env sources
     const autoBuildEnv = this.loadAutoBuildEnv();
     const projectFileEnv = this.loadProjectEnv(projectPath);
     const projectSettingsEnv = this.getProjectEnvVars(projectPath);
 
-    // Priority: app-wide memory -> backend .env -> project .env -> project settings
+    // Priority: app-wide (memory, integrations) -> backend .env -> project .env -> project settings
     // Later sources override earlier ones
-    return { ...memoryEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
+    return { ...memoryEnv, ...integrationsEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
   }
 }
