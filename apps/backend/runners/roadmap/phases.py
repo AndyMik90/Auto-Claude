@@ -131,6 +131,7 @@ class DiscoveryPhase:
             success, output = await self.agent_executor.run_agent(
                 "roadmap_discovery.md",
                 additional_context=context,
+                agent_type="roadmap_discovery",
             )
 
             if success and self.discovery_file.exists():
@@ -394,6 +395,7 @@ class FeaturesPhase:
             success, output = await self.agent_executor.run_agent(
                 "roadmap_features.md",
                 additional_context=context,
+                agent_type="roadmap_discovery",  # Uses same tools as discovery
             )
 
             if success and self.roadmap_file.exists():

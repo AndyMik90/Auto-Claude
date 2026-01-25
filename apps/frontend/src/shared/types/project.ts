@@ -349,6 +349,12 @@ export interface ProjectEnvConfig {
     electronEnabled?: boolean;
     /** Puppeteer browser automation (QA only) - default: false */
     puppeteerEnabled?: boolean;
+    /** JIRA issue tracking - default: follows global JIRA config */
+    jiraEnabled?: boolean;
+    /** GitLab code management - default: follows global GitLab config */
+    gitlabEnabled?: boolean;
+    /** Obsidian/Vault integration - default: follows global vault config */
+    obsidianEnabled?: boolean;
   };
 
   // Per-agent MCP overrides (add/remove MCPs from specific agents)

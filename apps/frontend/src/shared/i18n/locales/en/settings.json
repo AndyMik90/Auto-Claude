@@ -675,6 +675,21 @@
       "autoClaude": {
         "name": "Auto-Claude Tools",
         "description": "Build progress tracking"
+      },
+      "jira": {
+        "name": "JIRA",
+        "description": "Issue tracking and Confluence integration",
+        "notConfigured": "Configure in Settings → Account → JIRA"
+      },
+      "gitlab": {
+        "name": "GitLab",
+        "description": "Code management, issues, and merge requests",
+        "notConfigured": "Configure in Settings → Account → GitLab"
+      },
+      "obsidian": {
+        "name": "Vault",
+        "description": "External knowledge base and memory",
+        "notConfigured": "Configure in Settings → Account → Vault"
       }
     },
     "customServers": "Custom Servers",

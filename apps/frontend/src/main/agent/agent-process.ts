@@ -871,6 +871,14 @@ export class AgentProcessManager {
 
     // Priority: app-wide (memory, integrations) -> backend .env -> project .env -> project settings
     // Later sources override earlier ones
-    return { ...memoryEnv, ...integrationsEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
+    const merged = { ...memoryEnv, ...integrationsEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
+
+    // Respect GRAPHITI_ENABLED toggle from MCP Overview panel
+    // If explicitly disabled, remove GRAPHITI_MCP_URL to prevent agents from using it
+    if (merged['GRAPHITI_ENABLED']?.toLowerCase() === 'false') {
+      delete merged['GRAPHITI_MCP_URL'];
+    }
+
+    return merged;
   }
 }

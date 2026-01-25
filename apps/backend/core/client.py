@@ -129,12 +129,20 @@ from agents.tools_pkg import (
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
+    JIRA_TOOLS,
+    GITLAB_TOOLS,
     LINEAR_TOOLS,
+    OBSIDIAN_TOOLS,
     PUPPETEER_TOOLS,
     create_auto_claude_mcp_server,
     get_allowed_tools,
     get_required_mcp_servers,
     is_tools_available,
+)
+from core.mcp_config import (
+    build_jira_mcp_config,
+    build_gitlab_mcp_config,
+    build_obsidian_mcp_config,
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
@@ -391,14 +399,64 @@ def load_project_mcp_config(project_dir: Path) -> dict:
     return config
 
 
+def _check_graphiti_server_health(url: str, timeout: float = 2.0) -> bool:
+    """
+    Check if the Graphiti MCP server is actually responding.
+
+    Args:
+        url: The Graphiti MCP URL to check
+        timeout: Connection timeout in seconds
+
+    Returns:
+        True if server is responding, False otherwise
+    """
+    import urllib.request
+    import urllib.error
+
+    try:
+        # Just check if we can connect - don't need a valid response
+        req = urllib.request.Request(url, method='HEAD')
+        urllib.request.urlopen(req, timeout=timeout)
+        return True
+    except urllib.error.URLError:
+        return False
+    except Exception:
+        return False
+
+
+# Cache for graphiti health check (reset per process)
+_graphiti_health_checked = False
+_graphiti_is_healthy = False
+
+
 def is_graphiti_mcp_enabled() -> bool:
     """
-    Check if Graphiti MCP server integration is enabled.
+    Check if Graphiti MCP server integration is enabled AND responding.
 
     Requires GRAPHITI_MCP_URL to be set (e.g., http://localhost:8000/mcp/)
     This is separate from GRAPHITI_ENABLED which controls the Python library integration.
+
+    Also performs a health check to ensure the server is actually running.
+    If the server is not responding, returns False to prevent connection hangs.
     """
-    return bool(os.environ.get("GRAPHITI_MCP_URL"))
+    global _graphiti_health_checked, _graphiti_is_healthy
+
+    url = os.environ.get("GRAPHITI_MCP_URL")
+    if not url:
+        return False
+
+    # Check health only once per process to avoid repeated connection attempts
+    if not _graphiti_health_checked:
+        _graphiti_health_checked = True
+        _graphiti_is_healthy = _check_graphiti_server_health(url)
+        if not _graphiti_is_healthy:
+            logger.warning(
+                f"Graphiti MCP server at {url} is not responding. "
+                "Disabling graphiti-memory integration to prevent connection hangs. "
+                "Start the Graphiti server or disable graphitiMcpEnabled in project settings."
+            )
+
+    return _graphiti_is_healthy
 
 
 def get_graphiti_mcp_url() -> str:
@@ -655,6 +713,22 @@ def create_client(
                     else []
                 ),
                 *[f"{tool}(*)" for tool in browser_tools_permissions],
+                # External integration tools
+                *(
+                    [f"{tool}(*)" for tool in JIRA_TOOLS]
+                    if "jira" in required_servers
+                    else []
+                ),
+                *(
+                    [f"{tool}(*)" for tool in GITLAB_TOOLS]
+                    if "gitlab" in required_servers
+                    else []
+                ),
+                *(
+                    [f"{tool}(*)" for tool in OBSIDIAN_TOOLS]
+                    if "obsidian" in required_servers
+                    else []
+                ),
             ],
         },
     }
@@ -691,13 +765,13 @@ def create_client(
         mcp_servers_list.append("graphiti-memory (knowledge graph)")
     if "auto-claude" in required_servers and auto_claude_tools_enabled:
         mcp_servers_list.append(f"auto-claude ({agent_type} tools)")
-    # External MCP servers (from user's Claude settings, not spawned by Auto-Claude)
+    # External integration MCP servers (spawned internally via npx)
     if "jira" in required_servers:
-        mcp_servers_list.append("jira (issue tracking, from settings)")
+        mcp_servers_list.append("jira (issue tracking)")
     if "gitlab" in required_servers:
-        mcp_servers_list.append("gitlab (code management, from settings)")
+        mcp_servers_list.append("gitlab (code management)")
     if "obsidian" in required_servers:
-        mcp_servers_list.append("obsidian (vault/memory, from settings)")
+        mcp_servers_list.append("obsidian (vault/memory)")
     if mcp_servers_list:
         print(f"   - MCP servers: {', '.join(mcp_servers_list)}")
     else:
@@ -781,6 +855,24 @@ def create_client(
             if custom.get("headers"):
                 server_config["headers"] = custom["headers"]
             mcp_servers[server_id] = server_config
+
+    # JIRA MCP Server (spawned internally via npx)
+    if "jira" in required_servers:
+        jira_config = build_jira_mcp_config()
+        if jira_config:
+            mcp_servers["jira"] = jira_config
+
+    # GitLab MCP Server (spawned internally via npx)
+    if "gitlab" in required_servers:
+        gitlab_config = build_gitlab_mcp_config()
+        if gitlab_config:
+            mcp_servers["gitlab"] = gitlab_config
+
+    # Obsidian/Vault MCP Server (spawned internally via npx)
+    if "obsidian" in required_servers:
+        obsidian_config = build_obsidian_mcp_config()
+        if obsidian_config:
+            mcp_servers["obsidian"] = obsidian_config
 
     # Build system prompt
     base_prompt = (

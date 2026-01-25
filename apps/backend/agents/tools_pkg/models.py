@@ -407,22 +407,26 @@ AGENT_CONFIGS = {
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ROADMAP & IDEATION
+    # Note: "obsidian" is optional - provides vault context for strategic planning
     # ═══════════════════════════════════════════════════════════════════════
     "roadmap_discovery": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
     "competitor_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # WebSearch for competitor research
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
     "ideation": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },

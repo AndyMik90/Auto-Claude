@@ -330,6 +330,57 @@ const MCP_SERVERS: Record<string, { name: string; description: string; icon: Rea
       'mcp__puppeteer__puppeteer_evaluate',
     ],
   },
+  jira: {
+    name: 'JIRA',
+    description: 'Issue tracking and Confluence integration. Configure in Settings → Account → JIRA.',
+    icon: ClipboardList,
+    tools: [
+      'mcp__jira__jira_search_issues',
+      'mcp__jira__jira_get_issue',
+      'mcp__jira__jira_create_issue',
+      'mcp__jira__jira_update_issue',
+      'mcp__jira__jira_transition_issue',
+      'mcp__jira__jira_add_comment',
+      'mcp__jira__jira_get_transitions',
+      'mcp__jira__confluence_search',
+      'mcp__jira__confluence_get_page',
+      'mcp__jira__confluence_create_page',
+    ],
+  },
+  gitlab: {
+    name: 'GitLab',
+    description: 'Code management, issues, and merge requests. Configure in Settings → Account → GitLab.',
+    icon: Code,
+    tools: [
+      'mcp__gitlab__get_project',
+      'mcp__gitlab__list_projects',
+      'mcp__gitlab__list_issues',
+      'mcp__gitlab__get_issue',
+      'mcp__gitlab__create_issue',
+      'mcp__gitlab__update_issue',
+      'mcp__gitlab__list_merge_requests',
+      'mcp__gitlab__get_merge_request',
+      'mcp__gitlab__create_merge_request',
+      'mcp__gitlab__list_pipelines',
+      'mcp__gitlab__get_pipeline',
+    ],
+  },
+  obsidian: {
+    name: 'Vault',
+    description: 'External knowledge base and memory. Configure in Settings → Account → Vault.',
+    icon: Brain,
+    tools: [
+      'mcp__obsidian__read_file',
+      'mcp__obsidian__read_text_file',
+      'mcp__obsidian__read_multiple_files',
+      'mcp__obsidian__write_file',
+      'mcp__obsidian__edit_file',
+      'mcp__obsidian__list_directory',
+      'mcp__obsidian__directory_tree',
+      'mcp__obsidian__search_files',
+      'mcp__obsidian__get_file_info',
+    ],
+  },
 };
 
 // All available MCP servers that can be added to agents
@@ -339,7 +390,10 @@ const ALL_MCP_SERVERS = [
   'linear',
   'electron',
   'puppeteer',
-  'auto-claude'
+  'auto-claude',
+  'jira',
+  'gitlab',
+  'obsidian',
 ] as const;
 
 // Category metadata - neutral styling per design.json
@@ -401,6 +455,9 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
         case 'linear': return mcpServerStates.linearMcpEnabled !== false;
         case 'electron': return mcpServerStates.electronEnabled !== false;
         case 'puppeteer': return mcpServerStates.puppeteerEnabled !== false;
+        case 'jira': return mcpServerStates.jiraEnabled !== false;
+        case 'gitlab': return mcpServerStates.gitlabEnabled !== false;
+        case 'obsidian': return mcpServerStates.obsidianEnabled !== false;
         default: return true;
       }
     });
@@ -1131,6 +1188,66 @@ export function AgentTools() {
                     checked={mcpServers.linearMcpEnabled !== false && envConfig.linearEnabled}
                     onCheckedChange={(checked) => updateMcpServer('linearMcpEnabled', checked)}
                     disabled={!envConfig.linearEnabled}
+                  />
+                </div>
+
+                {/* JIRA */}
+                <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-3">
+                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.jira.name')}</span>
+                      <p className="text-xs text-muted-foreground">
+                        {settings?.globalJiraHost
+                          ? t('settings:mcp.servers.jira.description')
+                          : t('settings:mcp.servers.jira.notConfigured')}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={mcpServers.jiraEnabled !== false && !!settings?.globalJiraHost}
+                    onCheckedChange={(checked) => updateMcpServer('jiraEnabled', checked)}
+                    disabled={!settings?.globalJiraHost}
+                  />
+                </div>
+
+                {/* GitLab */}
+                <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-3">
+                    <Code className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.gitlab.name')}</span>
+                      <p className="text-xs text-muted-foreground">
+                        {settings?.globalGitlabInstanceUrl
+                          ? t('settings:mcp.servers.gitlab.description')
+                          : t('settings:mcp.servers.gitlab.notConfigured')}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={mcpServers.gitlabEnabled !== false && !!settings?.globalGitlabInstanceUrl}
+                    onCheckedChange={(checked) => updateMcpServer('gitlabEnabled', checked)}
+                    disabled={!settings?.globalGitlabInstanceUrl}
+                  />
+                </div>
+
+                {/* Vault/Obsidian */}
+                <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-3">
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-medium">{t('settings:mcp.servers.obsidian.name')}</span>
+                      <p className="text-xs text-muted-foreground">
+                        {settings?.globalVaultPath
+                          ? t('settings:mcp.servers.obsidian.description')
+                          : t('settings:mcp.servers.obsidian.notConfigured')}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={mcpServers.obsidianEnabled !== false && !!settings?.globalVaultPath}
+                    onCheckedChange={(checked) => updateMcpServer('obsidianEnabled', checked)}
+                    disabled={!settings?.globalVaultPath}
                   />
                 </div>
 

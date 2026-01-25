@@ -58,6 +58,11 @@ from agents.tools_pkg.models import (
     is_gitlab_mcp_enabled,
     is_obsidian_mcp_enabled,
 )
+from core.mcp_config import (
+    build_jira_mcp_config,
+    build_gitlab_mcp_config,
+    build_obsidian_mcp_config,
+)
 
 
 def get_insights_allowed_tools() -> list[str]:
@@ -286,32 +291,43 @@ Current question: {message}"""
         # Get dynamic tools list based on configured integrations
         allowed_tools = get_insights_allowed_tools()
 
-        # Log integration status visibly for user feedback
-        # Note: External MCP servers (jira, gitlab, obsidian) are loaded automatically
-        # from the user's ~/.claude/settings.json by the Claude SDK, not passed explicitly
+        # Build MCP servers dict for enabled integrations (spawned internally via npx)
+        mcp_servers = {}
         integrations_status = []
-        if is_obsidian_mcp_enabled():
-            integrations_status.append("Vault/Obsidian")
-        if is_jira_mcp_enabled():
-            integrations_status.append("JIRA")
-        if is_gitlab_mcp_enabled():
-            integrations_status.append("GitLab")
 
+        if is_obsidian_mcp_enabled():
+            config = build_obsidian_mcp_config()
+            if config:
+                mcp_servers["obsidian"] = config
+                integrations_status.append("Vault/Obsidian")
+
+        if is_jira_mcp_enabled():
+            config = build_jira_mcp_config()
+            if config:
+                mcp_servers["jira"] = config
+                integrations_status.append("JIRA")
+
+        if is_gitlab_mcp_enabled():
+            config = build_gitlab_mcp_config()
+            if config:
+                mcp_servers["gitlab"] = config
+                integrations_status.append("GitLab")
+
+        # Log integration status visibly for user feedback
         if integrations_status:
-            print(f"[Insights] Active integrations: {', '.join(integrations_status)}", file=sys.stderr)
+            print(f"Active integrations: {', '.join(integrations_status)}", file=sys.stderr)
         else:
-            print("[Insights] No integrations enabled (configure in Settings → Account)", file=sys.stderr)
+            print("No integrations enabled (configure in Settings → Account)", file=sys.stderr)
 
         debug(
             "insights_runner",
             "Tools configuration",
             allowed_tools=allowed_tools,
             integrations=integrations_status,
+            mcp_servers=list(mcp_servers.keys()),
         )
 
         # Build options dict - only include max_thinking_tokens if not None
-        # Note: External MCP servers (jira, gitlab, obsidian) are automatically loaded
-        # from ~/.claude/settings.json by the SDK - we don't pass them explicitly
         options_kwargs = {
             "model": resolve_model_id(model),  # Resolve via API Profile if configured
             "system_prompt": system_prompt,
@@ -319,6 +335,10 @@ Current question: {message}"""
             "max_turns": 30,  # Allow sufficient turns for codebase exploration
             "cwd": str(project_path),
         }
+
+        # Only add mcp_servers if we have any configured
+        if mcp_servers:
+            options_kwargs["mcp_servers"] = mcp_servers
 
         # Only add thinking tokens if the thinking level is not "none"
         if max_thinking_tokens is not None:

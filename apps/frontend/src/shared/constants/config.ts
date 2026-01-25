@@ -76,8 +76,8 @@ export const DEFAULT_PROJECT_SETTINGS = {
     onReviewNeeded: true,
     sound: false
   },
-  // Graphiti MCP server for agent-accessible knowledge graph (enabled by default)
-  graphitiMcpEnabled: true,
+  // Graphiti MCP server for agent-accessible knowledge graph (disabled by default - requires Graphiti server)
+  graphitiMcpEnabled: false,
   graphitiMcpUrl: 'http://localhost:8000/mcp/',
   // Include CLAUDE.md instructions in agent context (enabled by default)
   useClaudeMd: true
