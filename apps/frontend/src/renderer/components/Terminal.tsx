@@ -225,6 +225,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     let retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let fallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let isCleanedUp = false;
+    let fitSucceeded = false;
     let retryCount = 0;
     const MAX_RETRIES = 5;
     const RETRY_DELAY_MS = 50;
@@ -234,13 +235,21 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     const performFit = () => {
       if (isCleanedUp) return;
 
+      // Cancel any existing RAF to prevent multiple concurrent fit attempts
+      if (rafId !== null) {
+        cancelRaf(rafId);
+        rafId = null;
+      }
+
       rafId = raf(() => {
         if (isCleanedUp) return;
 
         // fit() returns boolean indicating success (true if container had valid dimensions)
         const success = fit();
 
-        if (!success && retryCount < MAX_RETRIES) {
+        if (success) {
+          fitSucceeded = true;
+        } else if (retryCount < MAX_RETRIES) {
           // Container not ready yet, retry after a short delay
           retryCount++;
           retryTimeoutId = setTimeout(performFit, RETRY_DELAY_MS);
@@ -256,8 +265,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       // Only react to relevant transitions (height, width, flex changes)
       const relevantProps = ['height', 'width', 'flex', 'max-height', 'max-width'];
       if (relevantProps.some(prop => e.propertyName.includes(prop))) {
-        // Reset retry count for new transition
+        // Reset retry count and success flag for new transition
         retryCount = 0;
+        fitSucceeded = false;
         performFit();
       }
     };
@@ -276,7 +286,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     // Fallback timeout to ensure fit happens even if transitionend doesn't fire
     // This is a safety net for edge cases
     fallbackTimeoutId = setTimeout(() => {
-      if (!isCleanedUp) {
+      if (!isCleanedUp && !fitSucceeded) {
         retryCount = 0;
         performFit();
       }
