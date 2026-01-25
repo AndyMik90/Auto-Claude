@@ -424,7 +424,9 @@ export function setupInsightsListeners(): () => void {
         store().setSession(session);
       }
       // Also refresh sessions list for sidebar
-      loadInsightsSessions(session.projectId);
+      loadInsightsSessions(session.projectId).catch((err) => {
+        console.error('Failed to refresh sessions list after update:', err);
+      });
     }
   );
 
