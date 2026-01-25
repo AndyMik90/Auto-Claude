@@ -9,11 +9,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Holistic PR Understanding
 
-- [ ] **CONTEXT-01**: PR synthesis step before specialists run - orchestrator synthesizes description + files + commits + comments into a PR understanding document
-- [ ] **CONTEXT-02**: Related files list passed to orchestrator prompt (50 files already gathered, currently unused)
-- [ ] **CONTEXT-03**: Import graph summary passed to orchestrator (what imports what, reverse deps)
-- [ ] **CONTEXT-04**: Specialists receive "files to investigate" list (related files, not just changed files)
-- [ ] **CONTEXT-05**: Orchestrator prompt includes "Understand the PR holistically BEFORE delegating" instruction
+- [x] **CONTEXT-01**: PR synthesis step before specialists run - orchestrator synthesizes description + files + commits + comments into a PR understanding document
+- [x] **CONTEXT-02**: Related files list passed to orchestrator prompt (50 files already gathered, currently unused)
+- [x] **CONTEXT-03**: Import graph summary passed to orchestrator (what imports what, reverse deps)
+- [x] **CONTEXT-04**: Specialists receive "files to investigate" list (related files, not just changed files)
+- [x] **CONTEXT-05**: Orchestrator prompt includes "Understand the PR holistically BEFORE delegating" instruction
 
 ### Validation Pipeline
 
@@ -89,11 +89,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONTEXT-01 | Phase 1 | Pending |
-| CONTEXT-02 | Phase 1 | Pending |
-| CONTEXT-03 | Phase 1 | Pending |
-| CONTEXT-04 | Phase 1 | Pending |
-| CONTEXT-05 | Phase 1 | Pending |
+| CONTEXT-01 | Phase 1 | Complete |
+| CONTEXT-02 | Phase 1 | Complete |
+| CONTEXT-03 | Phase 1 | Complete |
+| CONTEXT-04 | Phase 1 | Complete |
+| CONTEXT-05 | Phase 1 | Complete |
 | SCHEMA-01 | Phase 2 | Pending |
 | SCHEMA-02 | Phase 2 | Pending |
 | SCHEMA-03 | Phase 2 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after roadmap creation*
+*Last updated: 2026-01-25 - Phase 1 requirements complete*

@@ -10,7 +10,7 @@ Transform the AI PR review system from 57% false positive rate to under 5% by fo
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Holistic PR Understanding** - Pass gathered context to orchestrator and specialists
+- [x] **Phase 1: Holistic PR Understanding** - Pass gathered context to orchestrator and specialists
 - [ ] **Phase 2: Schema Enforcement** - Add VerificationEvidence class and make it required
 - [ ] **Phase 3: Prompt Improvements** - Add "Understand Intent" and "Evidence Requirements" to prompts
 - [ ] **Phase 4: Validation Pipeline** - Run finding-validator for ALL reviews, add line verification
@@ -29,11 +29,11 @@ Transform the AI PR review system from 57% false positive rate to under 5% by fo
   3. Import graph summary appears in orchestrator prompt
   4. Specialists receive "files to investigate" list beyond just changed files
   5. Orchestrator synthesizes description + files + commits + comments before delegating
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD (Context passing to orchestrator)
-- [ ] 01-02: TBD (Context passing to specialists)
+- [x] 01-01-PLAN.md - Orchestrator context enhancement (Phase 0 synthesis, related files, import graph)
+- [x] 01-02-PLAN.md - Specialist investigation context (agent descriptions, delegation guidance)
 
 ### Phase 2: Schema Enforcement
 **Goal**: Findings cannot exist without verification evidence (schema enforces it)
@@ -45,10 +45,10 @@ Plans:
   3. ParallelOrchestratorFinding.verification is required (not optional)
   4. is_impact_finding field exists on findings (replaces keyword-based scope detection)
   5. checked_for_handling_elsewhere field exists for "missing X" claims
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: TBD (Schema changes)
+- [ ] 02-01-PLAN.md - Add VerificationEvidence class and update finding schemas
 
 ### Phase 3: Prompt Improvements
 **Goal**: Prompts guide AI to understand intent and provide evidence
@@ -115,8 +115,8 @@ Phases 1 and 2 can run in parallel. Then 3, 4, 5, 6 in sequence.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Holistic PR Understanding | 0/2 | Not started | - |
-| 2. Schema Enforcement | 0/1 | Not started | - |
+| 1. Holistic PR Understanding | 2/2 | ✓ Complete | 2026-01-25 |
+| 2. Schema Enforcement | 0/1 | Ready | - |
 | 3. Prompt Improvements | 0/2 | Not started | - |
 | 4. Validation Pipeline | 0/1 | Not started | - |
 | 5. Code Simplification | 0/1 | Not started | - |
@@ -124,4 +124,4 @@ Phases 1 and 2 can run in parallel. Then 3, 4, 5, 6 in sequence.
 
 ---
 *Roadmap created: 2026-01-25*
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-25 - Phase 2 planned*
