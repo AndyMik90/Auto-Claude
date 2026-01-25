@@ -12,7 +12,7 @@ Transform the AI PR review system from 57% false positive rate to under 5% by fo
 
 - [x] **Phase 1: Holistic PR Understanding** - Pass gathered context to orchestrator and specialists
 - [x] **Phase 2: Schema Enforcement** - Add VerificationEvidence class and make it required
-- [ ] **Phase 3: Prompt Improvements** - Add "Understand Intent" and "Evidence Requirements" to prompts
+- [x] **Phase 3: Prompt Improvements** - Add "Understand Intent" and "Evidence Requirements" to prompts
 - [ ] **Phase 4: Validation Pipeline** - Run finding-validator for ALL reviews, add line verification
 - [ ] **Phase 5: Code Simplification** - Remove programmatic filters that are now redundant
 - [ ] **Phase 6: Measurement** - Run 5 PRs, calculate FP rate, iterate
@@ -62,8 +62,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md - Specialist prompt updates (Understand Intent, Evidence Requirements, Valid Outputs)
-- [ ] 03-02-PLAN.md - Orchestrator prompt update (What the Diff Is For, context-rich delegation)
+- [x] 03-01-PLAN.md - Specialist prompt updates (Understand Intent, Evidence Requirements, Valid Outputs)
+- [x] 03-02-PLAN.md - Orchestrator prompt update (What the Diff Is For, context-rich delegation)
 
 ### Phase 4: Validation Pipeline
 **Goal**: Finding-validator runs for ALL reviews (not just follow-ups), with line verification
@@ -73,10 +73,11 @@ Plans:
   1. Finding-validator invoked in initial review pipeline (not just follow-up reviews)
   2. Line number verification catches findings with line numbers that exceed file length
   3. Validator prompt uses hypothesis-validation structure ("this finding claims X, verify if X is true")
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD (Validation pipeline changes)
+- [ ] 04-01-PLAN.md - Line verification and finding-validator invocation in review() flow
+- [ ] 04-02-PLAN.md - Hypothesis-validation structure in validator prompt
 
 ### Phase 5: Code Simplification
 **Goal**: Remove programmatic filters that are now redundant (prompts + schema handle quality)
@@ -117,11 +118,11 @@ Phases 1 and 2 can run in parallel. Then 3, 4, 5, 6 in sequence.
 |-------|----------------|--------|-----------|
 | 1. Holistic PR Understanding | 2/2 | ✓ Complete | 2026-01-25 |
 | 2. Schema Enforcement | 1/1 | ✓ Complete | 2026-01-25 |
-| 3. Prompt Improvements | 0/2 | Planned | - |
-| 4. Validation Pipeline | 0/1 | Not started | - |
+| 3. Prompt Improvements | 2/2 | ✓ Complete | 2026-01-25 |
+| 4. Validation Pipeline | 0/2 | Planned | - |
 | 5. Code Simplification | 0/1 | Not started | - |
 | 6. Measurement | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-25*
-*Last updated: 2026-01-25 - Phase 3 plans created*
+*Last updated: 2026-01-25 - Phase 4 planned (2 plans)*
