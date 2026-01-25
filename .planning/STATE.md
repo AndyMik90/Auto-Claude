@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** When the system flags something, it's a real issue. Trust comes from proof, not filters.
-**Current focus:** Phase 3 - Prompt Improvements (Complete)
+**Current focus:** Phase 4 - Validation Pipeline (Complete)
 
 ## Current Position
 
-Phase: 3 of 6 (Prompt Improvements)
+Phase: 4 of 6 (Validation Pipeline)
 Plan: 2 of 2 in current phase
-Status: Phase 3 complete
-Last activity: 2026-01-25 - Completed 03-01-PLAN.md
+Status: Phase 4 complete
+Last activity: 2026-01-25 - Completed 04-01-PLAN.md
 
-Progress: [█████░░░░░] 42% (5/12 plans)
+Progress: [███████░░░] 78% (7/9 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 2.2 min
-- Total execution time: 11 min
+- Total plans completed: 7
+- Average duration: 2.3 min
+- Total execution time: 16 min
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [█████░░░░░] 42% (5/12 plans)
 | Phase 1 | 2 | 4 min | 2 min |
 | Phase 2 | 1 | 3 min | 3 min |
 | Phase 3 | 2 | 4 min | 2 min |
+| Phase 4 | 2 | 5 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (2 min), 02-01 (3 min), 03-02 (1 min), 03-01 (3 min)
+- Last 5 plans: 03-02 (1 min), 03-01 (3 min), 04-02 (2 min), 04-01 (3 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -56,6 +57,8 @@ Recent decisions affecting current work:
 - [03-02]: Require 3 elements in specialist delegation (intent, concerns, files)
 - [03-01]: Position Understand Intent after Your Mission, before CRITICAL sections
 - [03-01]: Use identical text for shared sections across all 4 prompts
+- [04-01]: Fail-safe validation (keep original findings on error)
+- [04-01]: Use project_root for validation (works for worktree and fallback)
 
 ### Pending Todos
 
@@ -67,6 +70,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-25T21:45:17Z
-Stopped at: Completed 03-01-PLAN.md (Phase 3 complete)
+Last session: 2026-01-25T22:01:25Z
+Stopped at: Completed 04-01-PLAN.md (Phase 4 complete)
 Resume file: None
