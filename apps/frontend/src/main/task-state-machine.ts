@@ -68,6 +68,7 @@ export class TaskStateMachine {
       return { status: 'human_review', reviewReason: 'completed' };
     }
 
+    // No review required and no completed subtasks -> keep current status
     return {};
   }
 }
