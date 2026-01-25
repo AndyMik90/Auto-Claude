@@ -90,6 +90,11 @@ const browserMockAPI: ElectronAPI = {
 
   stopRoadmap: async () => ({ success: true }),
 
+  // Roadmap Progress Persistence
+  saveRoadmapProgress: async () => ({ success: true }),
+  loadRoadmapProgress: async () => ({ success: true, data: null }),
+  clearRoadmapProgress: async () => ({ success: true }),
+
   // Roadmap Event Listeners
   onRoadmapProgress: () => () => {},
   onRoadmapComplete: () => () => {},

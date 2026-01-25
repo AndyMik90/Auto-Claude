@@ -182,6 +182,11 @@ export const IPC_CHANNELS = {
   ROADMAP_ERROR: 'roadmap:error',
   ROADMAP_STOPPED: 'roadmap:stopped',
 
+  // Roadmap progress persistence (per-project state)
+  ROADMAP_PROGRESS_SAVE: 'roadmap:progressSave',
+  ROADMAP_PROGRESS_LOAD: 'roadmap:progressLoad',
+  ROADMAP_PROGRESS_CLEAR: 'roadmap:progressClear',
+
   // Context operations
   CONTEXT_GET: 'context:get',
   CONTEXT_REFRESH_INDEX: 'context:refreshIndex',
