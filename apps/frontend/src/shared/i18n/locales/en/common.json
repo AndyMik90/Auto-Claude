@@ -565,5 +565,45 @@
       "technicalDetails": "Technical details",
       "goToSettings": "Go to Settings"
     }
+  },
+  "roadmapProgress": {
+    "elapsedTime": "Elapsed",
+    "lastActivity": "Last activity",
+    "staleWarning": "No activity for a while",
+    "staleWarningTooltip": "This task has had no activity for {{minutes}} minutes",
+    "phases": {
+      "analyzing": {
+        "label": "Analyzing",
+        "description": "Analyzing project structure and codebase..."
+      },
+      "discovering": {
+        "label": "Discovering",
+        "description": "Discovering target audience and user needs..."
+      },
+      "generating": {
+        "label": "Generating",
+        "description": "Generating feature roadmap..."
+      },
+      "complete": {
+        "label": "Complete",
+        "description": "Roadmap generation complete!"
+      },
+      "error": {
+        "label": "Error",
+        "description": "Generation failed"
+      }
+    },
+    "steps": {
+      "analyze": "Analyze",
+      "discover": "Discover",
+      "generate": "Generate"
+    },
+    "processing": "Processing",
+    "processActiveTooltip": "Process is actively running",
+    "stopGeneration": "Stop generation",
+    "stopping": "Stopping...",
+    "progress": "Progress",
+    "lastActivityPrefix": "last activity",
+    "lastProgressUpdateTooltip": "Last progress update received"
   }
 }

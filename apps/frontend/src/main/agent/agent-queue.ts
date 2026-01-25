@@ -1,12 +1,13 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { existsSync, promises as fsPromises } from 'fs';
+import { existsSync, writeFileSync, mkdirSync, unlinkSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig, Idea } from '../../shared/types';
+import { AUTO_BUILD_PATHS } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
@@ -75,6 +76,73 @@ export class AgentQueueManager {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Persist roadmap generation progress to disk.
+   * Creates generation_progress.json with current state including timestamps.
+   *
+   * @param projectPath - The project directory path
+   * @param phase - Current generation phase
+   * @param progress - Progress percentage (0-100)
+   * @param message - Status message
+   * @param startedAt - When generation started (ISO string)
+   * @param isRunning - Whether generation is actively running
+   */
+  private persistRoadmapProgress(
+    projectPath: string,
+    phase: string,
+    progress: number,
+    message: string,
+    startedAt: string,
+    isRunning: boolean
+  ): void {
+    try {
+      const roadmapDir = path.join(projectPath, AUTO_BUILD_PATHS.ROADMAP_DIR);
+      const progressPath = path.join(roadmapDir, AUTO_BUILD_PATHS.GENERATION_PROGRESS);
+
+      // Ensure roadmap directory exists
+      if (!existsSync(roadmapDir)) {
+        mkdirSync(roadmapDir, { recursive: true });
+      }
+
+      const progressData = {
+        phase,
+        progress,
+        message,
+        started_at: startedAt,
+        last_update_at: new Date().toISOString(),
+        is_running: isRunning
+      };
+
+      writeFileSync(progressPath, JSON.stringify(progressData, null, 2));
+      debugLog('[Agent Queue] Persisted roadmap progress:', { phase, progress });
+    } catch (err) {
+      debugError('[Agent Queue] Failed to persist roadmap progress:', err);
+    }
+  }
+
+  /**
+   * Clear roadmap generation progress file from disk.
+   * Called when generation completes, errors, or is stopped.
+   *
+   * @param projectPath - The project directory path
+   */
+  private clearRoadmapProgress(projectPath: string): void {
+    try {
+      const progressPath = path.join(
+        projectPath,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.GENERATION_PROGRESS
+      );
+
+      if (existsSync(progressPath)) {
+        unlinkSync(progressPath);
+        debugLog('[Agent Queue] Cleared roadmap progress file');
+      }
+    } catch (err) {
+      debugError('[Agent Queue] Failed to clear roadmap progress:', err);
+    }
   }
 
   /**
@@ -660,6 +728,18 @@ export class AgentQueueManager {
     let progressPercent = 10;
     // Collect output for rate limit detection
     let allRoadmapOutput = '';
+    // Track startedAt timestamp for progress persistence
+    const roadmapStartedAt = new Date().toISOString();
+
+    // Persist initial progress state
+    this.persistRoadmapProgress(
+      projectPath,
+      progressPhase,
+      progressPercent,
+      'Starting roadmap generation...',
+      roadmapStartedAt,
+      true
+    );
 
     // Helper to emit logs - split multi-line output into individual log lines
     const emitLogs = (log: string) => {
@@ -686,11 +766,24 @@ export class AgentQueueManager {
       progressPhase = progressUpdate.phase;
       progressPercent = progressUpdate.progress;
 
+      // Get status message for display
+      const statusMessage = formatStatusMessage(log);
+
+      // Persist progress to disk for recovery after restart
+      this.persistRoadmapProgress(
+        projectPath,
+        progressPhase,
+        progressPercent,
+        statusMessage,
+        roadmapStartedAt,
+        true
+      );
+
       // Emit progress update
       this.emitter.emit('roadmap-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
-        message: formatStatusMessage(log)
+        message: statusMessage
       });
     });
 
@@ -701,10 +794,23 @@ export class AgentQueueManager {
       allRoadmapOutput = (allRoadmapOutput + log).slice(-10000);
       console.error('[Roadmap STDERR]', log);
       emitLogs(log);
+
+      const statusMessage = formatStatusMessage(log);
+
+      // Persist progress to disk (also on stderr to show activity)
+      this.persistRoadmapProgress(
+        projectPath,
+        progressPhase,
+        progressPercent,
+        statusMessage,
+        roadmapStartedAt,
+        true
+      );
+
       this.emitter.emit('roadmap-progress', projectId, {
         phase: progressPhase,
         progress: progressPercent,
-        message: formatStatusMessage(log)
+        message: statusMessage
       });
     });
 
@@ -717,6 +823,8 @@ export class AgentQueueManager {
       if (wasIntentionallyStopped) {
         debugLog('[Agent Queue] Roadmap process was intentionally stopped, ignoring exit');
         this.state.clearKilledSpawn(spawnId);
+        // Clear progress file on intentional stop
+        this.clearRoadmapProgress(projectPath);
         // Note: Don't call deleteProcess here - killProcess() already deleted it.
         // A new process with the same projectId may have been started.
         return;
@@ -747,6 +855,9 @@ export class AgentQueueManager {
           progress: 100,
           message: 'Roadmap generation complete'
         });
+
+        // Clear progress file on successful completion
+        this.clearRoadmapProgress(projectPath);
 
         // Load and emit the complete roadmap
         if (storedProjectPath) {
@@ -794,6 +905,8 @@ export class AgentQueueManager {
         }
       } else {
         debugError('[Agent Queue] Roadmap generation failed:', { projectId, code });
+        // Clear progress file on error
+        this.clearRoadmapProgress(projectPath);
         this.emitter.emit('roadmap-error', projectId, `Roadmap generation failed with exit code ${code}`);
       }
     });
@@ -802,6 +915,8 @@ export class AgentQueueManager {
     childProcess.on('error', (err: Error) => {
       console.error('[Roadmap] Process error:', err.message);
       this.state.deleteProcess(projectId);
+      // Clear progress file on process error
+      this.clearRoadmapProgress(projectPath);
       this.emitter.emit('roadmap-error', projectId, err.message);
     });
   }

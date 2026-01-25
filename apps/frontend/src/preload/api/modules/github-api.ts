@@ -189,6 +189,11 @@ export interface GitHubAPI {
     callback: (data: { deviceCode: string; authUrl: string; browserOpened: boolean }) => void
   ) => IpcListenerCleanup;
 
+  // OAuth event listener - notifies when GitHub account changes (via gh auth login)
+  onGitHubAuthChanged: (
+    callback: (data: { oldUsername: string | null; newUsername: string }) => void
+  ) => IpcListenerCleanup;
+
   // Repository detection and management
   detectGitHubRepo: (projectPath: string) => Promise<IPCResult<string>>;
   getGitHubBranches: (repo: string, token: string) => Promise<IPCResult<string[]>>;
@@ -539,6 +544,12 @@ export const createGitHubAPI = (): GitHubAPI => ({
     callback: (data: { deviceCode: string; authUrl: string; browserOpened: boolean }) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.GITHUB_AUTH_DEVICE_CODE, callback),
+
+  // OAuth event listener - notifies when GitHub account changes (via gh auth login)
+  onGitHubAuthChanged: (
+    callback: (data: { oldUsername: string | null; newUsername: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_AUTH_CHANGED, callback),
 
   // Repository detection and management
   detectGitHubRepo: (projectPath: string): Promise<IPCResult<string>> =>

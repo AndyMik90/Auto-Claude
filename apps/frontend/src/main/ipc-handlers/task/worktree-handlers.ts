@@ -19,7 +19,7 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 
 // Regex pattern for validating git branch names
@@ -2402,6 +2402,8 @@ export function registerWorktreeHandlers(
         let uncommittedFiles: string[] = [];
         if (isGitWorkTree(project.path)) {
           try {
+            refreshGitIndex(project.path);
+
             const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
               cwd: project.path,
               encoding: 'utf-8'
@@ -2413,7 +2415,8 @@ export function registerWorktreeHandlers(
               uncommittedFiles = gitStatus
                 .split('\n')
                 .filter(line => line.trim())
-                .map(line => line.substring(3).trim()); // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .map(line => line.substring(3).trim()) // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .filter(file => file); // Remove empty strings from short/malformed status lines
 
               hasUncommittedChanges = uncommittedFiles.length > 0;
             }
