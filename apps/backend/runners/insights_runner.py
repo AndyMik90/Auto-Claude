@@ -303,6 +303,20 @@ Current question: {message}"""
         allowed_tools = get_insights_allowed_tools()
         mcp_servers = get_insights_mcp_servers()
 
+        # Log integration status visibly for user feedback
+        integrations_status = []
+        if "obsidian" in mcp_servers:
+            integrations_status.append("Vault/Obsidian")
+        if "jira" in mcp_servers:
+            integrations_status.append("JIRA")
+        if "gitlab" in mcp_servers:
+            integrations_status.append("GitLab")
+
+        if integrations_status:
+            print(f"[Insights] Active integrations: {', '.join(integrations_status)}", file=sys.stderr)
+        else:
+            print("[Insights] No integrations enabled (configure in Settings → Account)", file=sys.stderr)
+
         debug(
             "insights_runner",
             "Tools configuration",
