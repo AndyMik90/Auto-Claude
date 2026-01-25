@@ -29,6 +29,8 @@ export interface ProfileStoreData {
   profiles: ClaudeProfile[];
   activeProfileId: string;
   autoSwitch?: ClaudeAutoSwitchSettings;
+  /** Unified priority order for both OAuth and API profiles */
+  accountPriorityOrder?: string[];
 }
 
 /**
@@ -45,22 +47,35 @@ function parseAndMigrateProfileData(data: Record<string, unknown>): ProfileStore
   }
 
   if (data.version === STORE_VERSION) {
-    // Parse dates
+    // Parse dates and migrate profile data
     const profiles = data.profiles as ClaudeProfile[];
-    data.profiles = profiles.map((p: ClaudeProfile) => ({
-      ...p,
-      createdAt: new Date(p.createdAt),
-      lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
-      usage: p.usage ? {
-        ...p.usage,
-        lastUpdated: new Date(p.usage.lastUpdated)
-      } : undefined,
-      rateLimitEvents: p.rateLimitEvents?.map(e => ({
-        ...e,
-        hitAt: new Date(e.hitAt),
-        resetAt: new Date(e.resetAt)
-      }))
-    }));
+    data.profiles = profiles.map((p: ClaudeProfile) => {
+      // MIGRATION: Clear cached oauthToken to prevent stale token issues
+      // OAuth tokens expire in 8-12 hours. We now read fresh tokens from Keychain
+      // instead of caching them. See: docs/LONG_LIVED_AUTH_PLAN.md
+      if (p.oauthToken) {
+        console.warn('[ProfileStorage] Migrating profile - removing cached oauthToken:', p.name);
+      }
+
+      // Destructure to remove oauthToken and tokenCreatedAt from the profile
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { oauthToken: _, tokenCreatedAt: __, ...profileWithoutToken } = p;
+
+      return {
+        ...profileWithoutToken,
+        createdAt: new Date(p.createdAt),
+        lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
+        usage: p.usage ? {
+          ...p.usage,
+          lastUpdated: new Date(p.usage.lastUpdated)
+        } : undefined,
+        rateLimitEvents: p.rateLimitEvents?.map(e => ({
+          ...e,
+          hitAt: new Date(e.hitAt),
+          resetAt: new Date(e.resetAt)
+        }))
+      };
+    });
     return data as unknown as ProfileStoreData;
   }
 
