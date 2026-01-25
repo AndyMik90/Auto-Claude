@@ -49,7 +49,8 @@ export {
   createProfileDirectory,
   isProfileAuthenticated,
   hasValidToken,
-  expandHomePath
+  expandHomePath,
+  getEmailFromConfigDir
 } from './profile-utils';
 
 // Usage monitoring (proactive account switching)
