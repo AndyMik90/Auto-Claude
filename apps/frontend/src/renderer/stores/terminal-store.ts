@@ -192,10 +192,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   addRestoredTerminal: (session: TerminalSession) => {
     const state = get();
+    debugLog(`[TerminalStore] addRestoredTerminal called for session: ${session.id}, title: "${session.title}", projectPath: ${session.projectPath}`);
 
     // Check if terminal already exists
     const existingTerminal = state.terminals.find(t => t.id === session.id);
     if (existingTerminal) {
+      debugLog(`[TerminalStore] Terminal ${session.id} already exists in store, returning existing`);
       return existingTerminal;
     }
 
@@ -226,6 +228,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     // Restore buffer to buffer manager
     if (session.outputBuffer) {
       terminalBufferManager.set(session.id, session.outputBuffer);
+      debugLog(`[TerminalStore] Restored buffer for terminal ${session.id}, size: ${session.outputBuffer.length} chars`);
+    } else {
+      debugLog(`[TerminalStore] No output buffer to restore for terminal ${session.id}`);
     }
 
     set((state) => ({
@@ -233,6 +238,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       activeTerminalId: state.activeTerminalId || restoredTerminal.id,
     }));
 
+    debugLog(`[TerminalStore] Successfully added restored terminal ${session.id} to store, isRestored: true, claudeSessionId: ${session.claudeSessionId || 'none'}`);
     return restoredTerminal;
   },
 
@@ -489,10 +495,13 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
     }
 
     // Restore from disk
+    debugLog(`[TerminalStore] Fetching terminal sessions from disk for project: ${projectPath}`);
     const result = await window.electronAPI.getTerminalSessions(projectPath);
     if (!result.success || !result.data || result.data.length === 0) {
+      debugLog(`[TerminalStore] No sessions found on disk for project: ${projectPath}, success: ${result.success}, sessionCount: ${result.data?.length || 0}`);
       return;
     }
+    debugLog(`[TerminalStore] Found ${result.data.length} sessions on disk for project: ${projectPath}`);
 
     // Sort sessions by displayOrder before restoring (lower = further left)
     // Sessions without displayOrder are placed at the end
@@ -503,11 +512,13 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
     });
 
     // Add terminals to the store in correct order (they'll be created in the TerminalGrid component)
+    debugLog(`[TerminalStore] Adding ${sortedSessions.length} sorted sessions to store`);
     for (const session of sortedSessions) {
       store.addRestoredTerminal(session);
     }
 
     store.setHasRestoredSessions(true);
+    debugLog(`[TerminalStore] Completed terminal session restoration for project: ${projectPath}`);
   } catch (error) {
     debugError('[TerminalStore] Error restoring sessions:', error);
   } finally {

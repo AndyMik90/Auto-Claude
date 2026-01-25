@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
+import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -44,7 +45,12 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
   // Initialize xterm.js UI
   useEffect(() => {
-    if (!terminalRef.current || xtermRef.current) return;
+    if (!terminalRef.current || xtermRef.current) {
+      debugLog(`[useXterm] Skipping xterm initialization for terminal: ${terminalId} - already initialized or container not ready`);
+      return;
+    }
+
+    debugLog(`[useXterm] Initializing xterm for terminal: ${terminalId}`);
 
     const xterm = new XTerm({
       cursorBlink: true,
@@ -242,6 +248,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
             // Call onDimensionsReady once when we have valid dimensions
             if (!dimensionsReadyCalledRef.current && cols > 0 && rows > 0) {
               dimensionsReadyCalledRef.current = true;
+              debugLog(`[useXterm] Dimensions ready for terminal: ${terminalId}, cols: ${cols}, rows: ${rows}`);
               onDimensionsReady?.(cols, rows);
             }
           } else {
@@ -257,9 +264,13 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     // This now includes ANSI codes for proper formatting/colors/prompt
     const bufferedOutput = terminalBufferManager.get(terminalId);
     if (bufferedOutput && bufferedOutput.length > 0) {
+      debugLog(`[useXterm] Replaying buffered output for terminal: ${terminalId}, buffer size: ${bufferedOutput.length} chars`);
       xterm.write(bufferedOutput);
       // Clear buffer after replay to avoid duplicate output
       terminalBufferManager.clear(terminalId);
+      debugLog(`[useXterm] Buffer replay complete and cleared for terminal: ${terminalId}`);
+    } else {
+      debugLog(`[useXterm] No buffered output to replay for terminal: ${terminalId}`);
     }
 
     // Handle terminal input
@@ -298,7 +309,12 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   // This allows the global listener to write directly to xterm when terminal is visible
   useEffect(() => {
     // Only register if xterm is ready
-    if (!xtermRef.current) return;
+    if (!xtermRef.current) {
+      debugLog(`[useXterm] Skipping output callback registration for terminal: ${terminalId} - xterm not ready`);
+      return;
+    }
+
+    debugLog(`[useXterm] Registering output callback for terminal: ${terminalId}`);
 
     // Create a write function that writes directly to this xterm instance
     const writeCallback = (data: string) => {
@@ -312,6 +328,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
     // Cleanup: unregister callback when component unmounts
     return () => {
+      debugLog(`[useXterm] Unregistering output callback for terminal: ${terminalId}`);
       unregisterOutputCallback(terminalId);
     };
   }, [terminalId]);
@@ -394,19 +411,29 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const serializeBuffer = useCallback(() => {
     if (xtermRef.current && serializeAddonRef.current) {
       try {
+        debugLog(`[useXterm] Serializing buffer for terminal: ${terminalId}`);
         const serialized = serializeAddonRef.current.serialize();
         if (serialized && serialized.length > 0) {
           terminalBufferManager.set(terminalId, serialized);
+          debugLog(`[useXterm] Buffer serialized for terminal: ${terminalId}, size: ${serialized.length} chars`);
+        } else {
+          debugLog(`[useXterm] No content to serialize for terminal: ${terminalId}`);
         }
       } catch (error) {
-        console.error('[useXterm] Failed to serialize terminal buffer:', error);
+        debugError('[useXterm] Failed to serialize terminal buffer:', error);
       }
+    } else {
+      debugLog(`[useXterm] Cannot serialize buffer for terminal: ${terminalId} - xterm or serializeAddon not available`);
     }
   }, [terminalId]);
 
   const dispose = useCallback(() => {
     // Guard against double dispose (can happen in React StrictMode or rapid unmount)
-    if (isDisposedRef.current) return;
+    if (isDisposedRef.current) {
+      debugLog(`[useXterm] Skipping dispose for terminal: ${terminalId} - already disposed`);
+      return;
+    }
+    debugLog(`[useXterm] Disposing xterm for terminal: ${terminalId}`);
     isDisposedRef.current = true;
 
     // Serialize buffer before disposing to preserve ANSI formatting
