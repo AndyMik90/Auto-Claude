@@ -244,8 +244,7 @@ export async function restoreTerminal(
   const returnBufferLen = session.outputBuffer?.length ?? 0;
   debugLog('[TerminalLifecycle] Returning outputBuffer for terminal:', session.id,
     'length:', returnBufferLen, 'bytes',
-    'hasContent:', returnBufferLen > 0,
-    'preview:', returnBufferLen > 0 ? session.outputBuffer.substring(0, 100).replace(/\n/g, '\\n') + '...' : '(empty)');
+    'hasContent:', returnBufferLen > 0);
 
   return {
     success: true,

@@ -209,6 +209,19 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const existingTerminal = state.terminals.find(t => t.id === session.id);
     if (existingTerminal) {
       debugLog(`[TerminalStore] Terminal ${session.id} already exists in store, returning existing (buffer was still restored above)`);
+
+      // If session was in Claude mode before shutdown, update pendingClaudeResume for re-restore scenarios
+      // (e.g., after project switch). This ensures the deferred resume logic can trigger even when
+      // the terminal already exists in the store.
+      if (session.isClaudeMode === true && !existingTerminal.pendingClaudeResume) {
+        debugLog(`[TerminalStore] Updating pendingClaudeResume for existing terminal ${session.id}`);
+        set((state) => ({
+          terminals: state.terminals.map(t =>
+            t.id === session.id ? { ...t, pendingClaudeResume: true } : t
+          )
+        }));
+      }
+
       return existingTerminal;
     }
 

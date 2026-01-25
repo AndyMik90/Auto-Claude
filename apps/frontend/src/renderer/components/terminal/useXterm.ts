@@ -262,12 +262,11 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
     // Replay buffered output if this is a remount or restored session
     // This now includes ANSI codes for proper formatting/colors/prompt
-    const bufferedOutput = terminalBufferManager.get(terminalId);
+    // Use atomic getAndClear to prevent race condition where new output could arrive between get() and clear()
+    const bufferedOutput = terminalBufferManager.getAndClear(terminalId);
     if (bufferedOutput && bufferedOutput.length > 0) {
       debugLog(`[useXterm] Replaying buffered output for terminal: ${terminalId}, buffer size: ${bufferedOutput.length} chars`);
       xterm.write(bufferedOutput);
-      // Clear buffer after replay to avoid duplicate output
-      terminalBufferManager.clear(terminalId);
       debugLog(`[useXterm] Buffer replay complete and cleared for terminal: ${terminalId}`);
     } else {
       debugLog(`[useXterm] No buffered output to replay for terminal: ${terminalId}`);
