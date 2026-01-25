@@ -194,10 +194,21 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const state = get();
     debugLog(`[TerminalStore] addRestoredTerminal called for session: ${session.id}, title: "${session.title}", projectPath: ${session.projectPath}`);
 
+    // CRITICAL: Always restore buffer to buffer manager FIRST, even if terminal already exists.
+    // This ensures useXterm can replay the buffer regardless of whether this is a fresh restore
+    // or a re-restore (e.g., after project switch). The buffer must be available before
+    // the Terminal component mounts and useXterm tries to read it.
+    if (session.outputBuffer) {
+      terminalBufferManager.set(session.id, session.outputBuffer);
+      debugLog(`[TerminalStore] Restored buffer for terminal ${session.id}, size: ${session.outputBuffer.length} chars`);
+    } else {
+      debugLog(`[TerminalStore] No output buffer to restore for terminal ${session.id}`);
+    }
+
     // Check if terminal already exists
     const existingTerminal = state.terminals.find(t => t.id === session.id);
     if (existingTerminal) {
-      debugLog(`[TerminalStore] Terminal ${session.id} already exists in store, returning existing`);
+      debugLog(`[TerminalStore] Terminal ${session.id} already exists in store, returning existing (buffer was still restored above)`);
       return existingTerminal;
     }
 
@@ -216,7 +227,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       // Keep claudeSessionId so users can resume by clicking the invoke button
       isClaudeMode: false,
       claudeSessionId: session.claudeSessionId,
-      // outputBuffer now stored in terminalBufferManager
+      // outputBuffer now stored in terminalBufferManager (done above before existence check)
       isRestored: true,
       projectPath: session.projectPath,
       // Worktree config is validated in main process before restore
@@ -224,14 +235,6 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       // Restore displayOrder for tab position persistence (falls back to end if not set)
       displayOrder: session.displayOrder ?? state.terminals.length,
     };
-
-    // Restore buffer to buffer manager
-    if (session.outputBuffer) {
-      terminalBufferManager.set(session.id, session.outputBuffer);
-      debugLog(`[TerminalStore] Restored buffer for terminal ${session.id}, size: ${session.outputBuffer.length} chars`);
-    } else {
-      debugLog(`[TerminalStore] No output buffer to restore for terminal ${session.id}`);
-    }
 
     set((state) => ({
       terminals: [...state.terminals, restoredTerminal],
