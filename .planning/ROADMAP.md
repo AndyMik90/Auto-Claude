@@ -11,7 +11,7 @@ Transform the AI PR review system from 57% false positive rate to under 5% by fo
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Holistic PR Understanding** - Pass gathered context to orchestrator and specialists
-- [ ] **Phase 2: Schema Enforcement** - Add VerificationEvidence class and make it required
+- [x] **Phase 2: Schema Enforcement** - Add VerificationEvidence class and make it required
 - [ ] **Phase 3: Prompt Improvements** - Add "Understand Intent" and "Evidence Requirements" to prompts
 - [ ] **Phase 4: Validation Pipeline** - Run finding-validator for ALL reviews, add line verification
 - [ ] **Phase 5: Code Simplification** - Remove programmatic filters that are now redundant
@@ -48,7 +48,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md - Add VerificationEvidence class and update finding schemas
+- [x] 02-01-PLAN.md - Add VerificationEvidence class and update finding schemas
 
 ### Phase 3: Prompt Improvements
 **Goal**: Prompts guide AI to understand intent and provide evidence
@@ -59,11 +59,11 @@ Plans:
   2. All 4 specialist prompts have "Evidence Requirements" section referencing new schema
   3. Orchestrator prompt has "What the Diff Is For" reframing section
   4. Prompts explicitly allow "no significant issues found" as valid output
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD (Specialist prompt updates)
-- [ ] 03-02: TBD (Orchestrator prompt update)
+- [ ] 03-01-PLAN.md - Specialist prompt updates (Understand Intent, Evidence Requirements, Valid Outputs)
+- [ ] 03-02-PLAN.md - Orchestrator prompt update (What the Diff Is For, context-rich delegation)
 
 ### Phase 4: Validation Pipeline
 **Goal**: Finding-validator runs for ALL reviews (not just follow-ups), with line verification
@@ -116,12 +116,12 @@ Phases 1 and 2 can run in parallel. Then 3, 4, 5, 6 in sequence.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Holistic PR Understanding | 2/2 | ✓ Complete | 2026-01-25 |
-| 2. Schema Enforcement | 0/1 | Ready | - |
-| 3. Prompt Improvements | 0/2 | Not started | - |
+| 2. Schema Enforcement | 1/1 | ✓ Complete | 2026-01-25 |
+| 3. Prompt Improvements | 0/2 | Planned | - |
 | 4. Validation Pipeline | 0/1 | Not started | - |
 | 5. Code Simplification | 0/1 | Not started | - |
 | 6. Measurement | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-25*
-*Last updated: 2026-01-25 - Phase 2 planned*
+*Last updated: 2026-01-25 - Phase 3 plans created*
