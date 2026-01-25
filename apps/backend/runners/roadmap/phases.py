@@ -317,9 +317,7 @@ class FeaturesPhase:
         preserved_ids = {f.get("id") for f in preserved if f.get("id")}
         # Build normalized title set for fallback deduplication
         preserved_titles = {
-            f.get("title", "").strip().lower()
-            for f in preserved
-            if f.get("title")
+            f.get("title", "").strip().lower() for f in preserved if f.get("title")
         }
 
         # Start with all preserved features
@@ -526,13 +524,15 @@ Output the complete roadmap to roadmap.json.
                     except OSError as e:
                         # Write failed but the original AI-generated roadmap is still valid
                         # Don't fail the whole phase - succeed without the merge
+                        preserved_count = len(self._preserved_features)
                         debug_warning(
                             "roadmap_phase",
                             "Failed to write merged roadmap - proceeding with AI-generated version",
                             error=str(e),
+                            preserved_features_lost=preserved_count,
                         )
                         print_status(
-                            "Warning: Could not merge preserved features (disk write failed)",
+                            f"Warning: {preserved_count} preserved features could not be saved (disk error: {e})",
                             "warning",
                         )
 
