@@ -108,7 +108,8 @@ export function IntegrationSettings({
         if (!mainBranchRef.current && !hasDetectedMainBranch.current) {
           hasDetectedMainBranch.current = true;
           const detectResult = await window.electronAPI.detectMainBranch(project.path);
-          if (detectResult.success && detectResult.data !== null && detectResult.data !== undefined) {
+          // Re-check mainBranchRef after await - user may have selected a branch during detection
+          if (detectResult.success && detectResult.data !== null && detectResult.data !== undefined && !mainBranchRef.current) {
             const detectedBranch = detectResult.data;
             setSettings(prev => ({ ...prev, mainBranch: detectedBranch }));
           }
