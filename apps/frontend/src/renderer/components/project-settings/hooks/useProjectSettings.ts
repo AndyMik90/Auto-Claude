@@ -334,6 +334,8 @@ export function useProjectSettings(
         const envResult = await window.electronAPI.getProjectEnv(project.id);
         if (envResult.success && envResult.data) {
           setEnvConfig(envResult.data);
+          // Update global store so Sidebar and other components reflect changes
+          setProjectEnvConfig(project.id, envResult.data);
         }
       }
     } catch {
