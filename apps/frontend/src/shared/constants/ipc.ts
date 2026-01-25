@@ -548,5 +548,10 @@ export const IPC_CHANNELS = {
 
   // Screenshot capture
   SCREENSHOT_GET_SOURCES: 'screenshot:getSources',  // Get available screens/windows
-  SCREENSHOT_CAPTURE: 'screenshot:capture'          // Capture screenshot from source
+  SCREENSHOT_CAPTURE: 'screenshot:capture',          // Capture screenshot from source
+
+  // System tray operations
+  TRAY_UPDATE_STATUS: 'tray:updateStatus',           // Update tray task counts (renderer -> main)
+  TRAY_NEW_TASK: 'tray:newTask',                     // Tray clicked "New Task" (main -> renderer)
+  TRAY_OPEN_SETTINGS: 'tray:openSettings'            // Tray clicked "Settings" (main -> renderer)
 } as const;
