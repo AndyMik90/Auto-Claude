@@ -39,6 +39,9 @@ from .models import (
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
+    JIRA_TOOLS,
+    GITLAB_TOOLS,
+    OBSIDIAN_TOOLS,
     LINEAR_TOOLS,
     PUPPETEER_TOOLS,
     # Auto-Claude tool names
@@ -54,6 +57,9 @@ from .models import (
     get_default_thinking_level,
     get_required_mcp_servers,
     is_electron_mcp_enabled,
+    is_jira_mcp_enabled,
+    is_gitlab_mcp_enabled,
+    is_obsidian_mcp_enabled,
 )
 from .permissions import get_all_agent_types, get_allowed_tools
 from .registry import create_auto_claude_mcp_server, is_tools_available
@@ -79,6 +85,9 @@ __all__ = [
     "GRAPHITI_MCP_TOOLS",
     "ELECTRON_TOOLS",
     "PUPPETEER_TOOLS",
+    "JIRA_TOOLS",
+    "GITLAB_TOOLS",
+    "OBSIDIAN_TOOLS",
     # Auto-Claude tool name constants
     "TOOL_UPDATE_SUBTASK_STATUS",
     "TOOL_GET_BUILD_PROGRESS",
@@ -86,6 +95,9 @@ __all__ = [
     "TOOL_RECORD_GOTCHA",
     "TOOL_GET_SESSION_CONTEXT",
     "TOOL_UPDATE_QA_STATUS",
-    # Config
+    # Config / Integration checks
     "is_electron_mcp_enabled",
+    "is_jira_mcp_enabled",
+    "is_gitlab_mcp_enabled",
+    "is_obsidian_mcp_enabled",
 ]

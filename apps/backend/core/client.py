@@ -691,6 +691,13 @@ def create_client(
         mcp_servers_list.append("graphiti-memory (knowledge graph)")
     if "auto-claude" in required_servers and auto_claude_tools_enabled:
         mcp_servers_list.append(f"auto-claude ({agent_type} tools)")
+    # External MCP servers (from user's Claude settings, not spawned by Auto-Claude)
+    if "jira" in required_servers:
+        mcp_servers_list.append("jira (issue tracking, from settings)")
+    if "gitlab" in required_servers:
+        mcp_servers_list.append("gitlab (code management, from settings)")
+    if "obsidian" in required_servers:
+        mcp_servers_list.append("obsidian (vault/memory, from settings)")
     if mcp_servers_list:
         print(f"   - MCP servers: {', '.join(mcp_servers_list)}")
     else:

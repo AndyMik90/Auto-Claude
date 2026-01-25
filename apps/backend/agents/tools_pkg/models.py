@@ -543,28 +543,37 @@ def get_required_mcp_servers(
         if str(linear_mcp_enabled).lower() != "false":
             servers.append("linear")
 
-    # Handle JIRA integration (enabled via JIRA_MCP_ENABLED or env vars)
+    # Handle JIRA integration (enabled via JIRA_MCP_ENABLED env var or credentials)
     if "jira" in optional:
-        jira_enabled = mcp_config.get("JIRA_MCP_ENABLED", "false")
-        # Also check for JIRA credentials in environment
+        # Check mcp_config (per-project .auto-claude/.env), env var, or credentials
+        jira_enabled = (
+            mcp_config.get("JIRA_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("JIRA_MCP_ENABLED", "").lower() == "true"
+        )
         jira_host = os.environ.get("JIRA_HOST") or os.environ.get("JIRA_URL")
-        if str(jira_enabled).lower() == "true" or jira_host:
+        if jira_enabled or jira_host:
             servers.append("jira")
 
-    # Handle GitLab integration (enabled via GITLAB_MCP_ENABLED or env vars)
+    # Handle GitLab integration (enabled via GITLAB_MCP_ENABLED env var or credentials)
     if "gitlab" in optional:
-        gitlab_enabled = mcp_config.get("GITLAB_MCP_ENABLED", "false")
-        # Also check for GitLab credentials in environment
+        # Check mcp_config (per-project .auto-claude/.env), env var, or credentials
+        gitlab_enabled = (
+            mcp_config.get("GITLAB_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("GITLAB_MCP_ENABLED", "").lower() == "true"
+        )
         gitlab_host = os.environ.get("GITLAB_HOST") or os.environ.get("GITLAB_URL")
-        if str(gitlab_enabled).lower() == "true" or gitlab_host:
+        if gitlab_enabled or gitlab_host:
             servers.append("gitlab")
 
-    # Handle Obsidian/Vault integration (enabled via OBSIDIAN_MCP_ENABLED or env vars)
+    # Handle Obsidian/Vault integration (enabled via OBSIDIAN_MCP_ENABLED env var or path)
     if "obsidian" in optional:
-        obsidian_enabled = mcp_config.get("OBSIDIAN_MCP_ENABLED", "false")
-        # Also check for vault path in environment
+        # Check mcp_config (per-project .auto-claude/.env), env var, or vault path
+        obsidian_enabled = (
+            mcp_config.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
+        )
         vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
-        if str(obsidian_enabled).lower() == "true" or vault_path:
+        if obsidian_enabled or vault_path:
             servers.append("obsidian")
 
     # Handle dynamic "browser" → electron/puppeteer based on project type and config
