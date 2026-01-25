@@ -9,7 +9,7 @@ import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
-import { getProfileEnv } from '../../rate-limit-detector';
+import { getBestAvailableProfileEnv } from '../../rate-limit-detector';
 import { findTaskAndProject } from './shared';
 import { parsePythonCommand } from '../../python-detector';
 import { getToolPath } from '../../cli-tool-manager';
@@ -1963,7 +1963,8 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token for AI merge resolution
-        const profileEnv = getProfileEnv();
+        const profileResult = getBestAvailableProfileEnv();
+        const profileEnv = profileResult.env;
         debug('Profile env for merge:', {
           hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
           hasConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR
@@ -2461,7 +2462,8 @@ export function registerWorktreeHandlers(
         console.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
 
         // Get profile environment for consistency
-        const previewProfileEnv = getProfileEnv();
+        const previewProfileResult = getBestAvailableProfileEnv();
+        const previewProfileEnv = previewProfileResult.env;
         // Get Python environment for bundled packages
         const previewPythonEnv = pythonEnvManagerSingleton.getPythonEnv();
 
@@ -2981,7 +2983,8 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token
-        const profileEnv = getProfileEnv();
+        const profileResult = getBestAvailableProfileEnv();
+        const profileEnv = profileResult.env;
 
         return new Promise((resolve) => {
           let timeoutId: NodeJS.Timeout | null = null;

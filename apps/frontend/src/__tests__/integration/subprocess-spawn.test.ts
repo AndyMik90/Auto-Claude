@@ -96,6 +96,19 @@ vi.mock('../../main/python-env-manager', () => ({
   getConfiguredPythonPath: vi.fn(() => DETECTED_PYTHON_CMD)
 }));
 
+// Mock rate-limit-detector for getBestAvailableProfileEnv
+vi.mock('../../main/rate-limit-detector', () => ({
+  getBestAvailableProfileEnv: vi.fn(() => ({
+    env: {},
+    profileId: 'default',
+    profileName: 'Default',
+    wasSwapped: false
+  })),
+  getProfileEnv: vi.fn(() => ({})),
+  detectRateLimit: vi.fn(() => ({ isRateLimited: false })),
+  detectAuthFailure: vi.fn(() => ({ isAuthFailure: false }))
+}));
+
 // Auto-claude source path (for getAutoBuildSourcePath to find)
 let AUTO_CLAUDE_SOURCE: string;
 

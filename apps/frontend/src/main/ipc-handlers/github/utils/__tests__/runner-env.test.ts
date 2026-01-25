@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockGetAPIProfileEnv = vi.fn();
 const mockGetOAuthModeClearVars = vi.fn();
 const mockGetPythonEnv = vi.fn();
-const mockGetProfileEnv = vi.fn();
+const mockGetBestAvailableProfileEnv = vi.fn();
 const mockGetGitHubTokenForSubprocess = vi.fn();
 
 vi.mock('../../../../services/profile', () => ({
@@ -21,7 +21,7 @@ vi.mock('../../../../python-env-manager', () => ({
 }));
 
 vi.mock('../../../../rate-limit-detector', () => ({
-  getProfileEnv: () => mockGetProfileEnv(),
+  getBestAvailableProfileEnv: () => mockGetBestAvailableProfileEnv(),
 }));
 
 // Mock getGitHubTokenForSubprocess to avoid calling gh CLI in tests
@@ -42,8 +42,13 @@ describe('getRunnerEnv', () => {
       PYTHONNOUSERSITE: '1',
       PYTHONPATH: '/bundled/site-packages',
     });
-    // Default mock for profile env - returns empty by default
-    mockGetProfileEnv.mockReturnValue({});
+    // Default mock for profile env - returns BestProfileEnvResult format
+    mockGetBestAvailableProfileEnv.mockReturnValue({
+      env: {},
+      profileId: 'default',
+      profileName: 'Default',
+      wasSwapped: false
+    });
     // Default mock for GitHub token - returns null (no token) by default
     mockGetGitHubTokenForSubprocess.mockResolvedValue(null);
   });
@@ -102,8 +107,11 @@ describe('getRunnerEnv', () => {
   it('includes profileEnv for OAuth token (fixes #563)', async () => {
     mockGetAPIProfileEnv.mockResolvedValue({});
     mockGetOAuthModeClearVars.mockReturnValue({});
-    mockGetProfileEnv.mockReturnValue({
-      CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-123',
+    mockGetBestAvailableProfileEnv.mockReturnValue({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-123' },
+      profileId: 'default',
+      profileName: 'Default',
+      wasSwapped: false
     });
 
     const result = await getRunnerEnv();
@@ -119,8 +127,11 @@ describe('getRunnerEnv', () => {
       SHARED_VAR: 'from-api-profile',
     });
     mockGetOAuthModeClearVars.mockReturnValue({});
-    mockGetProfileEnv.mockReturnValue({
-      SHARED_VAR: 'from-profile',
+    mockGetBestAvailableProfileEnv.mockReturnValue({
+      env: { SHARED_VAR: 'from-profile' },
+      profileId: 'default',
+      profileName: 'Default',
+      wasSwapped: false
     });
 
     const result = await getRunnerEnv({ SHARED_VAR: 'from-extra' });
