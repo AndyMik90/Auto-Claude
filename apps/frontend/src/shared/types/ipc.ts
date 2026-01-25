@@ -106,7 +106,8 @@ import type {
 import type {
   Roadmap,
   RoadmapFeatureStatus,
-  RoadmapGenerationStatus
+  RoadmapGenerationStatus,
+  PersistedRoadmapProgress
 } from './roadmap';
 import type {
   LinearTeam,
@@ -314,8 +315,10 @@ export interface ElectronAPI {
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
-  /** Request all profiles usage immediately (for startup/refresh) */
-  requestAllProfilesUsage: () => Promise<IPCResult<AllProfilesUsage | null>>;
+  /** Request all profiles usage immediately (for startup/refresh)
+   * @param forceRefresh - If true, bypasses cache to get fresh data for all profiles
+   */
+  requestAllProfilesUsage: (forceRefresh?: boolean) => Promise<IPCResult<AllProfilesUsage | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */
@@ -378,6 +381,11 @@ export interface ElectronAPI {
     projectId: string,
     featureId: string
   ) => Promise<IPCResult<Task>>;
+
+  // Roadmap progress persistence
+  saveRoadmapProgress: (projectId: string, progress: PersistedRoadmapProgress) => Promise<IPCResult>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
+  clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
   // Roadmap event listeners
   onRoadmapProgress: (
@@ -855,6 +863,9 @@ export interface ElectronAPI {
     thumbnail: string;
   }>>>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // Queue Routing API (rate limit recovery)
+  queue: import('../../preload/api/queue-api').QueueAPI;
 }
 
 declare global {
