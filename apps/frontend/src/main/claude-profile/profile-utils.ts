@@ -88,6 +88,39 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
     }
   }
 
+  // Check for .credentials.json with OAuth tokens (Linux CLI storage)
+  // On Linux, the Claude CLI stores OAuth tokens in this file
+  const credentialsJsonPath = join(configDir, '.credentials.json');
+  if (existsSync(credentialsJsonPath)) {
+    try {
+      const content = readFileSync(credentialsJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+      // Validate OAuth data structure
+      // Check for claudeAiOauth (primary Linux structure)
+      if (data && typeof data === 'object' && data.claudeAiOauth) {
+        // Validate that claudeAiOauth contains actual auth data
+        const hasValidAuth = data.claudeAiOauth.accessToken ||
+                             data.claudeAiOauth.refreshToken ||
+                             data.claudeAiOauth.email ||
+                             data.claudeAiOauth.emailAddress;
+        if (hasValidAuth) {
+          return true;
+        }
+      }
+      // Check for oauthAccount (alternative structure)
+      if (data && typeof data === 'object' && data.oauthAccount?.emailAddress) {
+        return true;
+      }
+      // Check for generic token fields (legacy formats)
+      if (data && typeof data === 'object' && (data.accessToken || data.refreshToken || data.token)) {
+        return true;
+      }
+    } catch (error) {
+      // Log parse errors for debugging, but fall through to legacy checks
+      console.warn(`[profile-utils] Failed to read or parse ${credentialsJsonPath}:`, error);
+    }
+  }
+
   // Legacy: Claude stores auth in .claude/credentials or similar files
   // Check for common auth indicators
   const possibleAuthFiles = [
