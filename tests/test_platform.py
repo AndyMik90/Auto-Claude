@@ -395,13 +395,17 @@ class TestFindExecutableCli:
     ):
         """Should search in additional_paths when provided."""
         def isfile_side_effect(path):
-            return path == '/custom/path/mycli'
+            # Normalize path separators for cross-platform test execution
+            normalized = path.replace('\\', '/')
+            return normalized == '/custom/path/mycli'
 
         mock_isfile.side_effect = isfile_side_effect
 
         result = find_executable('mycli', additional_paths=['/custom/path'])
 
-        assert result == '/custom/path/mycli'
+        # Normalize for cross-platform
+        assert result is not None
+        assert result.replace('\\', '/') == '/custom/path/mycli'
 
 
 class TestNodeCliDetection:
