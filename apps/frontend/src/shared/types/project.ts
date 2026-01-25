@@ -320,6 +320,15 @@ export interface ProjectEnvConfig {
   gitlabProject?: string; // Format: group/project or numeric ID
   gitlabAutoSync?: boolean; // Auto-sync issues on project load
 
+  // Telegram Integration
+  telegramEnabled: boolean;
+  telegramBotToken?: string;
+  telegramChatId?: string;
+  telegramNotifyOnStart?: boolean; // Notify when task starts
+  telegramNotifyOnComplete?: boolean; // Notify when task completes
+  telegramNotifyOnFail?: boolean; // Notify when task fails
+  telegramNotifyOnReview?: boolean; // Notify when human review needed
+
   // Git/Worktree Settings
   defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')
 

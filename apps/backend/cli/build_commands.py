@@ -89,6 +89,15 @@ def handle_build_command(
     from phase_config import get_phase_model
     from prompts_pkg.prompts import get_base_branch_from_metadata
     from qa_loop import run_qa_validation_loop, should_run_qa
+    from integrations.telegram import (
+        is_telegram_enabled,
+        telegram_task_started,
+        telegram_task_completed,
+        telegram_task_failed,
+        telegram_qa_started,
+        telegram_qa_approved,
+        telegram_qa_rejected,
+    )
 
     from .utils import print_banner, validate_environment
 
@@ -229,6 +238,12 @@ def handle_build_command(
         spec_dir=str(spec_dir),
     )
 
+    # Send Telegram notification for task start
+    task_title = spec_dir.name
+    if is_telegram_enabled():
+        telegram_task_started(task_title=task_title, spec_id=spec_dir.name)
+        debug("run.py", "Telegram notification sent: task started")
+
     try:
         debug("run.py", "Starting agent execution")
 
@@ -254,6 +269,11 @@ def handle_build_command(
             print("\nAll subtasks completed. Now running QA validation loop...")
             print("This ensures production-quality output before sign-off.\n")
 
+            # Send Telegram notification for QA start
+            if is_telegram_enabled():
+                telegram_qa_started(task_title=task_title, spec_id=spec_dir.name)
+                debug("run.py", "Telegram notification sent: QA started")
+
             try:
                 qa_approved = asyncio.run(
                     run_qa_validation_loop(
@@ -270,6 +290,11 @@ def handle_build_command(
                     print("=" * 70)
                     print("\nAll acceptance criteria verified.")
                     print("The implementation is production-ready.\n")
+
+                    # Send Telegram notification for QA approved
+                    if is_telegram_enabled():
+                        telegram_qa_approved(task_title=task_title, spec_id=spec_dir.name)
+                        debug("run.py", "Telegram notification sent: QA approved")
                 else:
                     print("\n" + "=" * 70)
                     print("  ⚠️  QA VALIDATION INCOMPLETE")
@@ -280,6 +305,16 @@ def handle_build_command(
                     print(
                         f"\nResume QA: python auto-claude/run.py --spec {spec_dir.name} --qa\n"
                     )
+
+                    # Send Telegram notification for QA incomplete
+                    if is_telegram_enabled():
+                        telegram_qa_rejected(
+                            task_title=task_title,
+                            spec_id=spec_dir.name,
+                            issues_count=1,  # Generic count since we don't have details here
+                            iteration=1,
+                        )
+                        debug("run.py", "Telegram notification sent: QA incomplete")
 
                 # Sync implementation plan to main project after QA
                 # This ensures the main project has the latest status (human_review)
@@ -317,6 +352,16 @@ def handle_build_command(
         )
     except Exception as e:
         print(f"\nFatal error: {e}")
+
+        # Send Telegram notification for task failure
+        if is_telegram_enabled():
+            telegram_task_failed(
+                task_title=task_title,
+                spec_id=spec_dir.name,
+                error_summary=str(e),
+            )
+            debug("run.py", "Telegram notification sent: task failed")
+
         if verbose:
             import traceback
 

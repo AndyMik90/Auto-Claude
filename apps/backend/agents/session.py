@@ -16,6 +16,10 @@ from linear_updater import (
     linear_subtask_completed,
     linear_subtask_failed,
 )
+from integrations.telegram import (
+    is_telegram_enabled,
+    telegram_subtask_progress,
+)
 from progress import (
     count_subtasks_detailed,
     is_build_complete,
@@ -55,6 +59,8 @@ async def post_session_processing(
     commit_count_before: int,
     recovery_manager: RecoveryManager,
     linear_enabled: bool = False,
+    telegram_enabled: bool = False,
+    task_title: str | None = None,
     status_manager: StatusManager | None = None,
     source_spec_dir: Path | None = None,
 ) -> bool:
@@ -143,6 +149,18 @@ async def post_session_processing(
                 total_count=subtasks_detail["total"],
             )
             print_status("Linear progress recorded", "success")
+
+        # Send Telegram progress notification (if enabled)
+        if telegram_enabled or is_telegram_enabled():
+            subtasks_detail = count_subtasks_detailed(spec_dir)
+            telegram_subtask_progress(
+                task_title=task_title or spec_dir.name,
+                spec_id=spec_dir.name,
+                completed=subtasks_detail["completed"],
+                total=subtasks_detail["total"],
+                current_subtask=subtask_id,
+            )
+            print_status("Telegram notification sent", "success")
 
         # Extract rich insights from session (LLM-powered analysis)
         try:
