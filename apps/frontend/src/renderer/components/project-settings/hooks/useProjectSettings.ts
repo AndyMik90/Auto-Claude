@@ -35,7 +35,6 @@ export interface UseProjectSettingsReturn {
   isLoadingEnv: boolean;
   envError: string | null;
   setEnvError: React.Dispatch<React.SetStateAction<string | null>>;
-  isSavingEnv: boolean;
   updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => Promise<void>;
 
   // Password visibility toggles
@@ -75,7 +74,6 @@ export interface UseProjectSettingsReturn {
 
   // Actions
   handleInitialize: () => Promise<void>;
-  handleSaveEnv: () => Promise<void>;
   handleClaudeSetup: () => Promise<void>;
   handleSave: (onClose: () => void) => Promise<void>;
 }
@@ -100,7 +98,6 @@ export function useProjectSettings(
   const [envConfig, setEnvConfig] = useState<ProjectEnvConfig | null>(null);
   const [isLoadingEnv, setIsLoadingEnv] = useState(false);
   const [envError, setEnvError] = useState<string | null>(null);
-  const [isSavingEnv, setIsSavingEnv] = useState(false);
   // Ref to track the latest committed config - used to handle concurrent updateEnvConfig calls
   // This ensures rapid updates don't lose changes due to stale state reads
   const committedEnvConfigRef = useRef<ProjectEnvConfig | null>(null);
@@ -313,23 +310,6 @@ export function useProjectSettings(
     }
   };
 
-  const handleSaveEnv = async () => {
-    if (!envConfig) return;
-
-    setIsSavingEnv(true);
-    setEnvError(null);
-    try {
-      const result = await window.electronAPI.updateProjectEnv(project.id, envConfig);
-      if (!result.success) {
-        setEnvError(result.error || 'Failed to save environment config');
-      }
-    } catch (err) {
-      setEnvError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsSavingEnv(false);
-    }
-  };
-
   const handleClaudeSetup = async () => {
     setIsCheckingClaudeAuth(true);
     try {
@@ -386,29 +366,31 @@ export function useProjectSettings(
 
     const newConfig = { ...baseConfig, ...updates };
 
-    // Save to backend FIRST so disk is updated before effects run
+    // Update the ref BEFORE the await (optimistically) to prevent race conditions
+    // If two calls happen rapidly, the second will see the first's changes in the ref
+    committedEnvConfigRef.current = newConfig;
+
+    // Save to backend
     try {
       const result = await window.electronAPI.updateProjectEnv(project.id, newConfig);
       if (!result.success) {
         console.error('[useProjectSettings] Failed to auto-save env config:', result.error);
         setEnvError(result.error || 'Failed to save environment config');
-        // Don't update UI state if backend save failed - prevents data inconsistency
+        // Note: We don't rollback the ref here because another concurrent call may have
+        // already updated it. The error is shown to the user who can retry.
         return;
       }
     } catch (err) {
       console.error('[useProjectSettings] Error auto-saving env config:', err);
       setEnvError(err instanceof Error ? err.message : 'Failed to save environment config');
-      // Don't update UI state if backend save threw - prevents data inconsistency
+      // Note: We don't rollback the ref here for the same reason as above.
       return;
     }
 
     // Clear any previous error on successful save
     setEnvError(null);
 
-    // Update the committed ref BEFORE state to ensure concurrent calls see latest config
-    committedEnvConfigRef.current = newConfig;
-
-    // Only update local state after successful backend save
+    // Update local state after successful backend save
     setEnvConfig(newConfig);
 
     // Update the shared store so other components (like Sidebar) can react immediately
@@ -429,7 +411,6 @@ export function useProjectSettings(
     isLoadingEnv,
     envError,
     setEnvError,
-    isSavingEnv,
     updateEnvConfig,
     showClaudeToken,
     setShowClaudeToken,
@@ -455,7 +436,6 @@ export function useProjectSettings(
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    handleSaveEnv,
     handleClaudeSetup,
     handleSave
   };

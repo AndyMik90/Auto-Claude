@@ -14,7 +14,6 @@ interface ProjectEnvState {
   // Actions
   setEnvConfig: (projectId: string | null, config: ProjectEnvConfig | null) => void;
   setEnvConfigOnly: (projectId: string | null, config: ProjectEnvConfig | null) => void;
-  updateEnvConfig: (updates: Partial<ProjectEnvConfig>) => void;
   clearEnvConfig: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -42,13 +41,6 @@ export const useProjectEnvStore = create<ProjectEnvState>((set, get) => ({
     projectId,
     envConfig
   }),
-
-  updateEnvConfig: (updates) =>
-    set((state) => ({
-      envConfig: state.envConfig
-        ? { ...state.envConfig, ...updates }
-        : null
-    })),
 
   clearEnvConfig: () => set({
     envConfig: null,
