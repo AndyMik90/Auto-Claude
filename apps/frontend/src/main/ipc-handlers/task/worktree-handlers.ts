@@ -19,8 +19,9 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv, refreshGitIndex } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
+import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2328,7 +2329,9 @@ export function registerWorktreeHandlers(
                 success: true,
                 data: {
                   success: false,
-                  message: hasConflicts ? 'Merge conflicts detected' : `Merge failed: ${stderr || stdout}`,
+                  message: hasConflicts
+                    ? 'Merge conflicts detected'
+                    : `Merge failed: ${stripAnsiCodes(stderr || stdout)}`,
                   conflictFiles: hasConflicts ? [] : undefined
                 }
               });
@@ -2528,7 +2531,7 @@ export function registerWorktreeHandlers(
                 console.error('[IPC] stderr:', stderr);
                 resolve({
                   success: false,
-                  error: `Failed to parse preview result: ${stderr || stdout}`
+                  error: `Failed to parse preview result: ${stripAnsiCodes(stderr || stdout)}`
                 });
               }
             } else {
@@ -2537,7 +2540,7 @@ export function registerWorktreeHandlers(
               console.error('[IPC] stdout:', stdout);
               resolve({
                 success: false,
-                error: `Preview failed: ${stderr || stdout}`
+                error: `Preview failed: ${stripAnsiCodes(stderr || stdout)}`
               });
             }
           });
@@ -2588,25 +2591,37 @@ export function registerWorktreeHandlers(
 
         try {
           // Get the branch name before removing
-          const branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          // Use shared utility to validate detected branch matches expected pattern
+          // This prevents deleting wrong branch when worktree is corrupted/orphaned
+          const { branch, usingFallback } = detectWorktreeBranch(
+            worktreePath,
+            task.specId,
+            { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
+          );
 
           // Remove the worktree
           execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
             cwd: project.path,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv(),
+            timeout: 30000
           });
 
           // Delete the branch
           try {
             execFileSync(getToolPath('git'), ['branch', '-D', branch], {
               cwd: project.path,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
             });
-          } catch {
+          } catch (branchDeleteError) {
             // Branch might already be deleted or not exist
+            if (usingFallback) {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+            } else {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`, branchDeleteError);
+            }
           }
 
           // Only send status change to backlog if not skipped
@@ -3117,7 +3132,7 @@ export function registerWorktreeHandlers(
                 // Prefer stdout over stderr since stderr often contains debug messages
                 resolve({
                   success: false,
-                  error: stdout || stderr || 'Failed to create PR'
+                  error: stripAnsiCodes(stdout || stderr || 'Failed to create PR')
                 });
               }
             }
