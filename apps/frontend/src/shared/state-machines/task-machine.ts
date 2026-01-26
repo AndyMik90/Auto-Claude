@@ -80,7 +80,7 @@ export const taskMachine = createMachine(
           USER_RESUMED: { target: 'coding', actions: 'clearReviewReason' }
         }
       },
-      failed: {
+      error: {
         on: {
           USER_RESUMED: { target: 'coding', actions: 'clearReviewReason' }
         }
@@ -91,7 +91,7 @@ export const taskMachine = createMachine(
     },
     on: {
       PROCESS_EXITED: [
-        { guard: 'processExitedFailed', target: '.failed', actions: 'setReviewReasonErrors' },
+        { guard: 'processExitedFailed', target: '.error', actions: 'setReviewReasonErrors' },
         { guard: 'processExitedPlanReview', target: '.awaitingPlanReview', actions: 'setReviewReasonPlan' },
         { guard: 'processExitedSuccessAllDone', target: '.human_review', actions: 'setReviewReasonCompleted' }
       ],

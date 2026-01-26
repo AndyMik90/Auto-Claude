@@ -2,6 +2,7 @@ import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { ExecutionProgress, ReviewReason, Task, TaskStatus } from '../shared/types';
 import { logger } from './app-logger';
+import { isDebugEnabled } from './task-state-utils';
 import { safeSendToRenderer } from './ipc-handlers/utils';
 
 export type ProcessExitSnapshot = {
@@ -21,8 +22,15 @@ export class TaskStateMachine {
     projectId?: string,
     reviewReason?: ReviewReason
   ): void {
-    const reason = reviewReason ?? 'none';
-    logger.info(`[TASK_STATUS_CHANGE] taskId=${taskId} status=${status} reviewReason=${reason}`);
+    if (isDebugEnabled()) {
+      const payload = {
+        taskId,
+        status,
+        reviewReason: reviewReason ?? 'none',
+        projectId: projectId ?? 'none'
+      };
+      logger.info(`[TASK_STATUS_CHANGE] ${JSON.stringify(payload)}`);
+    }
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, status, projectId, reviewReason);
   }
 

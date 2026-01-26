@@ -7,3 +7,7 @@ export function isXstateEnabled(): boolean {
   const settings = { ...DEFAULT_APP_SETTINGS, ...savedSettings } as AppSettings;
   return settings.useXstateTaskMachine === true;
 }
+
+export function isDebugEnabled(): boolean {
+  return process.env.DEBUG === 'true';
+}

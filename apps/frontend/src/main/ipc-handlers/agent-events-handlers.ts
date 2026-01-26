@@ -341,7 +341,17 @@ export function registerAgenteventsHandlers(
       const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
       if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {
         if (validateStatusTransition(task, fallbackStatus, progress.phase)) {
-          taskStateMachine.emitStatusChange(getMainWindow, taskId, fallbackStatus, taskProjectId);
+          const reviewReason =
+            fallbackStatus === "human_review" && progress.phase === "complete"
+              ? "completed"
+              : undefined;
+          taskStateMachine.emitStatusChange(
+            getMainWindow,
+            taskId,
+            fallbackStatus,
+            taskProjectId,
+            reviewReason
+          );
         }
         try {
           const mainPlanPath = getPlanPath(project, task);

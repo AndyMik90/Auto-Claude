@@ -10,6 +10,7 @@ import { logger } from './app-logger';
 import { safeSendToRenderer } from './ipc-handlers/utils';
 import { findTaskWorktree } from './worktree-paths';
 import { getPlanPath, persistPlanStatusSync } from './ipc-handlers/task/plan-file-utils';
+import { isDebugEnabled } from './task-state-utils';
 
 type TaskMachineActor = ActorRefFrom<typeof taskMachine>;
 type TaskMachineSnapshot = SnapshotFrom<typeof taskMachine>;
@@ -81,7 +82,7 @@ export class TaskStateManager {
       return;
     }
 
-    if (state === 'human_review' || state === 'failed' || state === 'done') {
+    if (state === 'human_review' || state === 'error' || state === 'done') {
       return;
     }
 
@@ -239,7 +240,7 @@ export class TaskStateManager {
         return { status: 'ai_review' };
       case 'human_review':
         return { status: 'human_review', reviewReason: snapshot.context.reviewReason };
-      case 'failed':
+      case 'error':
         return { status: 'error', reviewReason: 'errors' };
       case 'done':
         return { status: 'done' };
@@ -302,8 +303,15 @@ export class TaskStateManager {
     projectId?: string,
     reviewReason?: ReviewReason
   ): void {
-    const reason = reviewReason ?? 'none';
-    logger.info(`[TASK_STATUS_CHANGE] taskId=${taskId} status=${status} reviewReason=${reason}`);
+    if (isDebugEnabled()) {
+      const payload = {
+        taskId,
+        status,
+        reviewReason: reviewReason ?? 'none',
+        projectId: projectId ?? 'none'
+      };
+      logger.info(`[TASK_STATUS_CHANGE] ${JSON.stringify(payload)}`);
+    }
     safeSendToRenderer(this.getMainWindow, IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, status, projectId, reviewReason);
   }
 

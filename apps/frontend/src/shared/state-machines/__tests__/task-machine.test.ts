@@ -41,7 +41,7 @@ describe('taskMachine', () => {
     expect(snapshot.context.reviewReason).toBe('completed');
   });
 
-  it('moves to failed on non-zero process exit', () => {
+  it('moves to error on non-zero process exit', () => {
     const actor = createActor(taskMachine).start();
 
     actor.send({
@@ -53,7 +53,7 @@ describe('taskMachine', () => {
     });
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.value).toBe('failed');
+    expect(snapshot.value).toBe('error');
     expect(snapshot.context.reviewReason).toBe('errors');
   });
 });
