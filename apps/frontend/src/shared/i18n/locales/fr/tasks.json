@@ -327,6 +327,11 @@
       "fetchSources": "Échec de la récupération des sources de capture d'écran",
       "capture": "Échec de la capture d'écran",
       "captureFailed": "Échec de la capture d'écran"
+    },
+    "devMode": {
+      "title": "Capture d'écran non disponible",
+      "description": "La capture d'écran n'est pas disponible en mode développement en raison des restrictions de permissions système.",
+      "hint": "Utilisez un outil de capture d'écran externe et collez directement dans la description de la tâche avec {{shortcut}}."
     }
   },
   "referenceImages": {
