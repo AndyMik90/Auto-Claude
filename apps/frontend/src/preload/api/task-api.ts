@@ -19,7 +19,7 @@ import type {
 
 export interface TaskAPI {
   // Task Operations
-  getTasks: (projectId: string) => Promise<IPCResult<Task[]>>;
+  getTasks: (projectId: string, options?: { forceRefresh?: boolean }) => Promise<IPCResult<Task[]>>;
   createTask: (
     projectId: string,
     title: string,
@@ -49,6 +49,9 @@ export interface TaskAPI {
     options?: import('../../shared/types').TaskRecoveryOptions
   ) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
+
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
 
   // Workspace Management (for human review)
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeStatus>>;
@@ -85,8 +88,8 @@ export interface TaskAPI {
 
 export const createTaskAPI = (): TaskAPI => ({
   // Task Operations
-  getTasks: (projectId: string): Promise<IPCResult<Task[]>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.TASK_LIST, projectId),
+  getTasks: (projectId: string, options?: { forceRefresh?: boolean }): Promise<IPCResult<Task[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_LIST, projectId, options),
 
   createTask: (
     projectId: string,
@@ -134,6 +137,10 @@ export const createTaskAPI = (): TaskAPI => ({
 
   checkTaskRunning: (taskId: string): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_CHECK_RUNNING, taskId),
+
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_LOAD_IMAGE_THUMBNAIL, projectPath, specId, imagePath),
 
   // Workspace Management
   getWorktreeStatus: (taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeStatus>> =>

@@ -49,6 +49,13 @@ export const claudeProfileMock = {
 
   updateAutoSwitchSettings: async () => ({ success: true }),
 
+  getAccountPriorityOrder: async () => ({
+    success: true,
+    data: [] as string[]
+  }),
+
+  setAccountPriorityOrder: async () => ({ success: true }),
+
   fetchClaudeUsage: async () => ({ success: true }),
 
   getBestAvailableProfile: async () => ({
@@ -58,6 +65,8 @@ export const claudeProfileMock = {
 
   onSDKRateLimit: () => () => {},
 
+  onAuthFailure: () => () => {},
+
   retryWithProfile: async () => ({ success: true }),
 
   // Usage Monitoring (Proactive Account Switching)
@@ -66,7 +75,14 @@ export const claudeProfileMock = {
     data: null
   }),
 
+  requestAllProfilesUsage: async (_forceRefresh?: boolean) => ({
+    success: true,
+    data: null
+  }),
+
   onUsageUpdated: () => () => {},
+
+  onAllProfilesUsageUpdated: () => () => {},
 
   onProactiveSwapNotification: () => () => {},
 

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Key,
   Loader2,
@@ -23,6 +24,7 @@ interface ClaudeOAuthFlowProps {
  * auto-polling to avoid race conditions with keychain auto-reconnect.
  */
 export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
+  const { t } = useTranslation('common');
   const [status, setStatus] = useState<'ready' | 'authenticating' | 'verifying' | 'success' | 'error'>('ready');
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | undefined>();
@@ -74,7 +76,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
 
   const handleVerifyAuth = async () => {
     if (!authenticatingProfileId) {
-      setError('No profile selected for verification');
+      setError(t('oauth.noProfileSelected'));
       return;
     }
 
@@ -96,7 +98,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
           onSuccess();
         }, 1500);
       } else {
-        setError('Authentication not detected. Please complete /login in the terminal first.');
+        setError(t('oauth.authNotDetected'));
         setStatus('authenticating');
       }
     } catch (err) {
@@ -124,15 +126,13 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
                 <Key className="h-6 w-6 text-info shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-3">
                   <h3 className="text-lg font-medium text-foreground">
-                    Authenticate with Claude
+                    {t('oauth.authenticateTitle')}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Auto Claude requires Claude AI authentication for AI-powered features like
-                    Roadmap generation, Task automation, and Ideation.
+                    {t('oauth.authenticateDescription')}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    This will open a terminal with Claude CLI where you can authenticate.
-                    Your credentials are stored securely and are valid for 1 year.
+                    {t('oauth.authenticateTerminalInfo')}
                   </p>
                 </div>
               </div>
@@ -142,7 +142,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
           <div className="flex justify-center">
             <Button onClick={handleStartAuth} size="lg" className="gap-2">
               <Key className="h-5 w-5" />
-              Authenticate with Claude
+              {t('oauth.authenticateTitle')}
             </Button>
           </div>
         </div>
@@ -157,10 +157,10 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
                 <Key className="h-6 w-6 text-info shrink-0" />
                 <div className="flex-1">
                   <h3 className="text-lg font-medium text-foreground">
-                    Complete Authentication
+                    {t('oauth.completeAuthTitle')}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    A terminal window has opened with Claude CLI.
+                    {t('oauth.terminalOpened')}
                   </p>
                 </div>
               </div>
@@ -169,12 +169,22 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
                 <div className="flex items-start gap-2">
                   <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium">Complete these steps in the terminal:</p>
+                    <p className="font-medium">{t('oauth.completeStepsTitle')}</p>
                     <ol className="list-decimal list-inside space-y-1 ml-2">
-                      <li>Type <code className="px-1 bg-muted rounded">/login</code> and press Enter</li>
-                      <li>Your browser will open for Claude authentication</li>
-                      <li>Complete the OAuth flow in your browser</li>
-                      <li>Return here and click <strong>Verify Authentication</strong></li>
+                      <li>
+                        <Trans
+                          i18nKey="oauth.stepTypeLogin"
+                          components={{ code: <code className="font-mono bg-muted px-1 rounded" /> }}
+                        />
+                      </li>
+                      <li>{t('oauth.stepBrowserOpen')}</li>
+                      <li>{t('oauth.stepCompleteOAuth')}</li>
+                      <li>
+                        <Trans
+                          i18nKey="oauth.stepReturnAndVerify"
+                          components={{ strong: <strong className="font-semibold" /> }}
+                        />
+                      </li>
                     </ol>
                   </div>
                 </div>
@@ -189,7 +199,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
               <div className="flex justify-center gap-3">
                 <Button onClick={handleVerifyAuth} className="gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Verify Authentication
+                  {t('oauth.verifyAuth')}
                 </Button>
               </div>
             </div>
@@ -205,10 +215,10 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
               <Loader2 className="h-6 w-6 animate-spin text-info shrink-0" />
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-foreground">
-                  Verifying Authentication...
+                  {t('oauth.verifyingAuth')}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Checking your Claude credentials.
+                  {t('oauth.checkingCredentials')}
                 </p>
               </div>
             </div>
@@ -224,14 +234,14 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
               <CheckCircle2 className="h-6 w-6 text-success shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-success">
-                  Successfully Authenticated!
+                  {t('oauth.successTitle')}
                 </h3>
                 <p className="text-sm text-success/80 mt-1">
-                  {email ? `Connected as ${email}` : 'Your Claude credentials have been saved'}
+                  {email ? t('oauth.connectedAs', { email }) : t('oauth.credentialsSaved')}
                 </p>
                 <div className="flex items-center gap-2 mt-3 text-xs text-success/70">
                   <Sparkles className="h-3 w-3" />
-                  <span>You can now use all Auto Claude AI features</span>
+                  <span>{t('oauth.canUseFeatures')}</span>
                 </div>
               </div>
             </div>
@@ -248,7 +258,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
                 <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-lg font-medium text-destructive">
-                    Authentication Failed
+                    {t('oauth.authFailed')}
                   </h3>
                   <p className="text-sm text-destructive/80 mt-1">{error}</p>
                 </div>
@@ -259,11 +269,11 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
           <div className="flex justify-center gap-3">
             <Button onClick={handleRetry} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Retry
+              {t('buttons.retry')}
             </Button>
             {onCancel && (
               <Button onClick={onCancel} variant="ghost">
-                Cancel
+                {t('buttons.cancel')}
               </Button>
             )}
           </div>
@@ -274,7 +284,7 @@ export function ClaudeOAuthFlow({ onSuccess, onCancel }: ClaudeOAuthFlowProps) {
       {(status === 'ready' || status === 'authenticating') && onCancel && (
         <div className="flex justify-center pt-2">
           <Button onClick={onCancel} variant="ghost" size="sm">
-            Skip for now
+            {t('oauth.skipForNow')}
           </Button>
         </div>
       )}
