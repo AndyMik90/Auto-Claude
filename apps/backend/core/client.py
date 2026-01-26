@@ -458,7 +458,11 @@ def load_claude_md(project_dir: Path) -> str | None:
     if claude_md_path.exists():
         try:
             return claude_md_path.read_text(encoding="utf-8")
-        except Exception:
+        except OSError as e:
+            logger.warning(f"Failed to read CLAUDE.md from {claude_md_path}: {e}")
+            return None
+        except UnicodeDecodeError as e:
+            logger.warning(f"CLAUDE.md at {claude_md_path} has encoding issues: {e}")
             return None
     return None
 
@@ -984,10 +988,19 @@ def create_client(
             # The monkey-patch in SubprocessCLITransport.__init__ reads this env var
             # and stores it on the instance, then clears the env var immediately.
             os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            # sdk_env is NOT used by the monkey-patch (it reads from os.environ)
+            # But we set it for documentation purposes and potential future use
             sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
             print("   - CLAUDE.md: large prompt (using temp file)")
         print()
 
         # Create SDK client while holding the lock
         # The monkey-patch in __init__ will capture and clear the env var atomically
-        return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+        # Use try/finally to ensure env var is cleaned up even if client creation fails
+        try:
+            return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+        finally:
+            # Clean up env var if client creation fails
+            # (normally cleared by patched_init, but this handles the exception path)
+            if _temp_prompt_file:
+                os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)

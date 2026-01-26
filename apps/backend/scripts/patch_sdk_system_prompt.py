@@ -190,6 +190,13 @@ def apply_sdk_patch():
                     f"Failed to write system prompt to subprocess stdin: {e}. "
                     f"System prompt ({len(system_prompt_content)} chars) was not delivered."
                 )
+                # Terminate the subprocess since it's running without the proper system prompt
+                # The agent would operate without CLAUDE.md instructions, leading to incorrect behavior
+                if hasattr(self, "_process") and self._process:
+                    try:
+                        self._process.terminate()
+                    except Exception:
+                        pass  # Best effort cleanup
                 raise
 
     # Apply the monkey-patches
