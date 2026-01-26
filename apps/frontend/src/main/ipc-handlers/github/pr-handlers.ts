@@ -19,6 +19,7 @@ import {
   DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
 import type { AuthFailureInfo } from "../../../shared/types/terminal";
+import type { PRListResult } from "../../../preload/api/modules/github-api";
 import { getGitHubConfig, getGitHubRepos, getGitHubConfigForRepo, githubFetch, normalizeRepoReference } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
 import { getAugmentedEnv } from "../../env-utils";
@@ -1236,21 +1237,21 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
   // List open PRs with pagination support (multi-repo)
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_LIST,
-    async (_, projectId: string, page: number = 1): Promise<PRData[]> => {
-      debugLog("listPRs handler called", { projectId, page });
+    async (_, projectId: string): Promise<PRListResult> => {
+      debugLog("listPRs handler called", { projectId });
       const result = await withProjectOrNull(projectId, async (project) => {
         // Get all configured repositories
         const repos = getGitHubRepos(project);
         if (repos.length === 0) {
           debugLog("No GitHub repos configured for project");
-          return [];
+          return { prs: [], hasNextPage: false };
         }
 
         // Filter to only enabled repos with PR review enabled
         const enabledRepos = repos.filter(r => r.enabled !== false && r.prReviewEnabled !== false);
         if (enabledRepos.length === 0) {
           debugLog("No enabled repos with PR review");
-          return [];
+          return { prs: [], hasNextPage: false };
         }
 
         debugLog("Fetching PRs from repos", { repos: enabledRepos.map(r => r.repo) });
@@ -1268,7 +1269,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           try {
             const prs = (await githubFetch(
               config.token,
-              `/repos/${repoFullName}/pulls?state=open&per_page=100&page=${page}`
+              `/repos/${repoFullName}/pulls?state=open&per_page=100`
             )) as Array<{
               number: number;
               title: string;
@@ -1321,9 +1322,10 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         allPrs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
         debugLog("Total PRs from all repos", { count: allPrs.length });
-        return allPrs;
+        // hasNextPage is false for multi-repo since we fetch all at once
+        return { prs: allPrs, hasNextPage: false };
       });
-      return result ?? [];
+      return result ?? { prs: [], hasNextPage: false };
     }
   );
 
