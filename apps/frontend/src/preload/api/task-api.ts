@@ -50,6 +50,9 @@ export interface TaskAPI {
   ) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
 
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
+
   // Workspace Management (for human review)
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeStatus>>;
   getWorktreeDiff: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeDiff>>;
@@ -134,6 +137,10 @@ export const createTaskAPI = (): TaskAPI => ({
 
   checkTaskRunning: (taskId: string): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_CHECK_RUNNING, taskId),
+
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_LOAD_IMAGE_THUMBNAIL, projectPath, specId, imagePath),
 
   // Workspace Management
   getWorktreeStatus: (taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeStatus>> =>
