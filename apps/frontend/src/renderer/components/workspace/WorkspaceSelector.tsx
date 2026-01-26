@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, FolderGit2, GitBranch, Plus, Check, Settings } from 'lucide-react';
+import { ChevronDown, FolderGit2, GitBranch, Plus, Check, Settings, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -12,7 +12,8 @@ import {
 } from '../ui/dropdown-menu';
 import { cn } from '../../lib/utils';
 import { useWorkspaceStore, getDefaultRepo } from '../../stores/workspace-store';
-import type { Workspace, WorkspaceRepo } from '../../../shared/types/workspace';
+import { MigrationWizard } from './MigrationWizard';
+import type { Workspace, WorkspaceRepo, ProjectTypeDetectionResult } from '../../../shared/types/workspace';
 
 interface WorkspaceSelectorProps {
   /** Current project path (for workspace detection) */
@@ -37,7 +38,9 @@ export function WorkspaceSelector({
 }: WorkspaceSelectorProps) {
   const { t } = useTranslation('workspace');
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [detection, setDetection] = useState<ProjectTypeDetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showMigrationWizard, setShowMigrationWizard] = useState(false);
 
   const {
     activeRepoId,
@@ -51,9 +54,10 @@ export function WorkspaceSelector({
       setIsLoading(true);
       try {
         // Detect project type
-        const detection = await detectProjectType(projectPath);
+        const detectionResult = await detectProjectType(projectPath);
+        setDetection(detectionResult);
 
-        if (detection?.type === 'workspace') {
+        if (detectionResult?.type === 'workspace') {
           // Load workspace
           const result = await window.electronAPI.getWorkspace(projectPath);
           if (result.success && result.data) {
@@ -73,6 +77,7 @@ export function WorkspaceSelector({
         }
       } catch {
         setWorkspace(null);
+        setDetection(null);
       } finally {
         setIsLoading(false);
       }
@@ -80,6 +85,18 @@ export function WorkspaceSelector({
 
     loadWorkspace();
   }, [projectPath, detectProjectType, activeRepoId, setActiveRepo]);
+
+  const handleMigrationComplete = async () => {
+    // Reload workspace after migration
+    const detectionResult = await detectProjectType(projectPath);
+    setDetection(detectionResult);
+    if (detectionResult?.type === 'workspace') {
+      const result = await window.electronAPI.getWorkspace(projectPath);
+      if (result.success && result.data) {
+        setWorkspace(result.data);
+      }
+    }
+  };
 
   // Get currently selected repo
   const selectedRepo = workspace?.repos.find(r => r.id === activeRepoId) ||
@@ -91,11 +108,6 @@ export function WorkspaceSelector({
     onRepoSelect?.(repo);
   };
 
-  // Don't show selector for standalone projects
-  if (!workspace) {
-    return null;
-  }
-
   if (isLoading) {
     return (
       <div className={cn("flex items-center gap-2 text-muted-foreground", className)}>
@@ -103,6 +115,40 @@ export function WorkspaceSelector({
         <span className="text-sm">{t('loading', 'Loading...')}</span>
       </div>
     );
+  }
+
+  // Show "Convert to Workspace" prompt for convertible projects
+  if (detection?.type === 'convertible' && detection.subRepos && detection.subRepos.length > 0) {
+    return (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("w-full flex items-center gap-2 justify-between text-muted-foreground", className)}
+          onClick={() => setShowMigrationWizard(true)}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderGit2 className="h-4 w-4 shrink-0" />
+            <span className="truncate text-xs">
+              {t('migration.foundRepos', { count: detection.subRepos.length })}
+            </span>
+          </div>
+          <ArrowRight className="h-3 w-3 shrink-0" />
+        </Button>
+
+        <MigrationWizard
+          open={showMigrationWizard}
+          onOpenChange={setShowMigrationWizard}
+          projectPath={projectPath}
+          onMigrationComplete={handleMigrationComplete}
+        />
+      </>
+    );
+  }
+
+  // Don't show selector for standalone projects
+  if (!workspace) {
+    return null;
   }
 
   return (
