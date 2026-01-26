@@ -1,5 +1,5 @@
 import { ipcMain, app } from 'electron';
-import { readFile, access } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
@@ -123,17 +123,15 @@ export function registerPromptHandlers(): void {
         const promptsDir = getPromptsDir();
         const promptPath = path.join(promptsDir, validation.filename);
 
-        // Check if file exists before reading
-        try {
-          await access(promptPath);
-        } catch {
-          return { success: false, error: `Prompt file not found: ${filename}` };
-        }
-
-        // Read the prompt file
+        // Read the prompt file directly - avoid TOCTOU race condition by not
+        // checking existence separately; handle file-not-found in catch block
         const content = await readFile(promptPath, 'utf-8');
         return { success: true, data: content };
       } catch (error) {
+        // Handle file not found specifically
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+          return { success: false, error: `Prompt file not found: ${filename}` };
+        }
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to read prompt file'
