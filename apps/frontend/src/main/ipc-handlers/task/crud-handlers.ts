@@ -8,7 +8,10 @@ import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
 import { findAllSpecPaths, isValidTaskId } from '../../utils/spec-path-helpers';
-import { isPathWithinBase } from '../../worktree-paths';
+import { isPathWithinBase, findTaskWorktree } from '../../worktree-paths';
+import { execFileSync } from 'child_process';
+import { getToolPath } from '../../cli-tool-manager';
+import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -235,25 +238,69 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         return { success: false, error: 'Cannot delete a running task. Stop the task first.' };
       }
 
-      // Find ALL locations where this task exists (main + worktrees)
+      let hasErrors = false;
+      const errors: string[] = [];
+
+      // 1. First, remove the git worktree if it exists
+      const worktreePath = findTaskWorktree(project.path, task.specId);
+      if (worktreePath) {
+        try {
+          console.warn(`[TASK_DELETE] Found worktree at: ${worktreePath}`);
+
+          // Get the branch name before removing
+          const { branch } = detectWorktreeBranch(
+            worktreePath,
+            task.specId,
+            { timeout: 30000, logPrefix: '[TASK_DELETE]' }
+          );
+
+          // Remove the worktree
+          execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
+            cwd: project.path,
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv(),
+            timeout: 30000
+          });
+          console.warn(`[TASK_DELETE] Removed worktree: ${worktreePath}`);
+
+          // Delete the branch
+          try {
+            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
+            });
+            console.warn(`[TASK_DELETE] Deleted branch: ${branch}`);
+          } catch (branchDeleteError) {
+            // Branch might already be deleted or not exist
+            console.warn(`[TASK_DELETE] Could not delete branch ${branch} (may not exist):`, branchDeleteError);
+          }
+        } catch (gitError) {
+          const errorMsg = gitError instanceof Error ? gitError.message : 'Unknown error';
+          console.error(`[TASK_DELETE] Error removing worktree:`, gitError);
+          hasErrors = true;
+          errors.push(`worktree: ${errorMsg}`);
+          // Continue with spec deletion even if worktree removal fails
+        }
+      }
+
+      // 2. Find ALL locations where this task's spec exists (main + inside worktrees)
       // Following the archiveTasks() pattern from project-store.ts
       const specsBaseDir = getSpecsDir(project.autoBuildPath);
       const specPaths = findAllSpecPaths(project.path, specsBaseDir, task.specId);
 
-      // If spec directory doesn't exist anywhere, return success (already removed)
-      if (specPaths.length === 0) {
+      // If spec directory doesn't exist anywhere and no worktree was found, return success (already removed)
+      if (specPaths.length === 0 && !worktreePath) {
         console.warn(`[TASK_DELETE] No spec directories found for task ${taskId} - already removed`);
         projectStore.invalidateTasksCache(project.id);
         return { success: true };
       }
 
-      let hasErrors = false;
-      const errors: string[] = [];
-
-      // Delete from ALL locations
+      // 3. Delete spec directories from ALL locations
       for (const specDir of specPaths) {
         try {
-          console.warn(`[TASK_DELETE] Attempting to delete: ${specDir}`);
+          console.warn(`[TASK_DELETE] Attempting to delete spec: ${specDir}`);
           await rm(specDir, { recursive: true, force: true });
           console.warn(`[TASK_DELETE] Deleted spec directory: ${specDir}`);
         } catch (error) {
