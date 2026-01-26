@@ -11,10 +11,24 @@ Memory Integration:
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Memory integration for cross-session learning
 from agents.memory_manager import get_graphiti_context, save_session_memory
-from claude_agent_sdk import ClaudeSDKClient
+
+# Claude SDK is optional - may not be available in packaged apps
+try:
+    from claude_agent_sdk import ClaudeSDKClient
+
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
+    ClaudeSDKClient = None  # type: ignore[assignment, misc]
+
+# Import for type checking only (allows type hints without runtime import)
+if TYPE_CHECKING:
+    from claude_agent_sdk import ClaudeSDKClient as ClaudeSDKClientType
+
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from prompts_pkg import get_qa_reviewer_prompt
 from security.tool_input_validator import get_safe_tool_input
@@ -32,7 +46,7 @@ from .criteria import get_qa_signoff_status
 
 
 async def run_qa_agent_session(
-    client: ClaudeSDKClient,
+    client: "ClaudeSDKClientType",  # type: ignore[name-defined]
     project_dir: Path,
     spec_dir: Path,
     qa_session: int,
@@ -58,6 +72,10 @@ async def run_qa_agent_session(
         - "rejected" if QA finds issues
         - "error" if an error occurred
     """
+    # Check SDK availability
+    if not SDK_AVAILABLE:
+        return "error", "Claude Agent SDK is not available"
+
     debug_section("qa_reviewer", f"QA Reviewer Session {qa_session}")
     debug(
         "qa_reviewer",
