@@ -176,13 +176,13 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
           }
         }
       }, 300); // 300ms debounce
-
-      // Cleanup: cancel any pending debounced call on unmount
-      return () => {
-        debouncedUpdateRef.current?.cancel();
-        debouncedUpdateRef.current = null;
-      };
     }
+
+    // Cleanup: cancel any pending debounced call on unmount
+    return () => {
+      debouncedUpdateRef.current?.cancel();
+      debouncedUpdateRef.current = null;
+    };
   }, []);
 
   /**

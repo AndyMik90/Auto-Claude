@@ -800,7 +800,9 @@
       "presetMaximumDescription": "Historique maximum (100 000 lignes)",
       "decreaseScrollback": "Diminuer le défilement de {{step}}",
       "increaseScrollback": "Augmenter le défilement de {{step}}",
-      "lines": "lignes"
+      "lines": "lignes",
+      "kValue": "{{value}}K",
+      "scrollbackValue": "{{value}} lignes"
     },
     "presets": {
       "title": "Préréglages Rapides",
@@ -828,7 +830,11 @@
       "noCustomPresets": "Aucun préréglage personnalisé pour le moment. Sauvegardez votre configuration actuelle pour commencer.",
       "duplicateName": "Un préréglage avec ce nom existe déjà",
       "saved": "Préréglage « {{name}} » sauvegardé",
-      "deleted": "Préréglage « {{name}} » supprimé"
+      "deleted": "Préréglage « {{name}} » supprimé",
+      "unknownFont": "Inconnu",
+      "applyFailed": "Échec de l'application du préréglage « {{name}} »",
+      "presetNameLabel": "Nom du préréglage",
+      "summary": "{{font}}, {{size}}px, curseur {{cursor}}"
     },
     "preview": {
       "title": "Aperçu en Direct",

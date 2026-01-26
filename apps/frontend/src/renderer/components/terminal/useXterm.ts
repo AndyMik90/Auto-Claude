@@ -11,16 +11,6 @@ import { debounce } from '../../lib/debounce';
 import { DEFAULT_TERMINAL_THEME } from '../../lib/terminal-theme';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 
-// Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
-interface NavigatorUAData {
-  platform: string;
-}
-declare global {
-  interface Navigator {
-    userAgentData?: NavigatorUAData;
-  }
-}
-
 interface UseXtermOptions {
   terminalId: string;
   onCommandEnter?: (command: string) => void;
