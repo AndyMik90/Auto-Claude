@@ -569,6 +569,11 @@ export class AgentProcessManager {
     // If so, terminate the newly created process immediately to prevent orphaned processes.
     // Note: wasSpawnKilled() is checked AFTER updateProcess() because killProcess()
     // marks the spawn as killed before deleting the tracking entry.
+    //
+    // CRITICAL: The `?? spawnId` fallback is essential here because if killProcess()
+    // was called during the async setup window, the taskId entry may have been deleted
+    // from the process map. In that case, getProcess(taskId) returns undefined, so we
+    // fall back to the local spawnId variable to check if this specific spawn was killed.
     const currentSpawnId = this.state.getProcess(taskId)?.spawnId ?? spawnId;
     if (this.state.wasSpawnKilled(currentSpawnId)) {
       console.log(`[AgentProcess] Task ${taskId} was killed during spawn setup. Terminating newly created process.`);
