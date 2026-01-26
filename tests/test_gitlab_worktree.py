@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add backend directory to path to import core package
-_backend_dir = Path(__file__).parent.parent
+# Add apps/backend directory to path for imports
+_backend_dir = Path(__file__).parent.parent / "apps" / "backend"
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 

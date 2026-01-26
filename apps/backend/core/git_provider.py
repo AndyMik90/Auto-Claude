@@ -51,19 +51,21 @@ def detect_git_provider(project_dir: str | Path) -> str:
             hostname = ssh_url_match.group(1)
             return _classify_hostname(hostname)
 
+        # Parse HTTPS/HTTP format: https://host/path or http://host/path
+        # Must check before scp-like format to avoid matching "https" as hostname
+        https_match = re.match(r"^https?://([^/]+)/", remote_url)
+        if https_match:
+            hostname = https_match.group(1)
+            return _classify_hostname(hostname)
+
         # Parse scp-like format: [user@]host:path (any username, not just 'git')
+        # This handles git@github.com:user/repo.git and similar formats
         scp_match = re.match(r"^(?:[^@]+@)?([^:]+):", remote_url)
         if scp_match:
             hostname = scp_match.group(1)
             # Exclude paths that look like Windows drives (e.g., C:)
             if len(hostname) > 1:
                 return _classify_hostname(hostname)
-
-        # Parse HTTPS format: https://host/path or http://host/path
-        https_match = re.match(r"^https?://([^/]+)/", remote_url)
-        if https_match:
-            hostname = https_match.group(1)
-            return _classify_hostname(hostname)
 
         # Unrecognized URL format
         return "unknown"
