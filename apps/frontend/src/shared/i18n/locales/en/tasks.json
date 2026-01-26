@@ -100,6 +100,12 @@
     "selectedCountOne": "{{count}} task selected",
     "selectedCountOther": "{{count}} tasks selected",
     "createPRs": "Create PRs",
+    "deleteSelected": "Delete",
+    "deleteConfirmTitle": "Delete Selected Tasks",
+    "deleteConfirmDescription": "Are you sure you want to permanently delete {{count}} task(s)? This action cannot be undone.",
+    "deleteConfirmButton": "Delete Tasks",
+    "deleteSuccess": "Successfully deleted {{count}} task(s)",
+    "deleteError": "Failed to delete some tasks",
     "clearSelection": "Clear Selection"
   },
   "queue": {

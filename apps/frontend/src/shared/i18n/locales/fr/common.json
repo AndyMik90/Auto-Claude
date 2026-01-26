@@ -79,7 +79,8 @@
     "add": "Ajouter",
     "gotIt": "Compris",
     "continue": "Continuer",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "deleting": "Suppression..."
   },
   "labels": {
     "loading": "Chargement...",

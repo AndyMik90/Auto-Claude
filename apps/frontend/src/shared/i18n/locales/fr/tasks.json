@@ -99,6 +99,12 @@
     "selectedCountOne": "{{count}} tâche sélectionnée",
     "selectedCountOther": "{{count}} tâches sélectionnées",
     "createPRs": "Créer les PRs",
+    "deleteSelected": "Supprimer",
+    "deleteConfirmTitle": "Supprimer les tâches sélectionnées",
+    "deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer définitivement {{count}} tâche(s) ? Cette action est irréversible.",
+    "deleteConfirmButton": "Supprimer les tâches",
+    "deleteSuccess": "{{count}} tâche(s) supprimée(s) avec succès",
+    "deleteError": "Échec de la suppression de certaines tâches",
     "clearSelection": "Effacer la sélection"
   },
   "queue": {
