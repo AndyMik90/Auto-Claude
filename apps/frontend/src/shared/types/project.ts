@@ -288,6 +288,47 @@ export interface ProjectContextData {
   error?: string;
 }
 
+// ============================================
+// GitHub Multi-Repository Configuration
+// ============================================
+
+/**
+ * Configuration for a single GitHub repository.
+ * Used when multiple repositories are configured for a project.
+ */
+export interface GitHubRepoConfig {
+  /** Repository in owner/repo format */
+  repo: string;
+  /** Whether this repository is enabled */
+  enabled: boolean;
+  /** Enable Issues sync for this repository */
+  issuesSyncEnabled?: boolean;
+  /** Enable PR review for this repository */
+  prReviewEnabled?: boolean;
+  /** Enable Auto-Fix for this repository */
+  autoFixEnabled?: boolean;
+  /** Path scope for monorepo packages (e.g., "packages/frontend/*") */
+  pathScope?: string;
+  /** Repository relationship type */
+  relationship?: 'standalone' | 'fork' | 'upstream' | 'monorepo_package';
+  /** Upstream repository if this is a fork */
+  upstreamRepo?: string;
+}
+
+/**
+ * Multi-repository configuration stored in .auto-claude/github.json
+ */
+export interface GitHubMultiRepoConfig {
+  /** List of configured repositories */
+  repos: GitHubRepoConfig[];
+  /** Default repository for legacy operations */
+  defaultRepo?: string;
+  /** Last sync timestamp */
+  lastSyncedAt?: string;
+  /** Schema version for migration */
+  version: number;
+}
+
 // Environment Configuration for project .env files
 export interface ProjectEnvConfig {
   // Claude Authentication
@@ -309,7 +350,12 @@ export interface ProjectEnvConfig {
   // GitHub Integration
   githubEnabled: boolean;
   githubToken?: string;
-  githubRepo?: string; // Format: owner/repo
+  /** @deprecated Use githubRepos for multi-repo support. Kept for backward compatibility. */
+  githubRepo?: string; // Format: owner/repo (legacy single repo)
+  /** Multiple repository configurations */
+  githubRepos?: GitHubRepoConfig[];
+  /** Default repository for operations (owner/repo format) */
+  githubDefaultRepo?: string;
   githubAutoSync?: boolean; // Auto-sync issues on project load
   githubAuthMethod?: 'oauth' | 'pat'; // How the token was obtained
 

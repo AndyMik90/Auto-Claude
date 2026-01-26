@@ -8,7 +8,10 @@ import type {
   GitHubInvestigationResult,
   IPCResult,
   VersionSuggestion,
-  PaginatedIssuesResult
+  PaginatedIssuesResult,
+  GitHubMultiRepoConfig,
+  GitHubRepoConfig,
+  GitHubMultiRepoSyncStatus
 } from '../../../shared/types';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
@@ -299,6 +302,16 @@ export interface GitHubAPI {
   onPRReviewError: (
     callback: (projectId: string, error: { prNumber: number; error: string }) => void
   ) => IpcListenerCleanup;
+
+  // Multi-repository management
+  getMultiRepoConfig: (projectId: string) => Promise<IPCResult<GitHubMultiRepoConfig>>;
+  saveMultiRepoConfig: (projectId: string, config: GitHubMultiRepoConfig) => Promise<IPCResult<boolean>>;
+  addRepository: (projectId: string, repoConfig: GitHubRepoConfig) => Promise<IPCResult<GitHubMultiRepoConfig>>;
+  removeRepository: (projectId: string, repo: string) => Promise<IPCResult<GitHubMultiRepoConfig>>;
+  updateRepository: (projectId: string, repoConfig: GitHubRepoConfig) => Promise<IPCResult<GitHubMultiRepoConfig>>;
+  setDefaultRepository: (projectId: string, repo: string) => Promise<IPCResult<GitHubMultiRepoConfig>>;
+  checkAllConnections: (projectId: string) => Promise<IPCResult<GitHubMultiRepoSyncStatus>>;
+  migrateToMultiRepo: (projectId: string) => Promise<IPCResult<{ migrated: boolean; config?: GitHubMultiRepoConfig }>>;
 }
 
 /**
@@ -325,6 +338,8 @@ export interface PRData {
   createdAt: string;
   updatedAt: string;
   htmlUrl: string;
+  /** Repository full name in owner/repo format */
+  repoFullName: string;
 }
 
 /**
@@ -726,5 +741,30 @@ export const createGitHubAPI = (): GitHubAPI => ({
   onPRReviewError: (
     callback: (projectId: string, error: { prNumber: number; error: string }) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR, callback)
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR, callback),
+
+  // Multi-repository management
+  getMultiRepoConfig: (projectId: string): Promise<IPCResult<GitHubMultiRepoConfig>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_GET_CONFIG, projectId),
+
+  saveMultiRepoConfig: (projectId: string, config: GitHubMultiRepoConfig): Promise<IPCResult<boolean>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_SAVE_CONFIG, projectId, config),
+
+  addRepository: (projectId: string, repoConfig: GitHubRepoConfig): Promise<IPCResult<GitHubMultiRepoConfig>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_ADD_REPO, projectId, repoConfig),
+
+  removeRepository: (projectId: string, repo: string): Promise<IPCResult<GitHubMultiRepoConfig>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_REMOVE_REPO, projectId, repo),
+
+  updateRepository: (projectId: string, repoConfig: GitHubRepoConfig): Promise<IPCResult<GitHubMultiRepoConfig>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_UPDATE_REPO, projectId, repoConfig),
+
+  setDefaultRepository: (projectId: string, repo: string): Promise<IPCResult<GitHubMultiRepoConfig>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_SET_DEFAULT, projectId, repo),
+
+  checkAllConnections: (projectId: string): Promise<IPCResult<GitHubMultiRepoSyncStatus>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_CHECK_ALL, projectId),
+
+  migrateToMultiRepo: (projectId: string): Promise<IPCResult<{ migrated: boolean; config?: GitHubMultiRepoConfig }>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_MULTI_REPO_MIGRATE, projectId)
 });

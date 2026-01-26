@@ -37,8 +37,23 @@ export {
 // Sync Status Store
 export {
   useSyncStatusStore,
-  checkGitHubConnection
+  checkGitHubConnection,
+  checkGitHubConnectionUnified
 } from './sync-status-store';
+
+// Multi-Repository Store
+export {
+  useMultiRepoStore,
+  loadMultiRepoConfig,
+  saveMultiRepoConfig,
+  addRepository,
+  removeRepository,
+  updateRepository,
+  setDefaultRepository,
+  checkAllRepoConnections,
+  migrateToMultiRepo,
+  initializeMultiRepoStore
+} from './multi-repo-store';
 
 /**
  * Initialize all global GitHub listeners.
@@ -59,5 +74,9 @@ export type {
   GitHubIssue,
   GitHubSyncStatus,
   GitHubInvestigationStatus,
-  GitHubInvestigationResult
+  GitHubInvestigationResult,
+  GitHubMultiRepoConfig,
+  GitHubRepoConfig,
+  GitHubMultiRepoSyncStatus,
+  GitHubRepoSyncStatus
 } from '../../../shared/types';

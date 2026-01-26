@@ -35,6 +35,7 @@ interface UseGitHubPRsResult {
   previousReviewResult: PRReviewResult | null;
   isConnected: boolean;
   repoFullName: string | null;
+  configuredRepos: string[]; // All unique repos from the fetched PRs
   activePRReviews: number[]; // PR numbers currently being reviewed
   hasMore: boolean; // Whether there are more PRs to load
   selectPR: (prNumber: number | null) => void;
@@ -114,6 +115,17 @@ export function useGitHubPRs(
     if (!projectId) return [];
     return getActivePRReviews(projectId).map((review) => review.prNumber);
   }, [projectId, prReviews, getActivePRReviews]);
+
+  // Get unique repo names from fetched PRs
+  const configuredRepos = useMemo(() => {
+    const repos = new Set<string>();
+    prs.forEach((pr) => {
+      if (pr.repoFullName) {
+        repos.add(pr.repoFullName);
+      }
+    });
+    return Array.from(repos).sort();
+  }, [prs]);
 
   // Helper to get review state for any PR
   const getReviewStateForPR = useCallback(
@@ -608,6 +620,7 @@ export function useGitHubPRs(
     previousReviewResult,
     isConnected,
     repoFullName,
+    configuredRepos,
     activePRReviews,
     hasMore,
     selectPR,

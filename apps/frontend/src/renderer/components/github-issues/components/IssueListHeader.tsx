@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Github, RefreshCw, Search, Filter, Wand2, Loader2, Layers } from 'lucide-react';
+import { Github, RefreshCw, Search, Filter, Wand2, Loader2, Layers, ExternalLink, GitFork, X, Check } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -18,10 +18,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '../../ui/dropdown-menu';
+import { Separator } from '../../ui/separator';
+import { cn } from '../../../lib/utils';
 import type { IssueListHeaderProps } from '../types';
 
 export function IssueListHeader({
   repoFullName,
+  configuredRepos = [],
   openIssuesCount,
   isLoading,
   searchQuery,
@@ -29,6 +37,11 @@ export function IssueListHeader({
   onSearchChange,
   onFilterChange,
   onRefresh,
+  repositories = [],
+  selectedRepos = [],
+  onReposChange,
+  hasActiveFilters = false,
+  onClearFilters,
   autoFixEnabled,
   autoFixRunning,
   autoFixProcessing,
@@ -49,9 +62,27 @@ export function IssueListHeader({
             <h2 className="text-lg font-semibold text-foreground">
               GitHub Issues
             </h2>
-            <p className="text-xs text-muted-foreground">
-              {repoFullName}
-            </p>
+            {configuredRepos.length > 0 ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                {configuredRepos.map((repo, index) => (
+                  <a
+                    key={repo}
+                    href={`https://github.com/${repo}/issues`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    {repo}
+                    <ExternalLink className="h-3 w-3" />
+                    {index < configuredRepos.length - 1 && <span className="text-muted-foreground/50 ml-1">|</span>}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {repoFullName}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -145,6 +176,87 @@ export function IssueListHeader({
             className="pl-9"
           />
         </div>
+
+        {/* Repository Filter - only show if multiple repos */}
+        {repositories.length > 1 && onReposChange && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-9 border-dashed bg-transparent",
+                  selectedRepos.length > 0 && "border-solid bg-accent/50"
+                )}
+              >
+                <GitFork className="mr-2 h-4 w-4 text-muted-foreground" />
+                <span className="truncate">{t('prReview.repositories')}</span>
+                {selectedRepos.length > 0 && (
+                  <>
+                    <Separator orientation="vertical" className="mx-2 h-4" />
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {selectedRepos.length}
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[240px] p-0">
+              <div className="px-3 py-2 border-b border-border/50">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {t('prReview.repositories')}
+                </div>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto p-1">
+                {repositories.map((repo) => {
+                  const isSelected = selectedRepos.includes(repo);
+                  return (
+                    <div
+                      key={repo}
+                      role="option"
+                      aria-selected={isSelected}
+                      className={cn(
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-accent/50"
+                      )}
+                      onClick={() => {
+                        if (isSelected) {
+                          onReposChange(selectedRepos.filter(r => r !== repo));
+                        } else {
+                          onReposChange([...selectedRepos, repo]);
+                        }
+                      }}
+                    >
+                      <div className={cn(
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary/30",
+                        isSelected ? "bg-primary border-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                      )}>
+                        <Check className="h-3 w-3" />
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <GitFork className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate text-sm">{repo}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedRepos.length > 0 && (
+                <div className="p-1 border-t border-border/50 bg-muted/20">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center text-xs h-7 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => onReposChange([])}
+                  >
+                    {t('prReview.clearFilters')}
+                  </Button>
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <Select value={filterState} onValueChange={onFilterChange}>
           <SelectTrigger className="w-32">
             <Filter className="h-4 w-4 mr-2" />
@@ -156,6 +268,18 @@ export function IssueListHeader({
             <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Reset All Filters */}
+        {hasActiveFilters && onClearFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearFilters}
+            className="h-9 px-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -228,6 +228,16 @@ export const IPC_CHANNELS = {
   GITHUB_IMPORT_ISSUES: 'github:importIssues',
   GITHUB_CREATE_RELEASE: 'github:createRelease',
 
+  // GitHub Multi-Repository Management
+  GITHUB_MULTI_REPO_GET_CONFIG: 'github:multiRepo:getConfig',
+  GITHUB_MULTI_REPO_SAVE_CONFIG: 'github:multiRepo:saveConfig',
+  GITHUB_MULTI_REPO_ADD_REPO: 'github:multiRepo:addRepo',
+  GITHUB_MULTI_REPO_REMOVE_REPO: 'github:multiRepo:removeRepo',
+  GITHUB_MULTI_REPO_UPDATE_REPO: 'github:multiRepo:updateRepo',
+  GITHUB_MULTI_REPO_SET_DEFAULT: 'github:multiRepo:setDefault',
+  GITHUB_MULTI_REPO_CHECK_ALL: 'github:multiRepo:checkAll',
+  GITHUB_MULTI_REPO_MIGRATE: 'github:multiRepo:migrate',
+
   // GitHub OAuth (gh CLI authentication)
   GITHUB_CHECK_CLI: 'github:checkCli',
   GITHUB_CHECK_AUTH: 'github:checkAuth',

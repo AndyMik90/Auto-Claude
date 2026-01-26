@@ -510,3 +510,207 @@ def create_monorepo_config(
             )
         )
     return configs
+
+
+# ============================================
+# Frontend Compatibility Functions
+# ============================================
+
+
+def load_frontend_github_config(project_dir: Path) -> MultiRepoConfig | None:
+    """
+    Load GitHub configuration from the frontend's github.json file.
+
+    The frontend stores multi-repo configuration in:
+    {project_dir}/.auto-claude/github.json
+
+    This function reads and converts it to the backend's MultiRepoConfig format.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        MultiRepoConfig if file exists and is valid, None otherwise
+    """
+    github_json_path = project_dir / ".auto-claude" / "github.json"
+
+    if not github_json_path.exists():
+        return None
+
+    try:
+        with open(github_json_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        repos = []
+        for repo_data in data.get("repos", []):
+            repos.append(_frontend_repo_to_backend(repo_data))
+
+        config = MultiRepoConfig(
+            repos=repos,
+            base_dir=project_dir / ".auto-claude" / "github" / "repos",
+        )
+
+        return config
+
+    except (json.JSONDecodeError, FileNotFoundError, KeyError) as e:
+        # Log error but return None to fall back to legacy config
+        import logging
+
+        logging.warning(f"Failed to load github.json: {e}")
+        return None
+
+
+def _frontend_repo_to_backend(repo_data: dict[str, Any]) -> RepoConfig:
+    """
+    Convert a frontend GitHubRepoConfig to backend RepoConfig.
+
+    Frontend format:
+        {
+            repo: string,
+            enabled?: boolean,
+            issuesSyncEnabled?: boolean,
+            prReviewEnabled?: boolean,
+            autoFixEnabled?: boolean,
+            pathScope?: string,
+            relationship?: 'standalone' | 'fork' | 'upstream' | 'monorepo_package'
+        }
+
+    Backend format:
+        RepoConfig with snake_case field names and additional fields
+    """
+    relationship_str = repo_data.get("relationship", "standalone")
+    relationship = RepoRelationship(relationship_str)
+
+    return RepoConfig(
+        repo=repo_data["repo"],
+        path_scope=repo_data.get("pathScope"),
+        enabled=repo_data.get("enabled", True),
+        relationship=relationship,
+        # Frontend uses issuesSyncEnabled for triage
+        triage_enabled=repo_data.get("issuesSyncEnabled", True),
+        pr_review_enabled=repo_data.get("prReviewEnabled", True),
+        auto_fix_enabled=repo_data.get("autoFixEnabled", False),
+    )
+
+
+def get_enabled_repos(project_dir: Path) -> list[RepoConfig]:
+    """
+    Get all enabled repositories for a project.
+
+    Tries to load from frontend's github.json first,
+    falls back to legacy .env GITHUB_REPO if not found.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        List of enabled RepoConfig objects
+    """
+    # Try frontend config first
+    config = load_frontend_github_config(project_dir)
+    if config:
+        return config.list_repos(enabled_only=True)
+
+    # Fall back to legacy .env config
+    legacy_repo = _get_legacy_repo(project_dir)
+    if legacy_repo:
+        return [
+            RepoConfig(
+                repo=legacy_repo,
+                enabled=True,
+                triage_enabled=True,
+                pr_review_enabled=True,
+                auto_fix_enabled=True,
+            )
+        ]
+
+    return []
+
+
+def get_default_repo(project_dir: Path) -> str | None:
+    """
+    Get the default repository for a project.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Repository name in owner/repo format, or None if not configured
+    """
+    github_json_path = project_dir / ".auto-claude" / "github.json"
+
+    if github_json_path.exists():
+        try:
+            with open(github_json_path, encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Use explicit default if set
+            if data.get("defaultRepo"):
+                return data["defaultRepo"]
+
+            # Fall back to first enabled repo
+            repos = data.get("repos", [])
+            for repo in repos:
+                if repo.get("enabled", True):
+                    return repo["repo"]
+
+        except (json.JSONDecodeError, FileNotFoundError):
+            pass
+
+    # Fall back to legacy config
+    return _get_legacy_repo(project_dir)
+
+
+def _get_legacy_repo(project_dir: Path) -> str | None:
+    """
+    Get repository from legacy .env GITHUB_REPO.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Repository name or None
+    """
+    env_path = project_dir / ".auto-claude" / ".env"
+    if not env_path.exists():
+        return None
+
+    try:
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("GITHUB_REPO="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+
+    return None
+
+
+def get_repo_config(project_dir: Path, repo: str) -> RepoConfig | None:
+    """
+    Get configuration for a specific repository.
+
+    Args:
+        project_dir: Path to the project directory
+        repo: Repository in owner/repo format
+
+    Returns:
+        RepoConfig if found, None otherwise
+    """
+    config = load_frontend_github_config(project_dir)
+    if config:
+        return config.get_repo(repo)
+
+    # Check if it's the legacy repo
+    legacy_repo = _get_legacy_repo(project_dir)
+    if legacy_repo and legacy_repo == repo:
+        return RepoConfig(
+            repo=legacy_repo,
+            enabled=True,
+            triage_enabled=True,
+            pr_review_enabled=True,
+            auto_fix_enabled=True,
+        )
+
+    return None

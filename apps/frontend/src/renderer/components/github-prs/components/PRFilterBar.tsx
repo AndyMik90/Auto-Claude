@@ -17,7 +17,8 @@ import {
   X,
   Filter,
   Check,
-  Loader2
+  Loader2,
+  GitFork
 } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
@@ -35,10 +36,12 @@ import { cn } from '../../../lib/utils';
 interface PRFilterBarProps {
   filters: PRFilterState;
   contributors: string[];
+  repositories: string[];
   hasActiveFilters: boolean;
   onSearchChange: (query: string) => void;
   onContributorsChange: (contributors: string[]) => void;
   onStatusesChange: (statuses: PRStatusFilter[]) => void;
+  onRepositoriesChange: (repositories: string[]) => void;
   onClearFilters: () => void;
 }
 
@@ -282,10 +285,12 @@ function FilterDropdown<T extends string>({
 export function PRFilterBar({
   filters,
   contributors,
+  repositories,
   hasActiveFilters,
   onSearchChange,
   onContributorsChange,
   onStatusesChange,
+  onRepositoriesChange,
   onClearFilters,
 }: PRFilterBarProps) {
   const { t } = useTranslation('common');
@@ -318,6 +323,28 @@ export function PRFilterBar({
         </div>
 
         <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Repository Filter - only show if multiple repos */}
+        {repositories.length > 1 && (
+          <div className="flex-1 max-w-[200px]">
+            <FilterDropdown
+              title={t('prReview.repositories')}
+              icon={GitFork}
+              items={repositories}
+              selected={filters.repositories}
+              onChange={onRepositoriesChange}
+              selectedCountLabel={t('prReview.selectedCount', { count: filters.repositories.length })}
+              noResultsLabel={t('prReview.noResultsFound')}
+              clearLabel={t('prReview.clearFilters')}
+              renderItem={(repo) => (
+                <div className="flex items-center gap-2 min-w-0">
+                  <GitFork className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate text-sm">{repo}</span>
+                </div>
+              )}
+            />
+          </div>
+        )}
 
         {/* Contributors Filter */}
         <div className="flex-1 max-w-[240px]">

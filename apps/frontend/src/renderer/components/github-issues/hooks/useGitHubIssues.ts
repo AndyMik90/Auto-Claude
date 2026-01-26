@@ -105,9 +105,21 @@ export function useGitHubIssues(projectId: string | undefined) {
     return issues.find((i) => i.number === selectedIssueNumber) || null;
   }, [issues, selectedIssueNumber]);
 
+  // Get unique repo names from fetched issues
+  const configuredRepos = useMemo(() => {
+    const repos = new Set<string>();
+    issues.forEach((issue) => {
+      if (issue.repoFullName) {
+        repos.add(issue.repoFullName);
+      }
+    });
+    return Array.from(repos).sort();
+  }, [issues]);
+
   return {
     issues,
     syncStatus,
+    configuredRepos,
     isLoading,
     isLoadingMore,
     error,

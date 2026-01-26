@@ -19,7 +19,7 @@ import {
   DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
 import type { AuthFailureInfo } from "../../../shared/types/terminal";
-import { getGitHubConfig, githubFetch } from "./utils";
+import { getGitHubConfig, getGitHubRepos, getGitHubConfigForRepo, githubFetch, normalizeRepoReference } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
 import { getAugmentedEnv } from "../../env-utils";
 import { getMemoryService, getDefaultDbPath } from "../../memory-service";
@@ -380,6 +380,8 @@ export interface PRData {
   createdAt: string;
   updatedAt: string;
   htmlUrl: string;
+  /** Repository full name in owner/repo format */
+  repoFullName: string;
 }
 
 /**
@@ -1231,64 +1233,95 @@ async function runPRReview(
 export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): void {
   debugLog("Registering PR handlers");
 
-  // List open PRs with pagination support
+  // List open PRs with pagination support (multi-repo)
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_LIST,
     async (_, projectId: string, page: number = 1): Promise<PRData[]> => {
       debugLog("listPRs handler called", { projectId, page });
       const result = await withProjectOrNull(projectId, async (project) => {
-        const config = getGitHubConfig(project);
-        if (!config) {
-          debugLog("No GitHub config found for project");
+        // Get all configured repositories
+        const repos = getGitHubRepos(project);
+        if (repos.length === 0) {
+          debugLog("No GitHub repos configured for project");
           return [];
         }
 
-        try {
-          // Use pagination: per_page=100 (GitHub max), page=1,2,3...
-          const prs = (await githubFetch(
-            config.token,
-            `/repos/${config.repo}/pulls?state=open&per_page=100&page=${page}`
-          )) as Array<{
-            number: number;
-            title: string;
-            body?: string;
-            state: string;
-            user: { login: string };
-            head: { ref: string };
-            base: { ref: string };
-            additions: number;
-            deletions: number;
-            changed_files: number;
-            assignees?: Array<{ login: string }>;
-            created_at: string;
-            updated_at: string;
-            html_url: string;
-          }>;
-
-          debugLog("Fetched PRs", { count: prs.length, page, samplePr: prs[0] });
-          return prs.map((pr) => ({
-            number: pr.number,
-            title: pr.title,
-            body: pr.body ?? "",
-            state: pr.state,
-            author: { login: pr.user.login },
-            headRefName: pr.head.ref,
-            baseRefName: pr.base.ref,
-            additions: pr.additions ?? 0,
-            deletions: pr.deletions ?? 0,
-            changedFiles: pr.changed_files ?? 0,
-            assignees: pr.assignees?.map((a: { login: string }) => ({ login: a.login })) ?? [],
-            files: [],
-            createdAt: pr.created_at,
-            updatedAt: pr.updated_at,
-            htmlUrl: pr.html_url,
-          }));
-        } catch (error) {
-          debugLog("Failed to fetch PRs", {
-            error: error instanceof Error ? error.message : error,
-          });
+        // Filter to only enabled repos with PR review enabled
+        const enabledRepos = repos.filter(r => r.enabled !== false && r.prReviewEnabled !== false);
+        if (enabledRepos.length === 0) {
+          debugLog("No enabled repos with PR review");
           return [];
         }
+
+        debugLog("Fetching PRs from repos", { repos: enabledRepos.map(r => r.repo) });
+
+        // Fetch PRs from all enabled repositories in parallel
+        const prPromises = enabledRepos.map(async (repoConfig) => {
+          const config = getGitHubConfigForRepo(project, repoConfig.repo);
+          if (!config) {
+            debugLog("No GitHub config for repo", { repo: repoConfig.repo });
+            return [];
+          }
+
+          const repoFullName = normalizeRepoReference(repoConfig.repo) || repoConfig.repo;
+
+          try {
+            const prs = (await githubFetch(
+              config.token,
+              `/repos/${repoFullName}/pulls?state=open&per_page=100&page=${page}`
+            )) as Array<{
+              number: number;
+              title: string;
+              body?: string;
+              state: string;
+              user: { login: string };
+              head: { ref: string };
+              base: { ref: string };
+              additions: number;
+              deletions: number;
+              changed_files: number;
+              assignees?: Array<{ login: string }>;
+              created_at: string;
+              updated_at: string;
+              html_url: string;
+            }>;
+
+            debugLog("Fetched PRs from repo", { repo: repoFullName, count: prs.length });
+            return prs.map((pr) => ({
+              number: pr.number,
+              title: pr.title,
+              body: pr.body ?? "",
+              state: pr.state,
+              author: { login: pr.user.login },
+              headRefName: pr.head.ref,
+              baseRefName: pr.base.ref,
+              additions: pr.additions ?? 0,
+              deletions: pr.deletions ?? 0,
+              changedFiles: pr.changed_files ?? 0,
+              assignees: pr.assignees?.map((a: { login: string }) => ({ login: a.login })) ?? [],
+              files: [],
+              createdAt: pr.created_at,
+              updatedAt: pr.updated_at,
+              htmlUrl: pr.html_url,
+              repoFullName,
+            }));
+          } catch (error) {
+            debugLog("Failed to fetch PRs from repo", {
+              repo: repoFullName,
+              error: error instanceof Error ? error.message : error,
+            });
+            return [];
+          }
+        });
+
+        const prArrays = await Promise.all(prPromises);
+        const allPrs = prArrays.flat();
+
+        // Sort by updatedAt (most recent first)
+        allPrs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+        debugLog("Total PRs from all repos", { count: allPrs.length });
+        return allPrs;
       });
       return result ?? [];
     }
@@ -1303,10 +1336,13 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         const config = getGitHubConfig(project);
         if (!config) return null;
 
+        // Normalize repo name for consistent display
+        const repoFullName = normalizeRepoReference(config.repo) || config.repo;
+
         try {
           const pr = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}`
+            `/repos/${repoFullName}/pulls/${prNumber}`
           )) as {
             number: number;
             title: string;
@@ -1326,7 +1362,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           const files = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}/files`
+            `/repos/${repoFullName}/pulls/${prNumber}/files`
           )) as Array<{
             filename: string;
             additions: number;
@@ -1355,6 +1391,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
             htmlUrl: pr.html_url,
+            repoFullName,
           };
         } catch {
           return null;

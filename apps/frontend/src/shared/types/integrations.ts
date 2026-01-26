@@ -122,6 +122,44 @@ export interface GitHubSyncStatus {
   error?: string;
 }
 
+/**
+ * Sync status for a single repository in multi-repo mode
+ */
+export interface GitHubRepoSyncStatus {
+  /** Repository in owner/repo format */
+  repo: string;
+  /** Whether this repository is connected */
+  connected: boolean;
+  /** Full repository name */
+  repoFullName?: string;
+  /** Repository description */
+  repoDescription?: string;
+  /** Number of open issues */
+  issueCount?: number;
+  /** Number of open PRs */
+  prCount?: number;
+  /** Last sync timestamp */
+  lastSyncedAt?: string;
+  /** Error message if connection failed */
+  error?: string;
+}
+
+/**
+ * Aggregated sync status for multiple repositories
+ */
+export interface GitHubMultiRepoSyncStatus {
+  /** Whether at least one repository is connected */
+  connected: boolean;
+  /** Status for each configured repository */
+  repos: GitHubRepoSyncStatus[];
+  /** Total number of open issues across all repos */
+  totalIssueCount?: number;
+  /** Total number of open PRs across all repos */
+  totalPrCount?: number;
+  /** Overall error if all connections failed */
+  error?: string;
+}
+
 export interface GitHubImportResult {
   success: boolean;
   imported: number;

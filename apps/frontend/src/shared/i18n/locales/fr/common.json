@@ -224,6 +224,7 @@
     "searchPlaceholder": "Rechercher des PRs...",
     "contributors": "Contributeurs",
     "contributorsSelected": "Contributeurs ({{count}})",
+    "repositories": "Dépôts",
     "status": "Statut",
     "filters": "Filtres",
     "clearFilters": "Effacer",

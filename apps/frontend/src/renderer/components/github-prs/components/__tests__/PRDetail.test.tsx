@@ -35,6 +35,7 @@ function createMockPR(overrides: Partial<PRData> = {}): PRData {
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     htmlUrl: 'https://github.com/test/repo/pull/123',
+    repoFullName: 'test/repo',
     ...overrides,
   };
 }

@@ -228,7 +228,16 @@ const browserMockAPI: ElectronAPI = {
     approveBatches: async () => ({ success: true, batches: [] }),
     onAnalyzePreviewProgress: () => () => {},
     onAnalyzePreviewComplete: () => () => {},
-    onAnalyzePreviewError: () => () => {}
+    onAnalyzePreviewError: () => () => {},
+    // Multi-repository management
+    getMultiRepoConfig: async () => ({ success: true, data: { repos: [], version: 1 } }),
+    saveMultiRepoConfig: async () => ({ success: true, data: true }),
+    addRepository: async () => ({ success: true, data: { repos: [], version: 1 } }),
+    removeRepository: async () => ({ success: true, data: { repos: [], version: 1 } }),
+    updateRepository: async () => ({ success: true, data: { repos: [], version: 1 } }),
+    setDefaultRepository: async () => ({ success: true, data: { repos: [], version: 1 } }),
+    checkAllConnections: async () => ({ success: true, data: { connected: false, repos: [] } }),
+    migrateToMultiRepo: async () => ({ success: true, data: { migrated: false } })
   },
 
   // Claude Code Operations

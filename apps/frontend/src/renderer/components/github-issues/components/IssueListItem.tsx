@@ -1,4 +1,4 @@
-import { User, MessageCircle, Tag, Sparkles } from 'lucide-react';
+import { User, MessageCircle, Tag, Sparkles, GitFork } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import {
@@ -19,6 +19,11 @@ export function IssueListItem({ issue, isSelected, onClick, onInvestigate }: Iss
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
+          {/* Repository name */}
+          <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+            <GitFork className="h-3 w-3" />
+            <span className="truncate">{issue.repoFullName}</span>
+          </div>
           <div className="flex items-center gap-2 mb-1">
             <Badge
               variant="outline"
