@@ -25,6 +25,7 @@ import type {
   McpHealthCheckResult,
   McpTestConnectionResult
 } from './project';
+import type { ScreenshotSource } from './screenshot';
 import type {
   Task,
   TaskStatus,
@@ -861,11 +862,7 @@ export interface ElectronAPI {
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
 
   // Screenshot capture operations
-  getSources: () => Promise<IPCResult<Array<{
-    id: string;
-    name: string;
-    thumbnail: string;
-  }>>>;
+  getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
 
   // Queue Routing API (rate limit recovery)
