@@ -199,7 +199,7 @@
     "aiTerminalNaming": "AI ターミナル命名",
     "aiTerminalNamingDescription": "コマンドに基づいてターミナルを自動的に命名（Haiku を使用）",
     "featureModelSettings": "機能モデル設定",
-    "featureModelSettingsDescription": "インサイト、アイデア、ロードマップのモデルと思考レベル",
+    "featureModelSettingsDescription": "AIチャット、アイデア、ロードマップのモデルと思考レベル",
     "model": "モデル",
     "thinkingLevel": "思考レベル",
     "paths": "パス",
@@ -849,8 +849,8 @@
         "description": "マージコンフリクトを解決"
       },
       "insights": {
-        "label": "インサイト",
-        "description": "コードのインサイトを抽出"
+        "label": "AIチャット",
+        "description": "コードベースについてAIに質問"
       },
       "analysis": {
         "label": "分析",
