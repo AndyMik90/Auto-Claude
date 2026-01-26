@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { GitPullRequest, User, Clock, FileDiff, Loader2 } from 'lucide-react';
+import { GitPullRequest, User, Clock, FileDiff, Loader2, GitFork } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Badge } from '../../ui/badge';
 import { cn } from '../../../lib/utils';
@@ -287,6 +287,11 @@ export function PRList({
               <div className="flex items-start gap-3">
                 <GitPullRequest className="h-5 w-5 mt-0.5 text-success shrink-0" />
                 <div className="flex-1 min-w-0">
+                  {/* Repository name */}
+                  <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                    <GitFork className="h-3 w-3" />
+                    <span className="truncate">{pr.repoFullName}</span>
+                  </div>
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-sm text-muted-foreground">#{pr.number}</span>
                     <Badge variant="outline" className="text-xs">

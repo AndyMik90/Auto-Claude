@@ -380,6 +380,8 @@ export interface PRData {
   createdAt: string;
   updatedAt: string;
   htmlUrl: string;
+  /** Repository full name in owner/repo format */
+  repoFullName: string;
 }
 
 /**
@@ -1282,6 +1284,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
             htmlUrl: pr.html_url,
+            repoFullName: config.repo,
           }));
         } catch (error) {
           debugLog("Failed to fetch PRs", {
@@ -1355,6 +1358,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
             htmlUrl: pr.html_url,
+            repoFullName: config.repo,
           };
         } catch {
           return null;

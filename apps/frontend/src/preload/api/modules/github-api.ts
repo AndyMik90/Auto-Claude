@@ -338,6 +338,8 @@ export interface PRData {
   createdAt: string;
   updatedAt: string;
   htmlUrl: string;
+  /** Repository full name in owner/repo format */
+  repoFullName: string;
 }
 
 /**
