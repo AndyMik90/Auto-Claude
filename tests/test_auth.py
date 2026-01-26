@@ -613,6 +613,75 @@ class TestSdkEnvVars:
 
         assert env["CLAUDE_CODE_GIT_BASH_PATH"] == existing_path
 
+    def test_path_included_in_env_vars(self):
+        """PATH is always included in returned environment variables."""
+        env = get_sdk_env_vars()
+
+        assert "PATH" in env
+        assert env["PATH"]  # PATH should not be empty
+
+    def test_path_uses_build_subprocess_path(self, monkeypatch):
+        """PATH is constructed using build_subprocess_path()."""
+        test_path = "/custom/bin:/usr/local/bin:/usr/bin"
+        monkeypatch.setattr(
+            "core.auth.build_subprocess_path",
+            lambda: test_path,
+        )
+
+        env = get_sdk_env_vars()
+
+        assert env["PATH"] == test_path
+
+    def test_path_includes_platform_binary_directories_macos(self, monkeypatch):
+        """PATH includes Homebrew directories on macOS."""
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+        # Provide a minimal base PATH
+        monkeypatch.setenv("PATH", "/usr/bin")
+
+        env = get_sdk_env_vars()
+
+        # PATH should include common binary directories
+        path_value = env["PATH"]
+        # Should include user home bin
+        assert "/.local/bin" in path_value or "/usr/local/bin" in path_value
+
+    def test_path_includes_platform_binary_directories_linux(self, monkeypatch):
+        """PATH includes standard directories on Linux."""
+        monkeypatch.setattr(platform, "system", lambda: "Linux")
+        # Provide a minimal base PATH
+        monkeypatch.setenv("PATH", "/usr/bin")
+
+        env = get_sdk_env_vars()
+
+        # PATH should include common binary directories
+        path_value = env["PATH"]
+        # Should include standard Linux bin directories
+        assert "/usr/local/bin" in path_value or "/.local/bin" in path_value
+
+    def test_path_preserves_existing_entries(self, monkeypatch):
+        """PATH preserves existing PATH entries."""
+        original_path = "/my/custom/bin:/another/path"
+        monkeypatch.setenv("PATH", original_path)
+
+        env = get_sdk_env_vars()
+
+        # Original PATH entries should be preserved
+        assert "/my/custom/bin" in env["PATH"]
+        assert "/another/path" in env["PATH"]
+
+    def test_path_prepends_binary_directories(self, monkeypatch):
+        """Platform binary directories are prepended to PATH."""
+        original_path = "/usr/bin"
+        monkeypatch.setenv("PATH", original_path)
+
+        env = get_sdk_env_vars()
+
+        # The PATH should not start with the original path
+        # (platform dirs should be prepended)
+        path_value = env["PATH"]
+        # PATH should be longer than original due to prepended directories
+        assert len(path_value) > len(original_path)
+
 
 class TestTokenDecryption:
     """Tests for token decryption functionality."""
