@@ -163,10 +163,10 @@ export function detectWorktreeBranch(
       env: getIsolatedGitEnv()
     }).trim();
 
-    // Only use detected branch if it EXACTLY matches the expected branch
-    // This prevents deleting wrong branch when worktree is corrupted/orphaned
-    // and git rev-parse walks up to main project's current branch OR returns
-    // a different task's auto-claude branch
+    // SECURITY: Use strict exact-match validation (not prefix matching) to prevent
+    // accidentally deleting a different task's auto-claude branch. When git rev-parse
+    // returns an unexpected branch, we MUST fall back to the expected pattern rather
+    // than risking deletion of the wrong branch. This is critical for data safety.
     if (detectedBranch === expectedBranch) {
       branch = detectedBranch;
     } else {
@@ -180,6 +180,9 @@ export function detectWorktreeBranch(
   }
 
   return { branch, usingFallback };
+}
+
+/**
  * Refreshes the git index to ensure accurate status after external commits.
  *
  * Git caches file stat information in its index. When files are modified
