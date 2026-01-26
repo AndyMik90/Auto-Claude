@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createHash } from 'crypto';
-import { join } from 'path';
+import { join, normalize } from 'path';
 
 // Mock dependencies before importing the module
 vi.mock('../platform', () => ({
@@ -80,7 +80,10 @@ describe('credential-utils', () => {
 
     it('should return hashed service name for custom configDir', () => {
       const configDir = '/home/user/.claude-profiles/work';
-      const hash = calculateConfigDirHash(configDir);
+      // The implementation normalizes the path before hashing (for consistent cross-platform behavior)
+      // So we must also normalize when calculating the expected hash
+      const normalizedConfigDir = normalize(configDir);
+      const hash = calculateConfigDirHash(normalizedConfigDir);
       expect(getKeychainServiceName(configDir)).toBe(`Claude Code-credentials-${hash}`);
     });
   });
@@ -210,8 +213,37 @@ describe('credential-utils', () => {
       vi.mocked(homedir).mockReturnValue('/home/testuser');
     });
 
-    it('should return credentials from .credentials.json', () => {
+    // Helper to mock Secret Service not available (secret-tool not found)
+    const mockSecretServiceUnavailable = () => {
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        // secret-tool not found
+        if (pathStr.includes('secret-tool')) return false;
+        // credentials file exists
+        if (pathStr.includes('.credentials.json')) return true;
+        return false;
+      });
+    };
+
+    it('should return credentials from Secret Service when available', () => {
+      // secret-tool exists and returns credentials
       vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(execFileSync).mockReturnValue(JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'sk-ant-secret-service-token',
+          email: 'secretservice@example.com',
+        },
+      }));
+
+      const result = getCredentialsFromKeychain();
+
+      expect(result.token).toBe('sk-ant-secret-service-token');
+      expect(result.email).toBe('secretservice@example.com');
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should fall back to .credentials.json when Secret Service unavailable', () => {
+      mockSecretServiceUnavailable();
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
         claudeAiOauth: {
           accessToken: 'sk-ant-linux-token-456',
@@ -226,7 +258,7 @@ describe('credential-utils', () => {
       expect(result.error).toBeUndefined();
     });
 
-    it('should return null when credentials file not found', () => {
+    it('should return null when credentials file not found and Secret Service unavailable', () => {
       vi.mocked(existsSync).mockReturnValue(false);
 
       const result = getCredentialsFromKeychain();
@@ -237,7 +269,12 @@ describe('credential-utils', () => {
 
     it('should use custom configDir for credentials path', () => {
       const customConfigDir = '/home/user/.claude-profiles/work';
-      vi.mocked(existsSync).mockReturnValue(true);
+      mockSecretServiceUnavailable();
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        if (pathStr.includes('secret-tool')) return false;
+        return true; // credentials file exists
+      });
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
         claudeAiOauth: {
           accessToken: 'sk-ant-custom-token',
@@ -252,7 +289,7 @@ describe('credential-utils', () => {
     });
 
     it('should handle emailAddress field (alternative email location)', () => {
-      vi.mocked(existsSync).mockReturnValue(true);
+      mockSecretServiceUnavailable();
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
         claudeAiOauth: {
           accessToken: 'sk-ant-test-token',
@@ -266,7 +303,7 @@ describe('credential-utils', () => {
     });
 
     it('should handle top-level email field', () => {
-      vi.mocked(existsSync).mockReturnValue(true);
+      mockSecretServiceUnavailable();
       vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
         claudeAiOauth: {
           accessToken: 'sk-ant-test-token',
@@ -280,7 +317,7 @@ describe('credential-utils', () => {
     });
 
     it('should handle file read permission errors', () => {
-      vi.mocked(existsSync).mockReturnValue(true);
+      mockSecretServiceUnavailable();
       vi.mocked(readFileSync).mockImplementation(() => {
         throw new Error('EACCES: permission denied');
       });
@@ -289,6 +326,30 @@ describe('credential-utils', () => {
 
       expect(result.token).toBeNull();
       expect(result.email).toBeNull();
+    });
+
+    it('should fall back to file when Secret Service lookup fails', () => {
+      // secret-tool exists but lookup fails
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        if (pathStr.includes('secret-tool')) return true;
+        if (pathStr.includes('.credentials.json')) return true;
+        return false;
+      });
+      vi.mocked(execFileSync).mockImplementation(() => {
+        throw new Error('secret-tool lookup failed');
+      });
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'sk-ant-fallback-token',
+          email: 'fallback@example.com',
+        },
+      }));
+
+      const result = getCredentialsFromKeychain();
+
+      expect(result.token).toBe('sk-ant-fallback-token');
+      expect(result.email).toBe('fallback@example.com');
     });
   });
 
@@ -300,14 +361,38 @@ describe('credential-utils', () => {
       vi.mocked(homedir).mockReturnValue('C:\\Users\\TestUser');
     });
 
-    it('should return null when PowerShell not found', () => {
+    it('should return null when PowerShell not found and no file fallback', () => {
+      // Neither PowerShell nor .credentials.json exists
       vi.mocked(existsSync).mockReturnValue(false);
 
       const result = getCredentialsFromKeychain();
 
       expect(result.token).toBeNull();
       expect(result.email).toBeNull();
-      expect(result.error).toBe('PowerShell not found');
+      // Now falls back to file, which doesn't exist, so no error
+    });
+
+    it('should fall back to file when PowerShell not found', () => {
+      // PowerShell not found, but .credentials.json exists with valid data
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        // No PowerShell
+        if (pathStr.includes('powershell') || pathStr.includes('pwsh')) return false;
+        // But .credentials.json exists
+        if (pathStr.includes('.credentials.json')) return true;
+        return false;
+      });
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'sk-ant-file-fallback-token',
+          email: 'file@example.com',
+        },
+      }));
+
+      const result = getCredentialsFromKeychain();
+
+      expect(result.token).toBe('sk-ant-file-fallback-token');
+      expect(result.email).toBe('file@example.com');
     });
 
     it('should return credentials from Windows Credential Manager', () => {
@@ -326,8 +411,16 @@ describe('credential-utils', () => {
       expect(result.email).toBe('windows@example.com');
     });
 
-    it('should return null when credential not found', () => {
-      vi.mocked(existsSync).mockReturnValue(true);
+    it('should return null when credential not found and no file fallback', () => {
+      // PowerShell exists but credential not found, and no .credentials.json file
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        // PowerShell exists
+        if (pathStr.includes('powershell') || pathStr.includes('pwsh')) return true;
+        // No .credentials.json file
+        if (pathStr.includes('.credentials.json')) return false;
+        return false;
+      });
       vi.mocked(execFileSync).mockReturnValue('');
 
       const result = getCredentialsFromKeychain();
@@ -336,8 +429,38 @@ describe('credential-utils', () => {
       expect(result.email).toBeNull();
     });
 
-    it('should handle invalid JSON from Credential Manager', () => {
-      vi.mocked(existsSync).mockReturnValue(true);
+    it('should handle invalid JSON from Credential Manager and fall back to file', () => {
+      // PowerShell exists but returns invalid JSON, but .credentials.json has valid data
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        if (pathStr.includes('powershell') || pathStr.includes('pwsh')) return true;
+        if (pathStr.includes('.credentials.json')) return true;
+        return false;
+      });
+      vi.mocked(execFileSync).mockReturnValue('invalid json');
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'sk-ant-fallback-token',
+          email: 'fallback@example.com',
+        },
+      }));
+
+      const result = getCredentialsFromKeychain();
+
+      // Should fall back to file and get credentials from there
+      expect(result.token).toBe('sk-ant-fallback-token');
+      expect(result.email).toBe('fallback@example.com');
+    });
+
+    it('should return null when both Credential Manager and file fail', () => {
+      // PowerShell exists but returns invalid JSON, and no .credentials.json file
+      vi.mocked(existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        if (pathStr.includes('powershell') || pathStr.includes('pwsh')) return true;
+        // No .credentials.json file
+        if (pathStr.includes('.credentials.json')) return false;
+        return false;
+      });
       vi.mocked(execFileSync).mockReturnValue('invalid json');
 
       const result = getCredentialsFromKeychain();
