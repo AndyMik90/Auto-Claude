@@ -1,7 +1,8 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { randomBytes } from 'crypto';
 import { EventEmitter } from 'events';
 import type {
   InsightsChatMessage,
@@ -89,16 +90,23 @@ export class InsightsExecutor extends EventEmitter {
     // Get process environment
     const processEnv = await this.config.getProcessEnv();
 
-    // Write conversation history to temp file to avoid Windows command-line length limit
-    const historyFile = path.join(
-      os.tmpdir(),
-      `insights-history-${projectId}-${Date.now()}.json`
-    );
+    // Create secure temp directory for this session (owner-only permissions)
+    const tempDir = path.join(os.tmpdir(), `auto-claude-insights-${projectId}`);
+    try {
+      mkdirSync(tempDir, { recursive: true, mode: 0o700 });
+    } catch (err) {
+      console.error('[Insights] Failed to create temp directory:', err);
+      throw new Error('Failed to create temporary directory');
+    }
 
-    let historyFileCreated = false;
+    // Generate secure random filename to prevent predictable paths
+    const randomSuffix = randomBytes(8).toString('hex');
+
+    // Write conversation history to temp file to avoid Windows command-line length limit
+    const historyFile = path.join(tempDir, `history-${randomSuffix}.json`);
+
     try {
       writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
-      historyFileCreated = true;
     } catch (err) {
       console.error('[Insights] Failed to write history file:', err);
       throw new Error('Failed to write conversation history to temp file');
@@ -107,21 +115,16 @@ export class InsightsExecutor extends EventEmitter {
     // Write image attachments to temp file if provided
     let imagesFile: string | undefined;
     if (imageAttachments && imageAttachments.length > 0) {
-      imagesFile = path.join(
-        os.tmpdir(),
-        `insights-images-${projectId}-${Date.now()}.json`
-      );
+      imagesFile = path.join(tempDir, `images-${randomSuffix}.json`);
       try {
         writeFileSync(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
       } catch (err) {
         console.error('[Insights] Failed to write images file:', err);
         // Clean up history file before throwing
-        if (historyFileCreated) {
-          try {
-            unlinkSync(historyFile);
-          } catch {
-            // Ignore cleanup errors
-          }
+        try {
+          unlinkSync(historyFile);
+        } catch {
+          // Ignore cleanup errors
         }
         throw new Error('Failed to write image attachments to temp file');
       }
@@ -199,12 +202,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
-        if (historyFileCreated && existsSync(historyFile)) {
+        // Cleanup temp files
+        if (existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (imagesFile && existsSync(imagesFile)) {
+          try {
+            unlinkSync(imagesFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup images file:', cleanupErr);
           }
         }
 
@@ -246,12 +257,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
-        if (historyFileCreated && existsSync(historyFile)) {
+        // Cleanup temp files
+        if (existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (imagesFile && existsSync(imagesFile)) {
+          try {
+            unlinkSync(imagesFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup images file:', cleanupErr);
           }
         }
 

@@ -143,6 +143,7 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    image_attachments: list | None = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -349,6 +350,10 @@ def main():
         "--history-file", help="Path to JSON file containing conversation history"
     )
     parser.add_argument(
+        "--images-file",
+        help="Path to JSON file containing image attachments for the message",
+    )
+    parser.add_argument(
         "--model",
         default="sonnet",
         help="Model to use (haiku, sonnet, opus, or full model ID)",
@@ -399,9 +404,29 @@ def main():
         debug_error("insights_runner", f"Failed to load history: {e}")
         history = []
 
+    # Load image attachments from file if provided
+    image_attachments = None
+    try:
+        if args.images_file:
+            debug("insights_runner", "Loading images from file", file=args.images_file)
+            with open(args.images_file, encoding="utf-8") as f:
+                image_attachments = json.load(f)
+            debug_detailed(
+                "insights_runner",
+                "Loaded image attachments",
+                image_count=len(image_attachments) if image_attachments else 0,
+            )
+    except (json.JSONDecodeError, FileNotFoundError, OSError) as e:
+        debug_error("insights_runner", f"Failed to load images: {e}")
+        image_attachments = None
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(
+        run_with_sdk(
+            project_dir, user_message, history, model, thinking_level, image_attachments
+        )
+    )
     debug_success("insights_runner", "Query completed")
 
 
