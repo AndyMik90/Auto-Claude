@@ -1591,6 +1591,11 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             </ScrollArea>
           </div>
 
+          {/* Warning message */}
+          <p className="text-sm text-destructive">
+            {t('kanban.deleteWarning')}
+          </p>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
               {t('common:buttons.cancel')}
