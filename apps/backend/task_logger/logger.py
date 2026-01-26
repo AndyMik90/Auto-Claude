@@ -497,7 +497,6 @@ class TaskLogger:
         # Sanitize before truncating detail
         stored_detail = strip_ansi_codes(detail) if detail else None
         if stored_detail and len(stored_detail) > 10240:
-            original_len = len(detail)
             sanitized_len = len(stored_detail)
             stored_detail = (
                 stored_detail[:10240]
