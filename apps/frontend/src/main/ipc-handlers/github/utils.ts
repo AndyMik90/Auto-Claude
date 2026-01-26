@@ -3,13 +3,16 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import type { Project, GitHubMultiRepoConfig, GitHubRepoConfig } from '../../../shared/types';
 import { parseEnvFile } from '../utils';
 import type { GitHubConfig } from './types';
 import { getAugmentedEnv } from '../../env-utils';
 import { getToolPath } from '../../cli-tool-manager';
+
+const execFileAsync = promisify(execFile);
 
 /** Current schema version for github.json */
 const GITHUB_CONFIG_VERSION = 1;
@@ -18,10 +21,27 @@ const GITHUB_CONFIG_VERSION = 1;
 const GITHUB_CONFIG_FILENAME = 'github.json';
 
 /**
- * Get GitHub token from gh CLI if available
+ * Get GitHub token from gh CLI if available (async to avoid blocking main thread)
  * Uses augmented PATH to find gh CLI in common locations (e.g., Homebrew on macOS)
  */
-function getTokenFromGhCli(): string | null {
+async function getTokenFromGhCliAsync(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(getToolPath('gh'), ['auth', 'token'], {
+      encoding: 'utf-8',
+      env: getAugmentedEnv()
+    });
+    const token = stdout.trim();
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get GitHub token from gh CLI if available (sync version for getGitHubConfig)
+ * Uses augmented PATH to find gh CLI in common locations (e.g., Homebrew on macOS)
+ */
+function getTokenFromGhCliSync(): string | null {
   try {
     const token = execFileSync(getToolPath('gh'), ['auth', 'token'], {
       encoding: 'utf-8',
@@ -32,6 +52,15 @@ function getTokenFromGhCli(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Get a fresh GitHub token for subprocess use (async to avoid blocking main thread)
+ * Always fetches fresh from gh CLI - no caching to ensure account changes are reflected
+ * @returns The current GitHub token or null if not authenticated
+ */
+export async function getGitHubTokenForSubprocess(): Promise<string | null> {
+  return getTokenFromGhCliAsync();
 }
 
 /**
@@ -49,9 +78,9 @@ export function getGitHubConfig(project: Project): GitHubConfig | null {
     let token: string | undefined = vars['GITHUB_TOKEN'];
     const repo = vars['GITHUB_REPO'];
 
-    // If no token in .env, try to get it from gh CLI
+    // If no token in .env, try to get it from gh CLI (sync version for sync function)
     if (!token) {
-      const ghToken = getTokenFromGhCli();
+      const ghToken = getTokenFromGhCliSync();
       if (ghToken) {
         token = ghToken;
       }
