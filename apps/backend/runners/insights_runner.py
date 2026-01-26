@@ -179,37 +179,64 @@ async def run_with_sdk(
 
 Current question: {message}"""
 
-    # Build content array for SDK query (supports text + images)
-    # Start with text block containing the full prompt
-    content = [{"type": "text", "text": full_prompt}]
-
-    # Add image blocks if attachments are provided
+    # Handle image attachments by writing to temp files and referencing in prompt
+    # Note: Claude SDK doesn't support image blocks in content arrays
+    # We write images to temp files and reference their paths in the prompt
+    temp_image_files = []  # Initialize for cleanup in finally block
     if image_attachments:
         debug(
             "insights_runner",
-            "Adding image attachments to query",
+            "Processing image attachments",
             image_count=len(image_attachments),
         )
-        for img in image_attachments:
+        import base64
+        import tempfile
+
+        for idx, img in enumerate(image_attachments):
             img_data = img.get("data")
+            img_filename = img.get("filename", f"image_{idx}")
             img_type = img.get("mimeType", "image/png")
+
             if img_data:
-                content.append(
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": img_type,
-                            "data": img_data,
-                        },
+                try:
+                    # Decode base64 and write to temp file
+                    image_bytes = base64.b64decode(img_data)
+
+                    # Determine file extension from MIME type
+                    ext_map = {
+                        "image/png": ".png",
+                        "image/jpeg": ".jpg",
+                        "image/jpg": ".jpg",
+                        "image/gif": ".gif",
+                        "image/webp": ".webp",
                     }
-                )
-                debug_detailed(
-                    "insights_runner",
-                    "Added image block",
-                    filename=img.get("filename", "unknown"),
-                    media_type=img_type,
-                )
+                    ext = ext_map.get(img_type, ".png")
+
+                    # Create temp file in project directory so SDK can access it
+                    with tempfile.NamedTemporaryFile(
+                        suffix=ext,
+                        dir=project_path,
+                        delete=False,
+                    ) as f:
+                        f.write(image_bytes)
+                        temp_image_path = Path(f.name)
+
+                    temp_image_files.append(temp_image_path)
+
+                    # Add image reference to prompt
+                    full_prompt += f"\n\n[Image {idx + 1}: {img_filename}]\nFile: {temp_image_path.name}"
+
+                    debug_detailed(
+                        "insights_runner",
+                        "Wrote image to temp file",
+                        filename=img_filename,
+                        path=str(temp_image_path),
+                    )
+                except Exception as e:
+                    debug_error(
+                        "insights_runner",
+                        f"Failed to write image {idx} to temp file: {e}",
+                    )
 
     # Convert thinking level to token budget
     max_thinking_tokens = get_thinking_budget(thinking_level)
@@ -241,14 +268,8 @@ Current question: {message}"""
 
         # Use async context manager pattern
         async with client:
-            # Send the query with content (supports text + images)
-            # If only text, pass as string; otherwise pass content array
-            if len(content) == 1:
-                # Text only - pass as string for better compatibility
-                await client.query(full_prompt)
-            else:
-                # Multi-modal - pass content array with text + images
-                await client.query(content)
+            # Send the query (image references are in the prompt text)
+            await client.query(full_prompt)
 
             # Stream the response
             response_text = ""
@@ -323,6 +344,22 @@ Current question: {message}"""
 
         traceback.print_exc(file=sys.stderr)
         run_simple(project_dir, message, history)
+
+    finally:
+        # Clean up temporary image files (runs even on exception)
+        for temp_file in temp_image_files:
+            try:
+                temp_file.unlink()
+                debug_detailed(
+                    "insights_runner",
+                    "Cleaned up temp image file",
+                    path=str(temp_file),
+                )
+            except Exception as e:
+                debug_error(
+                    "insights_runner",
+                    f"Failed to clean up temp file {temp_file}: {e}",
+                )
 
 
 def run_simple(project_dir: str, message: str, history: list) -> None:

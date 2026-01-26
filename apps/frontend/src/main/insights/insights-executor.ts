@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import tmp from 'tmp';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -93,7 +94,7 @@ export class InsightsExecutor extends EventEmitter {
     let historyFile: string;
     try {
       historyFile = tmp.fileSync({ prefix: 'insights-history-', discardDescriptor: true }).name;
-      writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
+      await writeFile(historyFile, JSON.stringify(conversationHistory), 'utf-8');
     } catch (err) {
       console.error('[Insights] Failed to create history file:', err);
       throw new Error('Failed to create conversation history temp file');
@@ -104,7 +105,7 @@ export class InsightsExecutor extends EventEmitter {
     if (imageAttachments && imageAttachments.length > 0) {
       try {
         imagesFile = tmp.fileSync({ prefix: 'insights-images-', discardDescriptor: true }).name;
-        writeFileSync(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
+        await writeFile(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
       } catch (err) {
         console.error('[Insights] Failed to create images file:', err);
         // Clean up history file before throwing

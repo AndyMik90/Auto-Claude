@@ -372,12 +372,14 @@ async function ensureImageAttachmentsCompressed(attachments: ImageAttachment[]):
       const compressedBase64 = getBase64FromDataUrl(compressed.dataUrl);
       const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
 
-      result.push({
+      const recompressed = {
         ...attachment,
         mimeType: compressed.mimeType,
         size: compressedSize,
         data: compressedBase64
-      });
+      } as ImageAttachment & { _compressed?: boolean };
+      recompressed._compressed = true;
+      result.push(recompressed);
     }
   }
 
