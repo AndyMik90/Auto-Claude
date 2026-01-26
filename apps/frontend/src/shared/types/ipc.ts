@@ -142,6 +142,12 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type {
+  Secret,
+  SecretMetadata,
+  CreateSecretInput,
+  UpdateSecretInput
+} from './secrets';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -872,6 +878,15 @@ export interface ElectronAPI {
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
+
+  // Secrets management operations
+  isEncryptionAvailable: () => Promise<IPCResult<boolean>>;
+  listSecrets: (projectPath: string) => Promise<IPCResult<SecretMetadata[]>>;
+  getSecret: (projectPath: string, secretId: string) => Promise<IPCResult<Secret | null>>;
+  createSecret: (projectPath: string, input: CreateSecretInput) => Promise<IPCResult<SecretMetadata>>;
+  updateSecret: (projectPath: string, secretId: string, input: UpdateSecretInput) => Promise<IPCResult<SecretMetadata>>;
+  deleteSecret: (projectPath: string, secretId: string) => Promise<IPCResult<void>>;
+  getSecretsAsEnv: (projectPath: string, secretIds: string[]) => Promise<IPCResult<Record<string, string>>>;
 
   // Screenshot capture operations
   getSources: () => Promise<IPCResult<Array<{

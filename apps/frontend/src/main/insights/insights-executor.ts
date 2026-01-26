@@ -115,8 +115,8 @@ export class InsightsExecutor extends EventEmitter {
       message: 'Processing your message...'
     } as InsightsChatStatus);
 
-    // Get process environment
-    const processEnv = await this.config.getProcessEnv();
+    // Get process environment (includes secrets from MCP server configurations)
+    const processEnv = await this.config.getProcessEnv(projectPath);
 
     // Write conversation history to temp file to avoid Windows command-line length limit
     const historyFile = path.join(

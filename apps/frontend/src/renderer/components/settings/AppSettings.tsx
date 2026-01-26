@@ -20,7 +20,8 @@ import {
   Code,
   Bug,
   Users,
-  MessageSquare
+  MessageSquare,
+  KeyRound
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -90,6 +91,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'general', icon: Settings2 },
   { id: 'workspace', icon: FolderGit2 },
+  { id: 'secrets', icon: KeyRound },
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },

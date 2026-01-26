@@ -19,6 +19,7 @@ import enIdeation from './locales/en/ideation.json';
 import enChangelog from './locales/en/changelog.json';
 import enContext from './locales/en/context.json';
 import enWorkspace from './locales/en/workspace.json';
+import enSecrets from './locales/en/secrets.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -38,6 +39,7 @@ import frIdeation from './locales/fr/ideation.json';
 import frChangelog from './locales/fr/changelog.json';
 import frContext from './locales/fr/context.json';
 import frWorkspace from './locales/fr/workspace.json';
+import frSecrets from './locales/fr/secrets.json';
 
 // Import Japanese translation resources
 import jaCommon from './locales/ja/common.json';
@@ -57,6 +59,7 @@ import jaIdeation from './locales/ja/ideation.json';
 import jaChangelog from './locales/ja/changelog.json';
 import jaContext from './locales/ja/context.json';
 import jaWorkspace from './locales/ja/workspace.json';
+import jaSecrets from './locales/ja/secrets.json';
 
 export const defaultNS = 'common';
 
@@ -78,7 +81,8 @@ export const resources = {
     ideation: enIdeation,
     changelog: enChangelog,
     context: enContext,
-    workspace: enWorkspace
+    workspace: enWorkspace,
+    secrets: enSecrets
   },
   fr: {
     common: frCommon,
@@ -97,7 +101,8 @@ export const resources = {
     ideation: frIdeation,
     changelog: frChangelog,
     context: frContext,
-    workspace: frWorkspace
+    workspace: frWorkspace,
+    secrets: frSecrets
   },
   ja: {
     common: jaCommon,
@@ -116,7 +121,8 @@ export const resources = {
     ideation: jaIdeation,
     changelog: jaChangelog,
     context: jaContext,
-    workspace: jaWorkspace
+    workspace: jaWorkspace,
+    secrets: jaSecrets
   }
 } as const;
 
@@ -127,7 +133,7 @@ i18n
     lng: 'ja', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'insights', 'roadmap', 'ideation', 'changelog', 'context', 'workspace'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'insights', 'roadmap', 'ideation', 'changelog', 'context', 'workspace', 'secrets'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

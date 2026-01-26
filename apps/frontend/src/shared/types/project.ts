@@ -454,6 +454,8 @@ export interface CustomMcpServer {
   headers?: Record<string, string>;
   /** Optional description shown in UI */
   description?: string;
+  /** Secret IDs to inject as environment variables when launching this server */
+  secretIds?: string[];
 }
 
 /**

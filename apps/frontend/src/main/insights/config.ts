@@ -8,6 +8,7 @@ import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
 import { isWindows } from '../platform';
+import { getSecretsAsEnv } from '../secrets/storage';
 
 /**
  * Configuration manager for insights service
@@ -104,10 +105,69 @@ export class InsightsConfig {
   }
 
   /**
-   * Get complete environment for process execution
-   * Includes system env, auto-claude env, and active Claude profile
+   * Load secrets environment variables from custom MCP server configurations
+   * For each MCP server with secretIds, decrypts and returns as env vars
    */
-  async getProcessEnv(): Promise<Record<string, string>> {
+  loadSecretsEnv(projectPath: string): Record<string, string> {
+    if (!projectPath) return {};
+
+    const envPath = path.join(projectPath, '.auto-claude', '.env');
+    if (!existsSync(envPath)) return {};
+
+    try {
+      const content = readFileSync(envPath, 'utf-8');
+      const lines = content.split(/\r?\n/);
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+
+        const eqIndex = trimmed.indexOf('=');
+        if (eqIndex > 0) {
+          const key = trimmed.substring(0, eqIndex).trim();
+          if (key === 'CUSTOM_MCP_SERVERS') {
+            let value = trimmed.substring(eqIndex + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1);
+            }
+
+            try {
+              const servers = JSON.parse(value);
+              if (!Array.isArray(servers)) return {};
+
+              // Collect all secretIds from MCP servers
+              const allSecretIds: string[] = [];
+              for (const server of servers) {
+                if (server.secretIds && Array.isArray(server.secretIds)) {
+                  allSecretIds.push(...server.secretIds);
+                }
+              }
+
+              // Get unique secret IDs and fetch as env vars
+              const uniqueSecretIds = [...new Set(allSecretIds)];
+              if (uniqueSecretIds.length > 0) {
+                return getSecretsAsEnv(projectPath, uniqueSecretIds);
+              }
+            } catch {
+              return {};
+            }
+          }
+        }
+      }
+    } catch {
+      return {};
+    }
+
+    return {};
+  }
+
+  /**
+   * Get complete environment for process execution
+   * Includes system env, auto-claude env, active Claude profile, and project secrets
+   * @param projectPath Optional project path for loading project-specific secrets
+   */
+  async getProcessEnv(projectPath?: string): Promise<Record<string, string>> {
     const autoBuildEnv = this.loadAutoBuildEnv();
     // Get best available Claude profile environment (automatically handles rate limits)
     const profileResult = getBestAvailableProfileEnv();
@@ -143,6 +203,9 @@ export class InsightsConfig {
     // are available even when app is launched from Finder/Dock.
     const augmentedEnv = getAugmentedEnv();
 
+    // Load secrets from MCP server configurations
+    const secretsEnv = projectPath ? this.loadSecretsEnv(projectPath) : {};
+
     return {
       ...augmentedEnv,
       ...pythonEnv, // Include PYTHONPATH for bundled site-packages
@@ -150,6 +213,7 @@ export class InsightsConfig {
       ...oauthModeClearVars,
       ...profileEnv,
       ...apiProfileEnv,
+      ...secretsEnv, // Inject decrypted secrets from MCP server configurations
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1',

@@ -17,6 +17,7 @@ import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
 import { QueueAPI, createQueueAPI } from './queue-api';
 import { SlackAPI, createSlackAPI } from './modules/slack-api';
 import { WorkspaceAPI, createWorkspaceAPI } from './modules/workspace-api';
+import { SecretsAPI, createSecretsAPI } from './modules/secrets-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -35,7 +36,8 @@ export interface ElectronAPI extends
   ProfileAPI,
   ScreenshotAPI,
   SlackAPI,
-  WorkspaceAPI {
+  WorkspaceAPI,
+  SecretsAPI {
   github: GitHubAPI;
   /** Queue routing API for rate limit recovery */
   queue: QueueAPI;
@@ -56,6 +58,7 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createScreenshotAPI(),
   ...createSlackAPI(),
   ...createWorkspaceAPI(),
+  ...createSecretsAPI(),
   github: createGitHubAPI(),
   queue: createQueueAPI()  // Queue routing for rate limit recovery
 });
@@ -78,7 +81,8 @@ export {
   createScreenshotAPI,
   createQueueAPI,
   createSlackAPI,
-  createWorkspaceAPI
+  createWorkspaceAPI,
+  createSecretsAPI
 };
 
 export type {
@@ -100,5 +104,6 @@ export type {
   ScreenshotAPI,
   QueueAPI,
   SlackAPI,
-  WorkspaceAPI
+  WorkspaceAPI,
+  SecretsAPI
 };

@@ -8,6 +8,7 @@ import { LinearIntegration } from '../integrations/LinearIntegration';
 import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
 import { SlackIntegration } from '../integrations/SlackIntegration';
+import { SecretsSettings } from '../integrations/SecretsSettings';
 import { InitializationGuard } from '../common/InitializationGuard';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -102,6 +103,22 @@ export function SectionRouter({
           description={t('projectSections.workspace.description')}
         >
           <WorkspaceSection projectPath={project.path} />
+        </SettingsSection>
+      );
+
+    case 'secrets':
+      return (
+        <SettingsSection
+          title={t('projectSections.secrets.integrationTitle')}
+          description={t('projectSections.secrets.integrationDescription')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.secrets.integrationTitle')}
+            description={t('projectSections.secrets.integrationDescription')}
+          >
+            <SecretsSettings projectPath={project.path} />
+          </InitializationGuard>
         </SettingsSection>
       );
 

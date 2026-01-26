@@ -35,6 +35,7 @@ import { registerProfileHandlers } from './profile-handlers';
 import { registerScreenshotHandlers } from './screenshot-handlers';
 import { registerSlackHandlers } from './slack-handlers';
 import { registerWorkspaceHandlers } from './workspace-handlers';
+import { registerSecretsHandlers } from './secrets-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { notificationService } from '../notification-service';
 
@@ -130,6 +131,9 @@ export function setupIpcHandlers(
   // Workspace handlers (multi-repo support)
   registerWorkspaceHandlers();
 
+  // Secrets handlers (encrypted credential storage)
+  registerSecretsHandlers();
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -159,5 +163,6 @@ export {
   registerProfileHandlers,
   registerScreenshotHandlers,
   registerSlackHandlers,
-  registerWorkspaceHandlers
+  registerWorkspaceHandlers,
+  registerSecretsHandlers
 };

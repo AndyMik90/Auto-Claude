@@ -20,13 +20,17 @@ import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { useTranslation } from 'react-i18next';
 import type { CustomMcpServer } from '../../shared/types';
-import { Terminal, Globe, X, Github, Loader2, ExternalLink } from 'lucide-react';
+import type { SecretMetadata } from '../../shared/types/secrets';
+import { Terminal, Globe, X, Github, ExternalLink, KeyRound, Check, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { cn } from '../lib/utils';
 
 interface CustomMcpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   server: CustomMcpServer | null; // null = create new, non-null = edit
   existingIds: string[]; // Existing server IDs for validation
+  projectPath: string; // For loading secrets
   onSave: (server: CustomMcpServer) => void;
 }
 
@@ -35,9 +39,10 @@ export function CustomMcpDialog({
   onOpenChange,
   server,
   existingIds,
+  projectPath,
   onSave
 }: CustomMcpDialogProps) {
-  const { t } = useTranslation(['settings', 'common']);
+  const { t } = useTranslation(['settings', 'common', 'secrets']);
   const isEditing = server !== null;
 
   const [formData, setFormData] = useState<CustomMcpServer>({
@@ -57,6 +62,9 @@ export function CustomMcpDialog({
   const [bearerToken, setBearerToken] = useState('');
   const [showAdvancedHeaders, setShowAdvancedHeaders] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableSecrets, setAvailableSecrets] = useState<SecretMetadata[]>([]);
+  const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
+  const [secretsPopoverOpen, setSecretsPopoverOpen] = useState(false);
 
   // Known provider patterns for helpful hints
   const urlHint = useMemo(() => {
@@ -100,11 +108,23 @@ export function CustomMcpDialog({
     return null;
   }, [formData.url, t]);
 
+  // Load available secrets when dialog opens
+  useEffect(() => {
+    if (open && projectPath) {
+      window.electronAPI.listSecrets(projectPath).then((result) => {
+        if (result.success && result.data) {
+          setAvailableSecrets(result.data);
+        }
+      });
+    }
+  }, [open, projectPath]);
+
   // Reset form when dialog opens/closes or server changes
   useEffect(() => {
     if (open && server) {
       setFormData(server);
       setArgsInput(server.args?.join(' ') || '');
+      setSelectedSecretIds(server.secretIds || []);
       // Extract bearer token from existing Authorization header
       const authHeader = server.headers?.['Authorization'] || server.headers?.['authorization'] || '';
       if (authHeader.toLowerCase().startsWith('bearer ')) {
@@ -131,6 +151,7 @@ export function CustomMcpDialog({
       });
       setArgsInput('');
       setBearerToken('');
+      setSelectedSecretIds([]);
       setShowAdvancedHeaders(false);
       setError(null);
     }
@@ -191,6 +212,7 @@ export function CustomMcpDialog({
       name: formData.name.trim(),
       type: formData.type,
       description: formData.description?.trim() || undefined,
+      secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,
       ...(formData.type === 'command'
         ? {
             command: formData.command,
@@ -334,6 +356,72 @@ export function CustomMcpDialog({
                 />
                 <p className="text-xs text-muted-foreground">{t('mcp.argsHint')}</p>
               </div>
+
+              {/* Secrets Selection */}
+              {availableSecrets.length > 0 && (
+                <div className="space-y-2">
+                  <Label>{t('mcp.secrets')} <span className="text-muted-foreground">({t('common:optional')})</span></Label>
+                  <Popover open={secretsPopoverOpen} onOpenChange={setSecretsPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={secretsPopoverOpen}
+                        className="w-full justify-between"
+                      >
+                        {selectedSecretIds.length > 0 ? (
+                          <span className="flex items-center gap-1.5">
+                            <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                            {selectedSecretIds.length === 1
+                              ? availableSecrets.find(s => s.id === selectedSecretIds[0])?.name
+                              : t('mcp.secretsSelected', { count: selectedSecretIds.length })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{t('mcp.selectSecrets')}</span>
+                        )}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {availableSecrets.map((secret) => {
+                          const isSelected = selectedSecretIds.includes(secret.id);
+                          return (
+                            <button
+                              key={secret.id}
+                              className={cn(
+                                "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-accent",
+                                isSelected && "bg-accent"
+                              )}
+                              onClick={() => {
+                                setSelectedSecretIds(prev =>
+                                  isSelected
+                                    ? prev.filter(id => id !== secret.id)
+                                    : [...prev, secret.id]
+                                );
+                              }}
+                            >
+                              <div className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded border",
+                                isSelected ? "bg-primary border-primary" : "border-input"
+                              )}>
+                                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                              </div>
+                              <div className="flex-1 text-left">
+                                <div className="font-medium">{secret.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {t(`secrets:types.${secret.type}`)}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground">{t('mcp.secretsHint')}</p>
+                </div>
+              )}
             </>
           )}
 

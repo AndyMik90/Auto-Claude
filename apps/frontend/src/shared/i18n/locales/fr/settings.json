@@ -550,6 +550,12 @@
       "title": "Espace de travail",
       "description": "Configurer les paramètres de l'espace de travail multi-dépôts"
     },
+    "secrets": {
+      "title": "Secrets",
+      "description": "Stockage sécurisé des identifiants",
+      "integrationTitle": "Gestionnaire de secrets",
+      "integrationDescription": "Gérer les identifiants chiffrés pour les services externes"
+    },
     "memory": {
       "title": "Mémoire",
       "description": "Backend mémoire Graphiti",
@@ -1057,6 +1063,10 @@
       "createAnthropicKey": "Créer une clé API Anthropic",
       "openai": "Ceci ressemble à une API OpenAI. Vous aurez besoin d'une clé API.",
       "createOpenaiKey": "Créer une clé API OpenAI"
-    }
+    },
+    "secrets": "Secrets",
+    "selectSecrets": "Sélectionner les secrets à injecter...",
+    "secretsSelected": "{{count}} secrets sélectionnés",
+    "secretsHint": "Les secrets sélectionnés seront injectés en variables d'environnement au démarrage du serveur"
   }
 }

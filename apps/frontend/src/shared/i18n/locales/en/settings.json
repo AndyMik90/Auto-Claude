@@ -550,6 +550,12 @@
       "title": "Workspace",
       "description": "Configure multi-repository workspace settings"
     },
+    "secrets": {
+      "title": "Secrets",
+      "description": "Secure credential storage",
+      "integrationTitle": "Secrets Manager",
+      "integrationDescription": "Manage encrypted credentials for external services"
+    },
     "memory": {
       "title": "Memory",
       "description": "Graphiti memory backend",
@@ -1057,6 +1063,10 @@
       "createAnthropicKey": "Create Anthropic API Key",
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
-    }
+    },
+    "secrets": "Secrets",
+    "selectSecrets": "Select secrets to inject...",
+    "secretsSelected": "{{count}} secrets selected",
+    "secretsHint": "Selected secrets will be injected as environment variables when this server starts"
   }
 }

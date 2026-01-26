@@ -555,6 +555,12 @@
       "title": "ワークスペース",
       "description": "マルチリポジトリのワークスペース設定を構成"
     },
+    "secrets": {
+      "title": "シークレット",
+      "description": "認証情報の安全な保存",
+      "integrationTitle": "シークレットマネージャー",
+      "integrationDescription": "外部サービス用の暗号化された認証情報を管理"
+    },
     "memory": {
       "title": "メモリ",
       "description": "Graphiti メモリバックエンド",
@@ -942,6 +948,10 @@
       "createAnthropicKey": "Anthropic API キーを作成",
       "openai": "これは OpenAI API のようです。API キーが必要です。",
       "createOpenaiKey": "OpenAI API キーを作成"
-    }
+    },
+    "secrets": "シークレット",
+    "selectSecrets": "注入するシークレットを選択...",
+    "secretsSelected": "{{count}} 個のシークレットを選択",
+    "secretsHint": "選択したシークレットはサーバー起動時に環境変数として注入されます"
   }
 }
