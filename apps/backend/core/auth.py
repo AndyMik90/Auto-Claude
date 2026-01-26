@@ -14,6 +14,7 @@ import subprocess
 from typing import TYPE_CHECKING
 
 from core.platform import (
+    build_subprocess_path,
     is_linux,
     is_macos,
     is_windows,
@@ -771,6 +772,10 @@ def get_sdk_env_vars() -> dict[str, str]:
 
     On Windows, auto-detects CLAUDE_CODE_GIT_BASH_PATH if not already set.
 
+    Constructs a PATH that includes platform-specific binary directories
+    (Homebrew on macOS, user ~/.local/bin, system /usr/local/bin, etc.)
+    to ensure tools like 'claude' are discoverable in subprocess environments.
+
     Returns:
         Dict of env var name -> value for non-empty vars
     """
@@ -786,6 +791,13 @@ def get_sdk_env_vars() -> dict[str, str]:
         bash_path = _find_git_bash_path()
         if bash_path:
             env["CLAUDE_CODE_GIT_BASH_PATH"] = bash_path
+
+    # Construct PATH with platform-specific binary directories prepended.
+    # This ensures that tools installed via package managers (Homebrew on macOS,
+    # apt/snap on Linux, etc.) are accessible in SDK subprocess environments.
+    # Fixes issues where 'claude' CLI is not found because it's installed in
+    # /opt/homebrew/bin (macOS), ~/.local/bin, or other non-standard locations.
+    env["PATH"] = build_subprocess_path()
 
     # Explicitly unset PYTHONPATH in SDK subprocess environment to prevent
     # pollution of agent subprocess environments. This fixes ACS-251 where

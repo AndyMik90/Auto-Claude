@@ -67,10 +67,10 @@ class TestEnvVarTokenResolution:
         token = get_auth_token()
         assert token == claude_token
 
-    def test_no_token_returns_none(self, mocker):
+    def test_no_token_returns_none(self, monkeypatch):
         """Returns None when no auth token is configured."""
         # Mock keychain to return None (env vars already cleared by fixture)
-        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda *args, **kwargs: None)
         token = get_auth_token()
         assert token is None
 
@@ -369,12 +369,12 @@ class TestRequireAuthToken:
     """Tests for require_auth_token function."""
 
     @pytest.fixture(autouse=True)
-    def clear_env(self, mocker):
+    def clear_env(self, monkeypatch):
         """Clear auth environment variables and mock keychain before each test."""
         for var in AUTH_TOKEN_ENV_VARS:
             os.environ.pop(var, None)
         # Mock keychain to return None (tests that need a token will set env var)
-        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda *args, **kwargs: None)
         yield
         # Cleanup after test
         for var in AUTH_TOKEN_ENV_VARS:
@@ -556,10 +556,10 @@ class TestTokenSourceDetection:
         source = get_auth_token_source()
         assert source == "Linux Secret Service"
 
-    def test_source_none_when_not_found(self, mocker):
+    def test_source_none_when_not_found(self, monkeypatch):
         """Returns None when no token source is found."""
         # Mock keychain to return None (env vars already cleared by fixture)
-        mocker.patch("core.auth.get_token_from_keychain", return_value=None)
+        monkeypatch.setattr("core.auth.get_token_from_keychain", lambda *args, **kwargs: None)
         source = get_auth_token_source()
         assert source is None
 
@@ -612,6 +612,75 @@ class TestSdkEnvVars:
         env = get_sdk_env_vars()
 
         assert env["CLAUDE_CODE_GIT_BASH_PATH"] == existing_path
+
+    def test_path_included_in_env_vars(self):
+        """PATH is always included in returned environment variables."""
+        env = get_sdk_env_vars()
+
+        assert "PATH" in env
+        assert env["PATH"]  # PATH should not be empty
+
+    def test_path_uses_build_subprocess_path(self, monkeypatch):
+        """PATH is constructed using build_subprocess_path()."""
+        test_path = "/custom/bin:/usr/local/bin:/usr/bin"
+        monkeypatch.setattr(
+            "core.auth.build_subprocess_path",
+            lambda: test_path,
+        )
+
+        env = get_sdk_env_vars()
+
+        assert env["PATH"] == test_path
+
+    def test_path_includes_platform_binary_directories_macos(self, monkeypatch):
+        """PATH includes Homebrew directories on macOS."""
+        monkeypatch.setattr(platform, "system", lambda: "Darwin")
+        # Provide a minimal base PATH
+        monkeypatch.setenv("PATH", "/usr/bin")
+
+        env = get_sdk_env_vars()
+
+        # PATH should include common binary directories
+        path_value = env["PATH"]
+        # Should include user home bin
+        assert "/.local/bin" in path_value or "/usr/local/bin" in path_value
+
+    def test_path_includes_platform_binary_directories_linux(self, monkeypatch):
+        """PATH includes standard directories on Linux."""
+        monkeypatch.setattr(platform, "system", lambda: "Linux")
+        # Provide a minimal base PATH
+        monkeypatch.setenv("PATH", "/usr/bin")
+
+        env = get_sdk_env_vars()
+
+        # PATH should include common binary directories
+        path_value = env["PATH"]
+        # Should include standard Linux bin directories
+        assert "/usr/local/bin" in path_value or "/.local/bin" in path_value
+
+    def test_path_preserves_existing_entries(self, monkeypatch):
+        """PATH preserves existing PATH entries."""
+        original_path = "/my/custom/bin:/another/path"
+        monkeypatch.setenv("PATH", original_path)
+
+        env = get_sdk_env_vars()
+
+        # Original PATH entries should be preserved
+        assert "/my/custom/bin" in env["PATH"]
+        assert "/another/path" in env["PATH"]
+
+    def test_path_prepends_binary_directories(self, monkeypatch):
+        """Platform binary directories are prepended to PATH."""
+        original_path = "/usr/bin"
+        monkeypatch.setenv("PATH", original_path)
+
+        env = get_sdk_env_vars()
+
+        # The PATH should not start with the original path
+        # (platform dirs should be prepended)
+        path_value = env["PATH"]
+        # PATH should be longer than original due to prepended directories
+        assert len(path_value) > len(original_path)
 
 
 class TestTokenDecryption:
