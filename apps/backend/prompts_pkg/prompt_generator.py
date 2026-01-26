@@ -20,6 +20,7 @@ from pathlib import Path
 # Matches paths like: .auto-claude/worktrees/tasks/{spec-name}/
 WORKTREE_PATH_PATTERNS = [
     r"[/\\]\.auto-claude[/\\]worktrees[/\\]tasks[/\\]",
+    r"[/\\]\.auto-claude[/\\]github[/\\]pr[/\\]worktrees[/\\]",  # PR review worktrees
     r"[/\\]\.worktrees[/\\]",  # Legacy worktree location
 ]
 
@@ -48,8 +49,13 @@ def detect_worktree_isolation(project_dir: Path) -> tuple[bool, Path | None]:
         match = re.search(pattern, project_str)
         if match:
             # Extract the parent project path (everything before the worktree marker)
-            parent_path = project_str[: match.start()]
-            return True, Path(parent_path)
+            parent_prefix = project_str[: match.start()]
+            # Handle root-level worktrees where prefix would be empty
+            if not parent_prefix:
+                parent_path = Path(resolved_dir.anchor)
+            else:
+                parent_path = Path(parent_prefix)
+            return True, parent_path
 
     return False, None
 
@@ -104,6 +110,37 @@ convert them to relative paths from YOUR current location.
 ---
 
 """
+
+
+def detect_worktree_mode(spec_dir: Path) -> tuple[bool, str | None]:
+    """
+    Detect if running in isolated worktree mode.
+
+    Args:
+        spec_dir: Absolute path to spec directory
+
+    Returns:
+        (is_worktree, forbidden_parent_path) tuple:
+        - is_worktree: True if running in a worktree
+        - forbidden_parent_path: The parent project path to forbid, or None
+    """
+    # Check if spec_dir contains worktree path patterns
+    # Normalize path separators to forward slashes for consistent matching
+    spec_str = str(spec_dir).replace("\\", "/")
+
+    # New worktree location: .auto-claude/worktrees/tasks/{spec-name}/
+    new_worktree_marker = "/.auto-claude/worktrees/tasks/"
+    if new_worktree_marker in spec_str:
+        parent_path = spec_str.split(new_worktree_marker, 1)[0]
+        return True, parent_path
+
+    # Legacy worktree location: .worktrees/{spec-name}/
+    legacy_worktree_marker = "/.worktrees/"
+    if legacy_worktree_marker in spec_str:
+        parent_path = spec_str.split(legacy_worktree_marker, 1)[0]
+        return True, parent_path
+
+    return False, None
 
 
 def get_relative_spec_path(spec_dir: Path, project_dir: Path) -> str:

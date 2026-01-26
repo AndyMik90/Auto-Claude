@@ -1,6 +1,6 @@
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { getProfileEnv } from '../rate-limit-detector';
+import { getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from '../agent/env-utils';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
@@ -109,7 +109,9 @@ export class InsightsConfig {
    */
   async getProcessEnv(): Promise<Record<string, string>> {
     const autoBuildEnv = this.loadAutoBuildEnv();
-    const profileEnv = getProfileEnv();
+    // Get best available Claude profile environment (automatically handles rate limits)
+    const profileResult = getBestAvailableProfileEnv();
+    const profileEnv = profileResult.env;
     const apiProfileEnv = await getAPIProfileEnv();
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
     const pythonEnv = pythonEnvManager.getPythonEnv();
