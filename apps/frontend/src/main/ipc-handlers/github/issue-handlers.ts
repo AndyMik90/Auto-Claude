@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult, GitHubIssue, PaginatedIssuesResult } from '../../../shared/types';
 import { projectStore } from '../../project-store';
-import { getGitHubConfig, githubFetch, normalizeRepoReference } from './utils';
+import { getGitHubConfig, getGitHubRepos, getGitHubConfigForRepo, githubFetch, normalizeRepoReference } from './utils';
 import type { GitHubAPIIssue, GitHubAPIComment } from './types';
 import { debugLog } from '../../../shared/utils/debug-logger';
 
@@ -47,7 +47,48 @@ function transformIssue(issue: GitHubAPIIssue, repoFullName: string): GitHubIssu
 }
 
 /**
- * Get list of issues from repository with pagination support
+ * Fetch issues from a single repository
+ */
+async function fetchIssuesFromSingleRepo(
+  token: string,
+  repoFullName: string,
+  state: 'open' | 'closed' | 'all',
+  maxPages: number
+): Promise<GitHubIssue[]> {
+  const allIssues: GitHubAPIIssue[] = [];
+  let apiPage = 1;
+
+  while (apiPage <= maxPages) {
+    try {
+      const pageIssues = await githubFetch(
+        token,
+        `/repos/${repoFullName}/issues?state=${state}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&page=${apiPage}`
+      );
+
+      if (!Array.isArray(pageIssues) || pageIssues.length === 0) {
+        break;
+      }
+
+      // Filter out PRs
+      const issuesOnly = pageIssues.filter((issue: GitHubAPIIssue) => !issue.pull_request);
+      allIssues.push(...issuesOnly);
+
+      if (pageIssues.length < GITHUB_API_PER_PAGE) {
+        break;
+      }
+
+      apiPage++;
+    } catch (error) {
+      debugLog('[GitHub Issues] Error fetching from repo:', repoFullName, error);
+      break;
+    }
+  }
+
+  return allIssues.map(issue => transformIssue(issue, repoFullName));
+}
+
+/**
+ * Get list of issues from repository with pagination support (multi-repo)
  *
  * When page > 0: Returns paginated results (for infinite scroll)
  * When page = 0 or fetchAll = true: Returns ALL issues (for search functionality)
@@ -73,126 +114,62 @@ export function registerGetIssues(): void {
         return { success: false, error: 'Project not found' };
       }
 
-      const config = getGitHubConfig(project);
-      if (!config) {
-        debugLog('[GitHub Issues] No GitHub config found for project');
+      // Get all configured repositories
+      const repos = getGitHubRepos(project);
+      if (repos.length === 0) {
+        debugLog('[GitHub Issues] No GitHub repos configured for project');
         return { success: false, error: 'No GitHub token or repository configured' };
       }
 
+      // Filter to only enabled repos with issues sync enabled
+      const enabledRepos = repos.filter(r => r.enabled !== false && r.issuesSyncEnabled !== false);
+      if (enabledRepos.length === 0) {
+        debugLog('[GitHub Issues] No enabled repos with issues sync');
+        return { success: false, error: 'No enabled repositories with issues sync' };
+      }
+
+      debugLog('[GitHub Issues] Fetching issues from repos:', enabledRepos.map(r => r.repo));
+
       try {
-        const normalizedRepo = normalizeRepoReference(config.repo);
-        if (!normalizedRepo) {
-          return {
-            success: false,
-            error: 'Invalid repository format. Use owner/repo or GitHub URL.'
-          };
-        }
+        const maxPagesPerRepo = fetchAll ? MAX_PAGES_FETCH_ALL : MAX_PAGES_PAGINATED;
 
-        debugLog('[GitHub Issues] Fetching issues from:', normalizedRepo, 'state:', state);
+        // Fetch issues from all enabled repositories in parallel
+        const issuePromises = enabledRepos.map(async (repoConfig) => {
+          const config = getGitHubConfigForRepo(project, repoConfig.repo);
+          if (!config) {
+            debugLog('[GitHub Issues] No GitHub config for repo:', repoConfig.repo);
+            return [];
+          }
 
-        const maxPagesPerRequest = fetchAll ? MAX_PAGES_FETCH_ALL : MAX_PAGES_PAGINATED;
+          const normalizedRepo = normalizeRepoReference(repoConfig.repo);
+          if (!normalizedRepo) {
+            debugLog('[GitHub Issues] Invalid repo format:', repoConfig.repo);
+            return [];
+          }
+
+          return fetchIssuesFromSingleRepo(config.token, normalizedRepo, state, maxPagesPerRepo);
+        });
+
+        const issueArrays = await Promise.all(issuePromises);
+        const allIssues = issueArrays.flat();
+
+        // Sort by updatedAt (most recent first)
+        allIssues.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+        debugLog('[GitHub Issues] Total issues from all repos:', allIssues.length);
 
         if (fetchAll) {
-          // Fetch ALL issues (for search functionality)
-          const allIssues: GitHubAPIIssue[] = [];
-          let apiPage = 1;
-
-          while (apiPage <= MAX_PAGES_FETCH_ALL) {
-            debugLog('[GitHub Issues] Fetching page', apiPage, '(fetchAll mode)');
-
-            const pageIssues = await githubFetch(
-              config.token,
-              `/repos/${normalizedRepo}/issues?state=${state}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&page=${apiPage}`
-            );
-
-            if (!Array.isArray(pageIssues) || pageIssues.length === 0) {
-              break;
-            }
-
-            allIssues.push(...pageIssues);
-
-            if (pageIssues.length < GITHUB_API_PER_PAGE) {
-              break;
-            }
-
-            apiPage++;
-          }
-
-          const issuesOnly = allIssues.filter((issue: GitHubAPIIssue) => !issue.pull_request);
-          const result: GitHubIssue[] = issuesOnly.map((issue: GitHubAPIIssue) =>
-            transformIssue(issue, normalizedRepo)
-          );
-
-          debugLog('[GitHub Issues] fetchAll complete:', result.length, 'issues');
-          return { success: true, data: { issues: result, hasMore: false } };
+          return { success: true, data: { issues: allIssues, hasMore: false } };
         }
 
-        // Paginated fetching - collect enough actual issues for the requested page
-        // Since GitHub mixes PRs with issues, we need to fetch multiple API pages
-        // to accumulate enough actual issues
+        // Paginated results
         const targetStartIndex = (page - 1) * ISSUES_PER_PAGE;
         const targetEndIndex = page * ISSUES_PER_PAGE;
+        const pageIssues = allIssues.slice(targetStartIndex, targetEndIndex);
+        const hasMore = allIssues.length > targetEndIndex;
 
-        const collectedIssues: GitHubAPIIssue[] = [];
-        let apiPage = 1;
-        let hasMoreFromAPI = true;
-
-        // Keep fetching until we have enough issues or run out of API pages
-        while (collectedIssues.length < targetEndIndex && apiPage <= maxPagesPerRequest && hasMoreFromAPI) {
-          debugLog('[GitHub Issues] Fetching API page', apiPage, 'collected so far:', collectedIssues.length);
-
-          const pageItems = await githubFetch(
-            config.token,
-            `/repos/${normalizedRepo}/issues?state=${state}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&page=${apiPage}`
-          );
-
-          if (!Array.isArray(pageItems)) {
-            debugLog('[GitHub Issues] Unexpected response format:', typeof pageItems);
-            break;
-          }
-
-          if (pageItems.length === 0) {
-            hasMoreFromAPI = false;
-            break;
-          }
-
-          // Filter out PRs and add to collected issues
-          const issuesFromPage = pageItems.filter((issue: GitHubAPIIssue) => !issue.pull_request);
-          collectedIssues.push(...issuesFromPage);
-
-          debugLog('[GitHub Issues] API page', apiPage, ':', pageItems.length, 'items,', issuesFromPage.length, 'actual issues');
-
-          if (pageItems.length < GITHUB_API_PER_PAGE) {
-            hasMoreFromAPI = false;
-          }
-
-          apiPage++;
-        }
-
-        // Extract the issues for the requested page
-        const pageIssues = collectedIssues.slice(targetStartIndex, targetEndIndex);
-
-        // Improved hasMore calculation:
-        // - If we collected more than the target end index, there's definitely more
-        // - If we haven't exhausted the API (hasMoreFromAPI=true), there might be more
-        // - BUT if we returned 0 issues for this page (pageIssues.length === 0),
-        //   we've likely hit a situation where the repo has mostly PRs and we can't
-        //   find enough issues within the fetch limit - signal no more to avoid
-        //   infinite "load more" attempts
-        let hasMore = hasMoreFromAPI || collectedIssues.length > targetEndIndex;
-
-        // Edge case: If we returned empty results, don't claim there's more
-        // This prevents infinite loading when repo has mostly PRs
-        if (pageIssues.length === 0) {
-          hasMore = false;
-        }
-
-        const result: GitHubIssue[] = pageIssues.map((issue: GitHubAPIIssue) =>
-          transformIssue(issue, normalizedRepo)
-        );
-
-        debugLog('[GitHub Issues] Returning page', page, ':', result.length, 'issues, hasMore:', hasMore);
-        return { success: true, data: { issues: result, hasMore } };
+        debugLog('[GitHub Issues] Returning page', page, ':', pageIssues.length, 'issues, hasMore:', hasMore);
+        return { success: true, data: { issues: pageIssues, hasMore } };
       } catch (error) {
         debugLog('[GitHub Issues] Error fetching issues:', error);
         return {
