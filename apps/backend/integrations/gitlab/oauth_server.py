@@ -132,9 +132,7 @@ class OAuthCallbackServer:
                 )
         except Exception as e:
             # Log the actual error for debugging but don't expose to user
-            import logging
-
-            logging.getLogger(__name__).error(f"OAuth callback error: {e}")
+            logger.error(f"OAuth callback error: {e}")
             self._error = str(e)
             return web.Response(
                 text="""

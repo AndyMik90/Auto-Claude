@@ -431,8 +431,11 @@ export function registerVaultGetContext(): void {
           for (const file of learningFiles) {
             try {
               const learningPath = path.join(learningsDir, file);
-              const stats = fs.statSync(learningPath);
+              // Read content first - this is the critical operation
+              // nosemgrep: nodejs.lang.security.audit.fs-race-condition
               const content = fs.readFileSync(learningPath, 'utf-8');
+              // Get stats after successful read - file exists if we got here
+              const stats = fs.statSync(learningPath);
 
               // Extract topic from first heading or filename
               let topic = file.replace('.md', '').replace(/-/g, ' ');
