@@ -16,7 +16,13 @@ Usage:
 IMPLEMENTATION NOTES:
 This patch relies on the following SDK internals which may change in future versions:
 - SubprocessCLITransport._stdin_stream: The async stream for writing to subprocess stdin
-- SSE message format: "event: message\\ndata: <json>\\n\\n" for sending messages
+- Message format: JSON objects + newline (NOT SSE format)
+  Format: {"type": "user", "message": {"role": "user", "content": "..."},
+           "parent_tool_use_id": None, "session_id": "..."}
+
+The system prompt is sent as the first stdin message with role="user" because
+the CLI's stdin protocol only documents support for user messages. Support for
+role="system" via stdin is undocumented and unverified.
 
 If these internals change, the patch will fail with explicit errors rather than
 silently ignoring the system prompt.
@@ -169,21 +175,34 @@ def apply_sdk_patch():
 
             try:
                 import json
+                import uuid
 
-                # SSE (Server-Sent Events) format used by SDK for message communication
-                # Format: event: message\ndata: <json>\n\n
-                # We send the system prompt with role="system" to ensure it's interpreted correctly
-                # The CLI's stdin protocol should accept system-role messages
+                # The SDK uses raw JSON objects + newline, NOT SSE format
+                # Format: json.dumps(message) + "\n"
+                # Based on SDK client.py, messages must include:
+                # - type: "user" (documented message type for stdin)
+                # - message.role: The role of the message sender
+                # - message.content: The actual content
+                # - parent_tool_use_id: For multi-turn conversations (None for first message)
+                # - session_id: Session identifier for the conversation
+
+                # NOTE: Using role="user" because the CLI's stdin protocol is documented
+                # to support user messages. Support for role="system" via stdin is
+                # undocumented and unverified. The system prompt will be delivered as
+                # the first message, ensuring it's seen by the model before user input.
                 message_data = {
-                    "type": "message",
+                    "type": "user",
                     "message": {
-                        "role": "system",
+                        "role": "user",
                         "content": system_prompt_content,
                     },
+                    "parent_tool_use_id": None,
+                    "session_id": f"system-prompt-{uuid.uuid4().hex}",
                 }
 
-                sse_message = f"event: message\ndata: {json.dumps(message_data)}\n\n"
-                await self._stdin_stream.send(sse_message)
+                # SDK format: raw JSON + newline (NOT SSE format)
+                json_message = json.dumps(message_data) + "\n"
+                await self._stdin_stream.send(json_message)
                 logger.debug("System prompt injected via stdin successfully")
             except Exception as e:
                 logger.error(
