@@ -7,6 +7,7 @@ import { Separator } from '../../ui/separator';
 import { Button } from '../../ui/button';
 import { GitHubOAuthFlow } from '../../project-settings/GitHubOAuthFlow';
 import { PasswordInput } from '../../project-settings/PasswordInput';
+import { MultiRepoManager } from './MultiRepoManager';
 import type { ProjectEnvConfig, GitHubSyncStatus, ProjectSettings } from '../../../../shared/types';
 
 // Debug logging
@@ -35,6 +36,7 @@ interface GitHubIntegrationProps {
   gitHubConnectionStatus: GitHubSyncStatus | null;
   isCheckingGitHub: boolean;
   projectPath?: string; // Project path for fetching git branches
+  projectId?: string; // Project ID for multi-repo management
   // Project settings for mainBranch (used by kanban tasks and terminal worktrees)
   settings?: ProjectSettings;
   setSettings?: React.Dispatch<React.SetStateAction<ProjectSettings>>;
@@ -52,6 +54,7 @@ export function GitHubIntegration({
   gitHubConnectionStatus,
   isCheckingGitHub,
   projectPath,
+  projectId,
   settings,
   setSettings
 }: GitHubIntegrationProps) {
@@ -333,6 +336,14 @@ export function GitHubIntegration({
           {gitHubConnectionStatus?.connected && <IssuesAvailableInfo />}
 
           <Separator />
+
+          {/* Multi-Repository Manager */}
+          {projectId && (
+            <>
+              <MultiRepoManager projectId={projectId} />
+              <Separator />
+            </>
+          )}
 
           {/* Default Branch Selector */}
           {projectPath && (
