@@ -3,6 +3,8 @@
  * Types, categories, and configuration for AI-generated project improvements
  */
 
+import type { TFunction } from 'i18next';
+
 // ============================================
 // Ideation Types
 // ============================================
@@ -10,23 +12,27 @@
 // Ideation type labels and descriptions
 // Note: high_value_features removed - strategic features belong to Roadmap
 // low_hanging_fruit renamed to code_improvements to cover all code-revealed opportunities
-export const IDEATION_TYPE_LABELS: Record<string, string> = {
-  code_improvements: 'Code Improvements',
-  ui_ux_improvements: 'UI/UX Improvements',
-  documentation_gaps: 'Documentation',
-  security_hardening: 'Security',
-  performance_optimizations: 'Performance',
-  code_quality: 'Code Quality'
-};
+export const getIdeationTypeLabels = (t: TFunction): Record<string, string> => ({
+  code_improvements: t('ideation:types.code_improvements'),
+  ui_ux_improvements: t('ideation:types.ui_ux_improvements'),
+  documentation_gaps: t('ideation:types.documentation_gaps'),
+  security_hardening: t('ideation:types.security_hardening'),
+  performance_optimizations: t('ideation:types.performance_optimizations'),
+  code_quality: t('ideation:types.code_quality')
+});
 
-export const IDEATION_TYPE_DESCRIPTIONS: Record<string, string> = {
-  code_improvements: 'Code-revealed opportunities from patterns, architecture, and infrastructure analysis',
-  ui_ux_improvements: 'Visual and interaction improvements identified through app analysis',
-  documentation_gaps: 'Missing or outdated documentation that needs attention',
-  security_hardening: 'Security vulnerabilities and hardening opportunities',
-  performance_optimizations: 'Performance bottlenecks and optimization opportunities',
-  code_quality: 'Refactoring opportunities, large files, code smells, and best practice violations'
-};
+export const getIdeationTypeDescriptions = (t: TFunction): Record<string, string> => ({
+  code_improvements: t('ideation:typeDescriptions.code_improvements'),
+  ui_ux_improvements: t('ideation:typeDescriptions.ui_ux_improvements'),
+  documentation_gaps: t('ideation:typeDescriptions.documentation_gaps'),
+  security_hardening: t('ideation:typeDescriptions.security_hardening'),
+  performance_optimizations: t('ideation:typeDescriptions.performance_optimizations'),
+  code_quality: t('ideation:typeDescriptions.code_quality')
+});
+
+// Backward compatibility: export as functions that require t
+export const IDEATION_TYPE_LABELS = getIdeationTypeLabels;
+export const IDEATION_TYPE_DESCRIPTIONS = getIdeationTypeDescriptions;
 
 // Ideation type colors
 export const IDEATION_TYPE_COLORS: Record<string, string> = {
@@ -97,61 +103,68 @@ export const SECURITY_SEVERITY_COLORS: Record<string, string> = {
 };
 
 // UI/UX category labels
-export const UIUX_CATEGORY_LABELS: Record<string, string> = {
-  usability: 'Usability',
-  accessibility: 'Accessibility',
-  performance: 'Performance',
-  visual: 'Visual Design',
-  interaction: 'Interaction'
-};
+export const getUIUXCategoryLabels = (t: TFunction): Record<string, string> => ({
+  usability: t('ideation:categories.uiux.usability'),
+  accessibility: t('ideation:categories.uiux.accessibility'),
+  performance: t('ideation:categories.uiux.performance'),
+  visual: t('ideation:categories.uiux.visual'),
+  interaction: t('ideation:categories.uiux.interaction')
+});
 
 // Documentation category labels
-export const DOCUMENTATION_CATEGORY_LABELS: Record<string, string> = {
-  readme: 'README',
-  api_docs: 'API Documentation',
-  inline_comments: 'Inline Comments',
-  examples: 'Examples & Tutorials',
-  architecture: 'Architecture Docs',
-  troubleshooting: 'Troubleshooting Guide'
-};
+export const getDocumentationCategoryLabels = (t: TFunction): Record<string, string> => ({
+  readme: t('ideation:categories.documentation.readme'),
+  api_docs: t('ideation:categories.documentation.api_docs'),
+  inline_comments: t('ideation:categories.documentation.inline_comments'),
+  examples: t('ideation:categories.documentation.examples'),
+  architecture: t('ideation:categories.documentation.architecture'),
+  troubleshooting: t('ideation:categories.documentation.troubleshooting')
+});
 
 // Security category labels
-export const SECURITY_CATEGORY_LABELS: Record<string, string> = {
-  authentication: 'Authentication',
-  authorization: 'Authorization',
-  input_validation: 'Input Validation',
-  data_protection: 'Data Protection',
-  dependencies: 'Dependencies',
-  configuration: 'Configuration',
-  secrets_management: 'Secrets Management'
-};
+export const getSecurityCategoryLabels = (t: TFunction): Record<string, string> => ({
+  authentication: t('ideation:categories.security.authentication'),
+  authorization: t('ideation:categories.security.authorization'),
+  input_validation: t('ideation:categories.security.input_validation'),
+  data_protection: t('ideation:categories.security.data_protection'),
+  dependencies: t('ideation:categories.security.dependencies'),
+  configuration: t('ideation:categories.security.configuration'),
+  secrets_management: t('ideation:categories.security.secrets_management')
+});
 
 // Performance category labels
-export const PERFORMANCE_CATEGORY_LABELS: Record<string, string> = {
-  bundle_size: 'Bundle Size',
-  runtime: 'Runtime Performance',
-  memory: 'Memory Usage',
-  database: 'Database Queries',
-  network: 'Network Requests',
-  rendering: 'Rendering',
-  caching: 'Caching'
-};
+export const getPerformanceCategoryLabels = (t: TFunction): Record<string, string> => ({
+  bundle_size: t('ideation:categories.performance.bundle_size'),
+  runtime: t('ideation:categories.performance.runtime'),
+  memory: t('ideation:categories.performance.memory'),
+  database: t('ideation:categories.performance.database'),
+  network: t('ideation:categories.performance.network'),
+  rendering: t('ideation:categories.performance.rendering'),
+  caching: t('ideation:categories.performance.caching')
+});
 
 // Code quality category labels
-export const CODE_QUALITY_CATEGORY_LABELS: Record<string, string> = {
-  large_files: 'Large Files',
-  code_smells: 'Code Smells',
-  complexity: 'High Complexity',
-  duplication: 'Code Duplication',
-  naming: 'Naming Conventions',
-  structure: 'File Structure',
-  linting: 'Linting Issues',
-  testing: 'Test Coverage',
-  types: 'Type Safety',
-  dependencies: 'Dependency Issues',
-  dead_code: 'Dead Code',
-  git_hygiene: 'Git Hygiene'
-};
+export const getCodeQualityCategoryLabels = (t: TFunction): Record<string, string> => ({
+  large_files: t('ideation:categories.codeQuality.large_files'),
+  code_smells: t('ideation:categories.codeQuality.code_smells'),
+  complexity: t('ideation:categories.codeQuality.complexity'),
+  duplication: t('ideation:categories.codeQuality.duplication'),
+  naming: t('ideation:categories.codeQuality.naming'),
+  structure: t('ideation:categories.codeQuality.structure'),
+  linting: t('ideation:categories.codeQuality.linting'),
+  testing: t('ideation:categories.codeQuality.testing'),
+  types: t('ideation:categories.codeQuality.types'),
+  dependencies: t('ideation:categories.codeQuality.dependencies'),
+  dead_code: t('ideation:categories.codeQuality.dead_code'),
+  git_hygiene: t('ideation:categories.codeQuality.git_hygiene')
+});
+
+// Backward compatibility: export as functions that require t
+export const UIUX_CATEGORY_LABELS = getUIUXCategoryLabels;
+export const DOCUMENTATION_CATEGORY_LABELS = getDocumentationCategoryLabels;
+export const SECURITY_CATEGORY_LABELS = getSecurityCategoryLabels;
+export const PERFORMANCE_CATEGORY_LABELS = getPerformanceCategoryLabels;
+export const CODE_QUALITY_CATEGORY_LABELS = getCodeQualityCategoryLabels;
 
 // Code quality severity colors
 export const CODE_QUALITY_SEVERITY_COLORS: Record<string, string> = {
