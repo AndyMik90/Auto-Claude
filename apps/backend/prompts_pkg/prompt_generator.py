@@ -29,6 +29,9 @@ def get_supported_languages() -> set[str]:
     - Add locales/ja/ folder → Japanese automatically supported
     - Add locales/zh/ folder → Chinese automatically supported
 
+    The i18n directory path can be overridden via AUTO_CLAUDE_I18N_DIR
+    environment variable for custom deployments or backend-only installations.
+
     Returns:
         Set of language codes (e.g., {"en", "fr", "ko"})
     """
@@ -39,22 +42,29 @@ def get_supported_languages() -> set[str]:
     backend_dir = current_dir.parent  # apps/backend/
     apps_dir = backend_dir.parent  # apps/
     project_root = apps_dir.parent  # project root
-    i18n_dir = (
+    default_i18n_dir = (
         project_root / "apps" / "frontend" / "src" / "shared" / "i18n" / "locales"
     )
 
-    if not i18n_dir.exists():
+    # Allow override via environment variable for custom deployments
+    i18n_dir = Path(os.environ.get("AUTO_CLAUDE_I18N_DIR", str(default_i18n_dir)))
+
+    if not i18n_dir.is_dir():
         # Fallback to English if i18n folder not found
         # This handles edge cases like unit tests or custom deployments
         return {"en"}
 
-    # Scan for language directories
+    # Scan for language directories with defensive error handling
     languages = set()
-    for item in i18n_dir.iterdir():
-        if item.is_dir() and not item.name.startswith("."):
-            # Valid language code: 2-3 lowercase letters (ISO 639-1/639-2)
-            if re.match(r"^[a-z]{2,3}$", item.name):
-                languages.add(item.name)
+    try:
+        for item in i18n_dir.iterdir():
+            if item.is_dir() and not item.name.startswith("."):
+                # Valid language code: 2-3 lowercase letters (ISO 639-1/639-2)
+                if re.match(r"^[a-z]{2,3}$", item.name):
+                    languages.add(item.name)
+    except OSError:
+        # Permission denied or other filesystem errors - fallback to English
+        return {"en"}
 
     # Always include English as fallback
     languages.add("en")
