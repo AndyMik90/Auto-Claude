@@ -217,6 +217,14 @@ export function Sidebar({
     const checkGit = async () => {
       if (selectedProject) {
         try {
+          // First check if this is a workspace - workspaces don't need git at the root
+          const typeResult = await window.electronAPI.detectProjectType(selectedProject.path);
+          if (typeResult.success && typeResult.data?.type === 'workspace') {
+            // Workspace projects don't need git at the root level
+            setGitStatus(null);
+            return;
+          }
+
           const result = await window.electronAPI.checkGitStatus(selectedProject.path);
           if (result.success && result.data) {
             setGitStatus(result.data);

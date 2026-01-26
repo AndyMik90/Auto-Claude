@@ -45,6 +45,10 @@ export interface WorkspaceRepo {
   mainBranch?: string;
   /** Remote URL if configured */
   remoteUrl?: string;
+  /** Whether this repo is a symlink to an external location */
+  isSymlink?: boolean;
+  /** Original absolute path if this is a symlink */
+  originalPath?: string;
 }
 
 /**
@@ -96,6 +100,10 @@ export interface WorkspaceRepoConfig {
   isDefault: boolean;
   /** Main branch name */
   mainBranch?: string;
+  /** Whether this repo is a symlink to an external location */
+  isSymlink?: boolean;
+  /** Original absolute path if this is a symlink */
+  originalPath?: string;
 }
 
 /**
@@ -130,6 +138,8 @@ export interface CreateWorkspaceOptions {
   name: string;
   /** Root path for the workspace */
   path: string;
+  /** Create the directory if it doesn't exist (for new workspaces) */
+  createDirectory?: boolean;
   /** Initial repositories to include */
   repos?: Array<{
     relativePath: string;
@@ -150,4 +160,30 @@ export interface AddRepoOptions {
   name?: string;
   /** Set as default repo */
   isDefault?: boolean;
+}
+
+/**
+ * Schema for workspace-link.json file stored in each repository's .auto-claude/workspace-link.json
+ * This file links a repository back to its parent workspace, enabling:
+ * - CLI tools to detect workspace context when opened from a repo
+ * - UI to show workspace relationship for standalone repos
+ * - Easier navigation between workspace and its repositories
+ */
+export interface WorkspaceLink {
+  /** Schema version for future migrations */
+  version: number;
+  /** Absolute path to the parent workspace */
+  workspacePath: string;
+  /** Name of the parent workspace */
+  workspaceName: string;
+  /** This repository's ID in the workspace */
+  repoId: string;
+  /** This repository's relative path from workspace root */
+  relativePath: string;
+  /** When this link was created */
+  linkedAt: string;
+  /** Whether this repo was added via symlink (external location) */
+  isSymlink?: boolean;
+  /** Path to the symlink in the workspace (if isSymlink is true) */
+  symlinkPath?: string;
 }

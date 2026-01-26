@@ -84,9 +84,18 @@ export class ProjectStore {
     // Check if project already exists
     const existing = this.data.projects.find((p) => p.path === projectPath);
     if (existing) {
+      // Check if .auto-claude was added since last time (e.g., from workspace creation)
+      // This handles the case where user creates a workspace at a path that was previously
+      // added as a project without .auto-claude
+      if (!existing.autoBuildPath && isInitialized(existing.path)) {
+        console.warn(`[ProjectStore] .auto-claude folder was added for project "${existing.name}" - updating autoBuildPath`);
+        existing.autoBuildPath = getAutoBuildPath(existing.path) || '';
+        existing.updatedAt = new Date();
+        this.save();
+      }
       // Validate that .auto-claude folder still exists for existing project
       // If manually deleted, reset autoBuildPath so UI prompts for reinitialization
-      if (existing.autoBuildPath && !isInitialized(existing.path)) {
+      else if (existing.autoBuildPath && !isInitialized(existing.path)) {
         console.warn(`[ProjectStore] .auto-claude folder was deleted for project "${existing.name}" - resetting autoBuildPath`);
         existing.autoBuildPath = '';
         existing.updatedAt = new Date();

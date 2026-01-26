@@ -152,7 +152,10 @@
     "failedToOpen": "プロジェクトを開けませんでした",
     "failedToCreate": "プロジェクトを作成できませんでした",
     "openExistingAriaLabel": "既存のプロジェクトフォルダを開く",
-    "createNewAriaLabel": "新規プロジェクトを作成"
+    "createNewAriaLabel": "新規プロジェクトを作成",
+    "createWorkspace": "新規ワークスペースを作成",
+    "createWorkspaceDescription": "複数リポジトリ用のワークスペースをセットアップ",
+    "createWorkspaceAriaLabel": "新規マルチリポワークスペースを作成"
   },
   "customModel": {
     "title": "カスタムモデル設定",

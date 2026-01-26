@@ -1,5 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync, readFileSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import { EventEmitter } from 'events';
@@ -21,6 +21,37 @@ interface ProcessorResult {
   fullResponse: string;
   suggestedTask?: InsightsChatMessage['suggestedTask'];
   toolsUsed: InsightsToolUsage[];
+}
+
+/**
+ * Get external repository paths from workspace config
+ * These are repositories that are symlinked from outside the workspace
+ */
+function getExternalRepoPaths(projectPath: string): string[] {
+  const workspaceConfigPath = path.join(projectPath, '.auto-claude', 'workspace.json');
+  if (!existsSync(workspaceConfigPath)) {
+    return [];
+  }
+
+  try {
+    const content = readFileSync(workspaceConfigPath, 'utf-8');
+    const config = JSON.parse(content);
+    const externalPaths: string[] = [];
+
+    // Extract originalPath from repos that are symlinks
+    if (config.repos && Array.isArray(config.repos)) {
+      for (const repo of config.repos) {
+        if (repo.isSymlink && repo.originalPath) {
+          externalPaths.push(repo.originalPath);
+        }
+      }
+    }
+
+    return externalPaths;
+  } catch (err) {
+    console.error('[Insights] Failed to read workspace config:', err);
+    return [];
+  }
 }
 
 /**
@@ -115,6 +146,15 @@ export class InsightsExecutor extends EventEmitter {
       const modelId = MODEL_ID_MAP[modelConfig.model] || MODEL_ID_MAP['sonnet'];
       args.push('--model', modelId);
       args.push('--thinking-level', modelConfig.thinkingLevel);
+    }
+
+    // Add external repo paths from workspace config
+    const externalPaths = getExternalRepoPaths(projectPath);
+    for (const extPath of externalPaths) {
+      args.push('--add-dir', extPath);
+    }
+    if (externalPaths.length > 0) {
+      console.log('[Insights] Adding external directories:', externalPaths);
     }
 
     // Spawn Python process

@@ -143,6 +143,7 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    add_dirs: list[str] | None = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -198,6 +199,15 @@ Current question: {message}"""
             "max_turns": 30,  # Allow sufficient turns for codebase exploration
             "cwd": str(project_path),
         }
+
+        # Add additional directories for external repos in workspaces
+        if add_dirs:
+            options_kwargs["add_dirs"] = add_dirs
+            debug(
+                "insights_runner",
+                "Adding extra directories",
+                add_dirs=add_dirs,
+            )
 
         # Only add thinking tokens if the thinking level is not "none"
         if max_thinking_tokens is not None:
@@ -359,6 +369,13 @@ def main():
         choices=["none", "low", "medium", "high", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
+    parser.add_argument(
+        "--add-dir",
+        action="append",
+        dest="add_dirs",
+        default=[],
+        help="Additional directories to allow access to (can be specified multiple times)",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -401,7 +418,7 @@ def main():
 
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, args.add_dirs))
     debug_success("insights_runner", "Query completed")
 
 

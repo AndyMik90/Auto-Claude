@@ -362,11 +362,29 @@ export function App() {
     if (initSuccess) return;
 
     if (selectedProject && !selectedProject.autoBuildPath && skippedInitProjectId !== selectedProject.id) {
-      // Project exists but isn't initialized - show init dialog
-      setPendingProject(selectedProject);
-      setInitError(null); // Clear any previous errors
-      setInitSuccess(false); // Reset success flag
-      setShowInitDialog(true);
+      // Check if this is a workspace project - workspaces don't need initialization
+      // because workspace:create already creates .auto-claude/workspace.json
+      const checkProjectType = async () => {
+        try {
+          const typeResult = await window.electronAPI.detectProjectType(selectedProject.path);
+          if (typeResult.success && typeResult.data?.type === 'workspace') {
+            // Workspace projects have .auto-claude created by workspace:create
+            // Skip init dialog - the autoBuildPath will be updated on next addProject call
+            console.warn('[App] Skipping init dialog for workspace project:', selectedProject.path);
+            return;
+          }
+        } catch {
+          // If detection fails, fall through to show init dialog
+        }
+
+        // Project exists but isn't initialized - show init dialog
+        setPendingProject(selectedProject);
+        setInitError(null); // Clear any previous errors
+        setInitSuccess(false); // Reset success flag
+        setShowInitDialog(true);
+      };
+
+      checkProjectType();
     }
   }, [selectedProject, skippedInitProjectId, isInitializing, initSuccess]);
 
@@ -392,10 +410,17 @@ export function App() {
             if (project) {
               openProjectTab(project.id);
               if (!project.autoBuildPath) {
-                setPendingProject(project);
-                setInitError(null);
-                setInitSuccess(false);
-                setShowInitDialog(true);
+                // Check if this is a workspace project - workspaces don't need initialization
+                const typeResult = await window.electronAPI.detectProjectType(project.path);
+                if (typeResult.success && typeResult.data?.type === 'workspace') {
+                  // Workspace projects have .auto-claude created by workspace:create
+                  console.warn('[App] Skipping init dialog for workspace project:', project.path);
+                } else {
+                  setPendingProject(project);
+                  setInitError(null);
+                  setInitSuccess(false);
+                  setShowInitDialog(true);
+                }
               }
             }
           }

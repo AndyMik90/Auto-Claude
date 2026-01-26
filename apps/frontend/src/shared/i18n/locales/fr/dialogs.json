@@ -152,7 +152,10 @@
     "failedToOpen": "Échec de l'ouverture du projet",
     "failedToCreate": "Échec de la création du projet",
     "openExistingAriaLabel": "Ouvrir un dossier de projet existant",
-    "createNewAriaLabel": "Créer un nouveau projet"
+    "createNewAriaLabel": "Créer un nouveau projet",
+    "createWorkspace": "Créer un espace de travail",
+    "createWorkspaceDescription": "Configurer un espace de travail pour plusieurs dépôts",
+    "createWorkspaceAriaLabel": "Créer un nouvel espace de travail multi-dépôts"
   },
   "customModel": {
     "title": "Configuration du modèle personnalisé",

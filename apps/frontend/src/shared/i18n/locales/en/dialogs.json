@@ -152,7 +152,10 @@
     "failedToOpen": "Failed to open project",
     "failedToCreate": "Failed to create project",
     "openExistingAriaLabel": "Open existing project folder",
-    "createNewAriaLabel": "Create new project"
+    "createNewAriaLabel": "Create new project",
+    "createWorkspace": "Create Workspace",
+    "createWorkspaceDescription": "Set up a workspace for multiple repositories",
+    "createWorkspaceAriaLabel": "Create new multi-repo workspace"
   },
   "customModel": {
     "title": "Custom Model Configuration",

@@ -2,6 +2,7 @@ import type { IPCResult } from '../../../shared/types';
 import type {
   Workspace,
   WorkspaceRepo,
+  WorkspaceLink,
   ProjectTypeDetectionResult,
   CreateWorkspaceOptions,
   AddRepoOptions
@@ -35,6 +36,9 @@ export interface WorkspaceAPI {
 
   /** Delete a workspace (keeps repos, removes workspace.json) */
   deleteWorkspace: (workspaceId: string) => Promise<IPCResult<void>>;
+
+  /** Get workspace link from a repository (returns link info if repo belongs to a workspace) */
+  getWorkspaceLink: (repoPath: string) => Promise<IPCResult<WorkspaceLink | null>>;
 }
 
 /**
@@ -63,5 +67,8 @@ export const createWorkspaceAPI = (): WorkspaceAPI => ({
     invokeIpc('workspace:detect-type', path),
 
   deleteWorkspace: (workspaceId: string): Promise<IPCResult<void>> =>
-    invokeIpc('workspace:delete', workspaceId)
+    invokeIpc('workspace:delete', workspaceId),
+
+  getWorkspaceLink: (repoPath: string): Promise<IPCResult<WorkspaceLink | null>> =>
+    invokeIpc('workspace:get-link', repoPath)
 });

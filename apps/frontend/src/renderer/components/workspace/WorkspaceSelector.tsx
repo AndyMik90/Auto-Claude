@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, FolderGit2, GitBranch, Plus, Check, Settings, ArrowRight } from 'lucide-react';
+import { ChevronDown, FolderGit2, GitBranch, Plus, Check, Settings, ArrowRight, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel
 } from '../ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../ui/alert-dialog';
 import { cn } from '../../lib/utils';
 import { useWorkspaceStore, getDefaultRepo } from '../../stores/workspace-store';
 import { MigrationWizard } from './MigrationWizard';
@@ -40,12 +50,18 @@ export function WorkspaceSelector({
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [detection, setDetection] = useState<ProjectTypeDetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddingRepo, setIsAddingRepo] = useState(false);
+  const [addRepoError, setAddRepoError] = useState<string | null>(null);
   const [showMigrationWizard, setShowMigrationWizard] = useState(false);
+  const [repoToDelete, setRepoToDelete] = useState<WorkspaceRepo | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     activeRepoId,
     setActiveRepo,
-    detectProjectType
+    detectProjectType,
+    addRepoToWorkspace,
+    removeRepoFromWorkspace
   } = useWorkspaceStore();
 
   // Load workspace info when project changes
@@ -106,6 +122,60 @@ export function WorkspaceSelector({
   const handleRepoSelect = (repo: WorkspaceRepo) => {
     setActiveRepo(repo.id);
     onRepoSelect?.(repo);
+  };
+
+  const handleAddRepo = async () => {
+    if (!workspace) return;
+
+    setAddRepoError(null);
+    try {
+      // Open directory picker
+      const selectedPath = await window.electronAPI.selectDirectory();
+      if (!selectedPath) return; // User cancelled
+
+      setIsAddingRepo(true);
+
+      // Add repo to workspace
+      const success = await addRepoToWorkspace({
+        workspaceId: projectPath, // workspace:add-repo uses path as workspaceId
+        repoPath: selectedPath
+      });
+
+      if (success) {
+        // Reload workspace to get updated repos
+        const result = await window.electronAPI.getWorkspace(projectPath);
+        if (result.success && result.data) {
+          setWorkspace(result.data);
+        }
+      } else {
+        const storeError = useWorkspaceStore.getState().error;
+        setAddRepoError(storeError || t('addRepoError', 'Failed to add repository'));
+      }
+    } catch (error) {
+      setAddRepoError(error instanceof Error ? error.message : t('addRepoError', 'Failed to add repository'));
+    } finally {
+      setIsAddingRepo(false);
+    }
+  };
+
+  const handleDeleteRepo = async () => {
+    if (!workspace || !repoToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const success = await removeRepoFromWorkspace(projectPath, repoToDelete.id);
+
+      if (success) {
+        // Reload workspace to get updated repos
+        const result = await window.electronAPI.getWorkspace(projectPath);
+        if (result.success && result.data) {
+          setWorkspace(result.data);
+        }
+      }
+    } finally {
+      setIsDeleting(false);
+      setRepoToDelete(null);
+    }
   };
 
   if (isLoading) {
@@ -179,7 +249,7 @@ export function WorkspaceSelector({
           <DropdownMenuItem
             key={repo.id}
             onClick={() => handleRepoSelect(repo)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 group"
           >
             <GitBranch className="h-4 w-4" />
             <span className="flex-1 truncate">{repo.name}</span>
@@ -191,6 +261,16 @@ export function WorkspaceSelector({
             {repo.id === selectedRepo?.id && (
               <Check className="h-4 w-4" />
             )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setRepoToDelete(repo);
+              }}
+              className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity p-1 -mr-1"
+              title={t('removeRepo', 'Remove repository')}
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
           </DropdownMenuItem>
         ))}
 
@@ -202,13 +282,55 @@ export function WorkspaceSelector({
 
         <DropdownMenuSeparator />
 
+        <DropdownMenuItem onClick={handleAddRepo} disabled={isAddingRepo}>
+          {isAddingRepo ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4 mr-2" />
+          )}
+          {t('addRepo', 'Add Repository')}
+        </DropdownMenuItem>
+
+        {addRepoError && (
+          <div className="px-2 py-2 text-xs text-destructive">
+            {addRepoError}
+          </div>
+        )}
+
         {onOpenSettings && (
-          <DropdownMenuItem onClick={onOpenSettings}>
-            <Settings className="h-4 w-4 mr-2" />
-            {t('workspaceSettings', 'Workspace Settings')}
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onOpenSettings}>
+              <Settings className="h-4 w-4 mr-2" />
+              {t('workspaceSettings', 'Workspace Settings')}
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!repoToDelete} onOpenChange={(open) => !open && setRepoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('removeRepoTitle', 'Remove Repository?')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('removeRepoDescription', 'This will remove "{{name}}" from the workspace. The repository files will not be deleted.', { name: repoToDelete?.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t('common:cancel', 'Cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRepo}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? t('removing', 'Removing...') : t('remove', 'Remove')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DropdownMenu>
   );
 }

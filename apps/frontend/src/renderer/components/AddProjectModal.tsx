@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderOpen, FolderPlus, ChevronRight } from 'lucide-react';
+import { FolderOpen, FolderPlus, ChevronRight, Layers } from 'lucide-react';
+import { CreateWorkspaceWizard } from './workspace/CreateWorkspaceWizard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -32,6 +33,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
   const [initGit, setInitGit] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateWorkspaceWizard, setShowCreateWorkspaceWizard] = useState(false);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -41,6 +43,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
       setProjectLocation('');
       setInitGit(true);
       setError(null);
+      setShowCreateWorkspaceWizard(false);
     }
   }, [open]);
 
@@ -202,6 +205,28 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
         </button>
+
+        {/* Create Workspace Option */}
+        <button
+          onClick={() => setShowCreateWorkspaceWizard(true)}
+          className={cn(
+            'w-full flex items-center gap-4 p-4 rounded-xl border border-border',
+            'bg-card hover:bg-accent hover:border-accent transition-all duration-200',
+            'text-left group'
+          )}
+          aria-label={t('addProject.createWorkspaceAriaLabel')}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-info/10">
+            <Layers className="h-6 w-6 text-info" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-foreground">{t('addProject.createWorkspace')}</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t('addProject.createWorkspaceDescription')}
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
       </div>
 
       {error && (
@@ -291,11 +316,32 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
     </>
   );
 
+  const handleWorkspaceCreated = async (workspacePath: string) => {
+    try {
+      const project = await addProject(workspacePath);
+      if (project) {
+        // Workspace already has .auto-claude directory created, no init needed
+        onProjectAdded?.(project, false);
+        onOpenChange(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('addProject.failedToOpen'));
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        {step === 'choose' ? renderChooseStep() : renderCreateForm()}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          {step === 'choose' ? renderChooseStep() : renderCreateForm()}
+        </DialogContent>
+      </Dialog>
+
+      <CreateWorkspaceWizard
+        open={showCreateWorkspaceWizard}
+        onOpenChange={setShowCreateWorkspaceWizard}
+        onWorkspaceCreated={handleWorkspaceCreated}
+      />
+    </>
   );
 }
