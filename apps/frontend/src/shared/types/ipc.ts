@@ -25,6 +25,7 @@ import type {
   McpHealthCheckResult,
   McpTestConnectionResult
 } from './project';
+import type { ScreenshotSource } from './screenshot';
 import type {
   Task,
   TaskStatus,
@@ -169,6 +170,9 @@ export interface ElectronAPI {
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
 
+  // Image operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
+
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<WorktreeStatus>>;
@@ -312,8 +316,10 @@ export interface ElectronAPI {
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
-  /** Request all profiles usage immediately (for startup/refresh) */
-  requestAllProfilesUsage: () => Promise<IPCResult<AllProfilesUsage | null>>;
+  /** Request all profiles usage immediately (for startup/refresh)
+   * @param forceRefresh - If true, bypasses cache to get fresh data for all profiles
+   */
+  requestAllProfilesUsage: (forceRefresh?: boolean) => Promise<IPCResult<AllProfilesUsage | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */
@@ -742,6 +748,9 @@ export interface ElectronAPI {
   onInsightsError: (
     callback: (projectId: string, error: string) => void
   ) => () => void;
+  onInsightsSessionUpdated: (
+    callback: (projectId: string, session: InsightsSession) => void
+  ) => () => void;
 
   // Task logs operations
   getTaskLogs: (projectId: string, specId: string) => Promise<IPCResult<TaskLogs | null>>;
@@ -852,12 +861,11 @@ export interface ElectronAPI {
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
 
   // Screenshot capture operations
-  getSources: () => Promise<IPCResult<Array<{
-    id: string;
-    name: string;
-    thumbnail: string;
-  }>>>;
+  getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // Queue Routing API (rate limit recovery)
+  queue: import('../../preload/api/queue-api').QueueAPI;
 }
 
 declare global {
