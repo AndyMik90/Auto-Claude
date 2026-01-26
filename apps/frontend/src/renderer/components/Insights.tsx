@@ -898,7 +898,7 @@ function MessageBubble({
 
         <div className={cn(
           'prose prose-sm dark:prose-invert max-w-none',
-          isUser && '[&_]:whitespace-pre-wrap'
+          isUser && '[&_*]:whitespace-pre-wrap'
         )}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
