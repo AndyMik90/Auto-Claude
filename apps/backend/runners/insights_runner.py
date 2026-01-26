@@ -143,6 +143,7 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    image_attachments: list | None = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -178,6 +179,65 @@ async def run_with_sdk(
 
 Current question: {message}"""
 
+    # Handle image attachments by writing to temp files and referencing in prompt
+    # Note: Claude SDK doesn't support image blocks in content arrays
+    # We write images to temp files and reference their paths in the prompt
+    temp_image_files = []  # Initialize for cleanup in finally block
+    if image_attachments:
+        debug(
+            "insights_runner",
+            "Processing image attachments",
+            image_count=len(image_attachments),
+        )
+        import base64
+        import tempfile
+
+        for idx, img in enumerate(image_attachments):
+            img_data = img.get("data")
+            img_filename = img.get("filename", f"image_{idx}")
+            img_type = img.get("mimeType", "image/png")
+
+            if img_data:
+                try:
+                    # Decode base64 and write to temp file
+                    image_bytes = base64.b64decode(img_data)
+
+                    # Determine file extension from MIME type
+                    ext_map = {
+                        "image/png": ".png",
+                        "image/jpeg": ".jpg",
+                        "image/jpg": ".jpg",
+                        "image/gif": ".gif",
+                        "image/webp": ".webp",
+                    }
+                    ext = ext_map.get(img_type, ".png")
+
+                    # Create temp file in system temp directory (OS auto-cleanup)
+                    # Using system temp avoids polluting project and is SIGKILL-proof
+                    with tempfile.NamedTemporaryFile(
+                        suffix=ext,
+                        delete=False,
+                    ) as f:
+                        # Track path immediately for cleanup, even if write fails
+                        temp_image_path = Path(f.name)
+                        temp_image_files.append(temp_image_path)
+                        f.write(image_bytes)
+
+                    # Add image reference to prompt (use full path for SDK Read tool)
+                    full_prompt += f"\n\n[Image {idx + 1}: {img_filename}]\nFile: {temp_image_path}"
+
+                    debug_detailed(
+                        "insights_runner",
+                        "Wrote image to temp file",
+                        filename=img_filename,
+                        path=str(temp_image_path),
+                    )
+                except Exception as e:
+                    debug_error(
+                        "insights_runner",
+                        f"Failed to write image {idx} to temp file: {e}",
+                    )
+
     # Convert thinking level to token budget
     max_thinking_tokens = get_thinking_budget(thinking_level)
 
@@ -208,7 +268,7 @@ Current question: {message}"""
 
         # Use async context manager pattern
         async with client:
-            # Send the query
+            # Send the query (image references are in the prompt text)
             await client.query(full_prompt)
 
             # Stream the response
@@ -285,6 +345,22 @@ Current question: {message}"""
         traceback.print_exc(file=sys.stderr)
         run_simple(project_dir, message, history)
 
+    finally:
+        # Clean up temporary image files (runs even on exception)
+        for temp_file in temp_image_files:
+            try:
+                temp_file.unlink()
+                debug_detailed(
+                    "insights_runner",
+                    "Cleaned up temp image file",
+                    path=str(temp_file),
+                )
+            except Exception as e:
+                debug_error(
+                    "insights_runner",
+                    f"Failed to clean up temp file {temp_file}: {e}",
+                )
+
 
 def run_simple(project_dir: str, message: str, history: list) -> None:
     """Simple fallback mode without SDK - uses subprocess to call claude CLI."""
@@ -349,6 +425,10 @@ def main():
         "--history-file", help="Path to JSON file containing conversation history"
     )
     parser.add_argument(
+        "--images-file",
+        help="Path to JSON file containing image attachments for the message",
+    )
+    parser.add_argument(
         "--model",
         default="sonnet",
         help="Model to use (haiku, sonnet, opus, or full model ID)",
@@ -399,9 +479,29 @@ def main():
         debug_error("insights_runner", f"Failed to load history: {e}")
         history = []
 
+    # Load image attachments from file if provided
+    image_attachments = None
+    try:
+        if args.images_file:
+            debug("insights_runner", "Loading images from file", file=args.images_file)
+            with open(args.images_file, encoding="utf-8") as f:
+                image_attachments = json.load(f)
+            debug_detailed(
+                "insights_runner",
+                "Loaded image attachments",
+                image_count=len(image_attachments) if image_attachments else 0,
+            )
+    except (json.JSONDecodeError, FileNotFoundError, OSError) as e:
+        debug_error("insights_runner", f"Failed to load images: {e}")
+        image_attachments = None
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(
+        run_with_sdk(
+            project_dir, user_message, history, model, thinking_level, image_attachments
+        )
+    )
     debug_success("insights_runner", "Query completed")
 
 

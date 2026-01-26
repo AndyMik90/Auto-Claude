@@ -169,7 +169,13 @@
   },
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
-    "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images."
+    "pasteHint": "Tip: Paste screenshots directly with {{shortcut}} to add reference images.",
+    "viewFullSizeAriaLabel": "View full-size image: {{filename}}",
+    "thumbnailAlt": "Message attachment: {{filename}}",
+    "countIndicator": "{{count}} image attached ({{remaining}} remaining)",
+    "countIndicator_plural": "{{count}} images attached ({{remaining}} remaining)",
+    "largeFileWarning": "\"{{name}}\" is {{size}}MB. Large images may cause performance issues.",
+    "screenshotFilename": "screenshot-{{timestamp}}.{{ext}}"
   },
   "imagePreview": {
     "close": "Close preview",
@@ -217,7 +223,19 @@
     "maxImagesError": "Maximum of {{count}} images allowed",
     "invalidTypeError": "Invalid image type. Allowed: {{types}}",
     "removeImage": "Remove image",
-    "processingError": "Failed to process image"
+    "processingError": "Failed to process image",
+    "inputHint": "Press Enter to send, Shift+Enter for new line. Paste screenshots directly (Ctrl+V) or drag and drop images."
+  },
+  "insights": {
+    "emptyStateTitle": "Start a Conversation",
+    "emptyStateDescription": "Ask questions about your codebase, get suggestions for improvements, or discuss features you'd like to implement. You can also paste screenshots (Ctrl+V / Cmd+V) or drag & drop images to include visual context.",
+    "suggestionArchitecture": "What is the architecture of this project?",
+    "suggestionImprovements": "Suggest improvements for code quality",
+    "suggestionFeatures": "What features could I add next?",
+    "suggestionSecurity": "Are there any security concerns?",
+    "sessionImageLimitError": "Session image limit reached. Can only add {{remaining}} more image{{plural}}. Start a new conversation for more.",
+    "sessionSwitchError": "Failed to switch sessions. Please try again.",
+    "mixedImageTypesError": "Mixed image types not allowed: all elements must be either File or ImageAttachment"
   },
   "review": {
     "mergeTooltip": "Merges changes from the task's worktree branch back to your base branch. AI will resolve any conflicts. You can then choose whether to keep or remove the worktree."

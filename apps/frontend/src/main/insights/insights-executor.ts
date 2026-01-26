@@ -1,14 +1,16 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
+import { writeFile } from 'fs/promises';
+import tmp from 'tmp';
 import path from 'path';
-import os from 'os';
 import { EventEmitter } from 'events';
 import type {
   InsightsChatMessage,
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsToolUsage,
-  InsightsModelConfig
+  InsightsModelConfig,
+  ImageAttachment
 } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
@@ -63,7 +65,8 @@ export class InsightsExecutor extends EventEmitter {
     projectPath: string,
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
-    modelConfig?: InsightsModelConfig
+    modelConfig?: InsightsModelConfig,
+    imageAttachments?: ImageAttachment[]
   ): Promise<ProcessorResult> {
     // Cancel any existing session
     this.cancelSession(projectId);
@@ -87,19 +90,50 @@ export class InsightsExecutor extends EventEmitter {
     // Get process environment
     const processEnv = await this.config.getProcessEnv();
 
-    // Write conversation history to temp file to avoid Windows command-line length limit
-    const historyFile = path.join(
-      os.tmpdir(),
-      `insights-history-${projectId}-${Date.now()}.json`
-    );
-
-    let historyFileCreated = false;
+    // Create secure temp files using tmp library (CodeQL compliant)
+    let historyFile: string | undefined;
     try {
-      writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
-      historyFileCreated = true;
+      historyFile = tmp.fileSync({ prefix: 'insights-history-', discardDescriptor: true }).name;
+      await writeFile(historyFile, JSON.stringify(conversationHistory), 'utf-8');
     } catch (err) {
-      console.error('[Insights] Failed to write history file:', err);
-      throw new Error('Failed to write conversation history to temp file');
+      console.error('[Insights] Failed to create history file:', err);
+      // Clean up temp file if it was created
+      try {
+        if (historyFile && existsSync(historyFile)) {
+          unlinkSync(historyFile);
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw new Error('Failed to create conversation history temp file');
+    }
+
+    // Write image attachments to temp file if provided
+    let imagesFile: string | undefined;
+    if (imageAttachments && imageAttachments.length > 0) {
+      try {
+        imagesFile = tmp.fileSync({ prefix: 'insights-images-', discardDescriptor: true }).name;
+        await writeFile(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
+      } catch (err) {
+        console.error('[Insights] Failed to create images file:', err);
+        // Clean up history file before throwing
+        try {
+          if (historyFile && existsSync(historyFile)) {
+            unlinkSync(historyFile);
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+        // Clean up images file if it was created
+        try {
+          if (imagesFile && existsSync(imagesFile)) {
+            unlinkSync(imagesFile);
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw new Error('Failed to create image attachments temp file');
+      }
     }
 
     // Build command arguments
@@ -109,6 +143,11 @@ export class InsightsExecutor extends EventEmitter {
       '--message', message,
       '--history-file', historyFile
     ];
+
+    // Add images file argument if images were provided
+    if (imagesFile) {
+      args.push('--images-file', imagesFile);
+    }
 
     // Add model config if provided
     if (modelConfig) {
@@ -169,12 +208,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
-        if (historyFileCreated && existsSync(historyFile)) {
+        // Cleanup temp files
+        if (existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (imagesFile && existsSync(imagesFile)) {
+          try {
+            unlinkSync(imagesFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup images file:', cleanupErr);
           }
         }
 
@@ -216,12 +263,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
-        if (historyFileCreated && existsSync(historyFile)) {
+        // Cleanup temp files
+        if (existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (imagesFile && existsSync(imagesFile)) {
+          try {
+            unlinkSync(imagesFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup images file:', cleanupErr);
           }
         }
 

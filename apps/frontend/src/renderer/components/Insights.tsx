@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -14,7 +14,9 @@ import {
   FileText,
   FolderSearch,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -34,17 +36,29 @@ import {
   renameSession,
   updateModelConfig,
   createTaskFromSuggestion,
-  setupInsightsListeners
+  setupInsightsListeners,
+  getBase64FromDataUrl
 } from '../stores/insights-store';
+import { SessionImageLimitError } from '../stores/insights-store';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
+import {
+  generateImageId,
+  blobToBase64,
+  createThumbnail,
+  isValidImageMimeType,
+  resolveFilename
+} from './ImageUpload';
+import type { InsightsChatMessage, InsightsModelConfig, ImageAttachment } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
   TASK_COMPLEXITY_LABELS,
-  TASK_COMPLEXITY_COLORS
+  TASK_COMPLEXITY_COLORS,
+  MAX_IMAGES_PER_TASK,
+  MAX_IMAGE_SIZE,
+  ALLOWED_IMAGE_TYPES_DISPLAY
 } from '../../shared/constants';
 
 // createSafeLink - factory function that creates a SafeLink component with i18n support
@@ -83,12 +97,13 @@ const createSafeLink = (opensInNewWindowText: string) => {
   };
 };
 
+
 interface InsightsProps {
   projectId: string;
 }
 
 export function Insights({ projectId }: InsightsProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'tasks']);
   const session = useInsightsStore((state) => state.session);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
@@ -105,9 +120,50 @@ export function Insights({ projectId }: InsightsProps) {
   const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
+  const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [pasteSuccess, setPasteSuccess] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isDragOverTextarea, setIsDragOverTextarea] = useState(false);
+  const [throttledStreamingContent, setThrottledStreamingContent] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pasteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Throttle streaming content updates to reduce ReactMarkdown re-renders
+  useEffect(() => {
+    if (!streamingContent) {
+      setThrottledStreamingContent('');
+      return;
+    }
+
+    // Clear any pending timeout
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+    }
+
+    // Throttle updates to every 100ms during streaming
+    const THROTTLE_DELAY_MS = 100;
+    streamingTimeoutRef.current = setTimeout(() => {
+      setThrottledStreamingContent(streamingContent);
+    }, THROTTLE_DELAY_MS);
+
+    return () => {
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
+    };
+  }, [streamingContent]);
+
+  // Cleanup paste success timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pasteSuccessTimeoutRef.current) {
+        clearTimeout(pasteSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -131,12 +187,35 @@ export function Insights({ projectId }: InsightsProps) {
     setTaskCreated(new Set());
   }, [session?.id]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = inputValue.trim();
-    if (!message || status.phase === 'thinking' || status.phase === 'streaming') return;
+    if ((!message && images.length === 0) || status.phase === 'thinking' || status.phase === 'streaming') return;
+
+    // Store current values in case of error
+    const currentMessage = message;
+    const currentImages = images;
 
     setInputValue('');
-    sendMessage(projectId, message);
+    setImages([]);
+    setImageError(null);
+
+    try {
+      await sendMessage(projectId, currentMessage, undefined, currentImages);
+    } catch (error) {
+      // Restore user input on error, but only if UI is still empty
+      // This prevents clobbering a new draft if the user typed while send was in-flight
+      setInputValue(prev => (prev === '' ? currentMessage : prev));
+      setImages(prev => (prev.length === 0 ? currentImages : prev));
+      if (error instanceof SessionImageLimitError) {
+        setImageError(t('tasks:insights.sessionImageLimitError', {
+          remaining: error.remaining,
+          plural: error.remaining !== 1 ? 's' : ''
+        }));
+      } else {
+        console.error('[Insights] sendMessage failed:', error);
+        setImageError(t('tasks:feedback.processingError'));
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -146,7 +225,260 @@ export function Insights({ projectId }: InsightsProps) {
     }
   };
 
+  /**
+   * Handle paste event for screenshot support
+   */
+  const handlePaste = useCallback(async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardItems = e.clipboardData?.items;
+    if (!clipboardItems) return;
+
+    // Find image items in clipboard
+    const imageItems: DataTransferItem[] = [];
+    for (let i = 0; i < clipboardItems.length; i++) {
+      const item = clipboardItems[i];
+      if (item.type.startsWith('image/')) {
+        imageItems.push(item);
+      }
+    }
+
+    // If no images, allow normal paste behavior
+    if (imageItems.length === 0) return;
+
+    // Prevent default paste when we have images
+    e.preventDefault();
+
+    setImageError(null);
+
+    // Upfront slot check for performance: avoid processing images we can't use.
+    // Note: This uses images.length which may be slightly stale, but the functional
+    // setImages below provides atomic correctness even in concurrent scenarios.
+    const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+    if (remainingSlots <= 0) {
+      setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+      return;
+    }
+
+    // Process image items (limit upfront to avoid extra base64/thumbnail work)
+    const newImages: ImageAttachment[] = [];
+
+    for (const item of imageItems) {
+      // Stop processing if we've filled available slots
+      if (newImages.length >= remainingSlots) break;
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      // Check file size for large file warning
+      if (file.size > MAX_IMAGE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setImageError(
+          t('tasks:images.largeFileWarning', { name: file.name, size: sizeMB })
+        );
+        // Still allow the upload, just warn
+      }
+
+      // Validate image type
+      if (!isValidImageMimeType(file.type)) {
+        setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
+        continue;
+      }
+
+      try {
+        const dataUrl = await blobToBase64(file);
+        const thumbnail = await createThumbnail(dataUrl);
+
+        // Generate filename for pasted images (screenshot-timestamp.ext)
+        const mimeToExtension: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+        };
+        const extension = mimeToExtension[file.type] || file.type.split('/')[1] || 'png';
+        const timestamp = Date.now();
+        const baseFilename = t('tasks:images.screenshotFilename', { timestamp, ext: extension });
+        // Resolve filename to avoid duplicates within the current batch
+        const resolvedFilename = resolveFilename(baseFilename, newImages.map(img => img.filename));
+
+        newImages.push({
+          id: generateImageId(),
+          filename: resolvedFilename,
+          mimeType: file.type,
+          size: file.size,
+          data: getBase64FromDataUrl(dataUrl),
+          thumbnail
+        });
+      } catch (error) {
+        console.error('[Insights] Failed to process pasted image:', error);
+        setImageError(t('tasks:feedback.processingError'));
+      }
+    }
+
+    if (newImages.length > 0) {
+      // Track whether we hit the limit to set error after state update (keep updater pure)
+      let hitLimit = false;
+      setImages(prevImages => {
+        const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
+        if (remaining <= 0) {
+          hitLimit = true;
+          return prevImages;
+        }
+        // Only add as many images as we have slots for
+        const toAdd = newImages.slice(0, remaining);
+        if (toAdd.length < newImages.length) {
+          hitLimit = true;
+        }
+        return [...prevImages, ...toAdd];
+      });
+      // Set error outside the updater (React requires state updaters to be pure)
+      if (hitLimit) {
+        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+      }
+      // Show success feedback
+      setPasteSuccess(true);
+      if (pasteSuccessTimeoutRef.current) {
+        clearTimeout(pasteSuccessTimeoutRef.current);
+      }
+      pasteSuccessTimeoutRef.current = setTimeout(() => setPasteSuccess(false), 2000);
+    }
+  }, [images.length, t]);
+
+  /**
+   * Remove an image from the attachments
+   */
+  const handleRemoveImage = useCallback((imageId: string) => {
+    setImages(prevImages => prevImages.filter(img => img.id !== imageId));
+    setImageError(null);
+  }, []);
+
+  /**
+   * Handle drag over textarea for image drops
+   */
+  const handleTextareaDragOver = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTextarea(true);
+  }, []);
+
+  /**
+   * Handle drag leave from textarea
+   */
+  const handleTextareaDragLeave = useCallback((e: DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTextarea(false);
+  }, []);
+
+  /**
+   * Handle drop on textarea for images
+   */
+  const handleTextareaDrop = useCallback(
+    async (e: DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOverTextarea(false);
+
+      if (status.phase === 'thinking' || status.phase === 'streaming') return;
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      // Filter for image files
+      const imageFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length === 0) return;
+
+      setImageError(null);
+
+      // Upfront slot check for performance: avoid processing images we can't use.
+      // Note: This uses images.length which may be slightly stale, but the functional
+      // setImages below provides atomic correctness even in concurrent scenarios.
+      const remainingSlots = MAX_IMAGES_PER_TASK - images.length;
+      if (remainingSlots <= 0) {
+        setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+        return;
+      }
+
+      // Process image files (limit upfront to avoid extra base64/thumbnail work)
+      const newImages: ImageAttachment[] = [];
+
+      for (const file of imageFiles) {
+        // Stop processing if we've filled available slots
+        if (newImages.length >= remainingSlots) break;
+
+        // Check file size for large file warning
+        if (file.size > MAX_IMAGE_SIZE) {
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          setImageError(
+            t('tasks:images.largeFileWarning', { name: file.name, size: sizeMB })
+          );
+          // Still allow the upload, just warn
+        }
+
+        // Validate image type
+        if (!isValidImageMimeType(file.type)) {
+          setImageError(t('tasks:feedback.invalidTypeError', { types: ALLOWED_IMAGE_TYPES_DISPLAY }));
+          continue;
+        }
+
+        try {
+          const dataUrl = await blobToBase64(file);
+          const thumbnail = await createThumbnail(dataUrl);
+
+          // Resolve filename to avoid duplicates within the current batch
+          const resolvedFilename = resolveFilename(file.name, newImages.map(img => img.filename));
+
+          newImages.push({
+            id: generateImageId(),
+            filename: resolvedFilename,
+            mimeType: file.type,
+            size: file.size,
+            data: getBase64FromDataUrl(dataUrl),
+            thumbnail
+          });
+        } catch (error) {
+          console.error('[Insights] Failed to process dropped image:', error);
+          setImageError(t('tasks:feedback.processingError'));
+        }
+      }
+
+      if (newImages.length > 0) {
+        // Track whether we hit the limit to set error after state update (keep updater pure)
+        let hitLimit = false;
+        setImages(prevImages => {
+          const remaining = MAX_IMAGES_PER_TASK - prevImages.length;
+          if (remaining <= 0) {
+            hitLimit = true;
+            return prevImages;
+          }
+          // Only add as many images as we have slots for
+          const toAdd = newImages.slice(0, remaining);
+          if (toAdd.length < newImages.length) {
+            hitLimit = true;
+          }
+          return [...prevImages, ...toAdd];
+        });
+        // Set error outside the updater (React requires state updaters to be pure)
+        if (hitLimit) {
+          setImageError(t('tasks:feedback.maxImagesError', { count: MAX_IMAGES_PER_TASK }));
+        }
+        // Show success feedback
+        setPasteSuccess(true);
+        setTimeout(() => setPasteSuccess(false), 2000);
+      }
+    },
+    [images.length, status.phase, t]
+  );
+
   const handleNewSession = async () => {
+    // Clear pending images before creating new session (consistent with handleSelectSession)
+    setImages([]);
+    setImageError(null);
     await newSession(projectId);
     setTaskCreated(new Set());
     textareaRef.current?.focus();
@@ -154,7 +486,23 @@ export function Insights({ projectId }: InsightsProps) {
 
   const handleSelectSession = async (sessionId: string) => {
     if (sessionId !== session?.id) {
-      await switchSession(projectId, sessionId);
+      // Store current state for potential restoration
+      const currentImages = images;
+
+      // Clear pending images before switching to prevent sending them to wrong session
+      setImages([]);
+      setImageError(null);
+
+      try {
+        await switchSession(projectId, sessionId);
+      } catch (error) {
+        // Restore state on failure, but only if user hasn't added new images
+        // This prevents overwriting new images pasted during the async switchSession call
+        setImages(prev => (prev.length === 0 ? currentImages : prev));
+        // Show error message to user
+        console.error('[Insights] switchSession failed:', error);
+        setImageError(t('tasks:insights.sessionSwitchError'));
+      }
     }
   };
 
@@ -260,24 +608,23 @@ export function Insights({ projectId }: InsightsProps) {
 
       {/* Messages */}
       <ScrollArea className="flex-1 px-6 py-4">
-        {messages.length === 0 && !streamingContent ? (
+        {messages.length === 0 && !throttledStreamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mb-2 text-lg font-medium text-foreground">
-              Start a Conversation
+              {t('tasks:insights.emptyStateTitle')}
             </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement.
+              {t('tasks:insights.emptyStateDescription')}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
-                'What is the architecture of this project?',
-                'Suggest improvements for code quality',
-                'What features could I add next?',
-                'Are there any security concerns?'
+                t('tasks:insights.suggestionArchitecture'),
+                t('tasks:insights.suggestionImprovements'),
+                t('tasks:insights.suggestionFeatures'),
+                t('tasks:insights.suggestionSecurity')
               ].map((suggestion) => (
                 <Button
                   key={suggestion}
@@ -308,7 +655,7 @@ export function Insights({ projectId }: InsightsProps) {
             ))}
 
             {/* Streaming message */}
-            {(streamingContent || currentTool) && (
+            {(throttledStreamingContent || currentTool) && (
               <div className="flex gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Bot className="h-4 w-4 text-primary" />
@@ -317,10 +664,10 @@ export function Insights({ projectId }: InsightsProps) {
                   <div className="mb-1 text-sm font-medium text-foreground">
                     Assistant
                   </div>
-                  {streamingContent && (
+                  {throttledStreamingContent && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {streamingContent}
+                        {throttledStreamingContent}
                       </ReactMarkdown>
                     </div>
                   )}
@@ -360,19 +707,104 @@ export function Insights({ projectId }: InsightsProps) {
 
       {/* Input */}
       <div className="border-t border-border p-4">
+        {/* Image thumbnails display */}
+        {images.length > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {images.map((image) => (
+                <div
+                  key={image.id}
+                  className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  style={{ width: '64px', height: '64px' }}
+                  title={image.filename}
+                >
+                  {image.thumbnail ? (
+                    <img
+                      src={image.thumbnail}
+                      alt={t('tasks:images.thumbnailAlt', { filename: image.filename })}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage(image.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRemoveImage(image.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={t('tasks:images.removeImageAriaLabel', { filename: image.filename })}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Image count indicator */}
+            <p className="text-xs text-muted-foreground mb-3">
+              {t('tasks:images.countIndicator', {
+                count: images.length,
+                remaining: MAX_IMAGES_PER_TASK - images.length
+              })}
+            </p>
+          </>
+        )}
+
+        {/* Paste Success Indicator */}
+        {pasteSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 text-sm text-green-600 mb-2 animate-in fade-in slide-in-from-top-1 duration-200"
+          >
+            <ImageIcon className="h-4 w-4" />
+            {t('tasks:feedback.imageAdded')}
+          </div>
+        )}
+
+        {/* Error display */}
+        {imageError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-sm text-destructive mb-2"
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{imageError}</span>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onDragOver={handleTextareaDragOver}
+            onDragLeave={handleTextareaDragLeave}
+            onDrop={handleTextareaDrop}
             placeholder="Ask about your codebase..."
-            className="min-h-[80px] resize-none"
+            className={cn(
+              'min-h-[80px] resize-none',
+              isDragOverTextarea && 'ring-2 ring-primary border-primary'
+            )}
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={(!inputValue.trim() && images.length === 0) || isLoading}
             className="self-end"
           >
             {isLoading ? (
@@ -383,7 +815,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          {t('tasks:feedback.inputHint')}
         </p>
       </div>
       </div>
@@ -406,6 +838,7 @@ function MessageBubble({
   isCreatingTask,
   taskCreated
 }: MessageBubbleProps) {
+  const { t } = useTranslation(['tasks']);
   const isUser = message.role === 'user';
 
   return (
@@ -426,7 +859,63 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+
+        {/* Image attachments display */}
+        {message.images && message.images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {message.images.map((image) => (
+              <button
+                type="button"
+                key={image.id}
+                className="relative group rounded-md border border-border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 focus:ring-2 focus:ring-primary/50 transition-all"
+                style={{ width: '120px', height: '120px' }}
+                title={image.filename}
+                onClick={() => {
+                  // Open full-size image in new tab
+                  // Guard against missing data - fallback to thumbnail or skip if neither available
+                  if (image.data) {
+                    const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                    window.open(fullSizeUrl, '_blank');
+                  } else if (image.thumbnail) {
+                    // Fallback to thumbnail if full-size data is missing
+                    window.open(image.thumbnail, '_blank');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    // Guard against missing data - fallback to thumbnail or skip if neither available
+                    if (image.data) {
+                      const fullSizeUrl = `data:${image.mimeType};base64,${image.data}`;
+                      window.open(fullSizeUrl, '_blank');
+                    } else if (image.thumbnail) {
+                      // Fallback to thumbnail if full-size data is missing
+                      window.open(image.thumbnail, '_blank');
+                    }
+                  }
+                }}
+                aria-label={t('tasks:images.viewFullSizeAriaLabel', { filename: image.filename })}
+              >
+                {image.thumbnail ? (
+                  <img
+                    src={image.thumbnail}
+                    alt={t('tasks:images.thumbnailAlt', { filename: image.filename })}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className={cn(
+          'prose prose-sm dark:prose-invert max-w-none',
+          isUser && '[&_*]:whitespace-pre-wrap'
+        )}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
           </ReactMarkdown>

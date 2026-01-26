@@ -204,20 +204,23 @@ export const MAX_IMAGES_PER_TASK = 10;
 export const MAX_REFERENCED_FILES = 20;
 
 // Allowed image MIME types
+// NOTE: SVG is excluded due to XSS vulnerability - SVG files can contain embedded JavaScript
+// that executes when rendered as <img> tags. This is a temporary security measure.
+// TODO: Implement DOMPurify sanitization for proper SVG support in future.
 export const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/jpeg',
   'image/jpg',
   'image/gif',
-  'image/webp',
-  'image/svg+xml'
+  'image/webp'
+  // 'image/svg+xml' - REMOVED due to XSS risk
 ] as const;
 
 // Allowed image file extensions (for display)
-export const ALLOWED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'] as const;
+export const ALLOWED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp'] as const;
 
 // Human-readable allowed types for error messages
-export const ALLOWED_IMAGE_TYPES_DISPLAY = 'PNG, JPEG, GIF, WebP, SVG';
+export const ALLOWED_IMAGE_TYPES_DISPLAY = 'PNG, JPEG, GIF, WebP';
 
 // Attachments directory name within spec folder
 export const ATTACHMENTS_DIR = 'attachments';
