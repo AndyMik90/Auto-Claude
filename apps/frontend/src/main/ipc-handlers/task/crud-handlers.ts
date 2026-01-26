@@ -244,64 +244,44 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       // 1. First, remove the git worktree if it exists
       const worktreePath = findTaskWorktree(project.path, task.specId);
       if (worktreePath) {
-        let branch: string | null = null;
-
         try {
           console.warn(`[TASK_DELETE] Found worktree at: ${worktreePath}`);
 
           // Get the branch name before removing
-          const branchResult = detectWorktreeBranch(
+          const { branch } = detectWorktreeBranch(
             worktreePath,
             task.specId,
             { timeout: 30000, logPrefix: '[TASK_DELETE]' }
           );
-          branch = branchResult.branch;
 
-          // Try to remove the worktree with git
+          // Delete the worktree directory manually
+          // (git worktree remove --force fails on Windows when directory has untracked files)
+          await rm(worktreePath, { recursive: true, force: true });
+          console.warn(`[TASK_DELETE] Deleted worktree directory: ${worktreePath}`);
+
+          // Prune to clean up git's worktree references
           try {
-            execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
+            execFileSync(getToolPath('git'), ['worktree', 'prune'], {
               cwd: project.path,
               encoding: 'utf-8',
               env: getIsolatedGitEnv(),
               timeout: 30000
             });
-            console.warn(`[TASK_DELETE] Removed worktree via git: ${worktreePath}`);
-          } catch (gitWorktreeError) {
-            // git worktree remove can fail if directory is not empty (untracked files)
-            // Fall back to manual deletion
-            console.warn(`[TASK_DELETE] git worktree remove failed, falling back to manual deletion:`, gitWorktreeError);
-
-            // First prune to clean up the worktree reference
-            try {
-              execFileSync(getToolPath('git'), ['worktree', 'prune'], {
-                cwd: project.path,
-                encoding: 'utf-8',
-                env: getIsolatedGitEnv(),
-                timeout: 30000
-              });
-            } catch {
-              // Ignore prune errors
-            }
-
-            // Then delete the directory manually
-            await rm(worktreePath, { recursive: true, force: true });
-            console.warn(`[TASK_DELETE] Manually deleted worktree directory: ${worktreePath}`);
+          } catch {
+            // Ignore prune errors
           }
 
           // Delete the branch
-          if (branch) {
-            try {
-              execFileSync(getToolPath('git'), ['branch', '-D', branch], {
-                cwd: project.path,
-                encoding: 'utf-8',
-                env: getIsolatedGitEnv(),
-                timeout: 30000
-              });
-              console.warn(`[TASK_DELETE] Deleted branch: ${branch}`);
-            } catch (branchDeleteError) {
-              // Branch might already be deleted or not exist
-              console.warn(`[TASK_DELETE] Could not delete branch ${branch} (may not exist):`, branchDeleteError);
-            }
+          try {
+            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
+            });
+            console.warn(`[TASK_DELETE] Deleted branch: ${branch}`);
+          } catch {
+            // Branch might already be deleted or not exist - that's fine
           }
         } catch (gitError) {
           const errorMsg = gitError instanceof Error ? gitError.message : 'Unknown error';
