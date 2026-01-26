@@ -123,11 +123,12 @@ def _find_glab_executable() -> str | None:
                 return path
 
     # 4. Windows-specific: check Program Files paths
+    # glab uses Inno Setup with DefaultDirName={autopf}\glab
     if os.name == "nt":
         windows_paths = [
-            os.path.expandvars(r"%PROGRAMFILES%\GitLab CLI\glab.exe"),
-            os.path.expandvars(r"%PROGRAMFILES(X86)%\GitLab CLI\glab.exe"),
-            os.path.expandvars(r"%LOCALAPPDATA%\Programs\GitLab CLI\glab.exe"),
+            os.path.expandvars(r"%PROGRAMFILES%\glab\glab.exe"),
+            os.path.expandvars(r"%PROGRAMFILES(X86)%\glab\glab.exe"),
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\glab\glab.exe"),
         ]
         for path in windows_paths:
             if os.path.isfile(path) and _verify_glab_executable(path):

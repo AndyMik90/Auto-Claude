@@ -15,6 +15,7 @@ This allows:
 """
 
 import asyncio
+import json
 import os
 import re
 import shutil
@@ -1304,7 +1305,7 @@ class WorktreeManager:
                     if not mr_url.startswith("http"):
                         # Try to find URL in output
                         # GitLab URL pattern: matches any HTTPS URL with /merge_requests/<number> or /-/merge_requests/<number> path
-                        match = re.search(r"https://[^\s]+/-?/merge_requests/\d+", result.stdout)
+                        match = re.search(r"https://[^\s]+(?:/merge_requests/|/-/merge_requests/)\d+", result.stdout)
                         if match:
                             mr_url = match.group(0)
                         else:
@@ -1482,7 +1483,6 @@ class WorktreeManager:
             )
             if result.returncode == 0 and result.stdout.strip():
                 # Parse JSON output to extract webUrl
-                import json
                 try:
                     data = json.loads(result.stdout)
                     return data.get("webUrl")

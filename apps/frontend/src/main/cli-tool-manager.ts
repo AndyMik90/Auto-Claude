@@ -46,6 +46,7 @@ import {
   getWindowsExecutablePaths,
   getWindowsExecutablePathsAsync,
   WINDOWS_GIT_PATHS,
+  WINDOWS_GLAB_PATHS,
   findWindowsExecutableViaWhere,
   findWindowsExecutableViaWhereAsync,
   isSecurePath,
@@ -798,23 +799,17 @@ class CLIToolManager {
 
     // 4. Windows Program Files
     if (isWindows()) {
-      const windowsPaths = [
-        'C:\\Program Files\\glab\\glab.exe',
-        'C:\\Program Files (x86)\\glab\\glab.exe',
-      ];
-
+      const windowsPaths = getWindowsExecutablePaths(WINDOWS_GLAB_PATHS, '[GitLab CLI]');
       for (const glabPath of windowsPaths) {
-        if (existsSync(glabPath)) {
-          const validation = this.validateGitLabCLI(glabPath);
-          if (validation.valid) {
-            return {
-              found: true,
-              path: glabPath,
-              version: validation.version,
-              source: 'system-path',
-              message: `Using Windows GitLab CLI: ${glabPath}`,
-            };
-          }
+        const validation = this.validateGitLabCLI(glabPath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: glabPath,
+            version: validation.version,
+            source: 'system-path',
+            message: `Using Windows GitLab CLI: ${glabPath}`,
+          };
         }
       }
     }
@@ -1971,23 +1966,17 @@ class CLIToolManager {
 
     // 4. Windows Program Files
     if (isWindows()) {
-      const windowsPaths = [
-        'C:\\Program Files\\glab\\glab.exe',
-        'C:\\Program Files (x86)\\glab\\glab.exe',
-      ];
-
+      const windowsPaths = await getWindowsExecutablePathsAsync(WINDOWS_GLAB_PATHS, '[GitLab CLI]');
       for (const winGlabPath of windowsPaths) {
-        if (await existsAsync(winGlabPath)) {
-          const validation = await this.validateGitLabCLIAsync(winGlabPath);
-          if (validation.valid) {
-            return {
-              found: true,
-              path: winGlabPath,
-              version: validation.version,
-              source: 'system-path',
-              message: `Using Windows GitLab CLI: ${winGlabPath}`,
-            };
-          }
+        const validation = await this.validateGitLabCLIAsync(winGlabPath);
+        if (validation.valid) {
+          return {
+            found: true,
+            path: winGlabPath,
+            version: validation.version,
+            source: 'system-path',
+            message: `Using Windows GitLab CLI: ${winGlabPath}`,
+          };
         }
       }
     }

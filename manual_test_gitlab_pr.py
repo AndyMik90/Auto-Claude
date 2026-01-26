@@ -13,18 +13,17 @@ This script tests the complete GitLab merge request creation flow:
 Run this script from the project root to verify the implementation.
 """
 
-import sys
-import os
-import tempfile
-import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 # Add apps/backend to Python path
 sys.path.insert(0, str(Path(__file__).parent / "apps" / "backend"))
 
 from core.git_provider import detect_git_provider
-from core.glab_executable import get_glab_executable, invalidate_glab_cache
+from core.glab_executable import get_glab_executable
 from core.worktree import WorktreeManager
 
 
@@ -256,22 +255,11 @@ def test_error_messages():
 
     print_test("Testing error messages for missing glab CLI")
 
-    # Test by mocking the get_glab_executable to return None
-    import core.glab_executable as glab_module
-
-    # Save original function
-    original_get_glab = glab_module.get_glab_executable
-
     try:
-        # Mock to simulate missing glab
-        glab_module.get_glab_executable = lambda: None
-
-        # Test the run_glab function with missing glab
-        from core.glab_executable import run_glab
-        result = run_glab(["mr", "create", "--help"])
-
-        # Restore original function
-        glab_module.get_glab_executable = original_get_glab
+        # Mock get_glab_executable to return None (simulate missing glab)
+        with patch("core.glab_executable.get_glab_executable", return_value=None):
+            from core.glab_executable import run_glab
+            result = run_glab(["mr", "create", "--help"])
 
         # Check error message
         if result.returncode != 0 and "glab" in result.stderr.lower():
@@ -289,8 +277,6 @@ def test_error_messages():
             return False
 
     except Exception as e:
-        # Restore original function
-        glab_module.get_glab_executable = original_get_glab
         print_fail(f"Unexpected exception: {e}")
         return False
 

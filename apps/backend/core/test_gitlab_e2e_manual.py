@@ -14,7 +14,6 @@ Requirements:
     - Git repository with proper remotes configured
 """
 
-import os
 import subprocess
 import sys
 import tempfile
@@ -24,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.git_provider import detect_git_provider
-from core.glab_executable import get_glab_executable, invalidate_glab_cache
+from core.glab_executable import get_glab_executable
 
 
 def print_header(title: str) -> None:
@@ -102,7 +101,7 @@ def test_provider_detection_gitlab_cloud() -> bool:
 
             provider = detect_git_provider(tmpdir)
             if provider == "gitlab":
-                print_result(True, f"Correctly detected 'gitlab' for git@gitlab.com:test/repo.git")
+                print_result(True, "Correctly detected 'gitlab' for git@gitlab.com:test/repo.git")
             else:
                 print_result(False, f"Expected 'gitlab', got '{provider}'")
                 return False
@@ -117,7 +116,7 @@ def test_provider_detection_gitlab_cloud() -> bool:
 
             provider = detect_git_provider(tmpdir)
             if provider == "gitlab":
-                print_result(True, f"Correctly detected 'gitlab' for https://gitlab.com/test/repo.git")
+                print_result(True, "Correctly detected 'gitlab' for https://gitlab.com/test/repo.git")
                 return True
             else:
                 print_result(False, f"Expected 'gitlab', got '{provider}'")
@@ -152,7 +151,7 @@ def test_provider_detection_self_hosted() -> bool:
 
             provider = detect_git_provider(tmpdir)
             if provider == "gitlab":
-                print_result(True, f"Correctly detected 'gitlab' for gitlab.example.com")
+                print_result(True, "Correctly detected 'gitlab' for gitlab.example.com")
                 return True
             else:
                 print_result(False, f"Expected 'gitlab', got '{provider}'")
@@ -187,7 +186,7 @@ def test_provider_detection_github() -> bool:
 
             provider = detect_git_provider(tmpdir)
             if provider == "github":
-                print_result(True, f"Correctly detected 'github' for git@github.com:test/repo.git")
+                print_result(True, "Correctly detected 'github' for git@github.com:test/repo.git")
                 return True
             else:
                 print_result(False, f"Expected 'github', got '{provider}'")
@@ -216,7 +215,7 @@ def test_error_message_missing_glab() -> bool:
             content = worktree_path.read_text()
             expected_error = "GitLab CLI (glab) not found. Install from https://gitlab.com/gitlab-org/cli"
             if expected_error in content:
-                print_result(True, f"Error message correctly defined in worktree.py")
+                print_result(True, "Error message correctly defined in worktree.py")
                 return True
             else:
                 print_result(False, "Expected error message not found in worktree.py")
@@ -268,7 +267,7 @@ def test_worktree_integration() -> bool:
             # Verify provider detection works
             provider = detect_git_provider(tmpdir)
             if provider == "gitlab":
-                print_result(True, f"Provider correctly detected as 'gitlab' in worktree context")
+                print_result(True, "Provider correctly detected as 'gitlab' in worktree context")
                 return True
             else:
                 print_result(False, f"Expected 'gitlab', got '{provider}'")
@@ -331,8 +330,6 @@ def run_all_tests() -> None:
 
 
 if __name__ == "__main__":
-    import sys
-
     try:
         exit_code = run_all_tests()
         sys.exit(exit_code)

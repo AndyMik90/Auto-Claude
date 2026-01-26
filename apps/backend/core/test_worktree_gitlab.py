@@ -9,7 +9,7 @@ and merge requests (GitLab), including provider detection and CLI routing.
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,9 +19,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 from core.worktree import (
-    MergeRequestResult,
     PullRequestResult,
-    PushAndCreatePRResult,
     WorktreeInfo,
     WorktreeManager,
 )
@@ -223,7 +221,7 @@ class TestCreateMergeRequest:
 
         with (
             patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
+            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
             patch("core.worktree.subprocess.run", return_value=mock_subprocess_result) as mock_run,
             patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
         ):
@@ -263,7 +261,7 @@ class TestCreateMergeRequest:
 
         with (
             patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
+            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
             patch("core.worktree.subprocess.run", side_effect=[mock_failure, mock_success]),
             patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
             patch("core.worktree.time.sleep"),  # Skip sleep in tests
