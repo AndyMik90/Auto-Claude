@@ -77,9 +77,22 @@
     "discard": "Discard",
     "switch": "Switch",
     "add": "Add",
+    "apply": "Apply",
     "gotIt": "Got it",
     "continue": "Continue",
     "saving": "Saving..."
+  },
+  "actions": {
+    "save": "Save",
+    "apply": "Apply",
+    "delete": "Delete",
+    "settings": "Settings"
+  },
+  "os": {
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+    "unknown": "your OS"
   },
   "labels": {
     "loading": "Loading...",
