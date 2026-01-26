@@ -16,13 +16,12 @@ import json
 from pathlib import Path
 
 
-def detect_worktree_mode(spec_dir: Path, project_dir: Path) -> tuple[bool, str | None]:
+def detect_worktree_mode(spec_dir: Path) -> tuple[bool, str | None]:
     """
     Detect if running in isolated worktree mode.
 
     Args:
         spec_dir: Absolute path to spec directory
-        project_dir: Absolute path to project/working directory
 
     Returns:
         (is_worktree, forbidden_parent_path) tuple:
@@ -87,7 +86,7 @@ def generate_environment_context(project_dir: Path, spec_dir: Path) -> str:
     relative_spec = get_relative_spec_path(spec_dir, project_dir)
 
     # Detect worktree mode and get forbidden parent path
-    is_worktree, forbidden_parent = detect_worktree_mode(spec_dir, project_dir)
+    is_worktree, forbidden_parent = detect_worktree_mode(spec_dir)
 
     # Build the environment context
     context = f"""## YOUR ENVIRONMENT

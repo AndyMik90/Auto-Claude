@@ -20,7 +20,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/001-feature/.auto-claude/specs/001-feature")
         project_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/001-feature")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is True
         assert forbidden == "/opt/dev/project"
@@ -31,7 +31,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("E:/projects/x/.auto-claude/worktrees/tasks/009-audit/.auto-claude/specs/009-audit")
         project_dir = Path("E:/projects/x/.auto-claude/worktrees/tasks/009-audit")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is True
         assert forbidden == "E:/projects/x"
@@ -42,7 +42,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("/opt/dev/project/.worktrees/001-feature/.auto-claude/specs/001-feature")
         project_dir = Path("/opt/dev/project/.worktrees/001-feature")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is True
         assert forbidden == "/opt/dev/project"
@@ -52,7 +52,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("C:/projects/x/.worktrees/009-audit/.auto-claude/specs/009-audit")
         project_dir = Path("C:/projects/x/.worktrees/009-audit")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is True
         assert forbidden == "C:/projects/x"
@@ -63,7 +63,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("/opt/dev/project/.auto-claude/specs/001-feature")
         project_dir = Path("/opt/dev/project")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is False
         assert forbidden is None
@@ -73,7 +73,7 @@ class TestDetectWorktreeMode:
         spec_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/009-very-long-spec-name-for-testing/.auto-claude/specs/009-very-long-spec-name-for-testing")
         project_dir = Path("/opt/dev/project/.auto-claude/worktrees/tasks/009-very-long-spec-name-for-testing")
 
-        is_worktree, forbidden = detect_worktree_mode(spec_dir, project_dir)
+        is_worktree, forbidden = detect_worktree_mode(spec_dir)
 
         assert is_worktree is True
         assert forbidden == "/opt/dev/project"
