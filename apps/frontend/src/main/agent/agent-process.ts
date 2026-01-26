@@ -181,6 +181,10 @@ export class AgentProcessManager {
     // are available even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
 
+    // Load integrations env vars from UI settings (JIRA, GitLab, Vault/Obsidian)
+    const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+    const integrationsEnv = buildIntegrationsEnvVars(appSettings as AppSettings);
+
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
@@ -208,6 +212,7 @@ export class AgentProcessManager {
       ...gitBashEnv,
       ...claudeCliEnv,
       ...ghCliEnv,
+      ...integrationsEnv, // JIRA, GitLab, Vault/Obsidian from UI settings
       ...extraEnv,
       ...profileEnv,
       PYTHONUNBUFFERED: '1',

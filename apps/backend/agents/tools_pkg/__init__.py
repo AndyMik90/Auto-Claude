@@ -38,11 +38,11 @@ from .models import (
     # MCP tool lists
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
+    GITLAB_TOOLS,
     GRAPHITI_MCP_TOOLS,
     JIRA_TOOLS,
-    GITLAB_TOOLS,
-    OBSIDIAN_TOOLS,
     LINEAR_TOOLS,
+    OBSIDIAN_TOOLS,
     PUPPETEER_TOOLS,
     # Auto-Claude tool names
     TOOL_GET_BUILD_PROGRESS,
@@ -57,8 +57,8 @@ from .models import (
     get_default_thinking_level,
     get_required_mcp_servers,
     is_electron_mcp_enabled,
-    is_jira_mcp_enabled,
     is_gitlab_mcp_enabled,
+    is_jira_mcp_enabled,
     is_obsidian_mcp_enabled,
 )
 from .permissions import get_all_agent_types, get_allowed_tools

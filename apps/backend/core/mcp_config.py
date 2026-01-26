@@ -7,6 +7,11 @@ Used by both client.py (for agent sessions) and insights_runner.py (for insights
 
 These functions read from environment variables that are set by the frontend
 via integrations-env-builder.ts when launching Python processes.
+
+NPM Packages Used:
+- JIRA: @aashari/mcp-server-atlassian-jira (community, API token auth)
+- GitLab: @modelcontextprotocol/server-gitlab (official MCP)
+- Vault: @modelcontextprotocol/server-filesystem (official MCP)
 """
 
 import os
@@ -22,6 +27,10 @@ def build_jira_mcp_config() -> dict | None:
     - JIRA_EMAIL: User email for authentication
     - JIRA_API_TOKEN or JIRA_TOKEN: API token
 
+    Optional env vars:
+    - JIRA_DEFAULT_PROJECT: Default project key (e.g., CAP)
+    - JIRA_PROJECT_KEY: Per-project override (takes precedence over JIRA_DEFAULT_PROJECT)
+
     Returns:
         MCP server config dict for @aashari/mcp-server-atlassian-jira, or None if not configured
     """
@@ -32,14 +41,21 @@ def build_jira_mcp_config() -> dict | None:
     if not (host and email and token):
         return None
 
+    env = {
+        "JIRA_HOST": host,
+        "JIRA_EMAIL": email,
+        "JIRA_API_TOKEN": token,
+    }
+
+    # Per-project override takes precedence over global default
+    project_key = os.environ.get("JIRA_PROJECT_KEY") or os.environ.get("JIRA_DEFAULT_PROJECT")
+    if project_key:
+        env["JIRA_DEFAULT_PROJECT"] = project_key
+
     return {
         "command": "npx",
         "args": ["-y", "@aashari/mcp-server-atlassian-jira"],
-        "env": {
-            "JIRA_HOST": host,
-            "JIRA_EMAIL": email,
-            "JIRA_API_TOKEN": token,
-        },
+        "env": env,
     }
 
 

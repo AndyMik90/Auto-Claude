@@ -37,6 +37,7 @@ export const IPC_CHANNELS = {
   TASK_WORKTREE_MERGE_PREVIEW: 'task:worktreeMergePreview',  // Preview merge conflicts before merging
   TASK_WORKTREE_DISCARD: 'task:worktreeDiscard',
   TASK_WORKTREE_CREATE_PR: 'task:worktreeCreatePR',
+  TASK_DETECT_GIT_PLATFORM: 'task:detectGitPlatform',  // Detect if project uses GitHub or GitLab
   TASK_WORKTREE_OPEN_IN_IDE: 'task:worktreeOpenInIDE',
   TASK_WORKTREE_OPEN_IN_TERMINAL: 'task:worktreeOpenInTerminal',
   TASK_WORKTREE_DETECT_TOOLS: 'task:worktreeDetectTools',  // Detect installed IDEs/terminals
@@ -356,6 +357,11 @@ export const IPC_CHANNELS = {
 
   // JIRA integration
   JIRA_TEST_CONNECTION: 'jira:testConnection',
+  JIRA_CREATE_ISSUES_FROM_PLAN: 'jira:createIssuesFromPlan',
+  JIRA_GET_SYNC_STATUS: 'jira:getSyncStatus',
+  JIRA_SYNC_SUBTASK_STATUS: 'jira:syncSubtaskStatus',
+  JIRA_CREATE_TASK_ISSUE: 'jira:createTaskIssue',
+  JIRA_GET_TASK_ISSUE: 'jira:getTaskIssue',
 
   // GitHub Auto-Fix operations
   GITHUB_AUTOFIX_START: 'github:autofix:start',

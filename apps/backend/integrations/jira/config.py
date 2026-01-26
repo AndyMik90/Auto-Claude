@@ -45,9 +45,33 @@ LABELS = {
     "phase": "phase",
     "service": "service",
     "stuck": "stuck",
-    "auto_claude": "auto-claude",
     "needs_review": "needs-review",
 }
+
+
+def get_creator_label(email: str = None) -> str:
+    """
+    Get a label identifying the creator based on JIRA email.
+
+    Uses the username part of the email (before @) as the label.
+    Falls back to no creator label if email not provided.
+
+    Args:
+        email: JIRA email address from settings
+
+    Returns:
+        Creator label string (e.g., "created-by-john.doe")
+    """
+    if not email:
+        email = os.environ.get("JIRA_EMAIL", "")
+
+    if email and "@" in email:
+        username = email.split("@")[0]
+        # Sanitize for JIRA label (lowercase, replace dots/underscores with hyphens)
+        username = username.lower().replace(".", "-").replace("_", "-")
+        return f"created-by-{username}"
+
+    return ""
 
 # JIRA project marker file
 JIRA_PROJECT_MARKER = ".jira_project.json"
@@ -221,11 +245,16 @@ def get_priority_for_phase(phase_num: int, total_phases: int) -> str:
         return "Low"
 
 
-def format_subtask_description(subtask: dict, phase: dict = None) -> str:
+def format_subtask_description(subtask: dict, phase: dict = None, creator_email: str = None) -> str:
     """
     Format a subtask as a JIRA issue description.
 
     Uses Atlassian Document Format (ADF) compatible markdown.
+
+    Args:
+        subtask: Subtask data from implementation plan
+        phase: Phase info dict (optional)
+        creator_email: Email of the creator for attribution (optional)
     """
     lines = []
 
@@ -271,9 +300,18 @@ def format_subtask_description(subtask: dict, phase: dict = None) -> str:
         if v.get("url"):
             lines.append(f"*URL:* {v['url']}")
 
-    # Auto-build metadata
+    # Attribution - use email/username if provided
     lines.append("\n----")
-    lines.append("_This issue was created by Auto-Claude_")
+    if creator_email:
+        # Extract username from email for display
+        display_name = creator_email.split("@")[0] if "@" in creator_email else creator_email
+        lines.append(f"_Created by {display_name}_")
+    else:
+        # Fallback to checking env
+        email = os.environ.get("JIRA_EMAIL", "")
+        if email and "@" in email:
+            display_name = email.split("@")[0]
+            lines.append(f"_Created by {display_name}_")
 
     return "\n".join(lines)
 

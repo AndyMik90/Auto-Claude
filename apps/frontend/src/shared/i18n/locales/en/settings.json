@@ -329,6 +329,20 @@
       "title": "Claude Auth",
       "description": "Claude authentication"
     },
+    "jira": {
+      "title": "JIRA",
+      "description": "JIRA project override",
+      "integrationTitle": "JIRA Integration",
+      "integrationDescription": "Override the JIRA project key for this Auto-Claude project",
+      "configured": "JIRA Connected",
+      "notConfigured": "JIRA Not Configured",
+      "configureInGlobal": "Configure JIRA credentials in global settings first.",
+      "goToSettings": "Go to JIRA Settings",
+      "projectKey": "Project Key Override",
+      "projectKeyDescription": "Override the global default JIRA project for this Auto-Claude project. Leave empty to use global default.",
+      "globalDefault": "Global default",
+      "overrideActive": "Override active"
+    },
     "linear": {
       "title": "Linear",
       "description": "Linear integration",

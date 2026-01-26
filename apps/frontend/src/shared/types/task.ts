@@ -423,7 +423,7 @@ export interface WorktreeCreatePROptions {
 }
 
 /**
- * Result of creating a PR from a worktree
+ * Result of creating a PR/MR from a worktree
  */
 export interface WorktreeCreatePRResult {
   success: boolean;
@@ -431,6 +431,7 @@ export interface WorktreeCreatePRResult {
   error?: string;
   message?: string;  // Human-readable message for both success and error cases
   alreadyExists?: boolean;
+  platform?: 'github' | 'gitlab';  // Which platform the PR/MR was created on
 }
 
 /**

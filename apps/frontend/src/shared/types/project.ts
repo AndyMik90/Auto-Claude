@@ -337,6 +337,9 @@ export interface ProjectEnvConfig {
   // UI Settings
   enableFancyUi: boolean;
 
+  // JIRA Integration (per-project override)
+  jiraProjectKey?: string; // Override global JIRA default project for this project
+
   // MCP Server Configuration (per-project overrides)
   mcpServers?: {
     /** Context7 documentation lookup - default: true */

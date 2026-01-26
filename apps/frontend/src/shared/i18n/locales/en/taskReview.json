@@ -34,20 +34,28 @@
   },
   "pr": {
     "title": "Create Pull Request",
+    "titleGitlab": "Create Merge Request",
     "description": "Push branch and create a pull request for \"{{taskTitle}}\"",
+    "descriptionGitlab": "Push branch and create a merge request for \"{{taskTitle}}\"",
     "errors": {
       "unknown": "An unknown error occurred while creating the pull request",
+      "unknownGitlab": "An unknown error occurred while creating the merge request",
       "invalidBranchName": "Branch name contains invalid characters. Use only letters, numbers, hyphens (-), underscores (_), and forward slashes (/).",
-      "emptyTitle": "Pull request title cannot be empty."
+      "emptyTitle": "Pull request title cannot be empty.",
+      "emptyTitleGitlab": "Merge request title cannot be empty."
     },
     "success": {
       "created": "Pull request created successfully!",
-      "alreadyExists": "A pull request already exists for this branch"
+      "createdGitlab": "Merge request created successfully!",
+      "alreadyExists": "A pull request already exists for this branch",
+      "alreadyExistsGitlab": "A merge request already exists for this branch"
     },
     "actions": {
       "retry": "Retry",
       "creating": "Creating PR...",
-      "create": "Create Pull Request"
+      "creatingGitlab": "Creating MR...",
+      "create": "Create Pull Request",
+      "createGitlab": "Create Merge Request"
     },
     "labels": {
       "sourceBranch": "Source branch",
@@ -55,7 +63,9 @@
       "commits": "Commits",
       "changes": "Changes",
       "prTitle": "PR Title (optional)",
+      "mrTitle": "MR Title (optional)",
       "draftPR": "Create as draft PR",
+      "draftMR": "Create as draft MR",
       "unknown": "Unknown"
     },
     "hints": {
@@ -65,13 +75,19 @@
   },
   "bulkPR": {
     "title": "Create Pull Requests",
+    "titleGitlab": "Create Merge Requests",
     "description": "Create pull requests for {{count}} selected tasks",
+    "descriptionGitlab": "Create merge requests for {{count}} selected tasks",
     "creating": "Creating PR {{current}} of {{total}}...",
+    "creatingGitlab": "Creating MR {{current}} of {{total}}...",
     "creatingPR": "Creating PR {{current}} of {{total}}",
+    "creatingMR": "Creating MR {{current}} of {{total}}",
     "resultsDescription": "{{success}} succeeded, {{failed}} failed",
     "tasksToProcess": "Tasks to process",
     "targetBranchHint": "Leave empty to use each task's default branch. This will be applied to all PRs.",
+    "targetBranchHintGitlab": "Leave empty to use each task's default branch. This will be applied to all MRs.",
     "createAll": "Create {{count}} PRs",
+    "createAllGitlab": "Create {{count}} MRs",
     "completed": "completed",
     "succeeded": "succeeded",
     "failed": "failed",

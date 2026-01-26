@@ -40,11 +40,41 @@ LABELS = {
     "phase": "phase",
     "service": "service",
     "stuck": "stuck",
-    "auto_claude": "auto-claude",
     "blocked": "blocked",
     "needs_review": "needs-review",
     "in_progress": "in-progress",
 }
+
+
+def get_creator_label(email: str = None, username: str = None) -> str:
+    """
+    Get a label identifying the creator based on GitLab email or username.
+
+    Uses the username if provided, otherwise extracts from email.
+    Falls back to checking environment variables.
+
+    Args:
+        email: GitLab email address
+        username: GitLab username (preferred)
+
+    Returns:
+        Creator label string (e.g., "created-by-john-doe")
+    """
+    # Prefer username if available
+    if username:
+        name = username.lower().replace(".", "-").replace("_", "-")
+        return f"created-by-{name}"
+
+    # Fall back to email
+    if not email:
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+
+    if email and "@" in email:
+        name = email.split("@")[0]
+        name = name.lower().replace(".", "-").replace("_", "-")
+        return f"created-by-{name}"
+
+    return ""
 
 # Project marker file
 GITLAB_PROJECT_MARKER = ".gitlab_project.json"
@@ -241,9 +271,21 @@ def get_weight_for_phase(phase_num: int, total_phases: int) -> int:
         return WEIGHT_LOW
 
 
-def get_labels_for_subtask(subtask: dict) -> List[str]:
-    """Generate GitLab labels for a subtask."""
-    labels = [LABELS["auto_claude"]]
+def get_labels_for_subtask(subtask: dict, email: str = None, username: str = None) -> List[str]:
+    """
+    Generate GitLab labels for a subtask.
+
+    Args:
+        subtask: Subtask data from implementation plan
+        email: Creator email for attribution label
+        username: Creator username for attribution label (preferred over email)
+    """
+    labels = []
+
+    # Add creator label instead of "auto-claude"
+    creator_label = get_creator_label(email, username)
+    if creator_label:
+        labels.append(creator_label)
 
     if subtask.get("service"):
         labels.append(f"{LABELS['service']}::{subtask['service']}")
@@ -262,11 +304,22 @@ def get_labels_for_subtask(subtask: dict) -> List[str]:
     return labels
 
 
-def format_issue_description(subtask: dict, phase: dict = None) -> str:
+def format_issue_description(
+    subtask: dict,
+    phase: dict = None,
+    creator_email: str = None,
+    creator_username: str = None
+) -> str:
     """
     Format a subtask as a GitLab issue description.
 
     Uses GitLab Flavored Markdown (GFM).
+
+    Args:
+        subtask: Subtask data from implementation plan
+        phase: Phase info dict (optional)
+        creator_email: Email of the creator for attribution (optional)
+        creator_username: Username of the creator for attribution (optional)
     """
     lines = []
 
@@ -312,9 +365,19 @@ def format_issue_description(subtask: dict, phase: dict = None) -> str:
         if v.get("url"):
             lines.append(f"**URL:** {v['url']}")
 
-    # Auto-build metadata
+    # Attribution - use username/email if provided
     lines.append("\n---")
-    lines.append("_This issue was created by Auto-Claude_ :robot:")
+    if creator_username:
+        lines.append(f"_Created by @{creator_username}_")
+    elif creator_email:
+        display_name = creator_email.split("@")[0] if "@" in creator_email else creator_email
+        lines.append(f"_Created by {display_name}_")
+    else:
+        # Fallback to checking env
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+        if email and "@" in email:
+            display_name = email.split("@")[0]
+            lines.append(f"_Created by {display_name}_")
 
     return "\n".join(lines)
 

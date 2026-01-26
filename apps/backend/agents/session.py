@@ -34,6 +34,8 @@ from ui import (
     print_status,
 )
 
+from memory import is_vault_sync_enabled, sync_to_vault
+
 from .memory_manager import save_session_memory
 from .utils import (
     find_subtask_in_plan,
@@ -190,6 +192,15 @@ async def post_session_processing(
         except Exception as e:
             logger.warning(f"Error saving session memory: {e}")
             print_status("Memory save failed", "warning")
+
+        # Sync to external vault if configured
+        if is_vault_sync_enabled():
+            try:
+                if sync_to_vault(spec_dir, project_dir):
+                    print_status("Session synced to external vault", "success")
+            except Exception as e:
+                logger.warning(f"Vault sync failed: {e}")
+                print_status("Vault sync failed (non-critical)", "warning")
 
         return True
 

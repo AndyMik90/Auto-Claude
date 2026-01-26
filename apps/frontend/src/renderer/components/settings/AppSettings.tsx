@@ -20,7 +20,8 @@ import {
   Bug,
   Server,
   Terminal,
-  Users
+  Users,
+  ClipboardList
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -92,6 +93,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
 
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'general', icon: Settings2 },
+  { id: 'jira', icon: ClipboardList },
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },

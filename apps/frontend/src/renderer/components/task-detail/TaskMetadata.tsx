@@ -33,6 +33,7 @@ import {
   JSON_ERROR_PREFIX
 } from '../../../shared/constants';
 import type { Task, TaskCategory } from '../../../shared/types';
+import { JiraIntegrationSection } from './JiraIntegrationSection';
 
 // Category icon mapping
 const CategoryIcon: Record<TaskCategory, typeof Target> = {
@@ -75,6 +76,9 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
 
   return (
     <div className="space-y-5">
+      {/* JIRA Integration Section - Prominent at top */}
+      <JiraIntegrationSection task={task} />
+
       {/* Compact Metadata Bar: Classification + Timeline */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border">
         {/* Classification Badges - Left */}

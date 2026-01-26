@@ -74,6 +74,10 @@ export function BulkPRDialog({
   const [targetBranch, setTargetBranch] = useState('');
   const [isDraft, setIsDraft] = useState(false);
 
+  // Platform detection (GitHub vs GitLab)
+  const [platform, setPlatform] = useState<'github' | 'gitlab' | null>(null);
+  const isGitLab = platform === 'gitlab';
+
   // Progress tracking
   const [step, setStep] = useState<'options' | 'creating' | 'results'>('options');
   const [taskResults, setTaskResults] = useState<TaskPRResult[]>([]);
@@ -81,6 +85,19 @@ export function BulkPRDialog({
   const isCancelledRef = useRef(false);
 
   const prevOpenRef = useRef(open);
+
+  // Detect platform when dialog opens
+  useEffect(() => {
+    if (open && tasks.length > 0 && tasks[0].projectId) {
+      window.electronAPI?.detectGitPlatform(tasks[0].projectId).then(result => {
+        if (result.success && result.data) {
+          setPlatform(result.data.platform);
+        }
+      }).catch(() => {
+        setPlatform('github'); // Default to GitHub on error
+      });
+    }
+  }, [open, tasks]);
 
   // Only reset when transitioning closed→open (not on tasks array changes during async operation)
   useEffect(() => {
@@ -93,6 +110,7 @@ export function BulkPRDialog({
       setStep('options');
       setCurrentIndex(0);
       isCancelledRef.current = false;
+      setPlatform(null);
       setTaskResults(tasks.map(task => ({
         taskId: task.id,
         taskTitle: task.title,
@@ -214,11 +232,11 @@ export function BulkPRDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitPullRequest className="h-5 w-5 text-primary" />
-            {t('taskReview:bulkPR.title')}
+            {t(isGitLab ? 'taskReview:bulkPR.titleGitlab' : 'taskReview:bulkPR.title')}
           </DialogTitle>
           <DialogDescription>
-            {step === 'options' && t('taskReview:bulkPR.description', { count: tasks.length })}
-            {step === 'creating' && t('taskReview:bulkPR.creating', { current: currentIndex + 1, total: tasks.length })}
+            {step === 'options' && t(isGitLab ? 'taskReview:bulkPR.descriptionGitlab' : 'taskReview:bulkPR.description', { count: tasks.length })}
+            {step === 'creating' && t(isGitLab ? 'taskReview:bulkPR.creatingGitlab' : 'taskReview:bulkPR.creating', { current: currentIndex + 1, total: tasks.length })}
             {step === 'results' && (skippedCount > 0
               ? t('taskReview:bulkPR.resultsDescriptionWithSkipped', { success: successCount, skipped: skippedCount, failed: errorCount })
               : t('taskReview:bulkPR.resultsDescription', { success: successCount, failed: errorCount })
@@ -258,7 +276,7 @@ export function BulkPRDialog({
                   placeholder="main"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('taskReview:bulkPR.targetBranchHint')}
+                  {t(isGitLab ? 'taskReview:bulkPR.targetBranchHintGitlab' : 'taskReview:bulkPR.targetBranchHint')}
                 </p>
               </div>
 
@@ -269,7 +287,7 @@ export function BulkPRDialog({
                   onCheckedChange={(checked) => setIsDraft(checked === true)}
                 />
                 <label htmlFor="bulk-draft-pr-checkbox" className="text-sm cursor-pointer">
-                  {t('taskReview:pr.labels.draftPR')}
+                  {t(isGitLab ? 'taskReview:pr.labels.draftMR' : 'taskReview:pr.labels.draftPR')}
                 </label>
               </div>
             </div>
@@ -280,7 +298,7 @@ export function BulkPRDialog({
               </Button>
               <Button onClick={handleCreatePRs} disabled={tasks.length === 0 || step !== 'options'}>
                 <GitPullRequest className="mr-2 h-4 w-4" />
-                {t('taskReview:bulkPR.createAll', { count: tasks.length })}
+                {t(isGitLab ? 'taskReview:bulkPR.createAllGitlab' : 'taskReview:bulkPR.createAll', { count: tasks.length })}
               </Button>
             </DialogFooter>
           </div>
@@ -293,7 +311,7 @@ export function BulkPRDialog({
               <Loader2 className="h-10 w-10 text-primary animate-spin" />
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium">
-                  {t('taskReview:bulkPR.creatingPR', { current: currentIndex + 1, total: tasks.length })}
+                  {t(isGitLab ? 'taskReview:bulkPR.creatingMR' : 'taskReview:bulkPR.creatingPR', { current: currentIndex + 1, total: tasks.length })}
                 </p>
                 <p className="text-xs text-muted-foreground truncate max-w-[400px]">
                   {tasks[currentIndex]?.title}
@@ -427,8 +445,8 @@ function TaskResultRow({ result, index, showDetails, onOpenPR }: TaskResultRowPr
             className="text-xs text-primary hover:underline flex items-center gap-1 mt-1 bg-transparent border-none cursor-pointer p-0"
           >
             {result.alreadyExists
-              ? t('taskReview:pr.success.alreadyExists')
-              : t('taskReview:pr.success.created')}
+              ? t(result.result?.platform === 'gitlab' ? 'taskReview:pr.success.alreadyExistsGitlab' : 'taskReview:pr.success.alreadyExists')
+              : t(result.result?.platform === 'gitlab' ? 'taskReview:pr.success.createdGitlab' : 'taskReview:pr.success.created')}
             <ExternalLink className="h-3 w-3" />
           </button>
         )}

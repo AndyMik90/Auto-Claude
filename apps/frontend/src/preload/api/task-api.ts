@@ -67,6 +67,7 @@ export interface TaskAPI {
   archiveTasks: (projectId: string, taskIds: string[], version?: string) => Promise<IPCResult<boolean>>;
   unarchiveTasks: (projectId: string, taskIds: string[]) => Promise<IPCResult<boolean>>;
   createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions) => Promise<IPCResult<WorktreeCreatePRResult>>;
+  detectGitPlatform: (projectId: string) => Promise<IPCResult<{ platform: 'github' | 'gitlab' | null }>>;
 
   // Task Event Listeners
   // Note: projectId is optional for backward compatibility - events without projectId will still work
@@ -181,6 +182,9 @@ export const createTaskAPI = (): TaskAPI => ({
 
   createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions): Promise<IPCResult<WorktreeCreatePRResult>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_WORKTREE_CREATE_PR, taskId, options),
+
+  detectGitPlatform: (projectId: string): Promise<IPCResult<{ platform: 'github' | 'gitlab' | null }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_DETECT_GIT_PLATFORM, projectId),
 
   // Task Event Listeners
   onTaskProgress: (

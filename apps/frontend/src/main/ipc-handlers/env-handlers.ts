@@ -138,6 +138,10 @@ export function registerEnvHandlers(
     if (config.defaultBranch !== undefined) {
       existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
     }
+    // JIRA Integration (per-project override)
+    if (config.jiraProjectKey !== undefined) {
+      existingVars['JIRA_PROJECT_KEY'] = config.jiraProjectKey;
+    }
     if (config.graphitiEnabled !== undefined) {
       existingVars['GRAPHITI_ENABLED'] = config.graphitiEnabled ? 'true' : 'false';
     }
@@ -260,6 +264,12 @@ ${envLine(existingVars, GITLAB_ENV_KEYS.INSTANCE_URL, 'https://gitlab.com')}
 ${envLine(existingVars, GITLAB_ENV_KEYS.TOKEN)}
 ${envLine(existingVars, GITLAB_ENV_KEYS.PROJECT, 'group/project')}
 ${envLine(existingVars, GITLAB_ENV_KEYS.AUTO_SYNC, 'false')}
+
+# =============================================================================
+# JIRA INTEGRATION (per-project override)
+# =============================================================================
+# Override the global JIRA project key for this Auto-Claude project
+${existingVars['JIRA_PROJECT_KEY'] ? `JIRA_PROJECT_KEY=${existingVars['JIRA_PROJECT_KEY']}` : '# JIRA_PROJECT_KEY='}
 
 # =============================================================================
 # GIT/WORKTREE SETTINGS (OPTIONAL)
@@ -454,6 +464,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       // Git/Worktree config
       if (vars['DEFAULT_BRANCH']) {
         config.defaultBranch = vars['DEFAULT_BRANCH'];
+      }
+
+      // JIRA per-project override
+      if (vars['JIRA_PROJECT_KEY']) {
+        config.jiraProjectKey = vars['JIRA_PROJECT_KEY'];
       }
 
       if (vars['GRAPHITI_ENABLED']?.toLowerCase() === 'true') {

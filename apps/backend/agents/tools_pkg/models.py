@@ -79,53 +79,6 @@ GRAPHITI_MCP_TOOLS = [
     "mcp__graphiti-memory__get_entity_edge",  # Get specific entity/relationship
 ]
 
-# JIRA MCP tools for issue tracking (when JIRA is configured)
-# Requires: globalJiraHost, globalJiraEmail, globalJiraToken in settings
-# Uses generic "jira" MCP server prefix (configure your own JIRA MCP server)
-JIRA_TOOLS = [
-    "mcp__jira__jira_search_issues",       # Search issues with JQL
-    "mcp__jira__jira_get_issue",           # Get issue details
-    "mcp__jira__jira_create_issue",        # Create new issues
-    "mcp__jira__jira_update_issue",        # Update issue fields
-    "mcp__jira__jira_transition_issue",    # Change issue status
-    "mcp__jira__jira_add_comment",         # Add comments to issues
-    "mcp__jira__jira_get_transitions",     # Get available transitions
-    "mcp__jira__confluence_search",        # Search Confluence pages
-    "mcp__jira__confluence_get_page",      # Get Confluence page content
-    "mcp__jira__confluence_create_page",   # Create Confluence pages
-]
-
-# GitLab MCP tools for code management (when GitLab is configured)
-# Requires: globalGitLabHost, globalGitLabToken in settings
-GITLAB_TOOLS = [
-    "mcp__gitlab__get_project",            # Get project details
-    "mcp__gitlab__list_projects",          # List accessible projects
-    "mcp__gitlab__list_issues",            # List project issues
-    "mcp__gitlab__get_issue",              # Get issue details
-    "mcp__gitlab__create_issue",           # Create new issue
-    "mcp__gitlab__update_issue",           # Update issue
-    "mcp__gitlab__list_merge_requests",    # List merge requests
-    "mcp__gitlab__get_merge_request",      # Get MR details
-    "mcp__gitlab__create_merge_request",   # Create MR
-    "mcp__gitlab__list_pipelines",         # List CI/CD pipelines
-    "mcp__gitlab__get_pipeline",           # Get pipeline details
-]
-
-# Obsidian MCP tools for external vault access (when vault is configured)
-# Requires: globalVaultPath, vaultEnabled in settings
-# Uses the filesystem MCP server pointed at the vault directory
-OBSIDIAN_TOOLS = [
-    "mcp__obsidian__read_file",            # Read vault file (deprecated, use read_text_file)
-    "mcp__obsidian__read_text_file",       # Read vault file content
-    "mcp__obsidian__read_multiple_files",  # Read multiple files at once
-    "mcp__obsidian__write_file",           # Write/create file (restricted paths)
-    "mcp__obsidian__edit_file",            # Edit existing file
-    "mcp__obsidian__list_directory",       # List directory contents
-    "mcp__obsidian__directory_tree",       # Get directory tree
-    "mcp__obsidian__search_files",         # Search for files by pattern
-    "mcp__obsidian__get_file_info",        # Get file metadata
-]
-
 # =============================================================================
 # Browser Automation MCP Tools (QA agents only)
 # =============================================================================
@@ -155,6 +108,72 @@ ELECTRON_TOOLS = [
     "mcp__electron__take_screenshot",  # Capture screenshot of Electron window
     "mcp__electron__send_command_to_electron",  # Send commands (click, fill, evaluate JS)
     "mcp__electron__read_electron_logs",  # Read console logs from Electron app
+]
+
+# =============================================================================
+# Integration MCP Tools (JIRA, GitLab, Vault/Obsidian)
+# =============================================================================
+
+# JIRA MCP tools via @aashari/mcp-server-atlassian-jira
+# Provides issue tracking and Confluence integration
+JIRA_TOOLS = [
+    "mcp__jira__jira_search_issues",
+    "mcp__jira__jira_get_issue",
+    "mcp__jira__jira_create_issue",
+    "mcp__jira__jira_update_issue",
+    "mcp__jira__jira_add_comment",
+    "mcp__jira__jira_transition_issue",
+    "mcp__jira__jira_get_transitions",
+    "mcp__jira__jira_get_project_issue_types",
+    "mcp__jira__confluence_create_page",
+    "mcp__jira__confluence_get_page",
+    "mcp__jira__confluence_update_page",
+    "mcp__jira__confluence_search",
+    "mcp__jira__confluence_get_spaces",
+    "mcp__jira__confluence_upload_attachment",
+    "mcp__jira__confluence_get_attachments",
+]
+
+# GitLab MCP tools via @modelcontextprotocol/server-gitlab
+# Provides code management, issues, and merge requests
+GITLAB_TOOLS = [
+    "mcp__gitlab__create_or_update_file",
+    "mcp__gitlab__search_repositories",
+    "mcp__gitlab__create_repository",
+    "mcp__gitlab__get_file_contents",
+    "mcp__gitlab__push_files",
+    "mcp__gitlab__create_issue",
+    "mcp__gitlab__create_merge_request",
+    "mcp__gitlab__fork_repository",
+    "mcp__gitlab__create_branch",
+    "mcp__gitlab__list_issues",
+    "mcp__gitlab__get_issue",
+    "mcp__gitlab__update_issue",
+    "mcp__gitlab__list_merge_requests",
+    "mcp__gitlab__get_merge_request",
+    "mcp__gitlab__update_merge_request",
+    "mcp__gitlab__list_pipelines",
+    "mcp__gitlab__get_pipeline",
+    "mcp__gitlab__list_merge_request_diffs",
+]
+
+# Vault/Obsidian MCP tools via @modelcontextprotocol/server-filesystem
+# Provides external knowledge base and memory access
+OBSIDIAN_TOOLS = [
+    "mcp__obsidian__read_file",
+    "mcp__obsidian__read_text_file",
+    "mcp__obsidian__read_media_file",
+    "mcp__obsidian__read_multiple_files",
+    "mcp__obsidian__write_file",
+    "mcp__obsidian__edit_file",
+    "mcp__obsidian__list_directory",
+    "mcp__obsidian__list_directory_with_sizes",
+    "mcp__obsidian__directory_tree",
+    "mcp__obsidian__create_directory",
+    "mcp__obsidian__move_file",
+    "mcp__obsidian__search_files",
+    "mcp__obsidian__get_file_info",
+    "mcp__obsidian__list_allowed_directories",
 ]
 
 # =============================================================================

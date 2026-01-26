@@ -3,6 +3,7 @@ import type { Project, ProjectSettings as ProjectSettingsType, AutoBuildVersionI
 import { SettingsSection } from '../SettingsSection';
 import { GeneralSettings } from '../../project-settings/GeneralSettings';
 import { SecuritySettings } from '../../project-settings/SecuritySettings';
+import { JiraIntegration } from '../integrations/JiraIntegration';
 import { LinearIntegration } from '../integrations/LinearIntegration';
 import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
@@ -90,6 +91,25 @@ export function SectionRouter({
             isUpdating={isUpdating}
             handleInitialize={handleInitialize}
           />
+        </SettingsSection>
+      );
+
+    case 'jira':
+      return (
+        <SettingsSection
+          title={t('projectSections.jira.integrationTitle')}
+          description={t('projectSections.jira.integrationDescription')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.jira.integrationTitle')}
+            description={t('projectSections.jira.integrationDescription')}
+          >
+            <JiraIntegration
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+            />
+          </InitializationGuard>
         </SettingsSection>
       );
 

@@ -22,6 +22,8 @@ import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
+import { detectGitLabProjectFromRemote, getGitLabConfig, gitlabFetch, encodeProjectPath } from '../gitlab/utils';
+import type { GitLabAPIMergeRequest } from '../gitlab/types';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2976,6 +2978,137 @@ export function registerWorktreeHandlers(
         }
         debug('Worktree path:', worktreePath);
 
+        // ==========================================
+        // GitLab MR detection: check if remote is GitLab
+        // ==========================================
+        const gitLabRemote = detectGitLabProjectFromRemote(worktreePath);
+        if (gitLabRemote) {
+          debug('Detected GitLab remote:', gitLabRemote);
+
+          // Get GitLab config for this project
+          const gitLabConfig = await getGitLabConfig(project);
+          if (gitLabConfig) {
+            debug('GitLab config found, creating MR via GitLab API');
+
+            try {
+              // Get current branch name from worktree
+              const currentBranch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+                cwd: worktreePath,
+                encoding: 'utf-8',
+                env: getIsolatedGitEnv()
+              }).trim();
+
+              debug('Current branch:', currentBranch);
+
+              // Push the branch to origin first
+              debug('Pushing branch to origin...');
+              execFileSync('git', ['push', '-u', 'origin', currentBranch], {
+                cwd: worktreePath,
+                encoding: 'utf-8',
+                env: getIsolatedGitEnv()
+              });
+
+              // Determine target branch
+              const taskBaseBranch = getTaskBaseBranch(specDir);
+              const targetBranch = options?.targetBranch || taskBaseBranch || 'develop';
+              const mrTitle = options?.title || `auto-claude: ${task.specId}`;
+
+              // Get MR body from spec.md if available
+              const specMdPath = path.join(specDir, 'spec.md');
+              let mrBody = 'Auto-generated MR from Auto-Claude build.';
+              try {
+                if (existsSync(specMdPath)) {
+                  const specContent = readFileSync(specMdPath, 'utf-8');
+                  const lines = specContent.split('\n');
+                  const summaryLines: string[] = [];
+                  let inContent = false;
+                  for (const line of lines) {
+                    if (line.startsWith('# ')) continue;
+                    if (line.trim() && !line.startsWith('#')) inContent = true;
+                    if (inContent) {
+                      if (line.startsWith('## ') && summaryLines.length) break;
+                      summaryLines.push(line);
+                      if (summaryLines.length >= 10) break;
+                    }
+                  }
+                  if (summaryLines.length) mrBody = summaryLines.join('\n').trim();
+                }
+              } catch {
+                debug('Could not read spec.md for MR body');
+              }
+
+              debug('Creating GitLab MR:', { sourceBranch: currentBranch, targetBranch, title: mrTitle });
+
+              const encodedProject = encodeProjectPath(gitLabConfig.project);
+              const mrPayload = {
+                source_branch: currentBranch,
+                target_branch: targetBranch,
+                title: mrTitle,
+                description: mrBody
+              };
+
+              const apiMr = await gitlabFetch(
+                gitLabConfig.token,
+                gitLabConfig.instanceUrl,
+                `/projects/${encodedProject}/merge_requests`,
+                {
+                  method: 'POST',
+                  body: JSON.stringify(mrPayload)
+                }
+              ) as GitLabAPIMergeRequest;
+
+              debug('GitLab MR created:', { iid: apiMr.iid, webUrl: apiMr.web_url });
+
+              // Update task status after MR creation
+              await updateTaskStatusAfterPRCreation(
+                specDir,
+                worktreePath,
+                apiMr.web_url,
+                project.autoBuildPath,
+                task.specId,
+                debug
+              );
+
+              return {
+                success: true,
+                data: {
+                  success: true,
+                  prUrl: apiMr.web_url,
+                  alreadyExists: false,
+                  platform: 'gitlab' as const
+                }
+              };
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : 'Failed to create GitLab MR';
+              debug('GitLab MR creation failed:', errorMessage);
+
+              // Check for "already exists" case
+              if (errorMessage.includes('already exists') || errorMessage.includes('merge request already exists')) {
+                return {
+                  success: true,
+                  data: {
+                    success: true,
+                    prUrl: undefined,
+                    alreadyExists: true,
+                    platform: 'gitlab' as const
+                  }
+                };
+              }
+
+              return {
+                success: false,
+                error: errorMessage
+              };
+            }
+          } else {
+            debug('GitLab remote detected but no GitLab config found, falling back to GitHub CLI');
+          }
+        }
+
+        // ==========================================
+        // GitHub path: use Python script with gh CLI
+        // ==========================================
+
         // Build arguments using helper function
         const taskBaseBranch = getTaskBaseBranch(specDir);
         const { args, validationError } = buildCreatePRArgs(
@@ -3102,7 +3235,8 @@ export function registerWorktreeHandlers(
                     success: result.success,
                     prUrl: result.prUrl,
                     error: result.error,
-                    alreadyExists: result.alreadyExists
+                    alreadyExists: result.alreadyExists,
+                    platform: 'github' as const
                   }
                 });
               } else {
@@ -3112,7 +3246,8 @@ export function registerWorktreeHandlers(
                   success: true,
                   data: {
                     success: true,
-                    prUrl: undefined
+                    prUrl: undefined,
+                    platform: 'github' as const
                   }
                 });
               }
@@ -3164,6 +3299,43 @@ export function registerWorktreeHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to create PR'
+        };
+      }
+    }
+  );
+
+  /**
+   * Detect git platform (GitHub or GitLab) for a project
+   * Returns the platform type based on git remote URL
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_DETECT_GIT_PLATFORM,
+    async (_, projectId: string): Promise<IPCResult<{ platform: 'github' | 'gitlab' | null }>> => {
+      try {
+        const project = projectStore.getProject(projectId);
+        if (!project) {
+          return { success: false, error: 'Project not found' };
+        }
+
+        // Check if GitLab is configured for this project
+        const gitLabConfig = await getGitLabConfig(project);
+        if (gitLabConfig) {
+          return { success: true, data: { platform: 'gitlab' } };
+        }
+
+        // Check git remote URL to detect platform
+        const gitLabRemote = detectGitLabProjectFromRemote(project.path);
+        if (gitLabRemote) {
+          return { success: true, data: { platform: 'gitlab' } };
+        }
+
+        // Default to GitHub (or null if we can't determine)
+        return { success: true, data: { platform: 'github' } };
+      } catch (error) {
+        console.error('[DETECT_GIT_PLATFORM] Exception in handler:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to detect git platform'
         };
       }
     }

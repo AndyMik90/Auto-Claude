@@ -23,6 +23,7 @@ from .config import (
     LABELS,
     GitLabConfig,
     GitLabProjectState,
+    get_creator_label,
     get_gitlab_state,
     get_weight_for_phase,
     get_labels_for_subtask,
@@ -364,11 +365,15 @@ class GitLabManager:
             subtask.get("total_phases", 1)
         )
 
-        labels = get_labels_for_subtask(subtask)
+        # Get creator info from config or environment
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+        username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+
+        labels = get_labels_for_subtask(subtask, email=email, username=username)
 
         return {
             "title": f"[{subtask.get('id', 'subtask')}] {subtask.get('description', 'Implement subtask')[:100]}",
-            "description": format_issue_description(subtask, phase),
+            "description": format_issue_description(subtask, phase, creator_email=email, creator_username=username),
             "weight": weight,
             "labels": labels,
         }
@@ -526,6 +531,11 @@ def prepare_planner_gitlab_instructions(spec_dir: Path) -> str:
 
     config = GitLabConfig.from_file() or GitLabConfig.from_env()
 
+    # Get creator label from email/username
+    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+    username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+    creator_label = get_creator_label(email, username) or "created-by-user"
+
     return f"""
 ## GitLab Integration Setup
 
@@ -535,7 +545,7 @@ Project: {config.project_id}
 
 ### Step 1: Ensure Labels Exist
 Create these labels if they don't exist:
-- `auto-claude` (blue) - All auto-generated issues
+- `{creator_label}` (blue) - Issues created by you
 - `phase::1`, `phase::2`, etc. - Phase tracking
 - `blocked` (red) - Blocked issues
 - `in-progress` (yellow) - Work in progress
@@ -546,7 +556,7 @@ For each subtask in implementation_plan.json:
 Create issue with:
 - Title: "[subtask-id] Description"
 - Description: Formatted subtask details
-- Labels: ["auto-claude", "phase::N", "service::NAME"]
+- Labels: ["{creator_label}", "phase::N", "service::NAME"]
 - Weight: Based on phase (9 for early phases, 1 for polish)
 ```
 Save the subtask_id -> issue_iid mapping to .gitlab_project.json
@@ -586,6 +596,12 @@ def prepare_coder_gitlab_instructions(spec_dir: Path, subtask_id: str) -> str:
     config = manager.config
     project_url = f"{config.url}/{manager.state.project_path}"
 
+    # Get creator label
+    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+    username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+    creator_label = get_creator_label(email, username)
+    label_text = f"Labels: {creator_label}" if creator_label else ""
+
     return f"""
 ## GitLab Updates
 
@@ -611,6 +627,6 @@ Add note to issue #{issue_iid}
 3. Create MR:
    - Title: "Implement [{subtask_id}]"
    - Description: What was implemented
-   - Labels: auto-claude
+   {label_text}
 4. Close issue after MR is merged
 """

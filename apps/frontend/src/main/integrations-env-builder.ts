@@ -50,8 +50,8 @@ export function buildGitLabEnvVars(settings: AppSettings): Record<string, string
   const env: Record<string, string> = {};
 
   // Check if GitLab is configured
-  const host = settings.globalGitLabHost;
-  const token = settings.globalGitLabToken;
+  const host = settings.globalGitlabInstanceUrl;
+  const token = settings.globalGitlabToken;
 
   if (host && token) {
     env.GITLAB_MCP_ENABLED = 'true';
@@ -59,11 +59,6 @@ export function buildGitLabEnvVars(settings: AppSettings): Record<string, string
     env.GITLAB_URL = host; // Alias
     env.GITLAB_TOKEN = token;
     env.GITLAB_PRIVATE_TOKEN = token; // Alias
-
-    // Optional: default group
-    if (settings.globalGitLabDefaultGroup) {
-      env.GITLAB_DEFAULT_GROUP = settings.globalGitLabDefaultGroup;
-    }
   }
 
   return env;

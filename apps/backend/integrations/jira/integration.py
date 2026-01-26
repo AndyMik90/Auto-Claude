@@ -31,6 +31,7 @@ from .config import (
     format_session_comment,
     format_stuck_subtask_comment,
     format_subtask_description,
+    get_creator_label,
     get_jira_status,
     get_priority_for_phase,
 )
@@ -320,7 +321,11 @@ class JiraManager:
             subtask.get("total_phases", 1)
         )
 
-        labels = [LABELS["auto_claude"]]
+        # Build labels - use creator email instead of "auto-claude"
+        labels = []
+        creator_label = get_creator_label(self.config.email)
+        if creator_label:
+            labels.append(creator_label)
         if subtask.get("service"):
             labels.append(f"{LABELS['service']}-{subtask['service']}")
         if subtask.get("phase_num"):
@@ -328,7 +333,7 @@ class JiraManager:
 
         return {
             "summary": f"[{subtask.get('id', 'subtask')}] {subtask.get('description', 'Implement subtask')[:100]}",
-            "description": format_subtask_description(subtask, phase),
+            "description": format_subtask_description(subtask, phase, self.config.email),
             "priority": priority,
             "labels": labels,
             "issueType": "Task",
@@ -486,6 +491,10 @@ def prepare_planner_jira_instructions(spec_dir: Path) -> str:
     config = JiraConfig.from_mcp_settings() or JiraConfig.from_env()
     default_project = config.default_project or "YOUR_PROJECT"
 
+    # Get creator label from email
+    email = config.email if config else os.environ.get("JIRA_EMAIL", "")
+    creator_label = get_creator_label(email) if email else "created-by-user"
+
     return f"""
 ## JIRA Integration Setup
 
@@ -501,7 +510,7 @@ Use mcp__hc-jira__jira_create_issue with:
 - description: Formatted subtask details
 - issueType: "Task"
 - priority: Based on phase (Highest for early phases, Low for polish)
-- labels: ["auto-claude", "phase-N", "service-NAME"]
+- labels: ["{creator_label}", "phase-N", "service-NAME"]
 ```
 Save the subtask_id -> issue_key mapping to .jira_project.json
 
