@@ -7,21 +7,14 @@ import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
 import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
 import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
+import { debounce } from '../../lib/debounce';
+import { DEFAULT_TERMINAL_THEME } from '../../lib/terminal-theme';
 
 interface UseXtermOptions {
   terminalId: string;
   onCommandEnter?: (command: string) => void;
   onResize?: (cols: number, rows: number) => void;
   onDimensionsReady?: (cols: number, rows: number) => void;
-}
-
-// Debounce helper function
-function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: unknown[]) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  }) as T;
 }
 
 export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
@@ -52,28 +45,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       lineHeight: fontSettings.lineHeight,
       letterSpacing: fontSettings.letterSpacing,
       theme: {
-        background: '#0B0B0F',
-        foreground: '#E8E6E3',
-        cursor: '#D6D876',
+        ...DEFAULT_TERMINAL_THEME,
         cursorAccent: fontSettings.cursorAccentColor,
-        selectionBackground: '#D6D87640',
-        selectionForeground: '#E8E6E3',
-        black: '#1A1A1F',
-        red: '#FF6B6B',
-        green: '#87D687',
-        yellow: '#D6D876',
-        blue: '#6BB3FF',
-        magenta: '#C792EA',
-        cyan: '#89DDFF',
-        white: '#E8E6E3',
-        brightBlack: '#4A4A50',
-        brightRed: '#FF8A8A',
-        brightGreen: '#A5E6A5',
-        brightYellow: '#E8E87A',
-        brightBlue: '#8AC4FF',
-        brightMagenta: '#DEB3FF',
-        brightCyan: '#A6E8FF',
-        brightWhite: '#FFFFFF',
       },
       allowProposedApi: true,
       scrollback: fontSettings.scrollback,
@@ -369,9 +342,13 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     // Observe the terminalRef directly (not parent) for accurate resize detection
     const container = terminalRef.current;
     if (container) {
-      const resizeObserver = new ResizeObserver(handleResize);
+      const resizeObserver = new ResizeObserver(handleResize.fn);
       resizeObserver.observe(container);
-      return () => resizeObserver.disconnect();
+      return () => {
+        // Cancel any pending debounced call before disconnecting
+        handleResize.cancel();
+        resizeObserver.disconnect();
+      };
     }
   }, [onDimensionsReady]);
 

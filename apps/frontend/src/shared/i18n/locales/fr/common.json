@@ -88,6 +88,12 @@
     "delete": "Supprimer",
     "settings": "Paramètres"
   },
+  "os": {
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+    "unknown": "votre OS"
+  },
   "labels": {
     "loading": "Chargement...",
     "error": "Erreur",

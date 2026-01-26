@@ -3,32 +3,11 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import type { TerminalFontSettings } from '../../../stores/terminal-font-settings-store';
 import { useTranslation } from 'react-i18next';
+import { debounce } from '../../../lib/debounce';
+import { DEFAULT_TERMINAL_THEME } from '../../../lib/terminal-theme';
 
 interface LivePreviewTerminalProps {
   settings: TerminalFontSettings;
-}
-
-/**
- * Debounce helper function
- * Prevents excessive updates when settings change rapidly (e.g., dragging slider)
- * Returns an object with the debounced function and a cancel method
- */
-function debounce<T extends (...args: unknown[]) => void>(
-  fn: T,
-  ms: number
-): { fn: T; cancel: () => void } {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const debouncedFn = ((...args: unknown[]) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  }) as T;
-  const cancel = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-  return { fn: debouncedFn, cancel };
 }
 
 /**
@@ -113,28 +92,8 @@ export function LivePreviewTerminal({ settings }: LivePreviewTerminalProps) {
       lineHeight: settings.lineHeight,
       letterSpacing: settings.letterSpacing,
       theme: {
-        background: '#0B0B0F',
-        foreground: '#E8E6E3',
-        cursor: '#D6D876',
+        ...DEFAULT_TERMINAL_THEME,
         cursorAccent: settings.cursorAccentColor,
-        selectionBackground: '#D6D87640',
-        selectionForeground: '#E8E6E3',
-        black: '#1A1A1F',
-        red: '#FF6B6B',
-        green: '#87D687',
-        yellow: '#D6D876',
-        blue: '#6BB3FF',
-        magenta: '#C792EA',
-        cyan: '#89DDFF',
-        white: '#E8E6E3',
-        brightBlack: '#4A4A50',
-        brightRed: '#FF8A8A',
-        brightGreen: '#A5E6A5',
-        brightYellow: '#E8E87A',
-        brightBlue: '#8AC4FF',
-        brightMagenta: '#DEB3FF',
-        brightCyan: '#A6E8FF',
-        brightWhite: '#FFFFFF',
       },
       allowProposedApi: true,
       scrollback: 1000, // Fixed scrollback for preview
