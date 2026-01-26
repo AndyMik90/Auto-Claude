@@ -672,12 +672,24 @@ export class ClaudeProfileManager {
    * Check if a profile has valid authentication for starting tasks.
    * A profile is considered authenticated if:
    * 1) It has a valid OAuth token (not expired), OR
-   * 2) It has an authenticated configDir (credential files exist)
+   * 2) It has an authenticated configDir (credential files exist), OR
+   * 3) There is an active API Profile (GLM, OpenRouter, etc.)
    *
    * @param profileId - Optional profile ID to check. If not provided, checks active profile.
    * @returns true if the profile can authenticate, false otherwise
    */
-  hasValidAuth(profileId?: string): boolean {
+  async hasValidAuth(profileId?: string): Promise<boolean> {
+    // First check: API Profiles (GLM, OpenRouter, etc.)
+    // Import here to avoid circular dependency
+    const { loadProfilesFile } = await import('./services/profile/profile-manager.js');
+    const apiProfilesFile = await loadProfilesFile();
+
+    // If an API Profile is active (has activeProfileId), consider it as valid auth
+    if (apiProfilesFile.activeProfileId && apiProfilesFile.activeProfileId !== '') {
+      return true;
+    }
+
+    // Fallback to Claude OAuth checks
     const profile = profileId ? this.getProfile(profileId) : this.getActiveProfile();
     if (!profile) {
       return false;
