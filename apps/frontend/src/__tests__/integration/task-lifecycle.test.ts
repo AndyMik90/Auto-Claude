@@ -244,9 +244,9 @@ describe('Task Lifecycle Integration', () => {
         eventHandler({}, 'task-001', 'spec_complete');
       }
 
-      // Verify callback was invoked with correct parameters (taskId, status, projectId)
-      // Note: projectId is optional and undefined when not provided
-      expect(callback).toHaveBeenCalledWith('task-001', 'spec_complete', undefined);
+      // Verify callback was invoked with correct parameters (taskId, status, projectId, reviewReason)
+      // Note: projectId and reviewReason are optional and undefined when not provided
+      expect(callback).toHaveBeenCalledWith('task-001', 'spec_complete', undefined, undefined);
     });
 
     it('should emit task:progress event with updated plan during spec creation', async () => {
