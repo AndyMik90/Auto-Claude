@@ -77,9 +77,22 @@
     "discard": "Abandonner",
     "switch": "Changer",
     "add": "Ajouter",
+    "apply": "Appliquer",
     "gotIt": "Compris",
     "continue": "Continuer",
     "saving": "Enregistrement..."
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "apply": "Appliquer",
+    "delete": "Supprimer",
+    "settings": "Paramètres"
+  },
+  "os": {
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+    "unknown": "Inconnu"
   },
   "labels": {
     "loading": "Chargement...",
@@ -418,7 +431,11 @@
     "authenticationAriaLabel": "Authentification : {{provider}}",
     "authenticationDetails": "Détails de l'authentification",
     "apiProfile": "Profil API",
+    "apiKey": "Clé API",
     "oauth": "OAuth",
+    "claudeCode": "Claude Code",
+    "claudeCodeSubscription": "Abonnement Claude Code",
+    "subscription": "Abonnement",
     "provider": "Fournisseur",
     "providerAnthropic": "Anthropic",
     "providerZai": "z.ai",
@@ -447,6 +464,11 @@
     "weeklyLimitReached": "Limite hebdomadaire atteinte",
     "sessionLimitReached": "Limite de session atteinte",
     "notAuthenticated": "Non authentifié",
+    "needsReauth": "Réauth requise",
+    "reauthRequired": "Ré-authentification requise",
+    "reauthRequiredDescription": "Votre session a expiré. Ré-authentifiez-vous pour voir l'utilisation et continuer à utiliser ce compte.",
+    "reauthButton": "Ré-authentifier",
+    "clickToOpenSettings": "Cliquez pour ouvrir les Paramètres →",
     "sessionShort": "Utilisation session 5 heures",
     "weeklyShort": "Utilisation hebdomadaire 7 jours",
     "swap": "Changer"

@@ -755,7 +755,7 @@ class TestSchemaValidation:
                 "status": status,
             }
 
-            subtask = Chunk.from_dict(subtask_data)
+            subtask = Subtask.from_dict(subtask_data)
             assert subtask.status.value == status
 
     def test_all_verification_types_valid(self):
@@ -859,8 +859,8 @@ class TestSchemaValidation:
             "description": "Test subtask",
         }
 
-        subtask = Chunk.from_dict(subtask_data)
-        assert subtask.status == ChunkStatus.PENDING
+        subtask = Subtask.from_dict(subtask_data)
+        assert subtask.status == SubtaskStatus.PENDING
 
     # =========================================================================
     # Invalid Schema Tests - Wrong Types
@@ -886,7 +886,7 @@ class TestSchemaValidation:
         }
 
         with pytest.raises(ValueError):
-            Chunk.from_dict(subtask_data)
+            Subtask.from_dict(subtask_data)
 
     def test_invalid_phase_type_raises_error(self):
         """Invalid phase type raises ValueError."""
@@ -998,7 +998,7 @@ class TestSchemaValidation:
             "critique_result": {"passed": True, "score": 9},
         }
 
-        subtask = Chunk.from_dict(subtask_data)
+        subtask = Subtask.from_dict(subtask_data)
 
         assert subtask.id == "complex-task"
         assert subtask.service == "backend"
@@ -1050,10 +1050,10 @@ class TestSchemaValidation:
                     name="Phase One",
                     type=PhaseType.SETUP,
                     subtasks=[
-                        Chunk(
+                        Subtask(
                             id="task-1",
                             description="First task",
-                            status=ChunkStatus.COMPLETED,
+                            status=SubtaskStatus.COMPLETED,
                             service="backend",
                             files_to_modify=["file.py"],
                             verification=Verification(
@@ -1167,47 +1167,47 @@ class TestEdgeCaseStateTransitions:
 
     def test_chunk_blocked_status_initialization(self):
         """Chunk can be initialized with blocked status."""
-        chunk = Chunk(
+        chunk = Subtask(
             id="blocked-task",
             description="Task waiting for investigation results",
-            status=ChunkStatus.BLOCKED,
+            status=SubtaskStatus.BLOCKED,
         )
 
-        assert chunk.status == ChunkStatus.BLOCKED
+        assert chunk.status == SubtaskStatus.BLOCKED
         assert chunk.started_at is None
         assert chunk.completed_at is None
 
     def test_chunk_blocked_to_pending_transition(self):
         """Blocked chunk can transition to pending (unblocking)."""
-        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+        chunk = Subtask(id="test", description="Test", status=SubtaskStatus.BLOCKED)
 
         # Manually unblock by setting to pending
-        chunk.status = ChunkStatus.PENDING
+        chunk.status = SubtaskStatus.PENDING
 
-        assert chunk.status == ChunkStatus.PENDING
+        assert chunk.status == SubtaskStatus.PENDING
 
     def test_chunk_blocked_to_in_progress_transition(self):
         """Blocked chunk can be started directly (auto-unblock)."""
-        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+        chunk = Subtask(id="test", description="Test", status=SubtaskStatus.BLOCKED)
 
         chunk.start(session_id=1)
 
-        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.status == SubtaskStatus.IN_PROGRESS
         assert chunk.started_at is not None
         assert chunk.session_id == 1
 
     def test_blocked_chunk_serialization_roundtrip(self):
         """Blocked status survives serialization/deserialization."""
-        chunk = Chunk(
+        chunk = Subtask(
             id="blocked-task",
             description="Blocked task",
-            status=ChunkStatus.BLOCKED,
+            status=SubtaskStatus.BLOCKED,
         )
 
         data = chunk.to_dict()
-        restored = Chunk.from_dict(data)
+        restored = Subtask.from_dict(data)
 
-        assert restored.status == ChunkStatus.BLOCKED
+        assert restored.status == SubtaskStatus.BLOCKED
         assert data["status"] == "blocked"
 
     def test_phase_with_all_blocked_chunks(self):
@@ -1216,8 +1216,8 @@ class TestEdgeCaseStateTransitions:
             phase=1,
             name="Blocked Phase",
             subtasks=[
-                Chunk(id="c1", description="Task 1", status=ChunkStatus.BLOCKED),
-                Chunk(id="c2", description="Task 2", status=ChunkStatus.BLOCKED),
+                Subtask(id="c1", description="Task 1", status=SubtaskStatus.BLOCKED),
+                Subtask(id="c2", description="Task 2", status=SubtaskStatus.BLOCKED),
             ],
         )
 
@@ -1233,8 +1233,8 @@ class TestEdgeCaseStateTransitions:
             phase=1,
             name="Mixed Phase",
             subtasks=[
-                Chunk(id="c1", description="Task 1", status=ChunkStatus.COMPLETED),
-                Chunk(id="c2", description="Task 2", status=ChunkStatus.BLOCKED),
+                Subtask(id="c1", description="Task 1", status=SubtaskStatus.COMPLETED),
+                Subtask(id="c2", description="Task 2", status=SubtaskStatus.BLOCKED),
             ],
         )
 
@@ -1251,7 +1251,7 @@ class TestEdgeCaseStateTransitions:
         )
 
         fix_phase = plan.phases[2]  # Phase 3 - Fix
-        blocked_chunks = [c for c in fix_phase.subtasks if c.status == ChunkStatus.BLOCKED]
+        blocked_chunks = [c for c in fix_phase.subtasks if c.status == SubtaskStatus.BLOCKED]
 
         assert len(blocked_chunks) == 2
         assert any("fix" in c.id.lower() for c in blocked_chunks)
@@ -1270,7 +1270,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
+                        Subtask(id="c1", description="Blocked", status=SubtaskStatus.BLOCKED),
                     ],
                 ),
             ],
@@ -1290,7 +1290,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Task 1", status=ChunkStatus.PENDING),
+                        Subtask(id="c1", description="Task 1", status=SubtaskStatus.PENDING),
                     ],
                     depends_on=[2],  # Circular dependency
                 ),
@@ -1298,7 +1298,7 @@ class TestEdgeCaseStateTransitions:
                     phase=2,
                     name="Phase 2",
                     subtasks=[
-                        Chunk(id="c2", description="Task 2", status=ChunkStatus.PENDING),
+                        Subtask(id="c2", description="Task 2", status=SubtaskStatus.PENDING),
                     ],
                     depends_on=[1],  # Circular dependency
                 ),
@@ -1321,7 +1321,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Waiting Phase",
                     subtasks=[
-                        Chunk(id="c1", description="Blocked task", status=ChunkStatus.BLOCKED),
+                        Subtask(id="c1", description="Blocked task", status=SubtaskStatus.BLOCKED),
                     ],
                 ),
             ],
@@ -1341,7 +1341,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Failed task", status=ChunkStatus.FAILED),
+                        Subtask(id="c1", description="Failed task", status=SubtaskStatus.FAILED),
                     ],
                 ),
             ],
@@ -1364,10 +1364,10 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
-                        Chunk(id="c2", description="Failed", status=ChunkStatus.FAILED),
-                        Chunk(id="c3", description="Blocked", status=ChunkStatus.BLOCKED),
-                        Chunk(id="c4", description="Pending", status=ChunkStatus.PENDING),
+                        Subtask(id="c1", description="Done", status=SubtaskStatus.COMPLETED),
+                        Subtask(id="c2", description="Failed", status=SubtaskStatus.FAILED),
+                        Subtask(id="c3", description="Blocked", status=SubtaskStatus.BLOCKED),
+                        Subtask(id="c4", description="Pending", status=SubtaskStatus.PENDING),
                     ],
                 ),
             ],
@@ -1414,7 +1414,7 @@ class TestEdgeCaseStateTransitions:
                     name="Real Work",
                     depends_on=[1],
                     subtasks=[
-                        Chunk(id="c1", description="Actual task", status=ChunkStatus.PENDING),
+                        Subtask(id="c1", description="Actual task", status=SubtaskStatus.PENDING),
                     ],
                 ),
             ],
@@ -1440,7 +1440,7 @@ class TestEdgeCaseStateTransitions:
                     name="Work Phase",
                     depends_on=[3],
                     subtasks=[
-                        Chunk(id="c1", description="Task", status=ChunkStatus.PENDING),
+                        Subtask(id="c1", description="Task", status=SubtaskStatus.PENDING),
                     ],
                 ),
             ],
@@ -1460,7 +1460,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Done Phase",
                     subtasks=[
-                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
+                        Subtask(id="c1", description="Done", status=SubtaskStatus.COMPLETED),
                     ],
                 ),
                 Phase(
@@ -1468,7 +1468,7 @@ class TestEdgeCaseStateTransitions:
                     name="Work Phase",
                     depends_on=[1],
                     subtasks=[
-                        Chunk(id="c2", description="Pending", status=ChunkStatus.PENDING),
+                        Subtask(id="c2", description="Pending", status=SubtaskStatus.PENDING),
                     ],
                 ),
             ],
@@ -1487,31 +1487,31 @@ class TestEdgeCaseStateTransitions:
 
     def test_blocked_unblocked_complete_transition(self):
         """Full transition from blocked -> pending -> in_progress -> completed."""
-        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+        chunk = Subtask(id="test", description="Test", status=SubtaskStatus.BLOCKED)
 
         # Unblock
-        chunk.status = ChunkStatus.PENDING
-        assert chunk.status == ChunkStatus.PENDING
+        chunk.status = SubtaskStatus.PENDING
+        assert chunk.status == SubtaskStatus.PENDING
 
         # Start
         chunk.start(session_id=1)
-        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.status == SubtaskStatus.IN_PROGRESS
         assert chunk.started_at is not None
 
         # Complete
         chunk.complete(output="Done successfully")
-        assert chunk.status == ChunkStatus.COMPLETED
+        assert chunk.status == SubtaskStatus.COMPLETED
         assert chunk.completed_at is not None
         assert chunk.actual_output == "Done successfully"
 
     def test_blocked_to_failed_transition(self):
         """Blocked chunk can transition to failed without being started."""
-        chunk = Chunk(id="test", description="Test", status=ChunkStatus.BLOCKED)
+        chunk = Subtask(id="test", description="Test", status=SubtaskStatus.BLOCKED)
 
         # Mark as failed directly (e.g., investigation revealed it's not feasible)
         chunk.fail(reason="Investigation revealed task is not feasible")
 
-        assert chunk.status == ChunkStatus.FAILED
+        assert chunk.status == SubtaskStatus.FAILED
         assert "FAILED: Investigation revealed task is not feasible" in chunk.actual_output
 
     def test_in_progress_subtask_blocks_phase_completion(self):
@@ -1520,8 +1520,8 @@ class TestEdgeCaseStateTransitions:
             phase=1,
             name="Active Phase",
             subtasks=[
-                Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
-                Chunk(id="c2", description="Working", status=ChunkStatus.IN_PROGRESS),
+                Subtask(id="c1", description="Done", status=SubtaskStatus.COMPLETED),
+                Subtask(id="c2", description="Working", status=SubtaskStatus.IN_PROGRESS),
             ],
         )
 
@@ -1533,8 +1533,8 @@ class TestEdgeCaseStateTransitions:
             phase=1,
             name="Problematic Phase",
             subtasks=[
-                Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
-                Chunk(id="c2", description="Failed", status=ChunkStatus.FAILED),
+                Subtask(id="c1", description="Blocked", status=SubtaskStatus.BLOCKED),
+                Subtask(id="c2", description="Failed", status=SubtaskStatus.FAILED),
             ],
         )
 
@@ -1550,7 +1550,7 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Blocked Phase",
                     subtasks=[
-                        Chunk(id="c1", description="Blocked", status=ChunkStatus.BLOCKED),
+                        Subtask(id="c1", description="Blocked", status=SubtaskStatus.BLOCKED),
                     ],
                 ),
             ],
@@ -1560,7 +1560,7 @@ class TestEdgeCaseStateTransitions:
         assert plan.get_next_subtask() is None
 
         # Unblock the subtask
-        plan.phases[0].subtasks[0].status = ChunkStatus.PENDING
+        plan.phases[0].subtasks[0].status = SubtaskStatus.PENDING
 
         # Now work is available
         result = plan.get_next_subtask()
@@ -1570,21 +1570,21 @@ class TestEdgeCaseStateTransitions:
 
     def test_failed_subtask_retry_transition(self):
         """Failed subtask can be reset to pending for retry."""
-        chunk = Chunk(id="test", description="Test", status=ChunkStatus.FAILED)
+        chunk = Subtask(id="test", description="Test", status=SubtaskStatus.FAILED)
         chunk.actual_output = "FAILED: Previous error"
 
         # Reset for retry
-        chunk.status = ChunkStatus.PENDING
+        chunk.status = SubtaskStatus.PENDING
         chunk.actual_output = None
         chunk.started_at = None
         chunk.completed_at = None
 
-        assert chunk.status == ChunkStatus.PENDING
+        assert chunk.status == SubtaskStatus.PENDING
         assert chunk.actual_output is None
 
         # Can be started again
         chunk.start(session_id=2)
-        assert chunk.status == ChunkStatus.IN_PROGRESS
+        assert chunk.status == SubtaskStatus.IN_PROGRESS
         assert chunk.session_id == 2
 
     def test_plan_status_update_with_blocked_subtasks(self):
@@ -1596,8 +1596,8 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Done", status=ChunkStatus.COMPLETED),
-                        Chunk(id="c2", description="Blocked", status=ChunkStatus.BLOCKED),
+                        Subtask(id="c1", description="Done", status=SubtaskStatus.COMPLETED),
+                        Subtask(id="c2", description="Blocked", status=SubtaskStatus.BLOCKED),
                     ],
                 ),
             ],
@@ -1618,8 +1618,8 @@ class TestEdgeCaseStateTransitions:
                     phase=1,
                     name="Phase 1",
                     subtasks=[
-                        Chunk(id="c1", description="Blocked 1", status=ChunkStatus.BLOCKED),
-                        Chunk(id="c2", description="Blocked 2", status=ChunkStatus.BLOCKED),
+                        Subtask(id="c1", description="Blocked 1", status=SubtaskStatus.BLOCKED),
+                        Subtask(id="c2", description="Blocked 2", status=SubtaskStatus.BLOCKED),
                     ],
                 ),
             ],

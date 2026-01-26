@@ -17,7 +17,7 @@ import {
 } from './plan-file-utils';
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -596,43 +596,14 @@ export function registerTaskExecutionHandlers(
             // User confirmed cleanup - delete worktree and branch
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
-              // Determine which branch to delete
-              // SECURITY FIX (issue #1479): If the worktree is corrupted, git rev-parse walks up
-              // to the main project and returns its current branch instead. We must validate
-              // the detected branch matches our expected pattern before deleting.
-              const expectedBranch = `auto-claude/${task.specId}`;
-              let branchToDelete = expectedBranch;
-              let usingFallbackBranch = false;
-
-              try {
-                const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-                  cwd: worktreePath,
-                  encoding: 'utf-8',
-                  timeout: 30000,
-                  env: getIsolatedGitEnv()
-                }).trim();
-
-                // Validate the detected branch matches expected pattern
-                // Why auto-claude/ prefix is safe: All task branches use this pattern, controlled by Auto-Claude.
-                // Non-matching branches (main, develop, feature/xxx) indicate corrupted worktree detection.
-                if (detectedBranch === expectedBranch) {
-                  branchToDelete = detectedBranch;
-                } else if (detectedBranch.startsWith('auto-claude/') && detectedBranch.length > 'auto-claude/'.length) {
-                  // Allow other auto-claude branches with valid specId (edge case: specId was renamed)
-                  console.warn(`[TASK_UPDATE_STATUS] Detected branch '${detectedBranch}' differs from expected '${expectedBranch}', but matches auto-claude pattern. Using detected branch.`);
-                  branchToDelete = detectedBranch;
-                } else {
-                  // Detected branch doesn't match - likely corrupted worktree returning main project's branch
-                  console.warn(`[TASK_UPDATE_STATUS] Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}'. Using expected branch to avoid deleting wrong branch.`);
-                  branchToDelete = expectedBranch;
-                  usingFallbackBranch = true;
-                }
-              } catch (branchError) {
-                // If we can't get branch name, use the default pattern
-                branchToDelete = expectedBranch;
-                usingFallbackBranch = true;
-                console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branchToDelete}`, branchError);
-              }
+              // Get the branch name before removing the worktree
+              // Use shared utility to validate detected branch matches expected pattern
+              // This prevents deleting wrong branch when worktree is corrupted/orphaned
+              const { branch, usingFallback: usingFallbackBranch } = detectWorktreeBranch(
+                worktreePath,
+                task.specId,
+                { timeout: 30000, logPrefix: '[TASK_UPDATE_STATUS]' }
+              );
 
               // Remove the worktree
               execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
@@ -645,20 +616,23 @@ export function registerTaskExecutionHandlers(
 
               // Delete the branch (ignore errors if branch doesn't exist)
               try {
-                execFileSync(getToolPath('git'), ['branch', '-D', branchToDelete], {
+                execFileSync(getToolPath('git'), ['branch', '-D', branch], {
                   cwd: project.path,
                   encoding: 'utf-8',
                   timeout: 30000,
                   env: getIsolatedGitEnv()
                 });
-                console.warn(`[TASK_UPDATE_STATUS] Branch deleted: ${branchToDelete}`);
+                console.warn(`[TASK_UPDATE_STATUS] Branch deleted: ${branch}`);
               } catch (branchDeleteError) {
                 // Branch may not exist or may be the current branch
                 if (usingFallbackBranch) {
                   // More concerning - fallback pattern didn't match actual branch
-                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branchToDelete} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
                 } else {
-                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branchToDelete} (may not exist or be checked out elsewhere)`);
+                  console.warn(
+                    `[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`,
+                    branchDeleteError
+                  );
                 }
               }
 

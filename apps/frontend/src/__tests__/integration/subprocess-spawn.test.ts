@@ -12,6 +12,7 @@ import { mkdirSync, rmSync, existsSync, writeFileSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 import { findPythonCommand, parsePythonCommand } from '../../main/python-detector';
+import { isWindows } from '../../main/platform';
 
 // Test directories - use secure temp directory with random suffix
 let TEST_DIR: string;
@@ -94,6 +95,19 @@ vi.mock('../../main/python-env-manager', () => ({
     getPythonEnv: vi.fn(() => ({}))
   },
   getConfiguredPythonPath: vi.fn(() => DETECTED_PYTHON_CMD)
+}));
+
+// Mock rate-limit-detector for getBestAvailableProfileEnv
+vi.mock('../../main/rate-limit-detector', () => ({
+  getBestAvailableProfileEnv: vi.fn(() => ({
+    env: {},
+    profileId: 'default',
+    profileName: 'Default',
+    wasSwapped: false
+  })),
+  getProfileEnv: vi.fn(() => ({})),
+  detectRateLimit: vi.fn(() => ({ isRateLimited: false })),
+  detectAuthFailure: vi.fn(() => ({ isAuthFailure: false }))
 }));
 
 // Auto-claude source path (for getAutoBuildSourcePath to find)
@@ -348,7 +362,7 @@ describe('Subprocess Spawn Integration', () => {
 
       expect(result).toBe(true);
       // On Windows, kill() is called without arguments; on Unix, kill('SIGTERM') is used
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(mockProcess.kill).toHaveBeenCalled();
       } else {
         expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
@@ -380,6 +394,9 @@ describe('Subprocess Spawn Integration', () => {
       await vi.waitFor(() => {
         expect(manager.getRunningTasks()).toHaveLength(2);
       }, { timeout: 5000 });
+
+      // Wait for spawn to complete (ensures exit handlers are attached)
+      await new Promise(resolve => setImmediate(resolve));
 
       // Both tasks share the same mock process, so emit exit once triggers both handlers
       mockProcess.emit('exit', 0);
