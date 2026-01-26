@@ -19,6 +19,7 @@ import type {
   Task,
   TaskMetadata,
   AppSettings,
+  ImageAttachment,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
 import { insightsService } from "../insights-service";
@@ -81,7 +82,13 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
 
   ipcMain.on(
     IPC_CHANNELS.INSIGHTS_SEND_MESSAGE,
-    async (_, projectId: string, message: string, modelConfig?: InsightsModelConfig) => {
+    async (
+      _,
+      projectId: string,
+      message: string,
+      modelConfig?: InsightsModelConfig,
+      imageAttachments?: ImageAttachment[]
+    ) => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         safeSendToRenderer(
@@ -112,7 +119,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       // the handler returns. This fixes race conditions on Windows where
       // environment setup wouldn't complete before process spawn.
       try {
-        await insightsService.sendMessage(projectId, project.path, message, configWithSettings);
+        await insightsService.sendMessage(projectId, project.path, message, configWithSettings, imageAttachments);
       } catch (error) {
         // Errors during sendMessage (executor errors) are already emitted via
         // the 'error' event, but we catch here to prevent unhandled rejection

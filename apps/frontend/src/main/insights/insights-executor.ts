@@ -8,7 +8,8 @@ import type {
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsToolUsage,
-  InsightsModelConfig
+  InsightsModelConfig,
+  ImageAttachment
 } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
@@ -63,7 +64,8 @@ export class InsightsExecutor extends EventEmitter {
     projectPath: string,
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
-    modelConfig?: InsightsModelConfig
+    modelConfig?: InsightsModelConfig,
+    imageAttachments?: ImageAttachment[]
   ): Promise<ProcessorResult> {
     // Cancel any existing session
     this.cancelSession(projectId);
@@ -102,6 +104,29 @@ export class InsightsExecutor extends EventEmitter {
       throw new Error('Failed to write conversation history to temp file');
     }
 
+    // Write image attachments to temp file if provided
+    let imagesFile: string | undefined;
+    if (imageAttachments && imageAttachments.length > 0) {
+      imagesFile = path.join(
+        os.tmpdir(),
+        `insights-images-${projectId}-${Date.now()}.json`
+      );
+      try {
+        writeFileSync(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
+      } catch (err) {
+        console.error('[Insights] Failed to write images file:', err);
+        // Clean up history file before throwing
+        if (historyFileCreated) {
+          try {
+            unlinkSync(historyFile);
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+        throw new Error('Failed to write image attachments to temp file');
+      }
+    }
+
     // Build command arguments
     const args = [
       runnerPath,
@@ -109,6 +134,11 @@ export class InsightsExecutor extends EventEmitter {
       '--message', message,
       '--history-file', historyFile
     ];
+
+    // Add images file argument if images were provided
+    if (imagesFile) {
+      args.push('--images-file', imagesFile);
+    }
 
     // Add model config if provided
     if (modelConfig) {

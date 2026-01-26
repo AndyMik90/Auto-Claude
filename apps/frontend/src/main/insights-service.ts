@@ -3,7 +3,8 @@ import type {
   InsightsSession,
   InsightsSessionSummary,
   InsightsChatMessage,
-  InsightsModelConfig
+  InsightsModelConfig,
+  ImageAttachment
 } from '../shared/types';
 import { InsightsConfig } from './insights/config';
 import { InsightsPaths } from './insights/paths';
@@ -116,7 +117,8 @@ export class InsightsService extends EventEmitter {
     projectId: string,
     projectPath: string,
     message: string,
-    modelConfig?: InsightsModelConfig
+    modelConfig?: InsightsModelConfig,
+    imageAttachments?: ImageAttachment[]
   ): Promise<void> {
     // Cancel any existing session
     this.executor.cancelSession(projectId);
@@ -166,7 +168,8 @@ export class InsightsService extends EventEmitter {
         projectPath,
         message,
         conversationHistory,
-        configToUse
+        configToUse,
+        imageAttachments
       );
 
       // Add assistant message to session
