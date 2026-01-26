@@ -13,6 +13,9 @@
  * Backend equivalent: apps/backend/core/git_executable.py:get_isolated_git_env()
  */
 
+import { execFileSync } from 'child_process';
+import { getToolPath } from '../cli-tool-manager';
+
 /**
  * Git environment variables that can cause cross-contamination between worktrees.
  *
@@ -104,4 +107,39 @@ export function getIsolatedGitSpawnOptions(
     encoding: 'utf-8',
     ...additionalOptions,
   };
+}
+
+/**
+ * Refreshes the git index to ensure accurate status after external commits.
+ *
+ * Git caches file stat information in its index. When files are modified
+ * externally (e.g., by another process or IDE), the cached stat info can
+ * become stale, causing `git status` to report false positives for
+ * uncommitted changes.
+ *
+ * This function runs `git update-index --refresh` which updates the cached
+ * stat information to match the actual file system state.
+ *
+ * @param cwd - Working directory where the git command should run
+ *
+ * @example
+ * ```typescript
+ * import { refreshGitIndex } from './git-isolation';
+ *
+ * // Call before git status to ensure accurate results
+ * refreshGitIndex(projectPath);
+ * const status = execFileSync('git', ['status', '--porcelain'], { cwd: projectPath });
+ * ```
+ */
+export function refreshGitIndex(cwd: string): void {
+  try {
+    execFileSync(getToolPath('git'), ['update-index', '--refresh'], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv(),
+    });
+  } catch {
+    // Ignore refresh errors - it's a best-effort optimization
+  }
 }

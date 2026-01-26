@@ -15,6 +15,7 @@ import { minimatch } from 'minimatch';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 import { projectStore } from '../../project-store';
 import { parseEnvFile } from '../utils';
+import { isWindows } from '../../platform';
 import {
   getTerminalWorktreeDir,
   getTerminalWorktreePath,
@@ -276,7 +277,7 @@ function symlinkNodeModulesToWorktree(projectPath: string, worktreePath: string)
       // Platform-specific symlink creation:
       // - Windows: Use 'junction' type which requires absolute paths (no admin rights required)
       // - Unix (macOS/Linux): Use relative paths for portability (worktree can be moved)
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         symlinkSync(sourcePath, targetPath, 'junction');
         debugLog('[TerminalWorktree] Created junction (Windows):', targetRel, '->', sourcePath);
       } else {
