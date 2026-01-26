@@ -216,6 +216,10 @@ function SessionItem({
   const { t } = useTranslation('insights');
   const { t: tCommon } = useTranslation('common');
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Skip if IME is composing (e.g., Japanese input conversion)
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       onSaveEdit();

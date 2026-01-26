@@ -244,6 +244,8 @@ function AddRepositoryForm({ onAdd, onCancel, isLoading }: AddRepositoryFormProp
             setError(null);
           }}
           onKeyDown={(e) => {
+            // Skip if IME is composing (e.g., Japanese input conversion)
+            if (e.nativeEvent.isComposing) return;
             if (e.key === 'Enter') {
               handleSubmit();
             }

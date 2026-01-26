@@ -114,6 +114,8 @@ export function MemoriesTab({
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    // Skip if IME is composing (e.g., Japanese input conversion)
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter') {
       handleSearch();
     }

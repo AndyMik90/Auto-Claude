@@ -141,6 +141,10 @@ export function Insights({ projectId }: InsightsProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Skip if IME is composing (e.g., Japanese input conversion)
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();

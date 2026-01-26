@@ -45,6 +45,10 @@ export function TerminalTitle({ title, associatedTask, onTitleChange, terminalCo
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Skip if IME is composing (e.g., Japanese input conversion)
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       handleSave();
