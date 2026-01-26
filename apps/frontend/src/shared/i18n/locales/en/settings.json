@@ -546,6 +546,10 @@
       "eventTaskStuck": "Task stuck - when a subtask fails repeatedly",
       "eventPrCreated": "PR created - when a pull request is created"
     },
+    "workspace": {
+      "title": "Workspace",
+      "description": "Configure multi-repository workspace settings"
+    },
     "memory": {
       "title": "Memory",
       "description": "Graphiti memory backend",

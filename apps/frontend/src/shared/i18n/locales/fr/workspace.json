@@ -1,0 +1,29 @@
+{
+  "loading": "Chargement...",
+  "default": "par défaut",
+  "noRepos": "Aucun dépôt ajouté",
+  "workspaceSettings": "Paramètres de l'espace de travail",
+  "migration": {
+    "title": "Convertir en espace de travail",
+    "detectDescription": "Recherche de dépôts Git dans ce répertoire...",
+    "scanning": "Recherche de dépôts...",
+    "foundRepos": "{{count}} dépôts Git trouvés",
+    "alreadyStandalone": "C'est déjà un dépôt Git. Aucune conversion nécessaire.",
+    "alreadyWorkspace": "C'est déjà un espace de travail.",
+    "noReposFound": "Aucun dépôt Git trouvé dans les sous-répertoires.",
+    "configureTitle": "Configurer l'espace de travail",
+    "configureDescription": "Nommez votre espace de travail et sélectionnez les dépôts à inclure.",
+    "workspaceName": "Nom de l'espace de travail",
+    "workspaceNamePlaceholder": "Mon espace de travail",
+    "selectRepos": "Sélectionner les dépôts",
+    "default": "Par défaut",
+    "setDefault": "Définir par défaut",
+    "confirmTitle": "Confirmer la migration",
+    "confirmDescription": "Vérifiez la configuration de votre espace de travail avant de créer.",
+    "creating": "Création...",
+    "createWorkspace": "Créer l'espace de travail",
+    "completeTitle": "Espace de travail créé",
+    "completeDescription": "Votre espace de travail a été configuré avec succès.",
+    "completeMessage": "Vous pouvez maintenant gérer plusieurs dépôts depuis cet espace de travail."
+  }
+}

@@ -10,7 +10,7 @@ import { SectionRouter } from './sections/SectionRouter';
 import { createHookProxy } from './utils/hookProxyFactory';
 import type { Project } from '../../../shared/types';
 
-export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'slack' | 'memory';
+export type ProjectSettingsSection = 'general' | 'workspace' | 'linear' | 'github' | 'gitlab' | 'slack' | 'memory';
 
 interface ProjectSettingsContentProps {
   project: Project | undefined;

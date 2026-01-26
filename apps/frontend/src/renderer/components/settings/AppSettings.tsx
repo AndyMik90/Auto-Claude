@@ -7,6 +7,7 @@ import {
   Palette,
   Bot,
   FolderOpen,
+  FolderGit2,
   Package,
   Bell,
   Settings2,
@@ -88,6 +89,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
 
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'general', icon: Settings2 },
+  { id: 'workspace', icon: FolderGit2 },
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },

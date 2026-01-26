@@ -1,0 +1,29 @@
+{
+  "loading": "読み込み中...",
+  "default": "デフォルト",
+  "noRepos": "リポジトリが追加されていません",
+  "workspaceSettings": "ワークスペース設定",
+  "migration": {
+    "title": "ワークスペースに変換",
+    "detectDescription": "このディレクトリ内のGitリポジトリをスキャンしています...",
+    "scanning": "リポジトリをスキャン中...",
+    "foundRepos": "{{count}}個のGitリポジトリが見つかりました",
+    "alreadyStandalone": "これは既にGitリポジトリです。変換は不要です。",
+    "alreadyWorkspace": "これは既にワークスペースです。",
+    "noReposFound": "サブディレクトリにGitリポジトリが見つかりませんでした。",
+    "configureTitle": "ワークスペースを設定",
+    "configureDescription": "ワークスペース名を入力し、含めるリポジトリを選択してください。",
+    "workspaceName": "ワークスペース名",
+    "workspaceNamePlaceholder": "マイワークスペース",
+    "selectRepos": "リポジトリを選択",
+    "default": "デフォルト",
+    "setDefault": "デフォルトに設定",
+    "confirmTitle": "変換の確認",
+    "confirmDescription": "作成前にワークスペースの設定を確認してください。",
+    "creating": "作成中...",
+    "createWorkspace": "ワークスペースを作成",
+    "completeTitle": "ワークスペースが作成されました",
+    "completeDescription": "ワークスペースが正常にセットアップされました。",
+    "completeMessage": "このワークスペースから複数のリポジトリを管理できます。"
+  }
+}

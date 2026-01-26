@@ -551,6 +551,10 @@
       "eventTaskStuck": "タスクスタック - サブタスクが繰り返し失敗した時",
       "eventPrCreated": "PR 作成 - プルリクエストが作成された時"
     },
+    "workspace": {
+      "title": "ワークスペース",
+      "description": "マルチリポジトリのワークスペース設定を構成"
+    },
     "memory": {
       "title": "メモリ",
       "description": "Graphiti メモリバックエンド",

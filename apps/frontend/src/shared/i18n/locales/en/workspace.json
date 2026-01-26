@@ -1,0 +1,29 @@
+{
+  "loading": "Loading...",
+  "default": "default",
+  "noRepos": "No repositories added",
+  "workspaceSettings": "Workspace Settings",
+  "migration": {
+    "title": "Convert to Workspace",
+    "detectDescription": "Scanning for Git repositories in this directory...",
+    "scanning": "Scanning for repositories...",
+    "foundRepos": "Found {{count}} Git repositories",
+    "alreadyStandalone": "This is already a Git repository. No conversion needed.",
+    "alreadyWorkspace": "This is already a workspace.",
+    "noReposFound": "No Git repositories found in subdirectories.",
+    "configureTitle": "Configure Workspace",
+    "configureDescription": "Name your workspace and select which repositories to include.",
+    "workspaceName": "Workspace Name",
+    "workspaceNamePlaceholder": "My Workspace",
+    "selectRepos": "Select Repositories",
+    "default": "Default",
+    "setDefault": "Set as default",
+    "confirmTitle": "Confirm Migration",
+    "confirmDescription": "Review your workspace configuration before creating.",
+    "creating": "Creating...",
+    "createWorkspace": "Create Workspace",
+    "completeTitle": "Workspace Created",
+    "completeDescription": "Your workspace has been set up successfully.",
+    "completeMessage": "You can now manage multiple repositories from this workspace."
+  }
+}

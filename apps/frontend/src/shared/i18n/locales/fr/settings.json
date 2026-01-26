@@ -546,6 +546,10 @@
       "eventTaskStuck": "Tâche bloquée - quand une sous-tâche échoue de manière répétée",
       "eventPrCreated": "PR créée - quand une pull request est créée"
     },
+    "workspace": {
+      "title": "Espace de travail",
+      "description": "Configurer les paramètres de l'espace de travail multi-dépôts"
+    },
     "memory": {
       "title": "Mémoire",
       "description": "Backend mémoire Graphiti",
