@@ -178,10 +178,25 @@ class WorktreeManager:
     GH_CLI_TIMEOUT = 60  # 1 minute for gh CLI commands
     GH_QUERY_TIMEOUT = 30  # 30 seconds for gh CLI queries
 
-    def __init__(self, project_dir: Path, base_branch: str | None = None):
+    def __init__(
+        self,
+        project_dir: Path,
+        base_branch: str | None = None,
+        worktrees_dir: Path | None = None,
+    ):
+        """
+        Initialize the WorktreeManager.
+
+        Args:
+            project_dir: Path to the git repository
+            base_branch: Base branch for worktrees (default: auto-detected)
+            worktrees_dir: Custom directory for worktrees (default: project_dir/.auto-claude/worktrees/tasks)
+                          Used by RepoManager for workspace-based worktree isolation.
+        """
         self.project_dir = project_dir
         self.base_branch = base_branch or self._detect_base_branch()
-        self.worktrees_dir = project_dir / ".auto-claude" / "worktrees" / "tasks"
+        self._custom_worktrees_dir = worktrees_dir
+        self.worktrees_dir = worktrees_dir or (project_dir / ".auto-claude" / "worktrees" / "tasks")
         self._merge_lock = asyncio.Lock()
 
     def _detect_base_branch(self) -> str:

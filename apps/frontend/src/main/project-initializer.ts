@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { getToolPath } from './cli-tool-manager';
+import type { ProjectType, ProjectTypeDetectionResult } from '../shared/types/workspace';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -384,4 +385,144 @@ export function getAutoBuildPath(projectPath: string): string | null {
 
   debug('No .auto-claude folder found - project not initialized');
   return null;
+}
+
+// ============================================
+// Workspace Detection Functions
+// ============================================
+
+/**
+ * Find Git repositories in immediate subdirectories of a path.
+ * Does not recurse deeply - only checks one level down.
+ *
+ * @param dirPath - Directory to search in
+ * @param maxDepth - Maximum depth to search (default: 2 for monorepo support like apps/frontend)
+ * @returns Array of { path, name } for each found Git repository
+ */
+export function findGitReposInSubdirectories(
+  dirPath: string,
+  maxDepth: number = 2
+): Array<{ path: string; name: string }> {
+  const repos: Array<{ path: string; name: string }> = [];
+
+  function searchDir(currentPath: string, depth: number): void {
+    if (depth > maxDepth) return;
+
+    try {
+      const entries = readdirSync(currentPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        // Skip hidden directories (except we check for .git)
+        if (entry.name.startsWith('.') && entry.name !== '.git') continue;
+        // Skip common non-project directories
+        if (['node_modules', 'vendor', 'venv', '.venv', '__pycache__', 'dist', 'build'].includes(entry.name)) continue;
+
+        const fullPath = path.join(currentPath, entry.name);
+
+        if (entry.isDirectory()) {
+          // Check if this directory is a git repository
+          const gitPath = path.join(fullPath, '.git');
+          if (existsSync(gitPath)) {
+            // Calculate relative path from original dirPath
+            const relativePath = path.relative(dirPath, fullPath);
+            repos.push({
+              path: relativePath,
+              name: entry.name
+            });
+            // Don't recurse into git repos
+            continue;
+          }
+
+          // Recurse into subdirectory
+          searchDir(fullPath, depth + 1);
+        }
+      }
+    } catch {
+      // Ignore permission errors etc.
+    }
+  }
+
+  searchDir(dirPath, 0);
+  return repos;
+}
+
+/**
+ * Check if a path is a Git repository.
+ */
+export function isGitRepository(dirPath: string): boolean {
+  const gitPath = path.join(dirPath, '.git');
+  return existsSync(gitPath);
+}
+
+/**
+ * Detect the project type at a given path.
+ *
+ * Returns:
+ * - 'workspace': Has .auto-claude/workspace.json (multi-repo workspace)
+ * - 'standalone': Is a git repository at root (traditional single-repo project)
+ * - 'convertible': Not a git repo at root, but has git repos in subdirectories
+ *
+ * @param dirPath - Path to analyze
+ * @returns The detected project type
+ */
+export function detectProjectType(dirPath: string): ProjectType {
+  debug('detectProjectType called', { dirPath });
+
+  // Check for workspace.json first (takes precedence)
+  const workspaceConfigPath = path.join(dirPath, '.auto-claude', 'workspace.json');
+  if (existsSync(workspaceConfigPath)) {
+    debug('Found workspace.json - type is workspace');
+    return 'workspace';
+  }
+
+  // Check if root is a git repository
+  if (isGitRepository(dirPath)) {
+    debug('Root is a git repository - type is standalone');
+    return 'standalone';
+  }
+
+  // Check for git repos in subdirectories
+  const subRepos = findGitReposInSubdirectories(dirPath);
+  if (subRepos.length > 0) {
+    debug('Found git repos in subdirectories - type is convertible', { count: subRepos.length });
+    return 'convertible';
+  }
+
+  // Default to standalone (will need git init)
+  debug('No git repos found - defaulting to standalone');
+  return 'standalone';
+}
+
+/**
+ * Get detailed detection result with additional information.
+ *
+ * @param dirPath - Path to analyze
+ * @returns Detailed detection result
+ */
+export function detectProjectTypeDetailed(dirPath: string): ProjectTypeDetectionResult {
+  debug('detectProjectTypeDetailed called', { dirPath });
+
+  const hasGitRoot = isGitRepository(dirPath);
+  const workspaceConfigPath = path.join(dirPath, '.auto-claude', 'workspace.json');
+  const hasWorkspaceConfig = existsSync(workspaceConfigPath);
+
+  let type: ProjectType;
+  let subRepos: Array<{ path: string; name: string }> | undefined;
+
+  if (hasWorkspaceConfig) {
+    type = 'workspace';
+  } else if (hasGitRoot) {
+    type = 'standalone';
+  } else {
+    subRepos = findGitReposInSubdirectories(dirPath);
+    type = subRepos.length > 0 ? 'convertible' : 'standalone';
+  }
+
+  return {
+    type,
+    path: dirPath,
+    hasGitRoot,
+    hasWorkspaceConfig,
+    subRepos: type === 'convertible' ? subRepos : undefined
+  };
 }

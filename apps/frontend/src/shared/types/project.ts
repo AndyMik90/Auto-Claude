@@ -10,6 +10,12 @@ export interface Project {
   settings: ProjectSettings;
   createdAt: Date;
   updatedAt: Date;
+
+  // Workspace membership (null/undefined = standalone project, not part of a workspace)
+  /** ID of the workspace this project belongs to (if any) */
+  workspaceId?: string;
+  /** ID of the repository within the workspace (if part of a workspace) */
+  repoId?: string;
 }
 
 export interface ProjectSettings {

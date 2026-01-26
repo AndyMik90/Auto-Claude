@@ -13,6 +13,7 @@ __all__ = [
     "run_followup_planner",
     "WorkspaceManager",
     "WorktreeManager",
+    "RepoManager",
     "ProgressTracker",
 ]
 
@@ -31,6 +32,10 @@ def __getattr__(name):
         from .worktree import WorktreeManager
 
         return WorktreeManager
+    elif name == "RepoManager":
+        from .repo_manager import RepoManager
+
+        return RepoManager
     elif name == "ProgressTracker":
         from .progress import ProgressTracker
 
