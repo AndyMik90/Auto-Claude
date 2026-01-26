@@ -371,4 +371,9 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
   insightsService.on("sdk-rate-limit", (rateLimitInfo: unknown) => {
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.CLAUDE_SDK_RATE_LIMIT, rateLimitInfo);
   });
+
+  // Forward session-updated events to renderer for real-time UI updates
+  insightsService.on("session-updated", (projectId: string, session: unknown) => {
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_SESSION_UPDATED, projectId, session);
+  });
 }
