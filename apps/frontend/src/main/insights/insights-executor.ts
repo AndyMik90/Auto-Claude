@@ -91,12 +91,20 @@ export class InsightsExecutor extends EventEmitter {
     const processEnv = await this.config.getProcessEnv();
 
     // Create secure temp files using tmp library (CodeQL compliant)
-    let historyFile: string;
+    let historyFile: string | undefined;
     try {
       historyFile = tmp.fileSync({ prefix: 'insights-history-', discardDescriptor: true }).name;
       await writeFile(historyFile, JSON.stringify(conversationHistory), 'utf-8');
     } catch (err) {
       console.error('[Insights] Failed to create history file:', err);
+      // Clean up temp file if it was created
+      try {
+        if (historyFile && existsSync(historyFile)) {
+          unlinkSync(historyFile);
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
       throw new Error('Failed to create conversation history temp file');
     }
 
@@ -110,7 +118,17 @@ export class InsightsExecutor extends EventEmitter {
         console.error('[Insights] Failed to create images file:', err);
         // Clean up history file before throwing
         try {
-          unlinkSync(historyFile);
+          if (historyFile && existsSync(historyFile)) {
+            unlinkSync(historyFile);
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+        // Clean up images file if it was created
+        try {
+          if (imagesFile && existsSync(imagesFile)) {
+            unlinkSync(imagesFile);
+          }
         } catch {
           // Ignore cleanup errors
         }

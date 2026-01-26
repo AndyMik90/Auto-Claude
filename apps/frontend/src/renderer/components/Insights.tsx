@@ -129,6 +129,7 @@ export function Insights({ projectId }: InsightsProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pasteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Throttle streaming content updates to reduce ReactMarkdown re-renders
   useEffect(() => {
@@ -154,6 +155,15 @@ export function Insights({ projectId }: InsightsProps) {
       }
     };
   }, [streamingContent]);
+
+  // Cleanup paste success timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pasteSuccessTimeoutRef.current) {
+        clearTimeout(pasteSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -325,7 +335,10 @@ export function Insights({ projectId }: InsightsProps) {
       }
       // Show success feedback
       setPasteSuccess(true);
-      setTimeout(() => setPasteSuccess(false), 2000);
+      if (pasteSuccessTimeoutRef.current) {
+        clearTimeout(pasteSuccessTimeoutRef.current);
+      }
+      pasteSuccessTimeoutRef.current = setTimeout(() => setPasteSuccess(false), 2000);
     }
   }, [images.length, t]);
 
