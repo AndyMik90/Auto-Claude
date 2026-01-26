@@ -5,7 +5,7 @@ Utility functions for task logging.
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-# Import ANSI functions from separate module to avoid cyclic imports
+# ANSI functions are in separate ansi.py module to avoid cyclic imports
 
 if TYPE_CHECKING:
     from .logger import TaskLogger
