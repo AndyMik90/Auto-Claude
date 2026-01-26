@@ -84,7 +84,12 @@ vi.mock('../services/profile', () => ({
 }));
 
 vi.mock('../rate-limit-detector', () => ({
-  getProfileEnv: vi.fn(() => ({})),
+  getBestAvailableProfileEnv: vi.fn(() => ({
+    env: {},
+    profileId: 'default',
+    profileName: 'Default',
+    wasSwapped: false
+  })),
   detectRateLimit: vi.fn(() => ({ isRateLimited: false })),
   createSDKRateLimitInfo: vi.fn(),
   detectAuthFailure: vi.fn(() => ({ isAuthFailure: false }))
@@ -123,6 +128,8 @@ vi.mock('../cli-tool-manager', () => ({
     }
     return { found: false, path: undefined, source: 'user-config', message: `${tool} not found` };
   }),
+  // getClaudeCliPathForSdk returns null by default (simulates not found or .cmd file on Windows)
+  getClaudeCliPathForSdk: vi.fn(() => null),
   deriveGitBashPath: vi.fn(() => null),
   clearCache: vi.fn()
 }));
@@ -159,7 +166,7 @@ import { AgentEvents } from './agent-events';
 import * as profileService from '../services/profile';
 import * as rateLimitDetector from '../rate-limit-detector';
 import { pythonEnvManager } from '../python-env-manager';
-import { getToolInfo } from '../cli-tool-manager';
+import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
 
 describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
   let processManager: AgentProcessManager;
@@ -176,6 +183,9 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
     delete process.env.ANTHROPIC_AUTH_TOKEN;
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    // Clear CLI path env vars so tests use mocked getToolInfo
+    delete process.env.CLAUDE_CLI_PATH;
+    delete process.env.GITHUB_CLI_PATH;
 
     // Initialize components
     state = new AgentState();
@@ -282,8 +292,11 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token via getProfileEnv (existing flow)
-      vi.mocked(rateLimitDetector.getProfileEnv).mockReturnValue({
-        CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-123'
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+        env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-123' },
+        profileId: 'default',
+        profileName: 'Default',
+        wasSwapped: false
       });
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
@@ -314,8 +327,11 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token
-      vi.mocked(rateLimitDetector.getProfileEnv).mockReturnValue({
-        CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-456'
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+        env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-456' },
+        profileId: 'default',
+        profileName: 'Default',
+        wasSwapped: false
       });
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
@@ -338,8 +354,11 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
       // OAuth mode
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
-      vi.mocked(rateLimitDetector.getProfileEnv).mockReturnValue({
-        CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-789'
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+        env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-789' },
+        profileId: 'default',
+        profileName: 'Default',
+        wasSwapped: false
       });
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
@@ -493,7 +512,12 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api-profile.com'
       };
 
-      vi.mocked(rateLimitDetector.getProfileEnv).mockReturnValue(profileEnv);
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+        env: profileEnv,
+        profileId: 'default',
+        profileName: 'Default',
+        wasSwapped: false
+      });
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(apiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], extraEnv, 'task-execution');
@@ -754,11 +778,11 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
     });
 
     it('should set GITHUB_CLI_PATH with same precedence as CLAUDE_CLI_PATH', async () => {
-      // Mock both Claude CLI and gh CLI as found
+      // Mock Claude CLI via getClaudeCliPathForSdk (returns path directly, not .cmd file)
+      vi.mocked(getClaudeCliPathForSdk).mockReturnValue('/opt/homebrew/bin/claude');
+
+      // Mock gh CLI via getToolInfo (gh still uses standard detection)
       vi.mocked(getToolInfo).mockImplementation((tool: string) => {
-        if (tool === 'claude') {
-          return { found: true, path: '/opt/homebrew/bin/claude', source: 'homebrew', message: 'Claude CLI found via Homebrew' };
-        }
         if (tool === 'gh') {
           return { found: true, path: '/opt/homebrew/bin/gh', source: 'homebrew', message: 'gh CLI found via Homebrew' };
         }

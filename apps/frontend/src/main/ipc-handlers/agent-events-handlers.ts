@@ -11,6 +11,7 @@ import {
 } from "../../shared/constants/phase-protocol";
 import type {
   SDKRateLimitInfo,
+  AuthFailureInfo,
   Task,
   TaskStatus,
   Project,
@@ -26,6 +27,7 @@ import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
+import { getClaudeProfileManager } from "../claude-profile-manager";
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -131,6 +133,34 @@ export function registerAgenteventsHandlers(
   // Handle SDK rate limit events from title generator
   titleGenerator.on("sdk-rate-limit", (rateLimitInfo: SDKRateLimitInfo) => {
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.CLAUDE_SDK_RATE_LIMIT, rateLimitInfo);
+  });
+
+  // Handle auth failure events (401 errors requiring re-authentication)
+  agentManager.on("auth-failure", (taskId: string, authFailure: {
+    profileId?: string;
+    failureType?: 'missing' | 'invalid' | 'expired' | 'unknown';
+    message?: string;
+    originalError?: string;
+  }) => {
+    console.warn(`[AgentEvents] Auth failure detected for task ${taskId}:`, authFailure);
+
+    // Get profile name for display
+    const profileManager = getClaudeProfileManager();
+    const profile = authFailure.profileId
+      ? profileManager.getProfile(authFailure.profileId)
+      : profileManager.getActiveProfile();
+
+    const authFailureInfo: AuthFailureInfo = {
+      profileId: authFailure.profileId || profile?.id || 'unknown',
+      profileName: profile?.name,
+      failureType: authFailure.failureType || 'unknown',
+      message: authFailure.message || 'Authentication failed. Please re-authenticate.',
+      originalError: authFailure.originalError,
+      taskId,
+      detectedAt: new Date(),
+    };
+
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
   });
 
   agentManager.on("exit", (taskId: string, code: number | null, processType: ProcessType) => {

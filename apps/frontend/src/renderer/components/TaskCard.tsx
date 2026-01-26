@@ -316,8 +316,6 @@ export const TaskCard = memo(function TaskCard({
         return 'warning';
       case 'human_review':
         return 'purple';
-      case 'pr_created':
-        return 'success';
       case 'done':
         return 'success';
       default:
@@ -333,8 +331,6 @@ export const TaskCard = memo(function TaskCard({
         return t('labels.aiReview');
       case 'human_review':
         return t('labels.needsReview');
-      case 'pr_created':
-        return t('columns.pr_created');
       case 'done':
         return t('status.complete');
       default:
@@ -452,7 +448,7 @@ export const TaskCard = memo(function TaskCard({
              {/* Status badge - hide when execution phase badge is showing */}
              {!hasActiveExecution && (
                <>
-                  {task.status === 'pr_created' ? (
+                  {task.status === 'done' ? (
                     <Badge
                       variant={getStatusBadgeVariant(task.status)}
                       className="text-[10px] px-1.5 py-0.5"
@@ -584,7 +580,7 @@ export const TaskCard = memo(function TaskCard({
                 <Play className="mr-1.5 h-3 w-3" />
                 {t('actions.resume')}
               </Button>
-            ) : task.status === 'pr_created' ? (
+            ) : task.status === 'done' && task.metadata?.prUrl ? (
               <div className="flex gap-1">
                 {task.metadata?.prUrl && (
                   <Button

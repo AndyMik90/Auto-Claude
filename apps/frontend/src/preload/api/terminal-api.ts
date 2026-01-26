@@ -110,14 +110,19 @@ export interface TerminalAPI {
   verifyClaudeProfileAuth: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
   getAutoSwitchSettings: () => Promise<IPCResult<import('../../shared/types').ClaudeAutoSwitchSettings>>;
   updateAutoSwitchSettings: (settings: Partial<import('../../shared/types').ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   getBestAvailableProfile: (excludeProfileId?: string) => Promise<IPCResult<import('../../shared/types').ClaudeProfile | null>>;
   onSDKRateLimit: (callback: (info: import('../../shared/types').SDKRateLimitInfo) => void) => () => void;
+  onAuthFailure: (callback: (info: import('../../shared/types').AuthFailureInfo) => void) => () => void;
   retryWithProfile: (request: import('../../shared/types').RetryWithProfileRequest) => Promise<IPCResult>;
 
   // Usage Monitoring (Proactive Account Switching)
   requestUsageUpdate: () => Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>>;
+  requestAllProfilesUsage: (forceRefresh?: boolean) => Promise<IPCResult<import('../../shared/types').AllProfilesUsage | null>>;
   onUsageUpdated: (callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void) => () => void;
+  onAllProfilesUsageUpdated: (callback: (allProfilesUsage: import('../../shared/types').AllProfilesUsage) => void) => () => void;
   onProactiveSwapNotification: (callback: (notification: ProactiveSwapNotification) => void) => () => void;
 }
 
@@ -464,6 +469,12 @@ export const createTerminalAPI = (): TerminalAPI => ({
   updateAutoSwitchSettings: (settings: Partial<import('../../shared/types').ClaudeAutoSwitchSettings>): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_UPDATE_AUTO_SWITCH, settings),
 
+  getAccountPriorityOrder: (): Promise<IPCResult<string[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ACCOUNT_PRIORITY_GET),
+
+  setAccountPriorityOrder: (order: string[]): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ACCOUNT_PRIORITY_SET, order),
+
   fetchClaudeUsage: (terminalId: string): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_FETCH_USAGE, terminalId),
 
@@ -485,12 +496,30 @@ export const createTerminalAPI = (): TerminalAPI => ({
     };
   },
 
+  onAuthFailure: (
+    callback: (info: import('../../shared/types').AuthFailureInfo) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      info: import('../../shared/types').AuthFailureInfo
+    ): void => {
+      callback(info);
+    };
+    ipcRenderer.on(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, handler);
+    };
+  },
+
   retryWithProfile: (request: import('../../shared/types').RetryWithProfileRequest): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_RETRY_WITH_PROFILE, request),
 
   // Usage Monitoring (Proactive Account Switching)
   requestUsageUpdate: (): Promise<IPCResult<import('../../shared/types').ClaudeUsageSnapshot | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.USAGE_REQUEST),
+
+  requestAllProfilesUsage: (forceRefresh?: boolean): Promise<IPCResult<import('../../shared/types').AllProfilesUsage | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ALL_PROFILES_USAGE_REQUEST, forceRefresh ?? false),
 
   onUsageUpdated: (
     callback: (usage: import('../../shared/types').ClaudeUsageSnapshot) => void
@@ -504,6 +533,21 @@ export const createTerminalAPI = (): TerminalAPI => ({
     ipcRenderer.on(IPC_CHANNELS.USAGE_UPDATED, handler);
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.USAGE_UPDATED, handler);
+    };
+  },
+
+  onAllProfilesUsageUpdated: (
+    callback: (allProfilesUsage: import('../../shared/types').AllProfilesUsage) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      allProfilesUsage: import('../../shared/types').AllProfilesUsage
+    ): void => {
+      callback(allProfilesUsage);
+    };
+    ipcRenderer.on(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.ALL_PROFILES_USAGE_UPDATED, handler);
     };
   },
 
