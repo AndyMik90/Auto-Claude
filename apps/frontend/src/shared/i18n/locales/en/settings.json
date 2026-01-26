@@ -568,6 +568,8 @@
       "needsAuth": "Not authenticated",
       "duplicateUsage": "Duplicate usage detected",
       "duplicateUsageHint": "This profile has identical usage to another profile, suggesting they may be authenticated to the same Anthropic account. Re-authenticate with a different account to fix.",
+      "needsReauth": "Needs re-auth",
+      "needsReauthHint": "This profile's refresh token is invalid. Click to re-authenticate.",
       "sessionUsage": "Session usage (5-hour window)",
       "weeklyUsage": "Weekly usage (7-day window)",
       "oauthSection": "Claude Accounts (cycle through first)",

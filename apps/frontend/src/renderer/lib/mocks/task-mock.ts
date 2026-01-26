@@ -74,13 +74,19 @@ export const taskMock = {
 
   checkTaskRunning: async () => ({ success: true, data: false }),
 
-  /** Story 4.5: Retry an escalated task with optional user guidance */
+/** Story 4.5: Retry an escalated task with optional user guidance */
   retryEscalatedTask: async (_taskId: string, _guidance?: string) => ({
     success: true,
     data: {
       restarted: true,
       message: '[Browser Mock] Task restarted with guidance'
     }
+  }),
+
+  // Image operations
+  loadImageThumbnail: async (_projectPath: string, _specId: string, _imagePath: string) => ({
+    success: false,
+    error: 'Image loading not available in browser mode'
   }),
 
   // Task logs operations

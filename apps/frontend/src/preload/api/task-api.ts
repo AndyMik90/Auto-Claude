@@ -52,6 +52,9 @@ export interface TaskAPI {
   /** Story 4.5: Retry an escalated task with optional user guidance */
   retryEscalatedTask: (taskId: string, guidance?: string) => Promise<IPCResult<{ restarted: boolean; message?: string }>>;
 
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
+
   // Workspace Management (for human review)
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeStatus>>;
   getWorktreeDiff: (taskId: string) => Promise<IPCResult<import('../../shared/types').WorktreeDiff>>;
@@ -137,9 +140,13 @@ export const createTaskAPI = (): TaskAPI => ({
   checkTaskRunning: (taskId: string): Promise<IPCResult<boolean>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_CHECK_RUNNING, taskId),
 
-  /** Story 4.5: Retry an escalated task with optional user guidance */
+/** Story 4.5: Retry an escalated task with optional user guidance */
   retryEscalatedTask: (taskId: string, guidance?: string): Promise<IPCResult<{ restarted: boolean; message?: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_RETRY_ESCALATED, taskId, guidance),
+
+  // Image Operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string): Promise<IPCResult<string>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_LOAD_IMAGE_THUMBNAIL, projectPath, specId, imagePath),
 
   // Workspace Management
   getWorktreeStatus: (taskId: string): Promise<IPCResult<import('../../shared/types').WorktreeStatus>> =>

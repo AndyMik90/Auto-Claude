@@ -581,4 +581,50 @@ export class AgentManager extends EventEmitter {
     console.warn(`[AgentManager] emitCheckpointReached: taskId=${taskId}`);
     this.emit('checkpoint-reached', taskId, checkpointInfo);
   }
+
+  // ============================================
+  // Queue Routing Methods (Rate Limit Recovery)
+  // ============================================
+
+  /**
+   * Get running tasks grouped by profile
+   * Used by queue routing to determine profile load
+   */
+  getRunningTasksByProfile(): { byProfile: Record<string, string[]>; totalRunning: number } {
+    return this.state.getRunningTasksByProfile();
+  }
+
+  /**
+   * Assign a profile to a task
+   * Records which profile is being used for a task
+   */
+  assignProfileToTask(
+    taskId: string,
+    profileId: string,
+    profileName: string,
+    reason: 'proactive' | 'reactive' | 'manual'
+  ): void {
+    this.state.assignProfileToTask(taskId, profileId, profileName, reason);
+  }
+
+  /**
+   * Get the profile assignment for a task
+   */
+  getTaskProfileAssignment(taskId: string): { profileId: string; profileName: string; reason: string } | undefined {
+    return this.state.getTaskProfileAssignment(taskId);
+  }
+
+  /**
+   * Update the session ID for a task (for session resume)
+   */
+  updateTaskSession(taskId: string, sessionId: string): void {
+    this.state.updateTaskSession(taskId, sessionId);
+  }
+
+  /**
+   * Get the session ID for a task
+   */
+  getTaskSessionId(taskId: string): string | undefined {
+    return this.state.getTaskSessionId(taskId);
+  }
 }

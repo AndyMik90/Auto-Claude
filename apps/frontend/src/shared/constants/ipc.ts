@@ -27,8 +27,9 @@ export const IPC_CHANNELS = {
   TASK_UPDATE_STATUS: 'task:updateStatus',
   TASK_RECOVER_STUCK: 'task:recoverStuck',
   TASK_CHECK_RUNNING: 'task:checkRunning',
-  /** Story 4.5: Retry an escalated task with optional user guidance */
+/** Story 4.5: Retry an escalated task with optional user guidance */
   TASK_RETRY_ESCALATED: 'task:retryEscalated',
+  TASK_LOAD_IMAGE_THUMBNAIL: 'task:loadImageThumbnail',
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
@@ -185,6 +186,11 @@ export const IPC_CHANNELS = {
   ROADMAP_ERROR: 'roadmap:error',
   ROADMAP_STOPPED: 'roadmap:stopped',
 
+  // Roadmap progress persistence (per-project state)
+  ROADMAP_PROGRESS_SAVE: 'roadmap:progressSave',
+  ROADMAP_PROGRESS_LOAD: 'roadmap:progressLoad',
+  ROADMAP_PROGRESS_CLEAR: 'roadmap:progressClear',
+
   // Context operations
   CONTEXT_GET: 'context:get',
   CONTEXT_REFRESH_INDEX: 'context:refreshIndex',
@@ -252,6 +258,7 @@ export const IPC_CHANNELS = {
 
   // GitHub OAuth events (main -> renderer) - for streaming device code during auth
   GITHUB_AUTH_DEVICE_CODE: 'github:authDeviceCode',
+  GITHUB_AUTH_CHANGED: 'github:authChanged',  // Event: GitHub auth state changed (account swap)
 
   // GitHub events (main -> renderer)
   GITHUB_INVESTIGATION_PROGRESS: 'github:investigationProgress',
@@ -483,6 +490,7 @@ export const IPC_CHANNELS = {
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
   INSIGHTS_STATUS: 'insights:status',
   INSIGHTS_ERROR: 'insights:error',
+  INSIGHTS_SESSION_UPDATED: 'insights:sessionUpdated',  // Event: session updated (main -> renderer)
 
   // File explorer operations
   FILE_EXPLORER_LIST: 'fileExplorer:list',
@@ -565,5 +573,17 @@ export const IPC_CHANNELS = {
 
   // Screenshot capture
   SCREENSHOT_GET_SOURCES: 'screenshot:getSources',  // Get available screens/windows
-  SCREENSHOT_CAPTURE: 'screenshot:capture'          // Capture screenshot from source
+  SCREENSHOT_CAPTURE: 'screenshot:capture',          // Capture screenshot from source
+
+  // Queue routing (rate limit recovery)
+  QUEUE_GET_RUNNING_TASKS_BY_PROFILE: 'queue:getRunningTasksByProfile',
+  QUEUE_GET_BEST_PROFILE_FOR_TASK: 'queue:getBestProfileForTask',
+  QUEUE_ASSIGN_PROFILE_TO_TASK: 'queue:assignProfileToTask',
+  QUEUE_UPDATE_TASK_SESSION: 'queue:updateTaskSession',
+  QUEUE_GET_TASK_SESSION: 'queue:getTaskSession',
+
+  // Queue routing events (main -> renderer)
+  QUEUE_PROFILE_SWAPPED: 'queue:profileSwapped',      // Task switched to different profile
+  QUEUE_SESSION_CAPTURED: 'queue:sessionCaptured',    // Session ID captured from running task
+  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
 } as const;

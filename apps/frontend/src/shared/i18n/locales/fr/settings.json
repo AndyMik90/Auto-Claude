@@ -568,6 +568,8 @@
       "needsAuth": "Non authentifié",
       "duplicateUsage": "Doublon détecté",
       "duplicateUsageHint": "Ce profil a une utilisation identique à un autre profil, suggérant qu'ils sont peut-être authentifiés sur le même compte Anthropic. Réauthentifiez-vous avec un autre compte pour corriger.",
+      "needsReauth": "Réauth requise",
+      "needsReauthHint": "Le token de rafraîchissement de ce profil est invalide. Cliquez pour vous réauthentifier.",
       "sessionUsage": "Utilisation de session (fenêtre de 5 heures)",
       "weeklyUsage": "Utilisation hebdomadaire (fenêtre de 7 jours)",
       "oauthSection": "Comptes Claude (utilisés en premier)",

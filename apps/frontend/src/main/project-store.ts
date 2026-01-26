@@ -6,7 +6,6 @@ import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, Implemen
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
-import { debugLog } from '../shared/utils/debug-logger';
 import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
 
 interface TabState {
@@ -255,17 +254,10 @@ export class ProjectStore {
       return cached.tasks;
     }
 
-    debugLog('[ProjectStore] getTasks called - will load from disk', {
-      projectId,
-      reason: cached ? 'cache expired' : 'cache miss',
-      cacheAge: cached ? now - cached.timestamp : 'N/A'
-    });
     const project = this.getProject(projectId);
     if (!project) {
-      debugLog('[ProjectStore] Project not found for id:', projectId);
       return [];
     }
-    debugLog('[ProjectStore] Found project:', project.name, 'autoBuildPath:', project.autoBuildPath, 'path:', project.path);
 
     const allTasks: Task[] = [];
     const specsBaseDir = getSpecsDir(project.autoBuildPath);
@@ -560,11 +552,6 @@ export class ProjectStore {
     if (plan?.status) {
       const storedStatus = statusMap[plan.status];
       if (storedStatus && TERMINAL_STATUSES.has(storedStatus)) {
-        debugLog('[determineTaskStatusAndReason] Terminal status respected:', {
-          planStatus: plan.status,
-          mappedStatus: storedStatus,
-          reason: 'Terminal statuses (done, pr_created, error) are never overridden'
-        });
         return { status: storedStatus };
       }
     }
@@ -583,20 +570,11 @@ export class ProjectStore {
 
       // During active execution, respect the stored status to prevent jumping
       if (isActiveProcessStatus && storedStatus === 'in_progress') {
-        debugLog('[determineTaskStatusAndReason] Active process status preserved:', {
-          planStatus: plan.status,
-          mappedStatus: storedStatus,
-          reason: 'Execution in progress - status recalculation blocked'
-        });
         return { status: 'in_progress' };
       }
 
       // Plan review stage (human approval of spec before coding starts)
       if (isPlanReviewStage && storedStatus === 'human_review') {
-        debugLog('[determineTaskStatusAndReason] Plan review stage detected:', {
-          planStatus: plan.status,
-          reason: 'Spec creation complete, awaiting user approval'
-        });
         return { status: 'human_review', reviewReason: 'plan_review' };
       }
 
@@ -611,22 +589,11 @@ export class ProjectStore {
         } else if (allCompleted) {
           reviewReason = 'completed';
         }
-        debugLog('[determineTaskStatusAndReason] Explicit human_review preserved:', {
-          planStatus: plan.status,
-          reviewReason,
-          hasFailedSubtasks,
-          allCompleted,
-          subtaskCount: allSubtasks.length
-        });
         return { status: 'human_review', reviewReason };
       }
 
       // Explicit ai_review status should be preserved
       if (storedStatus === 'ai_review') {
-        debugLog('[determineTaskStatusAndReason] Explicit ai_review preserved:', {
-          planStatus: plan.status,
-          subtaskCount: allSubtasks.length
-        });
         return { status: 'ai_review' };
       }
     }
@@ -639,19 +606,11 @@ export class ProjectStore {
       try {
         const content = readFileSync(qaReportPath, 'utf-8');
         if (content.includes('REJECTED') || content.includes('FAILED')) {
-          debugLog('[determineTaskStatusAndReason] QA report indicates rejection:', {
-            qaReportPath,
-            reason: 'QA rejected - needs human attention'
-          });
           return { status: 'human_review', reviewReason: 'qa_rejected' };
         }
         if (content.includes('PASSED') || content.includes('APPROVED')) {
           // QA passed - if all subtasks done, move to human_review
           if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
-            debugLog('[determineTaskStatusAndReason] QA passed with all subtasks complete:', {
-              qaReportPath,
-              subtaskCount: allSubtasks.length
-            });
             return { status: 'human_review', reviewReason: 'completed' };
           }
         }
@@ -694,21 +653,6 @@ export class ProjectStore {
       }
     }
 
-    // Log calculated status (fallback path - no explicit status was set)
-    debugLog('[determineTaskStatusAndReason] Status calculated from subtasks (fallback):', {
-      planStatus: plan?.status || 'none',
-      calculatedStatus,
-      reviewReason,
-      subtaskStats: {
-        total: allSubtasks.length,
-        completed: allSubtasks.filter((s) => s.status === 'completed').length,
-        inProgress: allSubtasks.filter((s) => s.status === 'in_progress').length,
-        failed: allSubtasks.filter((s) => s.status === 'failed').length,
-        pending: allSubtasks.filter((s) => s.status === 'pending').length
-      },
-      isManual: metadata?.sourceType === 'manual'
-    });
-
     return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
   }
 
@@ -735,7 +679,6 @@ export class ProjectStore {
 
       // If spec directory doesn't exist anywhere, skip gracefully
       if (specPaths.length === 0) {
-        console.log(`[ProjectStore] archiveTasks: Spec directory not found for ${taskId}, skipping (already removed)`);
         continue;
       }
 
@@ -762,7 +705,6 @@ export class ProjectStore {
           }
 
           writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          console.log(`[ProjectStore] archiveTasks: Successfully archived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] archiveTasks: Failed to archive task ${taskId} at ${specPath}:`, error);
           hasErrors = true;
@@ -821,7 +763,6 @@ export class ProjectStore {
           delete metadata.archivedAt;
           delete metadata.archivedInVersion;
           writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          console.log(`[ProjectStore] unarchiveTasks: Successfully unarchived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] unarchiveTasks: Failed to unarchive task ${taskId} at ${specPath}:`, error);
           hasErrors = true;

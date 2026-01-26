@@ -16,6 +16,7 @@ import { ProfileAPI, createProfileAPI } from './profile-api';
 import { CheckpointAPI, createCheckpointAPI } from './modules/checkpoint-api';
 import { MethodologyAPI, createMethodologyAPI } from './modules/methodology-api';
 import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
+import { QueueAPI, createQueueAPI } from './queue-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -36,6 +37,8 @@ export interface ElectronAPI extends
   ScreenshotAPI {
   github: GitHubAPI;
   checkpoints: CheckpointAPI;
+  /** Queue routing API for rate limit recovery */
+  queue: QueueAPI;
 }
 
 export const createElectronAPI = (): ElectronAPI => ({
@@ -53,7 +56,8 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createMethodologyAPI(),
   ...createScreenshotAPI(),
   github: createGitHubAPI(),
-  checkpoints: createCheckpointAPI()
+  checkpoints: createCheckpointAPI(),
+  queue: createQueueAPI()  // Queue routing for rate limit recovery
 });
 
 // Export individual API creators for potential use in tests or specialized contexts
@@ -73,7 +77,8 @@ export {
   createMcpAPI,
   createCheckpointAPI,
   createMethodologyAPI,
-  createScreenshotAPI
+  createScreenshotAPI,
+  createQueueAPI
 };
 
 export type {
@@ -94,5 +99,6 @@ export type {
   McpAPI,
   CheckpointAPI,
   MethodologyAPI,
-  ScreenshotAPI
+  ScreenshotAPI,
+  QueueAPI
 };
