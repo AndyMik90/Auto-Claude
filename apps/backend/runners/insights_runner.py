@@ -212,10 +212,10 @@ Current question: {message}"""
                     }
                     ext = ext_map.get(img_type, ".png")
 
-                    # Create temp file in project directory so SDK can access it
+                    # Create temp file in system temp directory (OS auto-cleanup)
+                    # Using system temp avoids polluting project and is SIGKILL-proof
                     with tempfile.NamedTemporaryFile(
                         suffix=ext,
-                        dir=project_path,
                         delete=False,
                     ) as f:
                         # Track path immediately for cleanup, even if write fails
@@ -223,8 +223,8 @@ Current question: {message}"""
                         temp_image_files.append(temp_image_path)
                         f.write(image_bytes)
 
-                    # Add image reference to prompt
-                    full_prompt += f"\n\n[Image {idx + 1}: {img_filename}]\nFile: {temp_image_path.name}"
+                    # Add image reference to prompt (use full path for SDK Read tool)
+                    full_prompt += f"\n\n[Image {idx + 1}: {img_filename}]\nFile: {temp_image_path}"
 
                     debug_detailed(
                         "insights_runner",
