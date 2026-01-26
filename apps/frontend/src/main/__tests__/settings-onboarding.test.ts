@@ -269,8 +269,29 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
 
   describe('error handling', () => {
     test('should handle read errors gracefully', async () => {
-      // Simulate read error by not setting up the mock file
-      // The existsSync mock will return false since it's not in mockFiles
+      // Get the mocked functions (vitest stores the implementation)
+      const { existsSync, readFileSync } = await import('fs');
+
+      // Save original mock implementations to restore after test
+      const originalExistsSync = (existsSync as any).getMockImplementation();
+      const originalReadFileSync = (readFileSync as any).getMockImplementation();
+
+      // Override existsSync to make file appear to exist
+      (existsSync as any).mockImplementation((path: string) => {
+        if (path === claudeJsonPath) {
+          return true; // File appears to exist
+        }
+        return originalExistsSync ? originalExistsSync(path) : false;
+      });
+
+      // Override readFileSync to throw error for our specific file
+      (readFileSync as any).mockImplementation((path: string) => {
+        if (path === claudeJsonPath) {
+          throw new Error('EACCES: permission denied, open \'' + path + '\'');
+        }
+        return originalReadFileSync ? originalReadFileSync(path) : '';
+      });
+
       const result = await onboardingStatusHandler({}, null) as {
         success: boolean;
         data?: { hasCompletedOnboarding: boolean };
@@ -278,6 +299,10 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
 
       expect(result.success).toBe(true);
       expect(result.data?.hasCompletedOnboarding).toBe(false);
+
+      // Restore original mocks
+      (existsSync as any).mockImplementation(originalExistsSync);
+      (readFileSync as any).mockImplementation(originalReadFileSync);
     });
   });
 });
