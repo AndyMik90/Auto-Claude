@@ -111,13 +111,15 @@ export function WorkspaceSelector({
         <Button
           variant="outline"
           size="sm"
-          className={cn("flex items-center gap-2", className)}
+          className={cn("w-full flex items-center gap-2 justify-between", className)}
         >
-          <FolderGit2 className="h-4 w-4" />
-          <span className="max-w-[150px] truncate">
-            {selectedRepo?.name || workspace.name}
-          </span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderGit2 className="h-4 w-4 shrink-0" />
+            <span className="truncate">
+              {selectedRepo?.name || workspace.name}
+            </span>
+          </div>
+          <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[220px]">

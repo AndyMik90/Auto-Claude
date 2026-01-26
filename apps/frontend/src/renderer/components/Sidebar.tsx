@@ -46,6 +46,7 @@ import {
   removeProject,
   initializeProject
 } from '../stores/project-store';
+import { WorkspaceSelector } from './workspace/WorkspaceSelector';
 import { useSettingsStore, saveSettings } from '../stores/settings-store';
 import {
   useProjectEnvStore,
@@ -398,6 +399,17 @@ export function Sidebar({
                   {t('sections.project')}
                 </h3>
               )}
+
+              {/* Workspace Selector - shows for multi-repo workspaces */}
+              {selectedProject && !isCollapsed && (
+                <div className="mb-3 px-1">
+                  <WorkspaceSelector
+                    projectPath={selectedProject.path}
+                    onOpenSettings={onSettingsClick}
+                  />
+                </div>
+              )}
+
               <nav className="space-y-1">
                 {visibleNavItems.map(renderNavItem)}
               </nav>
