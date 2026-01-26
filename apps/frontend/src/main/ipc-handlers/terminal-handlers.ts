@@ -160,10 +160,18 @@ export function registerTerminalHandlers(
             };
           }
 
+          // Expand ~ to home directory for filesystem operations
+          // Note: We keep the original configDir with ~ for storage (more portable)
+          // but expand it for filesystem operations
+          const { homedir } = await import('os');
+          const expandedConfigDir = profile.configDir.startsWith('~')
+            ? profile.configDir.replace(/^~/, homedir())
+            : profile.configDir;
+
           // Ensure config directory exists
           const { mkdirSync, existsSync } = await import('fs');
-          if (!existsSync(profile.configDir)) {
-            mkdirSync(profile.configDir, { recursive: true });
+          if (!existsSync(expandedConfigDir)) {
+            mkdirSync(expandedConfigDir, { recursive: true });
           }
         }
 
