@@ -179,6 +179,38 @@ async def run_with_sdk(
 
 Current question: {message}"""
 
+    # Build content array for SDK query (supports text + images)
+    # Start with text block containing the full prompt
+    content = [{"type": "text", "text": full_prompt}]
+
+    # Add image blocks if attachments are provided
+    if image_attachments:
+        debug(
+            "insights_runner",
+            "Adding image attachments to query",
+            image_count=len(image_attachments),
+        )
+        for img in image_attachments:
+            img_data = img.get("data")
+            img_type = img.get("mimeType", "image/png")
+            if img_data:
+                content.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": img_type,
+                            "data": img_data,
+                        },
+                    }
+                )
+                debug_detailed(
+                    "insights_runner",
+                    "Added image block",
+                    filename=img.get("filename", "unknown"),
+                    media_type=img_type,
+                )
+
     # Convert thinking level to token budget
     max_thinking_tokens = get_thinking_budget(thinking_level)
 
@@ -209,8 +241,14 @@ Current question: {message}"""
 
         # Use async context manager pattern
         async with client:
-            # Send the query
-            await client.query(full_prompt)
+            # Send the query with content (supports text + images)
+            # If only text, pass as string; otherwise pass content array
+            if len(content) == 1:
+                # Text only - pass as string for better compatibility
+                await client.query(full_prompt)
+            else:
+                # Multi-modal - pass content array with text + images
+                await client.query(content)
 
             # Stream the response
             response_text = ""

@@ -92,7 +92,7 @@ export class InsightsExecutor extends EventEmitter {
     // Create secure temp files using tmp library (CodeQL compliant)
     let historyFile: string;
     try {
-      historyFile = tmp.fileSync({ prefix: 'insights-history-' }).name;
+      historyFile = tmp.fileSync({ prefix: 'insights-history-', discardDescriptor: true }).name;
       writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
     } catch (err) {
       console.error('[Insights] Failed to create history file:', err);
@@ -103,7 +103,7 @@ export class InsightsExecutor extends EventEmitter {
     let imagesFile: string | undefined;
     if (imageAttachments && imageAttachments.length > 0) {
       try {
-        imagesFile = tmp.fileSync({ prefix: 'insights-images-' }).name;
+        imagesFile = tmp.fileSync({ prefix: 'insights-images-', discardDescriptor: true }).name;
         writeFileSync(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
       } catch (err) {
         console.error('[Insights] Failed to create images file:', err);
