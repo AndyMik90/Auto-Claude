@@ -1,8 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import tmp from 'tmp';
 import path from 'path';
-import os from 'os';
-import { randomBytes } from 'crypto';
 import { EventEmitter } from 'events';
 import type {
   InsightsChatMessage,
@@ -90,43 +89,31 @@ export class InsightsExecutor extends EventEmitter {
     // Get process environment
     const processEnv = await this.config.getProcessEnv();
 
-    // Create secure temp directory for this session (owner-only permissions)
-    const tempDir = path.join(os.tmpdir(), `auto-claude-insights-${projectId}`);
+    // Create secure temp files using tmp library (CodeQL compliant)
+    let historyFile: string;
     try {
-      mkdirSync(tempDir, { recursive: true, mode: 0o700 });
-    } catch (err) {
-      console.error('[Insights] Failed to create temp directory:', err);
-      throw new Error('Failed to create temporary directory');
-    }
-
-    // Generate secure random filename to prevent predictable paths
-    const randomSuffix = randomBytes(8).toString('hex');
-
-    // Write conversation history to temp file to avoid Windows command-line length limit
-    const historyFile = path.join(tempDir, `history-${randomSuffix}.json`);
-
-    try {
+      historyFile = tmp.fileSync({ prefix: 'insights-history-' }).name;
       writeFileSync(historyFile, JSON.stringify(conversationHistory), 'utf-8');
     } catch (err) {
-      console.error('[Insights] Failed to write history file:', err);
-      throw new Error('Failed to write conversation history to temp file');
+      console.error('[Insights] Failed to create history file:', err);
+      throw new Error('Failed to create conversation history temp file');
     }
 
     // Write image attachments to temp file if provided
     let imagesFile: string | undefined;
     if (imageAttachments && imageAttachments.length > 0) {
-      imagesFile = path.join(tempDir, `images-${randomSuffix}.json`);
       try {
+        imagesFile = tmp.fileSync({ prefix: 'insights-images-' }).name;
         writeFileSync(imagesFile, JSON.stringify(imageAttachments), 'utf-8');
       } catch (err) {
-        console.error('[Insights] Failed to write images file:', err);
+        console.error('[Insights] Failed to create images file:', err);
         // Clean up history file before throwing
         try {
           unlinkSync(historyFile);
         } catch {
           // Ignore cleanup errors
         }
-        throw new Error('Failed to write image attachments to temp file');
+        throw new Error('Failed to create image attachments temp file');
       }
     }
 
