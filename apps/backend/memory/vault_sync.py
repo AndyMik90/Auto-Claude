@@ -288,9 +288,7 @@ def sync_to_vault(spec_dir: Path, project_dir: Path | None = None) -> bool:
         return False
 
     try:
-        project_name = (
-            project_dir.name if project_dir else _get_project_name(spec_dir)
-        )
+        project_name = project_dir.name if project_dir else _get_project_name(spec_dir)
         spec_name = _get_spec_name(spec_dir)
 
         logger.info(f"Syncing memory to vault: {vault_path}")
@@ -372,9 +370,7 @@ def sync_session_to_vault(
         spec_name = _get_spec_name(spec_dir)
 
         # Create session directory
-        sessions_dir = (
-            vault_path / "memory" / "sessions" / project_name / spec_name
-        )
+        sessions_dir = vault_path / "memory" / "sessions" / project_name / spec_name
         sessions_dir.mkdir(parents=True, exist_ok=True)
 
         # Write session file

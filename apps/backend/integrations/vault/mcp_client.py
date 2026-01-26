@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VaultFile:
     """Represents a file in the vault."""
+
     name: str
     path: str
     is_directory: bool
@@ -30,6 +31,7 @@ class VaultFile:
 @dataclass
 class VaultContext:
     """Context loaded from vault."""
+
     claude_md: str | None
     preferences: str | None
     agents: list[dict[str, Any]]
@@ -115,12 +117,16 @@ class VaultMCPClient:
                 try:
                     content = agent_file.read_text(encoding="utf-8")
                     frontmatter = self._parse_frontmatter(content)
-                    agents.append({
-                        "id": agent_file.stem,
-                        "name": frontmatter.get("name", agent_file.stem),
-                        "description": frontmatter.get("description"),
-                        "path": str(agent_file.relative_to(self.config.expanded_path)),
-                    })
+                    agents.append(
+                        {
+                            "id": agent_file.stem,
+                            "name": frontmatter.get("name", agent_file.stem),
+                            "description": frontmatter.get("description"),
+                            "path": str(
+                                agent_file.relative_to(self.config.expanded_path)
+                            ),
+                        }
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to read agent file {agent_file}: {e}")
 
@@ -130,7 +136,7 @@ class VaultMCPClient:
             learning_files = sorted(
                 self.config.learnings_dir.glob("*.md"),
                 key=lambda f: f.stat().st_mtime,
-                reverse=True
+                reverse=True,
             )[:10]
 
             for learning_file in learning_files:
@@ -145,13 +151,17 @@ class VaultMCPClient:
                             topic = line[2:].strip()
                             break
 
-                    recent_learnings.append({
-                        "id": learning_file.stem,
-                        "topic": topic,
-                        "content": content,
-                        "modified_at": stat.st_mtime,
-                        "path": str(learning_file.relative_to(self.config.expanded_path)),
-                    })
+                    recent_learnings.append(
+                        {
+                            "id": learning_file.stem,
+                            "topic": topic,
+                            "content": content,
+                            "modified_at": stat.st_mtime,
+                            "path": str(
+                                learning_file.relative_to(self.config.expanded_path)
+                            ),
+                        }
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to read learning file {learning_file}: {e}")
 
@@ -249,12 +259,16 @@ class VaultMCPClient:
                 # Append to existing file
                 existing = file_path.read_text(encoding="utf-8")
                 from datetime import datetime
+
                 timestamp = datetime.now().isoformat()
-                new_content = f"{existing}\n\n---\n\n## Update ({timestamp})\n\n{content}"
+                new_content = (
+                    f"{existing}\n\n---\n\n## Update ({timestamp})\n\n{content}"
+                )
                 file_path.write_text(new_content, encoding="utf-8")
             else:
                 # Create new file
                 from datetime import datetime
+
                 timestamp = datetime.now().isoformat()
                 new_content = f"# {topic}\n\n*Created: {timestamp}*\n\n{content}"
                 file_path.write_text(new_content, encoding="utf-8")
@@ -292,25 +306,29 @@ class VaultMCPClient:
                 for i, line in enumerate(lines):
                     if query_lower in line.lower():
                         idx = line.lower().find(query_lower)
-                        matches.append({
-                            "line_number": i + 1,
-                            "line": line.strip(),
-                            "match_start": idx,
-                            "match_end": idx + len(query),
-                        })
+                        matches.append(
+                            {
+                                "line_number": i + 1,
+                                "line": line.strip(),
+                                "match_start": idx,
+                                "match_end": idx + len(query),
+                            }
+                        )
 
                 if matches:
                     stat = file_path.stat()
-                    results.append({
-                        "file": {
-                            "name": file_path.name,
-                            "path": str(relative_path),
-                            "is_directory": False,
-                            "size": stat.st_size,
-                            "modified_at": stat.st_mtime,
-                        },
-                        "matches": matches,
-                    })
+                    results.append(
+                        {
+                            "file": {
+                                "name": file_path.name,
+                                "path": str(relative_path),
+                                "is_directory": False,
+                                "size": stat.st_size,
+                                "modified_at": stat.st_mtime,
+                            },
+                            "matches": matches,
+                        }
+                    )
 
                     if len(results) >= max_results:
                         break
@@ -341,31 +359,39 @@ class VaultMCPClient:
 
         return self._list_files_recursive(base_path, sub_path)
 
-    def _list_files_recursive(self, dir_path: Path, relative_base: str = "") -> list[VaultFile]:
+    def _list_files_recursive(
+        self, dir_path: Path, relative_base: str = ""
+    ) -> list[VaultFile]:
         """Recursively list files in directory."""
         files = []
 
         try:
-            for entry in sorted(dir_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            for entry in sorted(
+                dir_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+            ):
                 # Skip hidden files except .claude
                 if entry.name.startswith(".") and entry.name != ".claude":
                     continue
 
-                relative_path = f"{relative_base}/{entry.name}" if relative_base else entry.name
+                relative_path = (
+                    f"{relative_base}/{entry.name}" if relative_base else entry.name
+                )
                 stat = entry.stat()
 
                 children = None
                 if entry.is_dir():
                     children = self._list_files_recursive(entry, relative_path)
 
-                files.append(VaultFile(
-                    name=entry.name,
-                    path=relative_path,
-                    is_directory=entry.is_dir(),
-                    size=stat.st_size if not entry.is_dir() else None,
-                    modified_at=str(stat.st_mtime),
-                    children=children,
-                ))
+                files.append(
+                    VaultFile(
+                        name=entry.name,
+                        path=relative_path,
+                        is_directory=entry.is_dir(),
+                        size=stat.st_size if not entry.is_dir() else None,
+                        modified_at=str(stat.st_mtime),
+                        children=children,
+                    )
+                )
         except Exception as e:
             logger.warning(f"Error listing directory {dir_path}: {e}")
 
@@ -383,7 +409,7 @@ class VaultMCPClient:
                     colon_idx = line.find(":")
                     if colon_idx > 0:
                         key = line[:colon_idx].strip()
-                        value = line[colon_idx + 1:].strip()
+                        value = line[colon_idx + 1 :].strip()
                         # Remove quotes
                         if value.startswith('"') and value.endswith('"'):
                             value = value[1:-1]

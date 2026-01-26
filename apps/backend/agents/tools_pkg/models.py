@@ -225,7 +225,9 @@ def is_gitlab_mcp_enabled() -> bool:
         return True
     # Check for GitLab credentials
     gitlab_host = os.environ.get("GITLAB_HOST") or os.environ.get("GITLAB_URL")
-    gitlab_token = os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN")
+    gitlab_token = os.environ.get("GITLAB_TOKEN") or os.environ.get(
+        "GITLAB_PRIVATE_TOKEN"
+    )
     return bool(gitlab_host and gitlab_token)
 
 
@@ -595,7 +597,9 @@ def get_required_mcp_servers(
             mcp_config.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
             or os.environ.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
         )
-        vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
+        vault_path = os.environ.get("VAULT_PATH") or os.environ.get(
+            "OBSIDIAN_VAULT_PATH"
+        )
         if obsidian_enabled or vault_path:
             servers.append("obsidian")
 

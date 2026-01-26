@@ -67,7 +67,9 @@ def get_creator_label(email: str = None, username: str = None) -> str:
 
     # Fall back to email
     if not email:
-        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get(
+            "GITLAB_USER_EMAIL", ""
+        )
 
     if email and "@" in email:
         name = email.split("@")[0]
@@ -75,6 +77,7 @@ def get_creator_label(email: str = None, username: str = None) -> str:
         return f"created-by-{name}"
 
     return ""
+
 
 # Project marker file
 GITLAB_PROJECT_MARKER = ".gitlab_project.json"
@@ -112,8 +115,7 @@ class GitLabConfig:
             client_id=os.environ.get("GITLAB_CLIENT_ID", ""),
             client_secret=os.environ.get("GITLAB_CLIENT_SECRET", ""),
             redirect_uri=os.environ.get(
-                "GITLAB_REDIRECT_URI",
-                "http://localhost:8765/oauth/callback"
+                "GITLAB_REDIRECT_URI", "http://localhost:8765/oauth/callback"
             ),
             personal_token=os.environ.get("GITLAB_TOKEN", ""),
             project_id=os.environ.get("GITLAB_PROJECT_ID", ""),
@@ -193,7 +195,9 @@ class GitLabProjectState:
     meta_issue_iid: int = 0  # GitLab uses iid (internal ID) within project
     total_issues: int = 0
     created_at: str = ""
-    issue_mapping: dict[str, int] = field(default_factory=dict)  # subtask_id -> issue_iid
+    issue_mapping: dict[str, int] = field(
+        default_factory=dict
+    )  # subtask_id -> issue_iid
     mr_mapping: dict[str, int] = field(default_factory=dict)  # subtask_id -> MR iid
 
     def to_dict(self) -> dict:
@@ -271,7 +275,9 @@ def get_weight_for_phase(phase_num: int, total_phases: int) -> int:
         return WEIGHT_LOW
 
 
-def get_labels_for_subtask(subtask: dict, email: str = None, username: str = None) -> list[str]:
+def get_labels_for_subtask(
+    subtask: dict, email: str = None, username: str = None
+) -> list[str]:
     """
     Generate GitLab labels for a subtask.
 
@@ -308,7 +314,7 @@ def format_issue_description(
     subtask: dict,
     phase: dict = None,
     creator_email: str = None,
-    creator_username: str = None
+    creator_username: str = None,
 ) -> str:
     """
     Format a subtask as a GitLab issue description.
@@ -370,11 +376,15 @@ def format_issue_description(
     if creator_username:
         lines.append(f"_Created by @{creator_username}_")
     elif creator_email:
-        display_name = creator_email.split("@")[0] if "@" in creator_email else creator_email
+        display_name = (
+            creator_email.split("@")[0] if "@" in creator_email else creator_email
+        )
         lines.append(f"_Created by {display_name}_")
     else:
         # Fallback to checking env
-        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get(
+            "GITLAB_USER_EMAIL", ""
+        )
         if email and "@" in email:
             display_name = email.split("@")[0]
             lines.append(f"_Created by {display_name}_")

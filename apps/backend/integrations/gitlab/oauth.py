@@ -73,9 +73,7 @@ class OAuthToken:
 
     @classmethod
     def from_oauth_response(
-        cls,
-        response: dict[str, Any],
-        user_id: str = ""
+        cls, response: dict[str, Any], user_id: str = ""
     ) -> "OAuthToken":
         """Create from GitLab OAuth response."""
         expires_in = response.get("expires_in")
@@ -216,7 +214,12 @@ class GitLabOAuth:
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
-        self.scopes = scopes or ["api", "read_user", "read_repository", "write_repository"]
+        self.scopes = scopes or [
+            "api",
+            "read_user",
+            "read_repository",
+            "write_repository",
+        ]
         self.token_store = token_store or UserTokenStore()
 
         # OAuth endpoints
@@ -228,9 +231,7 @@ class GitLabOAuth:
         self._pending_states: dict[str, OAuthState] = {}
 
     def get_authorization_url(
-        self,
-        user_id: str,
-        use_pkce: bool = True
+        self, user_id: str, use_pkce: bool = True
     ) -> tuple[str, str]:
         """
         Generate OAuth authorization URL.
@@ -257,7 +258,10 @@ class GitLabOAuth:
             code_verifier = secrets.token_urlsafe(64)
             code_challenge = hashlib.sha256(code_verifier.encode()).digest()
             import base64
-            code_challenge_b64 = base64.urlsafe_b64encode(code_challenge).rstrip(b"=").decode()
+
+            code_challenge_b64 = (
+                base64.urlsafe_b64encode(code_challenge).rstrip(b"=").decode()
+            )
             params["code_challenge"] = code_challenge_b64
             params["code_challenge_method"] = "S256"
 
@@ -317,9 +321,7 @@ class GitLabOAuth:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    self.token_url,
-                    data=data,
-                    headers={"Accept": "application/json"}
+                    self.token_url, data=data, headers={"Accept": "application/json"}
                 )
                 response.raise_for_status()
                 token_data = response.json()
@@ -368,9 +370,7 @@ class GitLabOAuth:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    self.token_url,
-                    data=data,
-                    headers={"Accept": "application/json"}
+                    self.token_url, data=data, headers={"Accept": "application/json"}
                 )
                 response.raise_for_status()
                 token_data = response.json()
@@ -405,7 +405,9 @@ class GitLabOAuth:
             if token.refresh_token:
                 token = await self.refresh_token(user_id)
             else:
-                logger.warning(f"Token expired for user {user_id[:8]}, no refresh token")
+                logger.warning(
+                    f"Token expired for user {user_id[:8]}, no refresh token"
+                )
                 return None
 
         return token
@@ -414,8 +416,7 @@ class GitLabOAuth:
         """Fetch GitLab user info."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                self.user_url,
-                headers={"Authorization": f"Bearer {access_token}"}
+                self.user_url, headers={"Authorization": f"Bearer {access_token}"}
             )
             response.raise_for_status()
             return response.json()
@@ -441,12 +442,7 @@ class PersonalAccessTokenAuth:
     For automation and service accounts that don't need OAuth flow.
     """
 
-    def __init__(
-        self,
-        gitlab_url: str,
-        token: str,
-        user_id: str = "pat-user"
-    ):
+    def __init__(self, gitlab_url: str, token: str, user_id: str = "pat-user"):
         """
         Initialize PAT authentication.
 

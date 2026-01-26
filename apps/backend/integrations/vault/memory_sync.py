@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SyncResult:
     """Result of a sync operation."""
+
     success: bool
     path: str | None = None
     error: str | None = None
@@ -45,7 +46,9 @@ class MemorySyncService:
         self.client = VaultMCPClient(config)
         self._backup_created = False
 
-    def sync_learning(self, topic: str, content: str, tags: list[str] | None = None) -> SyncResult:
+    def sync_learning(
+        self, topic: str, content: str, tags: list[str] | None = None
+    ) -> SyncResult:
         """
         Sync a learning to the vault.
 
@@ -214,6 +217,7 @@ class MemorySyncService:
 
             # Copy all learning files
             import shutil
+
             for file in learnings_dir.glob("*.md"):
                 shutil.copy2(file, backup_path / file.name)
 
@@ -234,5 +238,7 @@ class MemorySyncService:
         sanitized = name.lower()
         sanitized = "".join(c if c.isalnum() or c in " -_" else "" for c in sanitized)
         sanitized = sanitized.replace(" ", "-")
-        sanitized = "-".join(filter(None, sanitized.split("-")))  # Remove duplicate dashes
+        sanitized = "-".join(
+            filter(None, sanitized.split("-"))
+        )  # Remove duplicate dashes
         return sanitized[:100]  # Limit length

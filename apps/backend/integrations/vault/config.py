@@ -36,7 +36,9 @@ class VaultConfig:
     write_enabled: bool = False
 
     # Paths allowed for write operations
-    write_allowed_paths: list[str] = field(default_factory=lambda: WRITE_ALLOWED_PATHS.copy())
+    write_allowed_paths: list[str] = field(
+        default_factory=lambda: WRITE_ALLOWED_PATHS.copy()
+    )
 
     def __post_init__(self):
         """Expand tilde in vault path."""
@@ -119,9 +121,21 @@ def get_vault_config() -> VaultConfig | None:
         return None
 
     enabled = os.environ.get("VAULT_ENABLED", "true").lower() in ("true", "1", "yes")
-    auto_load = os.environ.get("VAULT_AUTO_LOAD", "true").lower() in ("true", "1", "yes")
-    sync_learnings = os.environ.get("VAULT_SYNC_LEARNINGS", "false").lower() in ("true", "1", "yes")
-    write_enabled = os.environ.get("VAULT_WRITE_ENABLED", "false").lower() in ("true", "1", "yes")
+    auto_load = os.environ.get("VAULT_AUTO_LOAD", "true").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+    sync_learnings = os.environ.get("VAULT_SYNC_LEARNINGS", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+    write_enabled = os.environ.get("VAULT_WRITE_ENABLED", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
 
     return VaultConfig(
         vault_path=vault_path,

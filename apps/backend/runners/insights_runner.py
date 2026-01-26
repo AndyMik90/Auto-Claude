@@ -126,13 +126,21 @@ def load_vault_context() -> str:
     learnings_dir = vault_path / "memory" / "learnings"
     if learnings_dir.exists():
         try:
-            learning_files = sorted(learnings_dir.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)[:5]
+            learning_files = sorted(
+                learnings_dir.glob("*.md"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )[:5]
             if learning_files:
                 learning_names = [f.stem for f in learning_files]
                 context_parts.append(
                     "## Recent Learnings (in vault)\n- " + "\n- ".join(learning_names)
                 )
-                debug("insights_runner", "Found vault learnings", count=len(learning_files))
+                debug(
+                    "insights_runner",
+                    "Found vault learnings",
+                    count=len(learning_files),
+                )
         except Exception:
             pass
 
@@ -314,9 +322,15 @@ Current question: {message}"""
 
         # Log integration status visibly for user feedback
         if integrations_status:
-            print(f"Active integrations: {', '.join(integrations_status)}", file=sys.stderr)
+            print(
+                f"Active integrations: {', '.join(integrations_status)}",
+                file=sys.stderr,
+            )
         else:
-            print("No integrations enabled (configure in Settings → Account)", file=sys.stderr)
+            print(
+                "No integrations enabled (configure in Settings → Account)",
+                file=sys.stderr,
+            )
 
         debug(
             "insights_runner",

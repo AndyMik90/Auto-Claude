@@ -73,6 +73,7 @@ def get_creator_label(email: str = None) -> str:
 
     return ""
 
+
 # JIRA project marker file
 JIRA_PROJECT_MARKER = ".jira_project.json"
 
@@ -99,7 +100,7 @@ class JiraConfig:
             mcp_server_name=os.environ.get("JIRA_MCP_SERVER", "jira-mcp"),
             mcp_start_script=os.environ.get(
                 "JIRA_MCP_START_SCRIPT",
-                os.path.expanduser("~/.auto-claude/mcp-servers/jira/start.sh")
+                os.path.expanduser("~/.auto-claude/mcp-servers/jira/start.sh"),
             ),
             host=os.environ.get("JIRA_HOST", ""),
             email=os.environ.get("JIRA_EMAIL", ""),
@@ -144,9 +145,10 @@ class JiraConfig:
     def is_valid(self) -> bool:
         """Check if config has minimum required values."""
         # Either MCP script or direct credentials
-        has_mcp = bool(self.mcp_start_script and os.path.exists(
-            os.path.expanduser(self.mcp_start_script)
-        ))
+        has_mcp = bool(
+            self.mcp_start_script
+            and os.path.exists(os.path.expanduser(self.mcp_start_script))
+        )
         has_direct = bool(self.host and self.email and self.api_token)
         return has_mcp or has_direct
 
@@ -161,7 +163,9 @@ class JiraProjectState:
     meta_issue_key: str = ""
     total_issues: int = 0
     created_at: str = ""
-    issue_mapping: dict[str, str] = field(default_factory=dict)  # subtask_id -> issue_key
+    issue_mapping: dict[str, str] = field(
+        default_factory=dict
+    )  # subtask_id -> issue_key
 
     def to_dict(self) -> dict:
         return {
@@ -245,7 +249,9 @@ def get_priority_for_phase(phase_num: int, total_phases: int) -> str:
         return "Low"
 
 
-def format_subtask_description(subtask: dict, phase: dict = None, creator_email: str = None) -> str:
+def format_subtask_description(
+    subtask: dict, phase: dict = None, creator_email: str = None
+) -> str:
     """
     Format a subtask as a JIRA issue description.
 
@@ -304,7 +310,9 @@ def format_subtask_description(subtask: dict, phase: dict = None, creator_email:
     lines.append("\n----")
     if creator_email:
         # Extract username from email for display
-        display_name = creator_email.split("@")[0] if "@" in creator_email else creator_email
+        display_name = (
+            creator_email.split("@")[0] if "@" in creator_email else creator_email
+        )
         lines.append(f"_Created by {display_name}_")
     else:
         # Fallback to checking env

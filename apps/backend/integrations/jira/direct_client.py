@@ -26,13 +26,16 @@ logger = logging.getLogger(__name__)
 @dataclass
 class JiraCredentials:
     """JIRA API credentials."""
+
     host: str
     email: str
     api_token: str
     default_project: str = ""
 
     @classmethod
-    def from_mcp_settings(cls, server_name: str = "jira-mcp") -> Optional["JiraCredentials"]:
+    def from_mcp_settings(
+        cls, server_name: str = "jira-mcp"
+    ) -> Optional["JiraCredentials"]:
         """Load credentials from Claude Code MCP settings."""
         settings_path = os.path.expanduser("~/.claude/settings.json")
 
@@ -106,10 +109,16 @@ class DirectJiraClient:
         Args:
             credentials: JIRA credentials (auto-loaded from MCP settings if not provided)
         """
-        self.credentials = credentials or JiraCredentials.from_mcp_settings() or JiraCredentials.from_env()
+        self.credentials = (
+            credentials
+            or JiraCredentials.from_mcp_settings()
+            or JiraCredentials.from_env()
+        )
 
         if not self.credentials:
-            raise ValueError("No JIRA credentials found. Check MCP settings or environment variables.")
+            raise ValueError(
+                "No JIRA credentials found. Check MCP settings or environment variables."
+            )
 
         self._http: httpx.AsyncClient | None = None
 
@@ -162,7 +171,9 @@ class DirectJiraClient:
 
         if response.status_code >= 400:
             error_text = response.text
-            raise Exception(f"JIRA API error {response.status_code}: {error_text[:200]}")
+            raise Exception(
+                f"JIRA API error {response.status_code}: {error_text[:200]}"
+            )
 
         if response.status_code == 204:
             return None
@@ -229,9 +240,9 @@ class DirectJiraClient:
                 "content": [
                     {
                         "type": "paragraph",
-                        "content": [{"type": "text", "text": description}]
+                        "content": [{"type": "text", "text": description}],
                     }
-                ]
+                ],
             }
 
         if labels:
@@ -262,16 +273,18 @@ class DirectJiraClient:
                 "content": [
                     {
                         "type": "paragraph",
-                        "content": [{"type": "text", "text": description}]
+                        "content": [{"type": "text", "text": description}],
                     }
-                ]
+                ],
             }
         if labels is not None:
             fields["labels"] = labels
         if priority:
             fields["priority"] = {"name": priority}
 
-        return await self._request("PUT", f"/issue/{issue_key}", json_data={"fields": fields})
+        return await self._request(
+            "PUT", f"/issue/{issue_key}", json_data={"fields": fields}
+        )
 
     async def get_transitions(self, issue_key: str) -> list[dict[str, Any]]:
         """Get available transitions for an issue."""
@@ -292,12 +305,14 @@ class DirectJiraClient:
 
         if not transition_id:
             available = [t.get("name") for t in transitions]
-            raise ValueError(f"Transition '{transition_name}' not found. Available: {available}")
+            raise ValueError(
+                f"Transition '{transition_name}' not found. Available: {available}"
+            )
 
         await self._request(
             "POST",
             f"/issue/{issue_key}/transitions",
-            json_data={"transition": {"id": transition_id}}
+            json_data={"transition": {"id": transition_id}},
         )
 
     async def add_comment(self, issue_key: str, body: str) -> dict[str, Any]:
@@ -312,11 +327,11 @@ class DirectJiraClient:
                     "content": [
                         {
                             "type": "paragraph",
-                            "content": [{"type": "text", "text": body}]
+                            "content": [{"type": "text", "text": body}],
                         }
-                    ]
+                    ],
                 }
-            }
+            },
         )
 
     # ==================== Context Manager ====================

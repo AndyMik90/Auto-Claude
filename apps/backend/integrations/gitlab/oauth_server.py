@@ -68,7 +68,7 @@ class OAuthCallbackServer:
                 </body>
                 </html>
                 """,
-                content_type="text/html"
+                content_type="text/html",
             )
 
         if not code or not state:
@@ -85,7 +85,7 @@ class OAuthCallbackServer:
                 </body>
                 </html>
                 """,
-                content_type="text/html"
+                content_type="text/html",
             )
 
         try:
@@ -108,7 +108,7 @@ class OAuthCallbackServer:
                     </body>
                     </html>
                     """,
-                    content_type="text/html"
+                    content_type="text/html",
                 )
             else:
                 self._error = "Failed to exchange code for token"
@@ -123,7 +123,7 @@ class OAuthCallbackServer:
                     </body>
                     </html>
                     """,
-                    content_type="text/html"
+                    content_type="text/html",
                 )
         except Exception as e:
             self._error = str(e)
@@ -138,7 +138,7 @@ class OAuthCallbackServer:
                 </body>
                 </html>
                 """,
-                content_type="text/html"
+                content_type="text/html",
             )
         finally:
             self._event.set()

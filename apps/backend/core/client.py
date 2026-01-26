@@ -551,10 +551,12 @@ def load_vault_context() -> dict[str, Any] | None:
                 # Truncate to avoid bloating context
                 if len(content) > 2000:
                     content = content[:2000] + "\n...(truncated)"
-                learnings.append({
-                    "path": str(learning_file.relative_to(expanded)),
-                    "content": content,
-                })
+                learnings.append(
+                    {
+                        "path": str(learning_file.relative_to(expanded)),
+                        "content": content,
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to read learning {learning_file}: {e}")
 
@@ -586,7 +588,9 @@ def format_vault_context_for_prompt(vault_context: dict[str, Any]) -> str:
     learnings = vault_context.get("recent_learnings", [])
     if learnings:
         sections.append("## Recent Learnings from Vault\n")
-        sections.append("These are recent discoveries from previous sessions. Use them to avoid repeating mistakes.\n")
+        sections.append(
+            "These are recent discoveries from previous sessions. Use them to avoid repeating mistakes.\n"
+        )
         for learning in learnings:
             sections.append(f"### {learning['path']}\n")
             sections.append(learning["content"])

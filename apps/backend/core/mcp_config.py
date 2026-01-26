@@ -48,7 +48,9 @@ def build_jira_mcp_config() -> dict | None:
     }
 
     # Per-project override takes precedence over global default
-    project_key = os.environ.get("JIRA_PROJECT_KEY") or os.environ.get("JIRA_DEFAULT_PROJECT")
+    project_key = os.environ.get("JIRA_PROJECT_KEY") or os.environ.get(
+        "JIRA_DEFAULT_PROJECT"
+    )
     if project_key:
         env["JIRA_DEFAULT_PROJECT"] = project_key
 

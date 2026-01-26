@@ -30,9 +30,7 @@ class MCPServerConfig:
 
     @classmethod
     def from_claude_settings(
-        cls,
-        server_name: str,
-        settings_path: str = None
+        cls, server_name: str, settings_path: str = None
     ) -> Optional["MCPServerConfig"]:
         """
         Load MCP server config from Claude Code settings.json.
@@ -113,20 +111,18 @@ class MCPClient:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
-            cwd=self.config.working_dir
+            cwd=self.config.working_dir,
         )
 
         # Initialize MCP connection per protocol spec
-        init_result = await self._send_request("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "tools": {}
+        init_result = await self._send_request(
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "clientInfo": {"name": "auto-claude-mcp-bridge", "version": "1.0.0"},
             },
-            "clientInfo": {
-                "name": "auto-claude-mcp-bridge",
-                "version": "1.0.0"
-            }
-        })
+        )
 
         logger.debug(f"MCP initialize result: {init_result}")
 
@@ -173,10 +169,9 @@ class MCPClient:
         if arguments is None:
             arguments = {}
 
-        result = await self._send_request("tools/call", {
-            "name": name,
-            "arguments": arguments
-        })
+        result = await self._send_request(
+            "tools/call", {"name": name, "arguments": arguments}
+        )
 
         # Parse content from MCP response
         content = result.get("content", [])
@@ -192,9 +187,7 @@ class MCPClient:
         return result
 
     async def _send_request(
-        self,
-        method: str,
-        params: dict[str, Any]
+        self, method: str, params: dict[str, Any]
     ) -> dict[str, Any]:
         """Send a JSON-RPC request and wait for response."""
         if not self.process or not self.process.stdin or not self.process.stdout:
@@ -206,7 +199,7 @@ class MCPClient:
                 "jsonrpc": "2.0",
                 "id": self._request_id,
                 "method": method,
-                "params": params
+                "params": params,
             }
 
             request_line = json.dumps(request) + "\n"
@@ -216,7 +209,9 @@ class MCPClient:
             # Read response line
             response_line = await self.process.stdout.readline()
             if not response_line:
-                raise MCPError({"code": -1, "message": "Empty response from MCP server"})
+                raise MCPError(
+                    {"code": -1, "message": "Empty response from MCP server"}
+                )
 
             try:
                 response = json.loads(response_line.decode())
@@ -228,20 +223,12 @@ class MCPClient:
 
             return response.get("result", {})
 
-    async def _send_notification(
-        self,
-        method: str,
-        params: dict[str, Any]
-    ) -> None:
+    async def _send_notification(self, method: str, params: dict[str, Any]) -> None:
         """Send a JSON-RPC notification (no response expected)."""
         if not self.process or not self.process.stdin:
             return
 
-        notification = {
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params
-        }
+        notification = {"jsonrpc": "2.0", "method": method, "params": params}
 
         notification_line = json.dumps(notification) + "\n"
         self.process.stdin.write(notification_line.encode())

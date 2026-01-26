@@ -79,7 +79,9 @@ class JiraManager:
                     "JIRA_EMAIL": self.config.email,
                     "JIRA_API_TOKEN": self.config.api_token,
                     "JIRA_DEFAULT_PROJECT": self.config.default_project,
-                } if self.config.host else {}
+                }
+                if self.config.host
+                else {},
             )
             self._mcp_client = MCPClient(mcp_config)
             await self._mcp_client.connect()
@@ -117,9 +119,7 @@ class JiraManager:
         self.state.save(self.spec_dir)
 
     async def search_issues(
-        self,
-        jql: str,
-        max_results: int = 50
+        self, jql: str, max_results: int = 50
     ) -> list[dict[str, Any]]:
         """
         Search for JIRA issues using JQL.
@@ -135,10 +135,9 @@ class JiraManager:
             return []
 
         client = await self._get_mcp_client()
-        result = await client.call_tool("jira_search_issues", {
-            "jql": jql,
-            "maxResults": max_results
-        })
+        result = await client.call_tool(
+            "jira_search_issues", {"jql": jql, "maxResults": max_results}
+        )
 
         return result.get("issues", [])
 
@@ -148,9 +147,7 @@ class JiraManager:
             return None
 
         client = await self._get_mcp_client()
-        return await client.call_tool("jira_get_issue", {
-            "issueKey": issue_key
-        })
+        return await client.call_tool("jira_get_issue", {"issueKey": issue_key})
 
     async def create_issue(
         self,
@@ -210,34 +207,26 @@ class JiraManager:
         return await client.call_tool("jira_update_issue", params)
 
     async def transition_issue(
-        self,
-        issue_key: str,
-        status: str
+        self, issue_key: str, status: str
     ) -> dict[str, Any] | None:
         """Transition an issue to a new status."""
         if not self.is_enabled:
             return None
 
         client = await self._get_mcp_client()
-        return await client.call_tool("jira_transition_issue", {
-            "issueKey": issue_key,
-            "transition": status
-        })
+        return await client.call_tool(
+            "jira_transition_issue", {"issueKey": issue_key, "transition": status}
+        )
 
-    async def add_comment(
-        self,
-        issue_key: str,
-        comment: str
-    ) -> dict[str, Any] | None:
+    async def add_comment(self, issue_key: str, comment: str) -> dict[str, Any] | None:
         """Add a comment to an issue."""
         if not self.is_enabled:
             return None
 
         client = await self._get_mcp_client()
-        return await client.call_tool("jira_add_comment", {
-            "issueKey": issue_key,
-            "comment": comment
-        })
+        return await client.call_tool(
+            "jira_add_comment", {"issueKey": issue_key, "comment": comment}
+        )
 
     def initialize_project(self, project_key: str, project_name: str) -> bool:
         """
@@ -297,13 +286,15 @@ class JiraManager:
             phase_name = phase.get("name", f"Phase {phase_num}")
 
             for subtask in phase.get("subtasks", []):
-                subtasks.append({
-                    **subtask,
-                    "phase_num": phase_num,
-                    "phase_name": phase_name,
-                    "total_phases": total_phases,
-                    "phase_depends_on": phase.get("depends_on", []),
-                })
+                subtasks.append(
+                    {
+                        **subtask,
+                        "phase_num": phase_num,
+                        "phase_name": phase_name,
+                        "total_phases": total_phases,
+                        "phase_depends_on": phase.get("depends_on", []),
+                    }
+                )
 
         return subtasks
 
@@ -315,8 +306,7 @@ class JiraManager:
         }
 
         priority = get_priority_for_phase(
-            subtask.get("phase_num", 1),
-            subtask.get("total_phases", 1)
+            subtask.get("phase_num", 1), subtask.get("total_phases", 1)
         )
 
         # Build labels - use creator email instead of "auto-claude"
@@ -331,7 +321,9 @@ class JiraManager:
 
         return {
             "summary": f"[{subtask.get('id', 'subtask')}] {subtask.get('description', 'Implement subtask')[:100]}",
-            "description": format_subtask_description(subtask, phase, self.config.email),
+            "description": format_subtask_description(
+                subtask, phase, self.config.email
+            ),
             "priority": priority,
             "labels": labels,
             "issueType": "Task",

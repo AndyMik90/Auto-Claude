@@ -343,12 +343,14 @@ class GitLabManager:
             phase_name = phase.get("name", f"Phase {phase_num}")
 
             for subtask in phase.get("subtasks", []):
-                subtasks.append({
-                    **subtask,
-                    "phase_num": phase_num,
-                    "phase_name": phase_name,
-                    "total_phases": total_phases,
-                })
+                subtasks.append(
+                    {
+                        **subtask,
+                        "phase_num": phase_num,
+                        "phase_name": phase_name,
+                        "total_phases": total_phases,
+                    }
+                )
 
         return subtasks
 
@@ -360,19 +362,24 @@ class GitLabManager:
         }
 
         weight = get_weight_for_phase(
-            subtask.get("phase_num", 1),
-            subtask.get("total_phases", 1)
+            subtask.get("phase_num", 1), subtask.get("total_phases", 1)
         )
 
         # Get creator info from config or environment
-        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
-        username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+        email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get(
+            "GITLAB_USER_EMAIL", ""
+        )
+        username = os.environ.get("GITLAB_USER", "") or os.environ.get(
+            "GITLAB_USERNAME", ""
+        )
 
         labels = get_labels_for_subtask(subtask, email=email, username=username)
 
         return {
             "title": f"[{subtask.get('id', 'subtask')}] {subtask.get('description', 'Implement subtask')[:100]}",
-            "description": format_issue_description(subtask, phase, creator_email=email, creator_username=username),
+            "description": format_issue_description(
+                subtask, phase, creator_email=email, creator_username=username
+            ),
             "weight": weight,
             "labels": labels,
         }
@@ -531,8 +538,12 @@ def prepare_planner_gitlab_instructions(spec_dir: Path) -> str:
     config = GitLabConfig.from_file() or GitLabConfig.from_env()
 
     # Get creator label from email/username
-    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
-    username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get(
+        "GITLAB_USER_EMAIL", ""
+    )
+    username = os.environ.get("GITLAB_USER", "") or os.environ.get(
+        "GITLAB_USERNAME", ""
+    )
     creator_label = get_creator_label(email, username) or "created-by-user"
 
     return f"""
@@ -596,8 +607,12 @@ def prepare_coder_gitlab_instructions(spec_dir: Path, subtask_id: str) -> str:
     project_url = f"{config.url}/{manager.state.project_path}"
 
     # Get creator label
-    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get("GITLAB_USER_EMAIL", "")
-    username = os.environ.get("GITLAB_USER", "") or os.environ.get("GITLAB_USERNAME", "")
+    email = os.environ.get("GITLAB_EMAIL", "") or os.environ.get(
+        "GITLAB_USER_EMAIL", ""
+    )
+    username = os.environ.get("GITLAB_USER", "") or os.environ.get(
+        "GITLAB_USERNAME", ""
+    )
     creator_label = get_creator_label(email, username)
     label_text = f"Labels: {creator_label}" if creator_label else ""
 

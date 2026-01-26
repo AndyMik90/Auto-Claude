@@ -138,7 +138,9 @@ class GitLabClient:
                     new_token = await self._oauth.refresh_token(self.user_id)
                     if new_token:
                         self._token = new_token
-                        self._http.headers["Authorization"] = f"Bearer {new_token.access_token}"
+                        self._http.headers["Authorization"] = (
+                            f"Bearer {new_token.access_token}"
+                        )
                         response = await self._http.request(
                             method=method,
                             url=path,
@@ -294,7 +296,9 @@ class GitLabClient:
         if weight is not None:
             data["weight"] = weight
 
-        return await self._request("PUT", f"/projects/{pid}/issues/{issue_iid}", json=data)
+        return await self._request(
+            "PUT", f"/projects/{pid}/issues/{issue_iid}", json=data
+        )
 
     async def close_issue(
         self,
@@ -302,7 +306,9 @@ class GitLabClient:
         project_id: str = None,
     ) -> dict[str, Any]:
         """Close an issue."""
-        return await self.update_issue(issue_iid, state_event="close", project_id=project_id)
+        return await self.update_issue(
+            issue_iid, state_event="close", project_id=project_id
+        )
 
     async def reopen_issue(
         self,
@@ -310,7 +316,9 @@ class GitLabClient:
         project_id: str = None,
     ) -> dict[str, Any]:
         """Reopen an issue."""
-        return await self.update_issue(issue_iid, state_event="reopen", project_id=project_id)
+        return await self.update_issue(
+            issue_iid, state_event="reopen", project_id=project_id
+        )
 
     async def add_issue_note(
         self,
@@ -321,9 +329,7 @@ class GitLabClient:
         """Add a note (comment) to an issue."""
         pid = self._encode_project_id(project_id)
         return await self._request(
-            "POST",
-            f"/projects/{pid}/issues/{issue_iid}/notes",
-            json={"body": body}
+            "POST", f"/projects/{pid}/issues/{issue_iid}/notes", json={"body": body}
         )
 
     async def add_issue_labels(
@@ -337,7 +343,9 @@ class GitLabClient:
         issue = await self.get_issue(issue_iid, project_id)
         existing_labels = issue.get("labels", [])
         all_labels = list(set(existing_labels + labels))
-        return await self.update_issue(issue_iid, labels=all_labels, project_id=project_id)
+        return await self.update_issue(
+            issue_iid, labels=all_labels, project_id=project_id
+        )
 
     # ==================== Merge Requests ====================
 
@@ -360,7 +368,9 @@ class GitLabClient:
         if target_branch:
             params["target_branch"] = target_branch
 
-        return await self._request("GET", f"/projects/{pid}/merge_requests", params=params)
+        return await self._request(
+            "GET", f"/projects/{pid}/merge_requests", params=params
+        )
 
     async def get_merge_request(
         self,
@@ -431,7 +441,9 @@ class GitLabClient:
         if state_event:
             data["state_event"] = state_event
 
-        return await self._request("PUT", f"/projects/{pid}/merge_requests/{mr_iid}", json=data)
+        return await self._request(
+            "PUT", f"/projects/{pid}/merge_requests/{mr_iid}", json=data
+        )
 
     async def merge_merge_request(
         self,
@@ -447,7 +459,9 @@ class GitLabClient:
         if merge_commit_message:
             data["merge_commit_message"] = merge_commit_message
 
-        return await self._request("PUT", f"/projects/{pid}/merge_requests/{mr_iid}/merge", json=data)
+        return await self._request(
+            "PUT", f"/projects/{pid}/merge_requests/{mr_iid}/merge", json=data
+        )
 
     async def add_mr_note(
         self,
@@ -460,7 +474,7 @@ class GitLabClient:
         return await self._request(
             "POST",
             f"/projects/{pid}/merge_requests/{mr_iid}/notes",
-            json={"body": body}
+            json={"body": body},
         )
 
     # ==================== Branches ====================
@@ -475,7 +489,9 @@ class GitLabClient:
         params = {}
         if search:
             params["search"] = search
-        return await self._request("GET", f"/projects/{pid}/repository/branches", params=params)
+        return await self._request(
+            "GET", f"/projects/{pid}/repository/branches", params=params
+        )
 
     async def get_branch(
         self,
@@ -485,7 +501,9 @@ class GitLabClient:
         """Get a branch."""
         pid = self._encode_project_id(project_id)
         branch = urllib.parse.quote(branch_name, safe="")
-        return await self._request("GET", f"/projects/{pid}/repository/branches/{branch}")
+        return await self._request(
+            "GET", f"/projects/{pid}/repository/branches/{branch}"
+        )
 
     async def create_branch(
         self,
@@ -501,7 +519,7 @@ class GitLabClient:
             json={
                 "branch": branch_name,
                 "ref": ref or self.config.default_branch,
-            }
+            },
         )
 
     async def delete_branch(
@@ -540,7 +558,7 @@ class GitLabClient:
                 "name": name,
                 "color": color,
                 "description": description,
-            }
+            },
         )
 
     # ==================== Pipelines ====================
