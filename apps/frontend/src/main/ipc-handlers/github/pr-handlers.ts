@@ -19,7 +19,7 @@ import {
   DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
 import type { AuthFailureInfo } from "../../../shared/types/terminal";
-import { getGitHubConfig, githubFetch } from "./utils";
+import { getGitHubConfig, githubFetch, normalizeRepoReference } from "./utils";
 import { readSettingsFile } from "../../settings-utils";
 import { getAugmentedEnv } from "../../env-utils";
 import { getMemoryService, getDefaultDbPath } from "../../memory-service";
@@ -1245,11 +1245,14 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           return [];
         }
 
+        // Normalize repo name for consistent display
+        const repoFullName = normalizeRepoReference(config.repo) || config.repo;
+
         try {
           // Use pagination: per_page=100 (GitHub max), page=1,2,3...
           const prs = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls?state=open&per_page=100&page=${page}`
+            `/repos/${repoFullName}/pulls?state=open&per_page=100&page=${page}`
           )) as Array<{
             number: number;
             title: string;
@@ -1267,7 +1270,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             html_url: string;
           }>;
 
-          debugLog("Fetched PRs", { count: prs.length, page, samplePr: prs[0] });
+          debugLog("Fetched PRs", { count: prs.length, page, repoFullName, samplePr: prs[0] });
           return prs.map((pr) => ({
             number: pr.number,
             title: pr.title,
@@ -1284,7 +1287,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
             htmlUrl: pr.html_url,
-            repoFullName: config.repo,
+            repoFullName,
           }));
         } catch (error) {
           debugLog("Failed to fetch PRs", {
@@ -1306,10 +1309,13 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         const config = getGitHubConfig(project);
         if (!config) return null;
 
+        // Normalize repo name for consistent display
+        const repoFullName = normalizeRepoReference(config.repo) || config.repo;
+
         try {
           const pr = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}`
+            `/repos/${repoFullName}/pulls/${prNumber}`
           )) as {
             number: number;
             title: string;
@@ -1329,7 +1335,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           const files = (await githubFetch(
             config.token,
-            `/repos/${config.repo}/pulls/${prNumber}/files`
+            `/repos/${repoFullName}/pulls/${prNumber}/files`
           )) as Array<{
             filename: string;
             additions: number;
@@ -1358,7 +1364,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             createdAt: pr.created_at,
             updatedAt: pr.updated_at,
             htmlUrl: pr.html_url,
-            repoFullName: config.repo,
+            repoFullName,
           };
         } catch {
           return null;
