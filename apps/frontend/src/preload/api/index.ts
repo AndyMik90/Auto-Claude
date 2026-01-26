@@ -73,7 +73,7 @@ export {
   createClaudeCodeAPI,
   createMcpAPI,
   createPromptAPI,
-  createScreenshotAPI
+  createScreenshotAPI,
   createQueueAPI
 };
 
@@ -94,6 +94,6 @@ export type {
   ClaudeCodeAPI,
   McpAPI,
   PromptAPI,
-  ScreenshotAPI
+  ScreenshotAPI,
   QueueAPI
 };
