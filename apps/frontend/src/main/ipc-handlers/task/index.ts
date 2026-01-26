@@ -26,7 +26,7 @@ export function registerTaskHandlers(
   getMainWindow: () => BrowserWindow | null
 ): void {
   // Register CRUD handlers (create, read, update, delete)
-  registerTaskCRUDHandlers(agentManager);
+  registerTaskCRUDHandlers(agentManager, getMainWindow);
 
   // Register execution handlers (start, stop, review, status management, recovery)
   registerTaskExecutionHandlers(agentManager, getMainWindow);

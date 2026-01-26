@@ -115,7 +115,11 @@ export const taskMachine = createMachine(
       processExitedFailed: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode !== 0,
       processExitedPlanReview: ({ event }) =>
-        event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.requireReviewBeforeCoding === true,
+        event.type === 'PROCESS_EXITED' &&
+        event.exitCode === 0 &&
+        event.requireReviewBeforeCoding === true &&
+        // Don't go to plan review if all subtasks are done - that means build is complete
+        !(event.hasSubtasks && event.allSubtasksDone),
       processExitedSuccessAllDone: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.hasSubtasks && event.allSubtasksDone,
       processExitedSuccess: ({ event }) =>

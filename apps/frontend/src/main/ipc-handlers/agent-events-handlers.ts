@@ -31,6 +31,7 @@ import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
 import { TaskStateMachine } from "../task-state-machine";
 import { getTaskStateManager } from '../task-state-manager';
+import { isXstateEnabled } from '../task-state-utils';
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -264,8 +265,10 @@ export function registerAgenteventsHandlers(
           requireReviewBeforeCoding,
         });
 
-        const manager = getTaskStateManager(getMainWindow);
-        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
+        if (isXstateEnabled()) {
+          const manager = getTaskStateManager(getMainWindow);
+          manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
+        }
 
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
@@ -336,8 +339,10 @@ export function registerAgenteventsHandlers(
     );
 
     if (task && project) {
-      const manager = getTaskStateManager(getMainWindow);
-      manager.handleExecutionProgress(task, project, progress);
+      if (isXstateEnabled()) {
+        const manager = getTaskStateManager(getMainWindow);
+        manager.handleExecutionProgress(task, project, progress);
+      }
 
       const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
       if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {

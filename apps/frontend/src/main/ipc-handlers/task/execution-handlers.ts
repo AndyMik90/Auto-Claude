@@ -17,9 +17,10 @@ import {
 } from './plan-file-utils';
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 import { TaskStateMachine } from '../../task-state-machine';
 import { getTaskStateManager } from '../../task-state-manager';
+import { isXstateEnabled } from '../../task-state-utils';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -194,8 +195,10 @@ export function registerTaskExecutionHandlers(
         task.reviewReason !== 'completed';
 
       if (shouldResume || task.status === 'error') {
-        const taskStateManager = getTaskStateManager(getMainWindow);
-        taskStateManager.handleUserResumed(task, project);
+        if (isXstateEnabled()) {
+          const taskStateManager = getTaskStateManager(getMainWindow);
+          taskStateManager.handleUserResumed(task, project);
+        }
       }
 
       // Start file watcher for this task
@@ -318,10 +321,9 @@ export function registerTaskExecutionHandlers(
     fileWatcher.unwatch(taskId);
 
     const { task, project } = findTaskAndProject(taskId);
-    if (task && project) {
+    if (task && project && isXstateEnabled()) {
       const manager = getTaskStateManager(getMainWindow);
       manager.handleUserStopped(task, project);
-      return;
     }
   });
 
@@ -570,21 +572,13 @@ export function registerTaskExecutionHandlers(
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
               // Get the branch name before removing the worktree
-              let branch = '';
-              let usingFallbackBranch = false;
-              try {
-                branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-                  cwd: worktreePath,
-                  encoding: 'utf-8',
-                  timeout: 30000,
-                  env: getIsolatedGitEnv()
-                }).trim();
-              } catch (branchError) {
-                // If we can't get branch name, use the default pattern
-                branch = `auto-claude/${task.specId}`;
-                usingFallbackBranch = true;
-                console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
-              }
+              // Use shared utility to validate detected branch matches expected pattern
+              // This prevents deleting wrong branch when worktree is corrupted/orphaned
+              const { branch, usingFallback: usingFallbackBranch } = detectWorktreeBranch(
+                worktreePath,
+                task.specId,
+                { timeout: 30000, logPrefix: '[TASK_UPDATE_STATUS]' }
+              );
 
               // Remove the worktree
               execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
@@ -610,7 +604,10 @@ export function registerTaskExecutionHandlers(
                   // More concerning - fallback pattern didn't match actual branch
                   console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
                 } else {
-                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`);
+                  console.warn(
+                    `[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`,
+                    branchDeleteError
+                  );
                 }
               }
 
