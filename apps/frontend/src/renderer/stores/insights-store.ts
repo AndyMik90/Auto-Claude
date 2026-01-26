@@ -443,7 +443,7 @@ export async function sendMessage(
     const firstIsFile = images[0] instanceof File;
     const allSameType = images.every(img => (img instanceof File) === firstIsFile);
     if (!allSameType) {
-      throw new Error('Mixed image types not allowed: all elements must be either File or ImageAttachment');
+      throw new Error('tasks:insights.mixedImageTypesError');
     }
 
     // Check if images are File objects using instanceof File (robust type check)
@@ -516,7 +516,7 @@ export async function switchSession(projectId: string, sessionId: string): Promi
     useInsightsStore.getState().setCurrentTool(null);
     useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
   } else {
-    throw new Error(result.error || 'Failed to switch session');
+    throw new Error(result.error || 'tasks:insights.sessionSwitchError');
   }
 }
 

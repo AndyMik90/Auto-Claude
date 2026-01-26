@@ -146,7 +146,8 @@ export class InsightsService extends EventEmitter {
       id: `msg-${Date.now()}`,
       role: 'user',
       content: message,
-      timestamp: new Date()
+      timestamp: new Date(),
+      images: imageAttachments
     };
     session.messages.push(userMessage);
     session.updatedAt = new Date();

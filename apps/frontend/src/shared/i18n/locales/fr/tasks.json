@@ -233,7 +233,8 @@
     "suggestionFeatures": "Quelles fonctionnalités puis-je ajouter ensuite ?",
     "suggestionSecurity": "Y a-t-il des préoccupations de sécurité ?",
     "sessionImageLimitError": "Limite d'images de session atteinte. Vous pouvez uniquement ajouter {{remaining}} image{{plural}} supplémentaire. Commencez une nouvelle conversation pour en ajouter plus.",
-    "sessionSwitchError": "Échec du changement de session. Veuillez réessayer."
+    "sessionSwitchError": "Échec du changement de session. Veuillez réessayer.",
+    "mixedImageTypesError": "Types d'images mixtes non autorisés : tous les éléments doivent être soit File soit ImageAttachment"
   },
   "review": {
     "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."

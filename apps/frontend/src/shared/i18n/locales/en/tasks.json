@@ -234,7 +234,8 @@
     "suggestionFeatures": "What features could I add next?",
     "suggestionSecurity": "Are there any security concerns?",
     "sessionImageLimitError": "Session image limit reached. Can only add {{remaining}} more image{{plural}}. Start a new conversation for more.",
-    "sessionSwitchError": "Failed to switch sessions. Please try again."
+    "sessionSwitchError": "Failed to switch sessions. Please try again.",
+    "mixedImageTypesError": "Mixed image types not allowed: all elements must be either File or ImageAttachment"
   },
   "review": {
     "mergeTooltip": "Merges changes from the task's worktree branch back to your base branch. AI will resolve any conflicts. You can then choose whether to keep or remove the worktree."
