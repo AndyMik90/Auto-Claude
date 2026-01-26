@@ -2329,7 +2329,9 @@ export function registerWorktreeHandlers(
                 success: true,
                 data: {
                   success: false,
-                  message: hasConflicts ? 'Merge conflicts detected' : `Merge failed: ${stderr || stdout}`,
+                  message: hasConflicts
+                    ? 'Merge conflicts detected'
+                    : `Merge failed: ${stripAnsiCodes(stderr || stdout)}`,
                   conflictFiles: hasConflicts ? [] : undefined
                 }
               });
@@ -3118,7 +3120,7 @@ export function registerWorktreeHandlers(
                 // Prefer stdout over stderr since stderr often contains debug messages
                 resolve({
                   success: false,
-                  error: stdout || stderr || 'Failed to create PR'
+                  error: stripAnsiCodes(stdout || stderr || 'Failed to create PR')
                 });
               }
             }
