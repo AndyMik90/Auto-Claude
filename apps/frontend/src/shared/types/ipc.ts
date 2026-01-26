@@ -591,6 +591,9 @@ export interface ElectronAPI {
     callback: (projectId: string, error: string) => void
   ) => () => void;
 
+  // Slack integration operations
+  testSlackWebhook: (webhookUrl: string) => Promise<IPCResult<{ success: boolean }>>;
+
   // Release operations
   getReleaseableVersions: (projectId: string) => Promise<IPCResult<ReleaseableVersion[]>>;
   runReleasePreflightCheck: (projectId: string, version: string) => Promise<IPCResult<ReleasePreflightStatus>>;

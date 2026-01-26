@@ -134,6 +134,10 @@ export function registerEnvHandlers(
     if (config.gitlabAutoSync !== undefined) {
       existingVars[GITLAB_ENV_KEYS.AUTO_SYNC] = config.gitlabAutoSync ? 'true' : 'false';
     }
+    // Slack Integration
+    if (config.slackWebhookUrl !== undefined) {
+      existingVars['SLACK_WEBHOOK_URL'] = config.slackWebhookUrl;
+    }
     // Git/Worktree Settings
     if (config.defaultBranch !== undefined) {
       existingVars['DEFAULT_BRANCH'] = config.defaultBranch;
@@ -262,6 +266,12 @@ ${envLine(existingVars, GITLAB_ENV_KEYS.PROJECT, 'group/project')}
 ${envLine(existingVars, GITLAB_ENV_KEYS.AUTO_SYNC, 'false')}
 
 # =============================================================================
+# SLACK INTEGRATION (OPTIONAL)
+# =============================================================================
+# Slack Incoming Webhook URL for build notifications
+${existingVars['SLACK_WEBHOOK_URL'] ? `SLACK_WEBHOOK_URL=${existingVars['SLACK_WEBHOOK_URL']}` : '# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...'}
+
+# =============================================================================
 # GIT/WORKTREE SETTINGS (OPTIONAL)
 # =============================================================================
 # Default base branch for worktree creation
@@ -373,6 +383,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         linearEnabled: false,
         githubEnabled: false,
         gitlabEnabled: false,
+        slackEnabled: false,
         graphitiEnabled: false,
         enableFancyUi: true,
         claudeTokenIsGlobal: false,
@@ -445,6 +456,12 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
       if (vars[GITLAB_ENV_KEYS.AUTO_SYNC]?.toLowerCase() === 'true') {
         config.gitlabAutoSync = true;
+      }
+
+      // Slack config
+      if (vars['SLACK_WEBHOOK_URL']) {
+        config.slackEnabled = true;
+        config.slackWebhookUrl = vars['SLACK_WEBHOOK_URL'];
       }
 
       // Git/Worktree config

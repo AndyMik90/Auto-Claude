@@ -5,6 +5,7 @@ Workspace Commands
 CLI commands for workspace management (merge, review, discard, list, cleanup)
 """
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -26,6 +27,7 @@ from core.workspace.git_utils import (
 from core.worktree import PushAndCreatePRResult as CreatePRResult
 from core.worktree import WorktreeManager
 from debug import debug_warning
+from integrations.slack import is_slack_enabled, slack_pr_created
 from ui import (
     Icons,
     icon,
@@ -1095,6 +1097,11 @@ def handle_create_pr_command(
 
         if pr_url:
             print(f"\n{icon(Icons.LINK)} {pr_url}")
+
+            # Send Slack notification for PR created (only for new PRs)
+            if not already_exists and is_slack_enabled():
+                pr_title = result.get("pr_title", spec_name)
+                asyncio.run(slack_pr_created(spec_name, pr_url, pr_title))
         else:
             print(f"\n{icon(Icons.INFO)} Check GitHub for the PR URL")
 

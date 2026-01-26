@@ -11,6 +11,12 @@ import os
 from pathlib import Path
 
 from core.client import create_client
+from integrations.slack import (
+    is_slack_enabled,
+    slack_build_complete,
+    slack_build_started,
+    slack_task_stuck,
+)
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -186,6 +192,10 @@ async def run_autonomous_agent(
         if linear_task and linear_task.task_id:
             print_status("Updating Linear task to In Progress...", "progress")
             await linear_task_started(spec_dir)
+
+        # Send Slack notification for build start
+        if is_slack_enabled():
+            await slack_build_started(spec_dir, spec_dir.name)
     else:
         print(f"Continuing build: {highlight(spec_dir.name)}")
         print_progress_summary(spec_dir)
@@ -500,6 +510,10 @@ async def run_autonomous_agent(
                         attempt_count=attempt_count,
                     )
                     print_status("Linear notified of stuck subtask", "info")
+
+                # Send Slack notification for stuck task
+                if is_slack_enabled():
+                    await slack_task_stuck(spec_dir, subtask_id, attempt_count)
         elif plan_validated and source_spec_dir:
             # After planning phase, sync the newly created implementation plan back to source
             if sync_spec_to_source(spec_dir, source_spec_dir):
@@ -522,6 +536,11 @@ async def run_autonomous_agent(
             if linear_task and linear_task.task_id:
                 await linear_build_complete(spec_dir)
                 print_status("Linear notified: build complete, ready for QA", "success")
+
+            # Send Slack notification for build complete
+            if is_slack_enabled():
+                completed, total = count_subtasks(spec_dir)
+                await slack_build_complete(spec_dir, spec_dir.name, completed)
 
             break
 

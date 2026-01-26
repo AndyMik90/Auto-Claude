@@ -366,6 +366,10 @@ export interface ProjectEnvConfig {
   gitlabProject?: string; // Format: group/project or numeric ID
   gitlabAutoSync?: boolean; // Auto-sync issues on project load
 
+  // Slack Integration (Webhook Notifications)
+  slackEnabled: boolean;
+  slackWebhookUrl?: string; // Slack Incoming Webhook URL
+
   // Git/Worktree Settings
   defaultBranch?: string; // Base branch for worktree creation (e.g., 'main', 'develop')
 

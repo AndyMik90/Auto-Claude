@@ -12,6 +12,11 @@ from pathlib import Path
 
 from core.client import create_client
 from debug import debug, debug_error, debug_section, debug_success, debug_warning
+from integrations.slack import (
+    is_slack_enabled,
+    slack_qa_approved,
+    slack_qa_rejected,
+)
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -292,6 +297,10 @@ async def run_qa_validation_loop(
                 await linear_qa_approved(spec_dir)
                 print("\nLinear: Task marked as QA approved, awaiting human review")
 
+            # Send Slack notification for QA approved
+            if is_slack_enabled():
+                await slack_qa_approved(spec_dir, spec_dir.name)
+
             return True
 
         elif status == "rejected":
@@ -367,6 +376,11 @@ async def run_qa_validation_loop(
             if linear_task and linear_task.task_id:
                 issues_count = len(current_issues)
                 await linear_qa_rejected(spec_dir, issues_count, qa_iteration)
+
+            # Send Slack notification for QA rejected
+            if is_slack_enabled():
+                issues_count = len(current_issues)
+                await slack_qa_rejected(spec_dir, spec_dir.name, issues_count, qa_iteration)
 
             if qa_iteration >= MAX_QA_ITERATIONS:
                 print("\n⚠️  Maximum QA iterations reached.")

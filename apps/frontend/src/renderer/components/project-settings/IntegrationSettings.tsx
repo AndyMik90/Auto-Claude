@@ -12,8 +12,10 @@ import {
   Radio,
   Github,
   RefreshCw,
-  GitBranch
+  GitBranch,
+  MessageSquare
 } from 'lucide-react';
+import { SlackIntegration } from '../settings/integrations';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -54,6 +56,10 @@ interface IntegrationSettingsProps {
   isCheckingGitHub: boolean;
   githubExpanded: boolean;
   onGitHubToggle: () => void;
+
+  // Slack state
+  slackExpanded: boolean;
+  onSlackToggle: () => void;
 }
 
 export function IntegrationSettings({
@@ -74,7 +80,9 @@ export function IntegrationSettings({
   gitHubConnectionStatus,
   isCheckingGitHub,
   githubExpanded,
-  onGitHubToggle
+  onGitHubToggle,
+  slackExpanded,
+  onSlackToggle
 }: IntegrationSettingsProps) {
   const { t } = useTranslation(['settings', 'common']);
   // Branch selection state
@@ -510,6 +518,40 @@ export function IntegrationSettings({
                 </div>
               </>
             )}
+          </div>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* Slack Integration Section */}
+      <section className="space-y-3">
+        <button
+          onClick={onSlackToggle}
+          className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-foreground/80"
+        >
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            {t('projectSections.slack.integrationTitle')}
+            {envConfig.slackEnabled && (
+              <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
+                {t('common:labels.enabled')}
+              </span>
+            )}
+          </div>
+          {slackExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+
+        {slackExpanded && (
+          <div className="pl-6 pt-2">
+            <SlackIntegration
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+            />
           </div>
         )}
       </section>
