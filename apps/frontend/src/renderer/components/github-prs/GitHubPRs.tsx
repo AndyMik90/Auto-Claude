@@ -95,10 +95,12 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
   const {
     filteredPRs,
     contributors,
+    repositories,
     filters,
     setSearchQuery,
     setContributors,
     setStatuses,
+    setRepositories,
     clearFilters,
     hasActiveFilters,
   } = usePRFiltering(prs, getReviewStateForPR);
@@ -241,10 +243,12 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
             <PRFilterBar
               filters={filters}
               contributors={contributors}
+              repositories={repositories}
               hasActiveFilters={hasActiveFilters}
               onSearchChange={setSearchQuery}
               onContributorsChange={setContributors}
               onStatusesChange={setStatuses}
+              onRepositoriesChange={setRepositories}
               onClearFilters={clearFilters}
             />
             <PRList

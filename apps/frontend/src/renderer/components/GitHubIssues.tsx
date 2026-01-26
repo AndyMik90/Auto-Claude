@@ -54,7 +54,17 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     resetInvestigationStatus,
   } = useGitHubInvestigation(selectedProject?.id);
 
-  const { searchQuery, setSearchQuery, filteredIssues, isSearchActive } = useIssueFiltering(
+  const {
+    searchQuery,
+    setSearchQuery,
+    filteredIssues,
+    isSearchActive,
+    repositories,
+    selectedRepos,
+    setSelectedRepos,
+    clearFilters,
+    hasActiveFilters,
+  } = useIssueFiltering(
     getFilteredIssues(),
     {
       onSearchStart: handleSearchStart,
@@ -154,6 +164,11 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         onSearchChange={setSearchQuery}
         onFilterChange={handleFilterChange}
         onRefresh={handleRefreshWithAutoFix}
+        repositories={repositories}
+        selectedRepos={selectedRepos}
+        onReposChange={setSelectedRepos}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
         autoFixEnabled={autoFixConfig?.enabled}
         autoFixRunning={isBatchRunning}
         autoFixProcessing={batchProgress?.totalIssues}

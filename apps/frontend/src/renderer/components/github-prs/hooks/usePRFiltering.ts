@@ -20,6 +20,7 @@ export interface PRFilterState {
   searchQuery: string;
   contributors: string[];
   statuses: PRStatusFilter[];
+  repositories: string[];
 }
 
 interface PRReviewInfo {
@@ -32,6 +33,7 @@ const DEFAULT_FILTERS: PRFilterState = {
   searchQuery: '',
   contributors: [],
   statuses: [],
+  repositories: [],
 };
 
 /**
@@ -98,6 +100,19 @@ export function usePRFiltering(
     );
   }, [prs]);
 
+  // Derive unique repositories from PRs
+  const repositories = useMemo(() => {
+    const repoSet = new Set<string>();
+    prs.forEach(pr => {
+      if (pr.repoFullName) {
+        repoSet.add(pr.repoFullName);
+      }
+    });
+    return Array.from(repoSet).sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+  }, [prs]);
+
   // Filter PRs based on current filters
   const filteredPRs = useMemo(() => {
     return prs.filter(pr => {
@@ -108,6 +123,13 @@ export function usePRFiltering(
         const matchesBody = pr.body?.toLowerCase().includes(query);
         const matchesNumber = pr.number.toString().includes(query);
         if (!matchesTitle && !matchesBody && !matchesNumber) {
+          return false;
+        }
+      }
+
+      // Repository filter (multi-select)
+      if (filters.repositories.length > 0) {
+        if (!pr.repoFullName || !filters.repositories.includes(pr.repoFullName)) {
           return false;
         }
       }
@@ -157,6 +179,10 @@ export function usePRFiltering(
     setFiltersState(prev => ({ ...prev, statuses }));
   }, []);
 
+  const setRepositories = useCallback((repositories: string[]) => {
+    setFiltersState(prev => ({ ...prev, repositories }));
+  }, []);
+
   const clearFilters = useCallback(() => {
     setFiltersState(DEFAULT_FILTERS);
   }, []);
@@ -165,17 +191,20 @@ export function usePRFiltering(
     return (
       filters.searchQuery !== '' ||
       filters.contributors.length > 0 ||
-      filters.statuses.length > 0
+      filters.statuses.length > 0 ||
+      filters.repositories.length > 0
     );
   }, [filters]);
 
   return {
     filteredPRs,
     contributors,
+    repositories,
     filters,
     setSearchQuery,
     setContributors,
     setStatuses,
+    setRepositories,
     clearFilters,
     hasActiveFilters,
   };

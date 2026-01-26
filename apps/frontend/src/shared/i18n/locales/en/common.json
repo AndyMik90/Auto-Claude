@@ -214,6 +214,7 @@
     "searchPlaceholder": "Search PRs...",
     "contributors": "Contributors",
     "contributorsSelected": "Contributors ({{count}})",
+    "repositories": "Repositories",
     "status": "Status",
     "filters": "Filters",
     "clearFilters": "Clear",

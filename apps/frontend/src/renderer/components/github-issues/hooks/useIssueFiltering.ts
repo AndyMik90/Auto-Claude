@@ -13,10 +13,33 @@ export function useIssueFiltering(
 ) {
   const { onSearchStart, onSearchClear } = options;
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+
+  // Derive unique repositories from issues
+  const repositories = useMemo(() => {
+    const repoSet = new Set<string>();
+    issues.forEach(issue => {
+      if (issue.repoFullName) {
+        repoSet.add(issue.repoFullName);
+      }
+    });
+    return Array.from(repoSet).sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+  }, [issues]);
 
   const filteredIssues = useMemo(() => {
-    return filterIssuesBySearch(issues, searchQuery);
-  }, [issues, searchQuery]);
+    let result = filterIssuesBySearch(issues, searchQuery);
+
+    // Apply repository filter
+    if (selectedRepos.length > 0) {
+      result = result.filter(issue =>
+        issue.repoFullName && selectedRepos.includes(issue.repoFullName)
+      );
+    }
+
+    return result;
+  }, [issues, searchQuery, selectedRepos]);
 
   // Notify when search becomes active or inactive
   useEffect(() => {
@@ -33,10 +56,26 @@ export function useIssueFiltering(
 
   const isSearchActive = searchQuery.length > 0;
 
+  const handleReposChange = useCallback((repos: string[]) => {
+    setSelectedRepos(repos);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedRepos([]);
+  }, []);
+
+  const hasActiveFilters = searchQuery.length > 0 || selectedRepos.length > 0;
+
   return {
     searchQuery,
     setSearchQuery: handleSearchChange,
     filteredIssues,
-    isSearchActive
+    isSearchActive,
+    repositories,
+    selectedRepos,
+    setSelectedRepos: handleReposChange,
+    clearFilters,
+    hasActiveFilters,
   };
 }

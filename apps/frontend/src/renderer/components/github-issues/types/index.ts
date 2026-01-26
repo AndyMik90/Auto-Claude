@@ -57,6 +57,12 @@ export interface IssueListHeaderProps {
   onSearchChange: (query: string) => void;
   onFilterChange: (state: FilterState) => void;
   onRefresh: () => void;
+  // Repository filter
+  repositories?: string[];
+  selectedRepos?: string[];
+  onReposChange?: (repos: string[]) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
   // Auto-fix toggle (reactive - for new issues)
   autoFixEnabled?: boolean;
   autoFixRunning?: boolean;
