@@ -2166,16 +2166,19 @@ export function registerWorktreeHandlers(
                   if (worktreePath && existsSync(worktreePath)) {
                     execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
                       cwd: project.path,
-                      encoding: 'utf-8'
+                      encoding: 'utf-8',
+                      env: getIsolatedGitEnv()
                     });
                     debug('Worktree cleaned up after full merge:', worktreePath);
 
                     // Also delete the task branch since we merged successfully
+                    // Uses hardcoded pattern (safe) - no dynamic detection needed here
                     const taskBranch = `auto-claude/${task.specId}`;
                     try {
                       execFileSync(getToolPath('git'), ['branch', '-D', taskBranch], {
                         cwd: project.path,
-                        encoding: 'utf-8'
+                        encoding: 'utf-8',
+                        env: getIsolatedGitEnv()
                       });
                       debug('Task branch deleted:', taskBranch);
                     } catch {
@@ -2585,26 +2588,66 @@ export function registerWorktreeHandlers(
         }
 
         try {
-          // Get the branch name before removing
-          const branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          // Determine which branch to delete
+          // SECURITY FIX (issue #1479): If the worktree is corrupted, git rev-parse walks up
+          // to the main project and returns its current branch instead. We must validate
+          // the detected branch matches our expected pattern before deleting.
+          const expectedBranch = `auto-claude/${task.specId}`;
+          let branchToDelete = expectedBranch;
+
+          try {
+            const detectedBranch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv()
+            }).trim();
+
+            // Validate the detected branch matches expected pattern
+            // Why auto-claude/ prefix is safe: All task branches use this pattern, controlled by Auto-Claude.
+            // Non-matching branches (main, develop, feature/xxx) indicate corrupted worktree detection.
+            if (detectedBranch === expectedBranch) {
+              branchToDelete = detectedBranch;
+            } else if (detectedBranch.startsWith('auto-claude/') && detectedBranch.length > 'auto-claude/'.length) {
+              // Allow other auto-claude branches with valid specId (edge case: specId was renamed)
+              console.warn(`[TASK_WORKTREE_DISCARD] Detected branch '${detectedBranch}' differs from expected '${expectedBranch}', but matches auto-claude pattern. Using detected branch.`);
+              branchToDelete = detectedBranch;
+            } else {
+              // Detected branch doesn't match - likely corrupted worktree returning main project's branch
+              console.warn(`[TASK_WORKTREE_DISCARD] Detected branch '${detectedBranch}' doesn't match expected pattern '${expectedBranch}'. Using expected branch to avoid deleting wrong branch.`);
+              branchToDelete = expectedBranch;
+            }
+          } catch (branchError) {
+            // Could not detect branch - use expected pattern as fallback
+            console.warn(`[TASK_WORKTREE_DISCARD] Could not detect branch name, using expected pattern: ${expectedBranch}`, branchError);
+            branchToDelete = expectedBranch;
+          }
 
           // Remove the worktree
-          execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
-            cwd: project.path,
-            encoding: 'utf-8'
-          });
-
-          // Delete the branch
           try {
-            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
+            execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
               cwd: project.path,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv()
             });
-          } catch {
-            // Branch might already be deleted or not exist
+          } catch (worktreeError) {
+            // Log but continue - worktree may already be removed or in inconsistent state
+            console.warn(`[TASK_WORKTREE_DISCARD] Failed to remove worktree (may already be removed): ${worktreeError instanceof Error ? worktreeError.message : 'Unknown error'}`);
+          }
+
+          // Delete the branch (only if it matches valid pattern)
+          if (GIT_BRANCH_REGEX.test(branchToDelete)) {
+            try {
+              execFileSync(getToolPath('git'), ['branch', '-D', branchToDelete], {
+                cwd: project.path,
+                encoding: 'utf-8',
+                env: getIsolatedGitEnv()
+              });
+            } catch (branchDeleteError) {
+              // Branch might already be deleted, not exist, or be checked out elsewhere
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch '${branchToDelete}': ${branchDeleteError instanceof Error ? branchDeleteError.message : 'Unknown error'}`);
+            }
+          } else {
+            console.warn(`[TASK_WORKTREE_DISCARD] Skipping branch deletion - invalid branch name: ${branchToDelete}`);
           }
 
           // Only send status change to backlog if not skipped
