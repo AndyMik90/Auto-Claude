@@ -420,10 +420,10 @@ export function registerVaultGetContext(): void {
           }
         }
 
-        // Read recent learnings
+        // Read recent learnings (using try/catch to avoid TOCTOU race condition)
         const recentLearnings: VaultLearning[] = [];
         const learningsDir = path.join(expandedPath, 'memory', 'learnings');
-        if (fs.existsSync(learningsDir)) {
+        try {
           const learningFiles = fs.readdirSync(learningsDir)
             .filter(f => f.endsWith('.md'))
             .slice(0, 10); // Limit to 10 most recent
@@ -457,6 +457,8 @@ export function registerVaultGetContext(): void {
           recentLearnings.sort((a, b) =>
             new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()
           );
+        } catch {
+          // Directory doesn't exist or can't be read - that's fine, learnings are optional
         }
 
         return {
@@ -512,19 +514,19 @@ export function registerVaultSyncLearning(): void {
         const filePath = path.join(learningsDir, filename);
         const relativePath = path.join('memory', 'learnings', filename);
 
-        // Check if file exists (append mode)
+        // Try to read existing file (avoids TOCTOU race condition)
         let appended = false;
-        if (fs.existsSync(filePath)) {
-          // Append with separator
+        const timestamp = new Date().toISOString();
+        try {
+          // Try to read existing content
           const existingContent = fs.readFileSync(filePath, 'utf-8');
+          // File exists - append with separator
           const separator = '\n\n---\n\n';
-          const timestamp = new Date().toISOString();
           const newContent = `${existingContent}${separator}## Update (${timestamp})\n\n${content}`;
           fs.writeFileSync(filePath, newContent, 'utf-8');
           appended = true;
-        } else {
-          // Create new file
-          const timestamp = new Date().toISOString();
+        } catch (readError) {
+          // File doesn't exist or can't be read - create new file
           const newContent = `# ${topic}\n\n*Created: ${timestamp}*\n\n${content}`;
           fs.writeFileSync(filePath, newContent, 'utf-8');
         }

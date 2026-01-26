@@ -243,8 +243,11 @@ export function registerCreateIssuesFromPlan(): void {
           issue_mapping: {},
         };
 
-        if (fs.existsSync(stateFile)) {
+        // Try to load existing state (avoids TOCTOU race condition)
+        try {
           state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+        } catch {
+          // File doesn't exist or can't be parsed - use default state
         }
 
         const baseUrl = host.replace(/\/$/, '');
@@ -475,14 +478,18 @@ export function registerCreateTaskIssue(): void {
         const credentials = Buffer.from(`${email}:${token}`).toString('base64');
         const creatorLabel = getCreatorLabel(email);
 
-        // Check if parent issue already exists
+        // Try to load existing state (avoids TOCTOU race condition)
         const stateFile = path.join(specDir, '.jira_task.json');
-        let state: TaskIssueState;
+        let state: TaskIssueState | null = null;
 
-        if (fs.existsSync(stateFile)) {
+        try {
           state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
-          debugLog('Found existing JIRA task state', { parentKey: state.parentIssueKey });
-        } else {
+          debugLog('Found existing JIRA task state', { parentKey: state?.parentIssueKey });
+        } catch {
+          // File doesn't exist - will create parent issue below
+        }
+
+        if (!state) {
           // Create parent Story issue
           const parentLabels: string[] = [];
           if (creatorLabel) parentLabels.push(creatorLabel);
@@ -509,10 +516,16 @@ export function registerCreateTaskIssue(): void {
           debugLog('Created parent issue', { issueKey: parentIssue.key });
         }
 
-        // Read implementation plan to create sub-tasks
+        // Try to read implementation plan to create sub-tasks (avoids TOCTOU)
         const planFile = path.join(specDir, 'implementation_plan.json');
-        if (fs.existsSync(planFile)) {
-          const plan: ImplementationPlan = JSON.parse(fs.readFileSync(planFile, 'utf-8'));
+        let plan: ImplementationPlan | null = null;
+        try {
+          plan = JSON.parse(fs.readFileSync(planFile, 'utf-8'));
+        } catch {
+          // Plan file doesn't exist - no subtasks to create
+        }
+
+        if (plan) {
 
           // Create sub-tasks for each subtask in the plan
           for (const phase of plan.phases) {
