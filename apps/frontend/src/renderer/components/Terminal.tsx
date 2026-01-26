@@ -54,6 +54,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   // This fixes a race condition where IPC calls to set worktree config happen before
   // the terminal exists in main process, causing the config to not be persisted
   const pendingWorktreeConfigRef = useRef<TerminalWorktreeConfig | null>(null);
+  // Track last sent PTY dimensions to prevent redundant resize calls
+  // This ensures terminal.resize() stays in sync with PTY dimensions
+  const lastPtyDimensionsRef = useRef<{ cols: number; rows: number } | null>(null);
 
   // Worktree dialog state
   const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
@@ -128,9 +131,28 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     terminalId: id,
     onCommandEnter: handleCommandEnter,
     onResize: (cols, rows) => {
-      if (isCreatedRef.current) {
-        window.electronAPI.resizeTerminal(id, cols, rows);
+      // PTY dimension sync validation:
+      // 1. Only resize if PTY is created
+      // 2. Validate dimensions are within acceptable range
+      // 3. Skip if dimensions haven't changed (prevents redundant IPC calls)
+      if (!isCreatedRef.current) {
+        return;
       }
+
+      // Validate dimensions are within acceptable range
+      if (cols < MIN_COLS || rows < MIN_ROWS) {
+        return;
+      }
+
+      // Skip redundant resize calls if dimensions haven't changed
+      const lastDims = lastPtyDimensionsRef.current;
+      if (lastDims && lastDims.cols === cols && lastDims.rows === rows) {
+        return;
+      }
+
+      // Update tracked dimensions and send resize to PTY
+      lastPtyDimensionsRef.current = { cols, rows };
+      window.electronAPI.resizeTerminal(id, cols, rows);
     },
     onDimensionsReady: handleDimensionsReady,
   });
@@ -168,6 +190,11 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     isRecreatingRef,
     onCreated: () => {
       isCreatedRef.current = true;
+      // Initialize PTY dimension tracking with creation dimensions
+      // This ensures the first resize check has a baseline to compare against
+      if (ptyDimensions) {
+        lastPtyDimensionsRef.current = { cols: ptyDimensions.cols, rows: ptyDimensions.rows };
+      }
       // If there's a pending worktree config from a recreation attempt,
       // sync it to main process now that the terminal exists.
       // This fixes the race condition where IPC calls happen before terminal creation.
@@ -448,6 +475,10 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
       await window.electronAPI.destroyTerminal(id);
       isCreatedRef.current = false;
     }
+
+    // Reset PTY dimension tracking for new terminal
+    // This ensures the new PTY will receive initial dimensions correctly
+    lastPtyDimensionsRef.current = null;
 
     // Reset refs to allow recreation - effect will now trigger with new cwd
     resetForRecreate();
