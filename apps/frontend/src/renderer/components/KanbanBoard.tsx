@@ -1562,13 +1562,35 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-[500px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('kanban.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              {t('kanban.deleteConfirmTitle')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('kanban.deleteConfirmDescription', { count: selectedTaskIds.size })}
+              {t('kanban.deleteConfirmDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* Task List Preview */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('kanban.tasksToDelete')}</label>
+            <ScrollArea className="h-32 rounded-md border border-border p-2">
+              <div className="space-y-1">
+                {selectedTasks.map((task, idx) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-muted/50"
+                  >
+                    <span className="text-muted-foreground">{idx + 1}.</span>
+                    <span className="truncate">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
               {t('common:buttons.cancel')}
@@ -1584,7 +1606,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
                   {t('common:buttons.deleting')}
                 </>
               ) : (
-                t('kanban.deleteConfirmButton')
+                t('kanban.deleteConfirmButton', { count: selectedTaskIds.size })
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
