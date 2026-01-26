@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, nativeImage } from 'electron';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, Task, TaskMetadata } from '../../../shared/types';
 import path from 'path';
@@ -7,7 +7,8 @@ import { projectStore } from '../../project-store';
 import { titleGenerator } from '../../title-generator';
 import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
-import { findAllSpecPaths } from '../../utils/spec-path-helpers';
+import { findAllSpecPaths, isValidTaskId } from '../../utils/spec-path-helpers';
+import { isPathWithinBase } from '../../worktree-paths';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -463,6 +464,97 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }
+  );
+
+  /**
+   * Load an image thumbnail from disk
+   * Used to load thumbnails for images that were saved without base64 data
+   * @param projectPath - The project root path
+   * @param specId - The spec ID
+   * @param imagePath - Relative path to the image (e.g., 'attachments/image.png')
+   * @returns Base64 data URL thumbnail
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.TASK_LOAD_IMAGE_THUMBNAIL,
+    async (
+      _,
+      projectPath: string,
+      specId: string,
+      imagePath: string
+    ): Promise<IPCResult<string>> => {
+      try {
+        // Validate specId to prevent path traversal attacks
+        if (!isValidTaskId(specId)) {
+          console.error(`[IPC] TASK_LOAD_IMAGE_THUMBNAIL: Invalid specId rejected: "${specId}"`);
+          return { success: false, error: 'Invalid spec ID' };
+        }
+
+        // Get project to determine auto-build path - validate projectPath exists
+        const projects = projectStore.getProjects();
+        const project = projects.find((p) => p.path === projectPath);
+        if (!project) {
+          console.error(`[IPC] TASK_LOAD_IMAGE_THUMBNAIL: Unknown project: "${projectPath}"`);
+          return { success: false, error: 'Unknown project' };
+        }
+        const autoBuildPath = project.autoBuildPath || '.auto-claude';
+
+        // Build full path to the image
+        const specsDir = getSpecsDir(autoBuildPath);
+        const fullImagePath = path.join(projectPath, specsDir, specId, imagePath);
+
+        // Validate path to prevent path traversal attacks
+        const expectedBase = path.resolve(path.join(projectPath, specsDir, specId));
+        const resolvedPath = path.resolve(fullImagePath);
+        if (!isPathWithinBase(resolvedPath, expectedBase)) {
+          console.error(`[IPC] Path traversal detected: imagePath "${imagePath}" resolves outside spec directory`);
+          return { success: false, error: 'Invalid image path' };
+        }
+
+        if (!existsSync(fullImagePath)) {
+          return { success: false, error: `Image not found: ${imagePath}` };
+        }
+
+        // Load image using nativeImage
+        const image = nativeImage.createFromPath(fullImagePath);
+        if (image.isEmpty()) {
+          return { success: false, error: 'Failed to load image' };
+        }
+
+        // Get original size
+        const size = image.getSize();
+        const maxSize = 200;
+
+        // Calculate thumbnail dimensions while maintaining aspect ratio
+        let width = size.width;
+        let height = size.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        // Resize to thumbnail
+        const thumbnail = image.resize({ width, height, quality: 'good' });
+
+        // Convert to base64 data URL
+        // Use JPEG for thumbnails (smaller size, good for previews)
+        const base64 = thumbnail.toJPEG(80).toString('base64');
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+        return { success: true, data: dataUrl };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error loading thumbnail'
         };
       }
     }
