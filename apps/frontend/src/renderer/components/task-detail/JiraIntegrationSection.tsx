@@ -58,7 +58,7 @@ export function JiraIntegrationSection({ task }: JiraIntegrationSectionProps) {
     try {
       const result = await window.electronAPI.getTaskIssue(task.specsPath);
       if (result.success) {
-        setJiraState(result.data);
+        setJiraState(result.data ?? null);
       } else {
         setError(result.error || 'Failed to load JIRA status');
       }

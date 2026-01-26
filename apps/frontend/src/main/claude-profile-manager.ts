@@ -26,7 +26,6 @@ import type {
 // Module imports
 import { encryptToken, decryptToken } from './claude-profile/token-encryption';
 import { parseUsageOutput } from './claude-profile/usage-parser';
-import { getEmailFromConfigDir } from './claude-profile/profile-utils';
 import {
   recordRateLimitEvent as recordRateLimitEventImpl,
   isProfileRateLimited as isProfileRateLimitedImpl,

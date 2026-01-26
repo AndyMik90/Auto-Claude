@@ -254,6 +254,18 @@ const browserMockAPI: ElectronAPI = {
 
   // JIRA Operations (global settings test)
   testJiraConnection: async () => ({ success: true, data: { displayName: 'Mock User' } }),
+  getTaskIssue: async () => ({ success: true, data: null }),
+  createTaskIssue: async () => ({
+    success: true,
+    data: {
+      parentIssueKey: 'MOCK-1',
+      parentIssueUrl: 'https://jira.example.com/browse/MOCK-1',
+      createdAt: new Date().toISOString(),
+      projectKey: 'MOCK',
+      subtaskMapping: {},
+      totalSubtasks: 0
+    }
+  }),
 
   // Vault Operations (external vault integration)
   testVaultConnection: async (_vaultPath: string) => ({

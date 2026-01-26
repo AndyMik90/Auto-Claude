@@ -183,7 +183,7 @@ export class AgentProcessManager {
 
     // Load integrations env vars from UI settings (JIRA, GitLab, Vault/Obsidian)
     const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
-    const integrationsEnv = buildIntegrationsEnvVars(appSettings as AppSettings);
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
 
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
@@ -867,7 +867,7 @@ export class AgentProcessManager {
 
     // Build environment variables from UI settings
     const memoryEnv = buildMemoryEnvVars(appSettings as AppSettings);
-    const integrationsEnv = buildIntegrationsEnvVars(appSettings as AppSettings);
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
 
     // Existing env sources
     const autoBuildEnv = this.loadAutoBuildEnv();

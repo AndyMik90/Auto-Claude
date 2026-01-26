@@ -501,6 +501,22 @@ export interface ElectronAPI {
 
   // JIRA integration operations
   testJiraConnection: (host: string, email: string, token: string) => Promise<IPCResult<{ displayName: string }>>;
+  getTaskIssue: (specsPath: string) => Promise<IPCResult<{
+    parentIssueKey: string;
+    parentIssueUrl: string;
+    createdAt: string;
+    projectKey: string;
+    subtaskMapping: Record<string, string>;
+    totalSubtasks: number;
+  } | null>>;
+  createTaskIssue: (specsPath: string, title: string, description: string) => Promise<IPCResult<{
+    parentIssueKey: string;
+    parentIssueUrl: string;
+    createdAt: string;
+    projectKey: string;
+    subtaskMapping: Record<string, string>;
+    totalSubtasks: number;
+  }>>;
 
   // Vault integration operations (external vault/Obsidian)
   testVaultConnection: (vaultPath: string) => Promise<IPCResult<import('./vault').VaultConnectionResult>>;

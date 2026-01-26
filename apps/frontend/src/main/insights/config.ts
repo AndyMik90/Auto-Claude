@@ -122,7 +122,7 @@ export class InsightsConfig {
 
     // Load integrations env vars from UI settings (JIRA, GitLab, Vault)
     const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
-    const integrationsEnv = buildIntegrationsEnvVars(appSettings as AppSettings);
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
     const pythonPathParts = (pythonEnv.PYTHONPATH ?? '')
       .split(path.delimiter)
       .map((entry) => entry.trim())
