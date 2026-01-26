@@ -806,7 +806,7 @@
       "title": "Préréglages Rapides",
       "description": "Appliquer des paramètres de police prédéfinis ou sauvegarder les vôtres",
       "builtin": "Préréglages Intégrés",
-      "builtinDescription": "Cliquer pour appliquer une préréglage prédéfini",
+      "builtinDescription": "Cliquer pour appliquer un préréglage prédéfini",
       "vscode": "Consolas 14px, curseur bloc",
       "vscodeName": "VS Code",
       "intellij": "JetBrains Mono 13px, curseur bloc",
@@ -829,12 +829,6 @@
       "duplicateName": "Un préréglage avec ce nom existe déjà",
       "saved": "Préréglage « {{name}} » sauvegardé",
       "deleted": "Préréglage « {{name}} » supprimé"
-    },
-    "livePreview": {
-      "title": "Aperçu en Direct",
-      "description": "Prévisualiser vos paramètres de terminal en temps réel (mises à jour dans les 300ms)",
-      "ariaLabel": "Aperçu des polices de terminal",
-      "infoText": "Cet aperçu se met à jour dans les 300ms suivant tout changement pour montrer l'apparence de vos paramètres dans les terminaux réels."
     },
     "preview": {
       "title": "Aperçu en Direct",

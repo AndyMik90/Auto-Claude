@@ -30,7 +30,8 @@ export function getPlatform(): string {
     return navigator.userAgentData.platform.toLowerCase();
   }
   // Fallback to navigator.platform (deprecated but widely supported)
-  return navigator.platform.toLowerCase();
+  // Use empty string fallback for environments where navigator.platform is undefined
+  return (navigator.platform ?? '').toLowerCase();
 }
 
 /**

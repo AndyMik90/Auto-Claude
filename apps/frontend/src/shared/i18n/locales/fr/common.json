@@ -92,7 +92,7 @@
     "windows": "Windows",
     "macos": "macOS",
     "linux": "Linux",
-    "unknown": "votre OS"
+    "unknown": "Inconnu"
   },
   "labels": {
     "loading": "Chargement...",

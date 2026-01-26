@@ -836,12 +836,6 @@
       "presetNameLabel": "Preset name",
       "summary": "{{font}}, {{size}}px, {{cursor}} cursor"
     },
-    "livePreview": {
-      "title": "Live Preview",
-      "description": "Preview your terminal settings in real-time (updates within 300ms)",
-      "ariaLabel": "Terminal font preview",
-      "infoText": "This preview updates within 300ms of any change to show how your settings will look in actual terminals."
-    },
     "preview": {
       "title": "Live Preview",
       "description": "Preview your terminal settings in real-time (updates within 300ms)",
