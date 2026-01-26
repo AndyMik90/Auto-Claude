@@ -3,6 +3,8 @@
  * Feature priority, complexity, and impact indicators
  */
 
+import type { TFunction } from 'i18next';
+
 // ============================================
 // Roadmap Priority
 // ============================================
@@ -52,19 +54,23 @@ export interface RoadmapStatusColumn {
   icon: string;
 }
 
-export const ROADMAP_STATUS_COLUMNS: RoadmapStatusColumn[] = [
-  { id: 'under_review', label: 'Under Review', color: 'border-t-muted-foreground/50', icon: 'Eye' },
-  { id: 'planned', label: 'Planned', color: 'border-t-info', icon: 'Calendar' },
-  { id: 'in_progress', label: 'In Progress', color: 'border-t-primary', icon: 'Play' },
-  { id: 'done', label: 'Done', color: 'border-t-success', icon: 'Check' }
+export const getRoadmapStatusLabels = (t: TFunction): Record<string, string> => ({
+  under_review: t('roadmap:status.under_review'),
+  planned: t('roadmap:status.planned'),
+  in_progress: t('roadmap:status.in_progress'),
+  done: t('roadmap:status.done')
+});
+
+export const getRoadmapStatusColumns = (t: TFunction): RoadmapStatusColumn[] => [
+  { id: 'under_review', label: t('roadmap:status.under_review'), color: 'border-t-muted-foreground/50', icon: 'Eye' },
+  { id: 'planned', label: t('roadmap:status.planned'), color: 'border-t-info', icon: 'Calendar' },
+  { id: 'in_progress', label: t('roadmap:status.in_progress'), color: 'border-t-primary', icon: 'Play' },
+  { id: 'done', label: t('roadmap:status.done'), color: 'border-t-success', icon: 'Check' }
 ];
 
-export const ROADMAP_STATUS_LABELS: Record<string, string> = {
-  under_review: 'Under Review',
-  planned: 'Planned',
-  in_progress: 'In Progress',
-  done: 'Done'
-};
+// Backward compatibility: export as functions that require t
+export const ROADMAP_STATUS_LABELS = getRoadmapStatusLabels;
+export const ROADMAP_STATUS_COLUMNS = getRoadmapStatusColumns;
 
 export const ROADMAP_STATUS_COLORS: Record<string, string> = {
   under_review: 'bg-muted text-muted-foreground',
