@@ -22,6 +22,15 @@ from .models import (
     TriageCategory,
     TriageResult,
 )
+from .multi_repo import (
+    MultiRepoConfig,
+    RepoConfig,
+    RepoRelationship,
+    get_default_repo,
+    get_enabled_repos,
+    get_repo_config,
+    load_frontend_github_config,
+)
 from .orchestrator import GitHubOrchestrator
 
 __all__ = [
@@ -38,4 +47,12 @@ __all__ = [
     "ReviewCategory",
     "TriageCategory",
     "AutoFixStatus",
+    # Multi-Repo
+    "MultiRepoConfig",
+    "RepoConfig",
+    "RepoRelationship",
+    "get_default_repo",
+    "get_enabled_repos",
+    "get_repo_config",
+    "load_frontend_github_config",
 ]
