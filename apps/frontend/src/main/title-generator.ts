@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { existsSync, readFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { app } from 'electron';
+import { joinPaths } from './platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -71,7 +72,7 @@ export class TitleGenerator extends EventEmitter {
     // Add app path if app is ready (WSL2 compatibility)
     try {
       if (app && app.getAppPath) {
-        appPathSegment.push(path.resolve(app.getAppPath(), '..', 'backend'));
+        appPathSegment.push(joinPaths(app.getAppPath(), '..', 'backend'));
       }
     } catch (e) {
       // App not ready yet, continue without app path
@@ -79,13 +80,13 @@ export class TitleGenerator extends EventEmitter {
 
     const possiblePaths = [
       // Apps structure: from out/main -> apps/backend
-      path.resolve(__dirname, '..', '..', '..', 'backend'),
+      joinPaths(__dirname, '..', '..', '..', 'backend'),
       ...appPathSegment,
-      path.resolve(process.cwd(), 'apps', 'backend'),
+      joinPaths(process.cwd(), 'apps', 'backend'),
     ];
 
     for (const p of possiblePaths) {
-      if (existsSync(p) && existsSync(path.join(p, 'runners', 'spec_runner.py'))) {
+      if (existsSync(p) && existsSync(joinPaths(p, 'runners', 'spec_runner.py'))) {
         return p;
       }
     }
@@ -99,7 +100,7 @@ export class TitleGenerator extends EventEmitter {
     const autoBuildSource = this.getAutoBuildSourcePath();
     if (!autoBuildSource) return {};
 
-    const envPath = path.join(autoBuildSource, '.env');
+    const envPath = joinPaths(autoBuildSource, '.env');
     if (!existsSync(envPath)) return {};
 
     try {
