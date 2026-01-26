@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MessageSquare,
@@ -109,7 +109,6 @@ export function Insights({ projectId }: InsightsProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollAreaViewportRef = useRef<HTMLDivElement | null>(null);
-  const isStreamingRef = useRef(false);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -117,11 +116,6 @@ export function Insights({ projectId }: InsightsProps) {
     const cleanup = setupInsightsListeners();
     return cleanup;
   }, [projectId]);
-
-  // Track streaming state for scroll behavior
-  useEffect(() => {
-    isStreamingRef.current = !!streamingContent;
-  }, [streamingContent]);
 
   // Auto-scroll to bottom when messages change
   // Uses requestAnimationFrame to ensure DOM layout is complete before scrolling
@@ -141,8 +135,9 @@ export function Insights({ projectId }: InsightsProps) {
 
     // During streaming, use requestAnimationFrame to ensure DOM is updated
     // After streaming completes, scroll immediately without animation
+    const isStreaming = !!streamingContent;
     let rafId: number | undefined;
-    if (isStreamingRef.current) {
+    if (isStreaming) {
       rafId = requestAnimationFrame(scrollToBottom);
     } else {
       // Small delay for non-streaming updates to allow layout to settle
@@ -173,6 +168,11 @@ export function Insights({ projectId }: InsightsProps) {
   useEffect(() => {
     setTaskCreated(new Set());
   }, [session?.id]);
+
+  // Stable callback for viewport ref to avoid creating new function on each render
+  const handleViewportRef = useCallback((ref: HTMLDivElement | null) => {
+    scrollAreaViewportRef.current = ref;
+  }, []);
 
   const handleSend = () => {
     const message = inputValue.trim();
@@ -304,9 +304,7 @@ export function Insights({ projectId }: InsightsProps) {
       {/* Messages */}
       <ScrollArea
         className="flex-1 px-6 py-4"
-        onViewportRef={(ref) => {
-          scrollAreaViewportRef.current = ref;
-        }}
+        onViewportRef={handleViewportRef}
       >
         {messages.length === 0 && !streamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">

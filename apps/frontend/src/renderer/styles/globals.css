@@ -1094,7 +1094,12 @@ body {
 }
 
 /* Scroll anchoring - prevent scroll position jumps during DOM updates
-   This fixes the issue where large content causes the view to scroll into blank space on macOS */
+ *
+ * This fixes the issue where large content causes the view to scroll into blank space on macOS.
+ * The rules below apply globally to ALL Radix ScrollArea components across the application.
+ * - Parent viewport disables scroll anchoring to prevent automatic adjustments during DOM updates
+ * - Children re-enable anchoring to allow proper scroll target selection when content settles
+ */
 [data-radix-scroll-area-viewport] {
   overflow-anchor: none;
 }
