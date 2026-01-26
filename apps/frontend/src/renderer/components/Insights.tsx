@@ -463,6 +463,9 @@ export function Insights({ projectId }: InsightsProps) {
   );
 
   const handleNewSession = async () => {
+    // Clear pending images before creating new session (consistent with handleSelectSession)
+    setImages([]);
+    setImageError(null);
     await newSession(projectId);
     setTaskCreated(new Set());
     textareaRef.current?.focus();
