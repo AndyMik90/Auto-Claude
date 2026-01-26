@@ -82,6 +82,7 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
     loadMore,
     isConnected,
     repoFullName,
+    configuredRepos,
     getReviewStateForPR,
     selectedPR,
   } = useGitHubPRs(selectedProject?.id, { isActive });
@@ -193,7 +194,23 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
             <GitPullRequest className="h-4 w-4" />
             {t("prReview.pullRequests")}
           </h2>
-          {repoFullName && (
+          {configuredRepos.length > 0 ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {configuredRepos.map((repo, index) => (
+                <a
+                  key={repo}
+                  href={`https://github.com/${repo}/pulls`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                >
+                  {repo}
+                  <ExternalLink className="h-3 w-3" />
+                  {index < configuredRepos.length - 1 && <span className="text-muted-foreground/50 ml-1">|</span>}
+                </a>
+              ))}
+            </div>
+          ) : repoFullName && (
             <a
               href={`https://github.com/${repoFullName}/pulls`}
               target="_blank"

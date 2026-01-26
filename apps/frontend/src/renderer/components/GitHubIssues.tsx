@@ -29,6 +29,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   const {
     syncStatus,
+    configuredRepos,
     isLoading,
     isLoadingMore,
     error,
@@ -145,6 +146,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       {/* Header */}
       <IssueListHeader
         repoFullName={syncStatus.repoFullName ?? ""}
+        configuredRepos={configuredRepos}
         openIssuesCount={getOpenIssuesCount()}
         isLoading={isLoading}
         searchQuery={searchQuery}

@@ -49,6 +49,7 @@ export interface InvestigationDialogProps {
 
 export interface IssueListHeaderProps {
   repoFullName: string;
+  configuredRepos?: string[];
   openIssuesCount: number;
   isLoading: boolean;
   searchQuery: string;
