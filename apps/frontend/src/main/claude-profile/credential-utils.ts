@@ -19,7 +19,7 @@ import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { homedir, userInfo } from 'os';
-import { join } from 'path';
+import { join, normalize } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
 /**
@@ -174,9 +174,13 @@ export function getKeychainServiceName(configDir?: string): string {
   }
 
   // Normalize the configDir: expand ~ and resolve to absolute path
-  const normalizedConfigDir = configDir.startsWith('~')
+  // CRITICAL: Use path.normalize() to ensure consistent path separators
+  // This matches what Claude CLI does internally before hashing the path
+  // Without this, Windows paths may have mixed separators causing hash mismatches
+  const expandedConfigDir = configDir.startsWith('~')
     ? join(homedir(), configDir.slice(1))
     : configDir;
+  const normalizedConfigDir = normalize(expandedConfigDir);
 
   // ALL profiles now use hash-based keychain entries for isolation
   // This prevents interference with external Claude Code CLI
@@ -881,6 +885,147 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
   }
 }
 
+// =============================================================================
+// Windows Credentials File Implementation (Fallback)
+// =============================================================================
+
+/**
+ * Get the credentials file path for Windows (same location as Linux)
+ * Claude CLI stores credentials in .credentials.json in the config directory
+ */
+function getWindowsCredentialsPath(configDir?: string): string {
+  const baseDir = configDir || join(homedir(), '.claude');
+  return join(baseDir, '.credentials.json');
+}
+
+/**
+ * Retrieve credentials from Windows .credentials.json file (fallback when Credential Manager unavailable)
+ * Claude CLI on Windows sometimes stores credentials in this file instead of Credential Manager
+ */
+function getCredentialsFromWindowsFile(configDir?: string, forceRefresh = false): PlatformCredentials {
+  const credentialsPath = getWindowsCredentialsPath(configDir);
+  const cacheKey = `windows-file:${credentialsPath}`;
+  const isDebug = process.env.DEBUG === 'true';
+  const now = Date.now();
+
+  // Return cached credentials if available and fresh
+  const cached = credentialCache.get(cacheKey);
+  if (!forceRefresh && cached) {
+    const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
+    if ((now - cached.timestamp) < ttl) {
+      if (isDebug) {
+        const cacheAge = now - cached.timestamp;
+        console.warn('[CredentialUtils:Windows:File:CACHE] Returning cached credentials:', {
+          credentialsPath,
+          hasToken: !!cached.credentials.token,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
+          cacheAge: Math.round(cacheAge / 1000) + 's'
+        });
+      }
+      return cached.credentials;
+    }
+  }
+
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File] Invalid credentials path rejected:', { credentialsPath });
+    }
+    const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
+    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+    return invalidResult;
+  }
+
+  // Check if credentials file exists
+  if (!existsSync(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File] Credentials file not found:', credentialsPath);
+    }
+    const notFoundResult = { token: null, email: null };
+    credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
+    return notFoundResult;
+  }
+
+  try {
+    const content = readFileSync(credentialsPath, 'utf-8');
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.warn('[CredentialUtils:Windows:File] Failed to parse credentials JSON:', credentialsPath);
+      const errorResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
+      return errorResult;
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Windows:File] Invalid credentials data structure:', credentialsPath);
+      const invalidResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+      return invalidResult;
+    }
+
+    const { token, email } = extractCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Windows:File] Invalid token format in:', credentialsPath);
+      const result = { token: null, email };
+      credentialCache.set(cacheKey, { credentials: result, timestamp: now });
+      return result;
+    }
+
+    const credentials = { token, email };
+    credentialCache.set(cacheKey, { credentials, timestamp: now });
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File] Retrieved credentials from file:', credentialsPath, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        tokenFingerprint: getTokenFingerprint(token),
+        forceRefresh
+      });
+    }
+    return credentials;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[CredentialUtils:Windows:File] Failed to read credentials file:', credentialsPath, errorMessage);
+    const errorResult = { token: null, email: null, error: `Failed to read credentials: ${errorMessage}` };
+    credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
+    return errorResult;
+  }
+}
+
+/**
+ * Retrieve credentials from Windows - tries Credential Manager first, falls back to file
+ * Claude CLI on Windows may store credentials in either location depending on version/config
+ */
+function getCredentialsFromWindows(configDir?: string, forceRefresh = false): PlatformCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Credential Manager first (preferred secure storage)
+  const credManagerResult = getCredentialsFromWindowsCredentialManager(configDir, forceRefresh);
+
+  // If we got a token from Credential Manager, use it
+  if (credManagerResult.token) {
+    return credManagerResult;
+  }
+
+  // If Credential Manager had an error (not just "not found"), log it and try file fallback
+  if (credManagerResult.error && !credManagerResult.error.includes('not found')) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows] Credential Manager unavailable, trying file fallback:', credManagerResult.error);
+    }
+  }
+
+  // Fall back to file-based storage (.credentials.json)
+  // Claude CLI on Windows sometimes stores credentials in this file
+  return getCredentialsFromWindowsFile(configDir, forceRefresh);
+}
+
 /**
  * Find PowerShell executable path on Windows
  */
@@ -932,7 +1077,8 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
   }
 
   if (isWindows()) {
-    return getCredentialsFromWindowsCredentialManager(configDir, forceRefresh);
+    // Windows: try Credential Manager first, then fall back to .credentials.json file
+    return getCredentialsFromWindows(configDir, forceRefresh);
   }
 
   // Unknown platform - return empty
@@ -957,11 +1103,13 @@ export function clearKeychainCache(configDir?: string): void {
     const linuxSecretKey = `linux-secret:${getSecretServiceAttribute(configDir)}`;
     const linuxFileKey = `linux:${getLinuxCredentialsPath(configDir)}`;
     const windowsKey = `windows:${getWindowsCredentialTarget(configDir)}`;
+    const windowsFileKey = `windows-file:${getWindowsCredentialsPath(configDir)}`;
 
     credentialCache.delete(macOSKey);
     credentialCache.delete(linuxSecretKey);
     credentialCache.delete(linuxFileKey);
     credentialCache.delete(windowsKey);
+    credentialCache.delete(windowsFileKey);
   } else {
     credentialCache.clear();
   }
@@ -1289,6 +1437,100 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 }
 
 /**
+ * Retrieve full credentials (including refresh token) from Windows .credentials.json file (fallback)
+ * Claude CLI on Windows sometimes stores credentials in this file instead of Credential Manager
+ */
+function getFullCredentialsFromWindowsFile(configDir?: string): FullOAuthCredentials {
+  const credentialsPath = getWindowsCredentialsPath(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File:Full] Invalid credentials path rejected:', { credentialsPath });
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
+  }
+
+  // Check if credentials file exists
+  if (!existsSync(credentialsPath)) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File:Full] Credentials file not found:', credentialsPath);
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+  }
+
+  try {
+    const content = readFileSync(credentialsPath, 'utf-8');
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.warn('[CredentialUtils:Windows:File:Full] Failed to parse credentials JSON:', credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn('[CredentialUtils:Windows:File:Full] Invalid credentials data structure:', credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn('[CredentialUtils:Windows:File:Full] Invalid token format in:', credentialsPath);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:File:Full] Retrieved full credentials from file:', credentialsPath, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[CredentialUtils:Windows:File:Full] Failed to read credentials file:', credentialsPath, errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
+  }
+}
+
+/**
+ * Retrieve full credentials from Windows - tries Credential Manager first, falls back to file
+ * Claude CLI on Windows may store credentials in either location depending on version/config
+ */
+function getFullCredentialsFromWindows(configDir?: string): FullOAuthCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Credential Manager first (preferred secure storage)
+  const credManagerResult = getFullCredentialsFromWindowsCredentialManager(configDir);
+
+  // If we got a token from Credential Manager, use it
+  if (credManagerResult.token) {
+    return credManagerResult;
+  }
+
+  // If Credential Manager had an error (not just "not found"), log it and try file fallback
+  if (credManagerResult.error && !credManagerResult.error.includes('not found')) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Full] Credential Manager unavailable, trying file fallback:', credManagerResult.error);
+    }
+  }
+
+  // Fall back to file-based storage (.credentials.json)
+  // Claude CLI on Windows sometimes stores credentials in this file
+  return getFullCredentialsFromWindowsFile(configDir);
+}
+
+/**
  * Get full credentials including refresh token and expiry from platform-specific secure storage.
  * This is an extended version of getCredentialsFromKeychain that returns all credential data
  * needed for token refresh operations.
@@ -1306,7 +1548,8 @@ export function getFullCredentialsFromKeychain(configDir?: string): FullOAuthCre
   }
 
   if (isWindows()) {
-    return getFullCredentialsFromWindowsCredentialManager(configDir);
+    // Windows: try Credential Manager first, then fall back to .credentials.json file
+    return getFullCredentialsFromWindows(configDir);
   }
 
   // Unknown platform - return empty

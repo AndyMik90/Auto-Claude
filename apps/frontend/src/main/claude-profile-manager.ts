@@ -12,7 +12,7 @@
  */
 
 import { app } from 'electron';
-import { join } from 'path';
+import { join, normalize } from 'path';
 import { mkdir } from 'fs/promises';
 import { homedir } from 'os';
 import type {
@@ -497,10 +497,12 @@ export class ClaudeProfileManager {
     // This prevents interference with external Claude Code CLI usage
     if (profile?.configDir) {
       // Expand ~ to home directory for the environment variable
+      // CRITICAL: Use path.normalize() to ensure consistent path separators
+      // This matches what Claude CLI does internally before hashing the path
       const expandedConfigDir = profile.configDir.startsWith('~')
         ? profile.configDir.replace(/^~/, homedir())
         : profile.configDir;
-      env.CLAUDE_CONFIG_DIR = expandedConfigDir;
+      env.CLAUDE_CONFIG_DIR = normalize(expandedConfigDir);
       if (process.env.DEBUG === 'true') {
         console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
       }
@@ -718,9 +720,12 @@ export class ClaudeProfileManager {
     }
 
     // Expand ~ to home directory for the environment variable
+    // CRITICAL: Use path.normalize() to ensure consistent path separators
+    // This matches what Claude CLI does internally before hashing the path
     const expandedConfigDir = profile.configDir.startsWith('~')
       ? profile.configDir.replace(/^~/, require('os').homedir())
       : profile.configDir;
+    const normalizedConfigDir = normalize(expandedConfigDir);
 
     if (process.env.DEBUG === 'true') {
       console.warn('[ClaudeProfileManager] getProfileEnv:', {
@@ -728,12 +733,12 @@ export class ClaudeProfileManager {
         profileName: profile.name,
         isDefault: profile.isDefault,
         configDir: profile.configDir,
-        expandedConfigDir
+        normalizedConfigDir
       });
     }
 
     return {
-      CLAUDE_CONFIG_DIR: expandedConfigDir
+      CLAUDE_CONFIG_DIR: normalizedConfigDir
     };
   }
 
