@@ -66,6 +66,7 @@ import type {
   ClaudeAutoSwitchSettings,
   ClaudeAuthResult,
   ClaudeUsageSnapshot,
+  AllProfilesUsage,
   TerminalProfileChangedEvent
 } from './agent';
 import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult } from './settings';
@@ -105,7 +106,8 @@ import type {
 import type {
   Roadmap,
   RoadmapFeatureStatus,
-  RoadmapGenerationStatus
+  RoadmapGenerationStatus,
+  PersistedRoadmapProgress
 } from './roadmap';
 import type {
   LinearTeam,
@@ -166,6 +168,9 @@ export interface ElectronAPI {
   updateTaskStatus: (taskId: string, status: TaskStatus, options?: { forceCleanup?: boolean }) => Promise<IPCResult & { worktreeExists?: boolean; worktreePath?: string }>;
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
+
+  // Image operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
@@ -292,6 +297,10 @@ export interface ElectronAPI {
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */
   updateAutoSwitchSettings: (settings: Partial<ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  /** Get unified account priority order (both OAuth and API profiles) */
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  /** Set unified account priority order */
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   /** Request usage fetch from a terminal (sends /usage command) */
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   /** Get the best available profile (for manual switching) */
@@ -306,6 +315,10 @@ export interface ElectronAPI {
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
+  /** Request all profiles usage immediately (for startup/refresh)
+   * @param forceRefresh - If true, bypasses cache to get fresh data for all profiles
+   */
+  requestAllProfilesUsage: (forceRefresh?: boolean) => Promise<IPCResult<AllProfilesUsage | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */
@@ -315,6 +328,8 @@ export interface ElectronAPI {
     reason: string;
     usageSnapshot: ClaudeUsageSnapshot;
   }) => void) => () => void;
+  /** Listen for all profiles usage updates (for multi-profile display) */
+  onAllProfilesUsageUpdated?: (callback: (allProfilesUsage: AllProfilesUsage) => void) => () => void;
 
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
@@ -366,6 +381,11 @@ export interface ElectronAPI {
     projectId: string,
     featureId: string
   ) => Promise<IPCResult<Task>>;
+
+  // Roadmap progress persistence
+  saveRoadmapProgress: (projectId: string, progress: PersistedRoadmapProgress) => Promise<IPCResult>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
+  clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
   // Roadmap event listeners
   onRoadmapProgress: (
@@ -727,6 +747,9 @@ export interface ElectronAPI {
   onInsightsError: (
     callback: (projectId: string, error: string) => void
   ) => () => void;
+  onInsightsSessionUpdated: (
+    callback: (projectId: string, session: InsightsSession) => void
+  ) => () => void;
 
   // Task logs operations
   getTaskLogs: (projectId: string, specId: string) => Promise<IPCResult<TaskLogs | null>>;
@@ -843,6 +866,9 @@ export interface ElectronAPI {
     thumbnail: string;
   }>>>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // Queue Routing API (rate limit recovery)
+  queue: import('../../preload/api/queue-api').QueueAPI;
 }
 
 declare global {
