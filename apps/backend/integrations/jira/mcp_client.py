@@ -11,10 +11,10 @@ rather than duplicating API integrations.
 
 import asyncio
 import json
-import os
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, field
 import logging
+import os
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class MCPServerConfig:
     """Configuration for an MCP server."""
 
     command: str  # Path to start.sh or executable
-    args: List[str] = field(default_factory=list)
-    env: Dict[str, str] = field(default_factory=dict)
-    working_dir: Optional[str] = None
+    args: list[str] = field(default_factory=list)
+    env: dict[str, str] = field(default_factory=dict)
+    working_dir: str | None = None
 
     @classmethod
     def from_claude_settings(
@@ -70,7 +70,7 @@ class MCPServerConfig:
 class MCPError(Exception):
     """Error from MCP server."""
 
-    def __init__(self, error_data: Dict[str, Any]):
+    def __init__(self, error_data: dict[str, Any]):
         self.code = error_data.get("code", -1)
         self.message = error_data.get("message", "Unknown error")
         self.data = error_data.get("data")
@@ -85,11 +85,11 @@ class MCPClient:
 
     def __init__(self, config: MCPServerConfig):
         self.config = config
-        self.process: Optional[asyncio.subprocess.Process] = None
+        self.process: asyncio.subprocess.Process | None = None
         self._request_id = 0
         self._lock = asyncio.Lock()
         self._connected = False
-        self._tools: List[Dict[str, Any]] = []
+        self._tools: list[dict[str, Any]] = []
 
     async def connect(self) -> None:
         """Start the MCP server process and initialize connection."""
@@ -150,7 +150,7 @@ class MCPClient:
                 self._connected = False
                 logger.info("Disconnected from MCP server")
 
-    async def list_tools(self) -> List[Dict[str, Any]]:
+    async def list_tools(self) -> list[dict[str, Any]]:
         """Get list of available tools from the MCP server."""
         if self._tools:
             return self._tools
@@ -159,7 +159,7 @@ class MCPClient:
         self._tools = result.get("tools", [])
         return self._tools
 
-    async def call_tool(self, name: str, arguments: Dict[str, Any] = None) -> Any:
+    async def call_tool(self, name: str, arguments: dict[str, Any] = None) -> Any:
         """
         Call a tool on the MCP server.
 
@@ -194,8 +194,8 @@ class MCPClient:
     async def _send_request(
         self,
         method: str,
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Send a JSON-RPC request and wait for response."""
         if not self.process or not self.process.stdin or not self.process.stdout:
             raise MCPError({"code": -1, "message": "Not connected to MCP server"})
@@ -231,7 +231,7 @@ class MCPClient:
     async def _send_notification(
         self,
         method: str,
-        params: Dict[str, Any]
+        params: dict[str, Any]
     ) -> None:
         """Send a JSON-RPC notification (no response expected)."""
         if not self.process or not self.process.stdin:

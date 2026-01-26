@@ -19,13 +19,11 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 from .config import (
     LABELS,
     STATUS_BLOCKED,
-    STATUS_IN_PROGRESS,
-    STATUS_DONE,
     JiraConfig,
     JiraProjectState,
     format_session_comment,
@@ -57,8 +55,8 @@ class JiraManager:
         self.spec_dir = spec_dir
         self.project_dir = project_dir
         self.config = JiraConfig.from_mcp_settings() or JiraConfig.from_env()
-        self.state: Optional[JiraProjectState] = None
-        self._mcp_client: Optional[MCPClient] = None
+        self.state: JiraProjectState | None = None
+        self._mcp_client: MCPClient | None = None
         self._mcp_available = False
 
         # Load existing state if available
@@ -104,7 +102,7 @@ class JiraManager:
         """Check if JIRA project has been initialized for this spec."""
         return self.state is not None and self.state.initialized
 
-    def get_issue_key(self, subtask_id: str) -> Optional[str]:
+    def get_issue_key(self, subtask_id: str) -> str | None:
         """Get the JIRA issue key for a subtask."""
         if not self.state:
             return None
@@ -122,7 +120,7 @@ class JiraManager:
         self,
         jql: str,
         max_results: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search for JIRA issues using JQL.
 
@@ -144,7 +142,7 @@ class JiraManager:
 
         return result.get("issues", [])
 
-    async def get_issue(self, issue_key: str) -> Optional[Dict[str, Any]]:
+    async def get_issue(self, issue_key: str) -> dict[str, Any] | None:
         """Get a single JIRA issue by key."""
         if not self.is_enabled:
             return None
@@ -160,9 +158,9 @@ class JiraManager:
         description: str = "",
         issue_type: str = "Task",
         project: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         priority: str = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Create a new JIRA issue."""
         if not self.is_enabled:
             return None
@@ -190,9 +188,9 @@ class JiraManager:
         issue_key: str,
         summary: str = None,
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         priority: str = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Update an existing JIRA issue."""
         if not self.is_enabled:
             return None
@@ -215,7 +213,7 @@ class JiraManager:
         self,
         issue_key: str,
         status: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Transition an issue to a new status."""
         if not self.is_enabled:
             return None
@@ -230,7 +228,7 @@ class JiraManager:
         self,
         issue_key: str,
         comment: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Add a comment to an issue."""
         if not self.is_enabled:
             return None
@@ -272,7 +270,7 @@ class JiraManager:
             self.state.meta_issue_key = meta_issue_key
             self.state.save(self.spec_dir)
 
-    def load_implementation_plan(self) -> Optional[dict]:
+    def load_implementation_plan(self) -> dict | None:
         """Load the implementation plan from spec directory."""
         plan_file = self.spec_dir / "implementation_plan.json"
         if not plan_file.exists():
@@ -284,7 +282,7 @@ class JiraManager:
         except (OSError, json.JSONDecodeError):
             return None
 
-    def get_subtasks_for_sync(self) -> List[dict]:
+    def get_subtasks_for_sync(self) -> list[dict]:
         """Get all subtasks that need JIRA issues."""
         plan = self.load_implementation_plan()
         if not plan:
@@ -373,7 +371,7 @@ class JiraManager:
         self,
         subtask_id: str,
         attempt_count: int,
-        attempts: List[dict],
+        attempts: list[dict],
         reason: str = "",
     ) -> dict:
         """Prepare data for escalating a stuck subtask."""

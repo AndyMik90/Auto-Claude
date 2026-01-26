@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Optional
 
 # GitLab Status Constants (matching GitLab issue states)
 STATUS_OPENED = "opened"
@@ -193,8 +193,8 @@ class GitLabProjectState:
     meta_issue_iid: int = 0  # GitLab uses iid (internal ID) within project
     total_issues: int = 0
     created_at: str = ""
-    issue_mapping: Dict[str, int] = field(default_factory=dict)  # subtask_id -> issue_iid
-    mr_mapping: Dict[str, int] = field(default_factory=dict)  # subtask_id -> MR iid
+    issue_mapping: dict[str, int] = field(default_factory=dict)  # subtask_id -> issue_iid
+    mr_mapping: dict[str, int] = field(default_factory=dict)  # subtask_id -> MR iid
 
     def to_dict(self) -> dict:
         return {
@@ -271,7 +271,7 @@ def get_weight_for_phase(phase_num: int, total_phases: int) -> int:
         return WEIGHT_LOW
 
 
-def get_labels_for_subtask(subtask: dict, email: str = None, username: str = None) -> List[str]:
+def get_labels_for_subtask(subtask: dict, email: str = None, username: str = None) -> list[str]:
     """
     Generate GitLab labels for a subtask.
 
@@ -416,7 +416,7 @@ def format_session_note(
 def format_stuck_note(
     subtask_id: str,
     attempt_count: int,
-    attempts: List[dict],
+    attempts: list[dict],
     reason: str = "",
 ) -> str:
     """Format a detailed note for stuck subtasks."""

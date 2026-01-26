@@ -11,13 +11,14 @@ Use this when:
 - Running in environments without MCP server
 """
 
-import httpx
 import base64
 import json
-import os
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
 import logging
+import os
+from dataclasses import dataclass
+from typing import Any, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ class DirectJiraClient:
         if not self.credentials:
             raise ValueError("No JIRA credentials found. Check MCP settings or environment variables.")
 
-        self._http: Optional[httpx.AsyncClient] = None
+        self._http: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
         """Initialize HTTP client."""
@@ -145,8 +146,8 @@ class DirectJiraClient:
         self,
         method: str,
         path: str,
-        params: Dict = None,
-        json_data: Dict = None,
+        params: dict = None,
+        json_data: dict = None,
     ) -> Any:
         """Make an API request."""
         if not self._http:
@@ -170,7 +171,7 @@ class DirectJiraClient:
 
     # ==================== User ====================
 
-    async def get_current_user(self) -> Dict[str, Any]:
+    async def get_current_user(self) -> dict[str, Any]:
         """Get current authenticated user."""
         return await self._request("GET", "/myself")
 
@@ -180,8 +181,8 @@ class DirectJiraClient:
         self,
         jql: str,
         max_results: int = 50,
-        fields: List[str] = None,
-    ) -> Dict[str, Any]:
+        fields: list[str] = None,
+    ) -> dict[str, Any]:
         """
         Search for issues using JQL.
 
@@ -198,7 +199,7 @@ class DirectJiraClient:
 
         return await self._request("GET", "/search/jql", params=params)
 
-    async def get_issue(self, issue_key: str) -> Dict[str, Any]:
+    async def get_issue(self, issue_key: str) -> dict[str, Any]:
         """Get a single issue by key."""
         return await self._request("GET", f"/issue/{issue_key}")
 
@@ -208,9 +209,9 @@ class DirectJiraClient:
         project: str = None,
         issue_type: str = "Task",
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         priority: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new issue."""
         project_key = project or self.credentials.default_project
 
@@ -246,9 +247,9 @@ class DirectJiraClient:
         issue_key: str,
         summary: str = None,
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         priority: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update an existing issue."""
         fields = {}
 
@@ -272,7 +273,7 @@ class DirectJiraClient:
 
         return await self._request("PUT", f"/issue/{issue_key}", json_data={"fields": fields})
 
-    async def get_transitions(self, issue_key: str) -> List[Dict[str, Any]]:
+    async def get_transitions(self, issue_key: str) -> list[dict[str, Any]]:
         """Get available transitions for an issue."""
         result = await self._request("GET", f"/issue/{issue_key}/transitions")
         return result.get("transitions", [])
@@ -299,7 +300,7 @@ class DirectJiraClient:
             json_data={"transition": {"id": transition_id}}
         )
 
-    async def add_comment(self, issue_key: str, body: str) -> Dict[str, Any]:
+    async def add_comment(self, issue_key: str, body: str) -> dict[str, Any]:
         """Add a comment to an issue."""
         return await self._request(
             "POST",

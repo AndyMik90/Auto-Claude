@@ -5,15 +5,13 @@ Client for interacting with vault via MCP (Model Context Protocol).
 Uses the Obsidian MCP server for file operations.
 """
 
-import os
-import json
 import logging
-from pathlib import Path
-from typing import Optional, List, Dict, Any
+import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from .config import VaultConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,18 +22,18 @@ class VaultFile:
     name: str
     path: str
     is_directory: bool
-    size: Optional[int]
+    size: int | None
     modified_at: str
-    children: Optional[List["VaultFile"]] = None
+    children: list["VaultFile"] | None = None
 
 
 @dataclass
 class VaultContext:
     """Context loaded from vault."""
-    claude_md: Optional[str]
-    preferences: Optional[str]
-    agents: List[Dict[str, Any]]
-    recent_learnings: List[Dict[str, Any]]
+    claude_md: str | None
+    preferences: str | None
+    agents: list[dict[str, Any]]
+    recent_learnings: list[dict[str, Any]]
 
 
 class VaultMCPClient:
@@ -56,7 +54,7 @@ class VaultMCPClient:
         self.config = config
         self._validated = False
 
-    def validate_connection(self) -> tuple[bool, Optional[str]]:
+    def validate_connection(self) -> tuple[bool, str | None]:
         """
         Validate vault connection.
 
@@ -70,7 +68,7 @@ class VaultMCPClient:
         self._validated = True
         return True, None
 
-    def get_vault_structure(self) -> Dict[str, Any]:
+    def get_vault_structure(self) -> dict[str, Any]:
         """
         Get vault structure summary.
 
@@ -164,7 +162,7 @@ class VaultMCPClient:
             recent_learnings=recent_learnings,
         )
 
-    def read_file(self, relative_path: str) -> Optional[str]:
+    def read_file(self, relative_path: str) -> str | None:
         """
         Read a file from the vault.
 
@@ -194,7 +192,7 @@ class VaultMCPClient:
             logger.warning(f"Failed to read file {relative_path}: {e}")
             return None
 
-    def write_file(self, relative_path: str, content: str) -> tuple[bool, Optional[str]]:
+    def write_file(self, relative_path: str, content: str) -> tuple[bool, str | None]:
         """
         Write a file to the vault (restricted paths only).
 
@@ -217,7 +215,7 @@ class VaultMCPClient:
         except Exception as e:
             return False, str(e)
 
-    def sync_learning(self, topic: str, content: str) -> tuple[bool, Optional[str], bool]:
+    def sync_learning(self, topic: str, content: str) -> tuple[bool, str | None, bool]:
         """
         Sync a learning to the vault.
 
@@ -265,7 +263,7 @@ class VaultMCPClient:
         except Exception as e:
             return False, str(e), False
 
-    def search(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    def search(self, query: str, max_results: int = 50) -> list[dict[str, Any]]:
         """
         Search vault content.
 
@@ -324,7 +322,7 @@ class VaultMCPClient:
         results.sort(key=lambda r: len(r["matches"]), reverse=True)
         return results[:max_results]
 
-    def list_files(self, sub_path: str = "") -> List[VaultFile]:
+    def list_files(self, sub_path: str = "") -> list[VaultFile]:
         """
         List files in vault directory.
 
@@ -343,7 +341,7 @@ class VaultMCPClient:
 
         return self._list_files_recursive(base_path, sub_path)
 
-    def _list_files_recursive(self, dir_path: Path, relative_base: str = "") -> List[VaultFile]:
+    def _list_files_recursive(self, dir_path: Path, relative_base: str = "") -> list[VaultFile]:
         """Recursively list files in directory."""
         files = []
 
@@ -373,7 +371,7 @@ class VaultMCPClient:
 
         return files
 
-    def _parse_frontmatter(self, content: str) -> Dict[str, str]:
+    def _parse_frontmatter(self, content: str) -> dict[str, str]:
         """Parse YAML frontmatter from markdown content."""
         frontmatter = {}
 

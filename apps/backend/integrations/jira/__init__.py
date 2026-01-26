@@ -16,6 +16,7 @@ Usage:
         issues = await manager.search_issues('project = CAP')
 """
 
+from .config import JiraConfig, JiraProjectState
 from .integration import (
     JiraManager,
     get_jira_manager,
@@ -23,7 +24,6 @@ from .integration import (
     prepare_coder_jira_instructions,
     prepare_planner_jira_instructions,
 )
-from .config import JiraConfig, JiraProjectState
 from .mcp_client import MCPClient, MCPServerConfig
 
 __all__ = [

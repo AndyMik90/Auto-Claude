@@ -13,14 +13,14 @@ Usage:
     mr = await client.create_merge_request(source_branch="feature", title="New feature")
 """
 
-import httpx
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
 import logging
 import urllib.parse
+from typing import Any
+
+import httpx
 
 from .config import GitLabConfig
-from .oauth import GitLabOAuth, PersonalAccessTokenAuth, OAuthToken
+from .oauth import GitLabOAuth, OAuthToken, PersonalAccessTokenAuth
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class GitLabAPIError(Exception):
     """Error from GitLab API."""
 
-    def __init__(self, status_code: int, message: str, response: Dict = None):
+    def __init__(self, status_code: int, message: str, response: dict = None):
         self.status_code = status_code
         self.message = message
         self.response = response or {}
@@ -60,8 +60,8 @@ class GitLabClient:
         self.config = config
         self.user_id = user_id or "default"
         self._oauth = oauth
-        self._token: Optional[OAuthToken] = None
-        self._http: Optional[httpx.AsyncClient] = None
+        self._token: OAuthToken | None = None
+        self._http: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
         """Initialize HTTP client and verify authentication."""
@@ -117,8 +117,8 @@ class GitLabClient:
         self,
         method: str,
         path: str,
-        params: Dict = None,
-        json: Dict = None,
+        params: dict = None,
+        json: dict = None,
     ) -> Any:
         """Make an API request."""
         if not self._http:
@@ -169,13 +169,13 @@ class GitLabClient:
 
     # ==================== User ====================
 
-    async def get_current_user(self) -> Dict[str, Any]:
+    async def get_current_user(self) -> dict[str, Any]:
         """Get current authenticated user."""
         return await self._request("GET", "/user")
 
     # ==================== Projects ====================
 
-    async def get_project(self, project_id: str = None) -> Dict[str, Any]:
+    async def get_project(self, project_id: str = None) -> dict[str, Any]:
         """Get project details."""
         pid = self._encode_project_id(project_id)
         return await self._request("GET", f"/projects/{pid}")
@@ -184,7 +184,7 @@ class GitLabClient:
         self,
         project_id: str = None,
         query: str = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List project members."""
         pid = self._encode_project_id(project_id)
         params = {}
@@ -198,11 +198,11 @@ class GitLabClient:
         self,
         project_id: str = None,
         state: str = "opened",
-        labels: List[str] = None,
+        labels: list[str] = None,
         search: str = None,
         per_page: int = 20,
         page: int = 1,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List project issues.
 
@@ -231,7 +231,7 @@ class GitLabClient:
         self,
         issue_iid: int,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a single issue by IID."""
         pid = self._encode_project_id(project_id)
         return await self._request("GET", f"/projects/{pid}/issues/{issue_iid}")
@@ -240,12 +240,12 @@ class GitLabClient:
         self,
         title: str,
         description: str = "",
-        labels: List[str] = None,
+        labels: list[str] = None,
         weight: int = None,
-        assignee_ids: List[int] = None,
+        assignee_ids: list[int] = None,
         milestone_id: int = None,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new issue.
 
@@ -274,11 +274,11 @@ class GitLabClient:
         issue_iid: int,
         title: str = None,
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         state_event: str = None,  # "close" or "reopen"
         weight: int = None,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update an existing issue."""
         pid = self._encode_project_id(project_id)
 
@@ -300,7 +300,7 @@ class GitLabClient:
         self,
         issue_iid: int,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Close an issue."""
         return await self.update_issue(issue_iid, state_event="close", project_id=project_id)
 
@@ -308,7 +308,7 @@ class GitLabClient:
         self,
         issue_iid: int,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Reopen an issue."""
         return await self.update_issue(issue_iid, state_event="reopen", project_id=project_id)
 
@@ -317,7 +317,7 @@ class GitLabClient:
         issue_iid: int,
         body: str,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add a note (comment) to an issue."""
         pid = self._encode_project_id(project_id)
         return await self._request(
@@ -329,9 +329,9 @@ class GitLabClient:
     async def add_issue_labels(
         self,
         issue_iid: int,
-        labels: List[str],
+        labels: list[str],
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add labels to an issue."""
         pid = self._encode_project_id(project_id)
         issue = await self.get_issue(issue_iid, project_id)
@@ -348,7 +348,7 @@ class GitLabClient:
         source_branch: str = None,
         target_branch: str = None,
         per_page: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List merge requests."""
         pid = self._encode_project_id(project_id)
         params = {
@@ -366,7 +366,7 @@ class GitLabClient:
         self,
         mr_iid: int,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a single merge request."""
         pid = self._encode_project_id(project_id)
         return await self._request("GET", f"/projects/{pid}/merge_requests/{mr_iid}")
@@ -377,11 +377,11 @@ class GitLabClient:
         title: str,
         target_branch: str = None,
         description: str = "",
-        labels: List[str] = None,
+        labels: list[str] = None,
         remove_source_branch: bool = True,
         squash: bool = False,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new merge request.
 
@@ -414,10 +414,10 @@ class GitLabClient:
         mr_iid: int,
         title: str = None,
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         state_event: str = None,  # "close" or "reopen"
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update a merge request."""
         pid = self._encode_project_id(project_id)
 
@@ -439,7 +439,7 @@ class GitLabClient:
         merge_commit_message: str = None,
         squash: bool = False,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Merge a merge request."""
         pid = self._encode_project_id(project_id)
 
@@ -454,7 +454,7 @@ class GitLabClient:
         mr_iid: int,
         body: str,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add a note (comment) to a merge request."""
         pid = self._encode_project_id(project_id)
         return await self._request(
@@ -469,7 +469,7 @@ class GitLabClient:
         self,
         project_id: str = None,
         search: str = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List repository branches."""
         pid = self._encode_project_id(project_id)
         params = {}
@@ -481,7 +481,7 @@ class GitLabClient:
         self,
         branch_name: str,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a branch."""
         pid = self._encode_project_id(project_id)
         branch = urllib.parse.quote(branch_name, safe="")
@@ -492,7 +492,7 @@ class GitLabClient:
         branch_name: str,
         ref: str = None,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new branch."""
         pid = self._encode_project_id(project_id)
         return await self._request(
@@ -519,7 +519,7 @@ class GitLabClient:
     async def list_labels(
         self,
         project_id: str = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List project labels."""
         pid = self._encode_project_id(project_id)
         return await self._request("GET", f"/projects/{pid}/labels")
@@ -530,7 +530,7 @@ class GitLabClient:
         color: str = "#428BCA",
         description: str = "",
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a project label."""
         pid = self._encode_project_id(project_id)
         return await self._request(
@@ -551,7 +551,7 @@ class GitLabClient:
         ref: str = None,
         status: str = None,
         per_page: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List project pipelines."""
         pid = self._encode_project_id(project_id)
         params = {"per_page": per_page}
@@ -565,7 +565,7 @@ class GitLabClient:
         self,
         pipeline_id: int,
         project_id: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get pipeline details."""
         pid = self._encode_project_id(project_id)
         return await self._request("GET", f"/projects/{pid}/pipelines/{pipeline_id}")

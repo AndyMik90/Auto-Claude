@@ -5,10 +5,8 @@ Handles vault configuration from environment variables and settings.
 """
 
 import os
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional, List
-
+from pathlib import Path
 
 # Paths that are allowed for write operations (safety)
 WRITE_ALLOWED_PATHS = [
@@ -38,7 +36,7 @@ class VaultConfig:
     write_enabled: bool = False
 
     # Paths allowed for write operations
-    write_allowed_paths: List[str] = field(default_factory=lambda: WRITE_ALLOWED_PATHS.copy())
+    write_allowed_paths: list[str] = field(default_factory=lambda: WRITE_ALLOWED_PATHS.copy())
 
     def __post_init__(self):
         """Expand tilde in vault path."""
@@ -81,7 +79,7 @@ class VaultConfig:
             return False
         return any(relative_path.startswith(p) for p in self.write_allowed_paths)
 
-    def validate(self) -> tuple[bool, Optional[str]]:
+    def validate(self) -> tuple[bool, str | None]:
         """
         Validate vault configuration.
 
@@ -101,7 +99,7 @@ class VaultConfig:
         return True, None
 
 
-def get_vault_config() -> Optional[VaultConfig]:
+def get_vault_config() -> VaultConfig | None:
     """
     Get vault configuration from environment variables.
 
@@ -134,7 +132,7 @@ def get_vault_config() -> Optional[VaultConfig]:
     )
 
 
-def get_vault_config_from_settings(settings: dict) -> Optional[VaultConfig]:
+def get_vault_config_from_settings(settings: dict) -> VaultConfig | None:
     """
     Get vault configuration from settings dictionary.
 

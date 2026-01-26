@@ -17,22 +17,21 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any
 
+from .client import GitLabClient
 from .config import (
     LABELS,
     GitLabConfig,
     GitLabProjectState,
-    get_creator_label,
-    get_gitlab_state,
-    get_weight_for_phase,
-    get_labels_for_subtask,
     format_issue_description,
     format_session_note,
     format_stuck_note,
+    get_creator_label,
+    get_labels_for_subtask,
+    get_weight_for_phase,
 )
-from .client import GitLabClient
-from .oauth import GitLabOAuth, OAuthToken, UserTokenStore
+from .oauth import GitLabOAuth, OAuthToken
 
 
 class GitLabManager:
@@ -61,9 +60,9 @@ class GitLabManager:
         self.project_dir = project_dir
         self.user_id = user_id or os.environ.get("GITLAB_USER", "default")
         self.config = GitLabConfig.from_file() or GitLabConfig.from_env()
-        self.state: Optional[GitLabProjectState] = None
-        self._client: Optional[GitLabClient] = None
-        self._oauth: Optional[GitLabOAuth] = None
+        self.state: GitLabProjectState | None = None
+        self._client: GitLabClient | None = None
+        self._oauth: GitLabOAuth | None = None
 
         # Load existing state if available
         self.state = GitLabProjectState.load(spec_dir)
@@ -123,7 +122,7 @@ class GitLabManager:
             raise ValueError("OAuth not configured")
         return self._oauth.get_authorization_url(self.user_id)
 
-    async def complete_oauth(self, code: str, state: str) -> Optional[OAuthToken]:
+    async def complete_oauth(self, code: str, state: str) -> OAuthToken | None:
         """
         Complete OAuth flow after user authorization.
 
@@ -144,7 +143,7 @@ class GitLabManager:
             return self._oauth.logout(self.user_id)
         return False
 
-    def get_issue_iid(self, subtask_id: str) -> Optional[int]:
+    def get_issue_iid(self, subtask_id: str) -> int | None:
         """Get the GitLab issue IID for a subtask."""
         if not self.state:
             return None
@@ -158,7 +157,7 @@ class GitLabManager:
         self.state.issue_mapping[subtask_id] = issue_iid
         self.state.save(self.spec_dir)
 
-    def get_mr_iid(self, subtask_id: str) -> Optional[int]:
+    def get_mr_iid(self, subtask_id: str) -> int | None:
         """Get the GitLab MR IID for a subtask."""
         if not self.state:
             return None
@@ -177,13 +176,13 @@ class GitLabManager:
     async def list_project_issues(
         self,
         state: str = "opened",
-        labels: List[str] = None,
-    ) -> List[Dict[str, Any]]:
+        labels: list[str] = None,
+    ) -> list[dict[str, Any]]:
         """List issues for the configured project."""
         await self.connect()
         return await self._client.list_issues(state=state, labels=labels)
 
-    async def get_issue(self, issue_iid: int) -> Dict[str, Any]:
+    async def get_issue(self, issue_iid: int) -> dict[str, Any]:
         """Get an issue by IID."""
         await self.connect()
         return await self._client.get_issue(issue_iid)
@@ -192,9 +191,9 @@ class GitLabManager:
         self,
         title: str,
         description: str = "",
-        labels: List[str] = None,
+        labels: list[str] = None,
         weight: int = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new issue."""
         await self.connect()
         return await self._client.create_issue(
@@ -209,9 +208,9 @@ class GitLabManager:
         issue_iid: int,
         title: str = None,
         description: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         state_event: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update an issue."""
         await self.connect()
         return await self._client.update_issue(
@@ -222,12 +221,12 @@ class GitLabManager:
             state_event=state_event,
         )
 
-    async def close_issue(self, issue_iid: int) -> Dict[str, Any]:
+    async def close_issue(self, issue_iid: int) -> dict[str, Any]:
         """Close an issue."""
         await self.connect()
         return await self._client.close_issue(issue_iid)
 
-    async def add_issue_note(self, issue_iid: int, body: str) -> Dict[str, Any]:
+    async def add_issue_note(self, issue_iid: int, body: str) -> dict[str, Any]:
         """Add a note to an issue."""
         await self.connect()
         return await self._client.add_issue_note(issue_iid, body)
@@ -239,8 +238,8 @@ class GitLabManager:
         source_branch: str,
         title: str,
         description: str = "",
-        labels: List[str] = None,
-    ) -> Dict[str, Any]:
+        labels: list[str] = None,
+    ) -> dict[str, Any]:
         """Create a new merge request."""
         await self.connect()
         return await self._client.create_merge_request(
@@ -250,24 +249,24 @@ class GitLabManager:
             labels=labels,
         )
 
-    async def get_merge_request(self, mr_iid: int) -> Dict[str, Any]:
+    async def get_merge_request(self, mr_iid: int) -> dict[str, Any]:
         """Get a merge request by IID."""
         await self.connect()
         return await self._client.get_merge_request(mr_iid)
 
-    async def add_mr_note(self, mr_iid: int, body: str) -> Dict[str, Any]:
+    async def add_mr_note(self, mr_iid: int, body: str) -> dict[str, Any]:
         """Add a note to a merge request."""
         await self.connect()
         return await self._client.add_mr_note(mr_iid, body)
 
     # ==================== Branch Operations ====================
 
-    async def create_branch(self, branch_name: str, ref: str = None) -> Dict[str, Any]:
+    async def create_branch(self, branch_name: str, ref: str = None) -> dict[str, Any]:
         """Create a new branch."""
         await self.connect()
         return await self._client.create_branch(branch_name, ref)
 
-    async def get_branch(self, branch_name: str) -> Dict[str, Any]:
+    async def get_branch(self, branch_name: str) -> dict[str, Any]:
         """Get branch info."""
         await self.connect()
         return await self._client.get_branch(branch_name)
@@ -317,7 +316,7 @@ class GitLabManager:
             self.state.meta_issue_iid = meta_issue_iid
             self.state.save(self.spec_dir)
 
-    def load_implementation_plan(self) -> Optional[dict]:
+    def load_implementation_plan(self) -> dict | None:
         """Load the implementation plan from spec directory."""
         plan_file = self.spec_dir / "implementation_plan.json"
         if not plan_file.exists():
@@ -329,7 +328,7 @@ class GitLabManager:
         except (OSError, json.JSONDecodeError):
             return None
 
-    def get_subtasks_for_sync(self) -> List[dict]:
+    def get_subtasks_for_sync(self) -> list[dict]:
         """Get all subtasks that need GitLab issues."""
         plan = self.load_implementation_plan()
         if not plan:
@@ -401,7 +400,7 @@ class GitLabManager:
         self,
         subtask_id: str,
         attempt_count: int,
-        attempts: List[dict],
+        attempts: list[dict],
         reason: str = "",
     ) -> dict:
         """Prepare data for escalating a stuck subtask."""

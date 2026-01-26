@@ -16,6 +16,8 @@ Usage:
         issues = await manager.get_project_issues()
 """
 
+from .client import GitLabClient
+from .config import GitLabConfig, GitLabProjectState
 from .integration import (
     GitLabManager,
     get_gitlab_manager,
@@ -23,8 +25,6 @@ from .integration import (
     prepare_coder_gitlab_instructions,
     prepare_planner_gitlab_instructions,
 )
-from .config import GitLabConfig, GitLabProjectState
-from .client import GitLabClient
 from .oauth import GitLabOAuth, OAuthToken, UserTokenStore
 
 __all__ = [

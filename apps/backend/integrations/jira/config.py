@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional
 
 # JIRA Status Constants (common workflow states)
 STATUS_TODO = "To Do"
@@ -161,7 +161,7 @@ class JiraProjectState:
     meta_issue_key: str = ""
     total_issues: int = 0
     created_at: str = ""
-    issue_mapping: Dict[str, str] = field(default_factory=dict)  # subtask_id -> issue_key
+    issue_mapping: dict[str, str] = field(default_factory=dict)  # subtask_id -> issue_key
 
     def to_dict(self) -> dict:
         return {
@@ -348,7 +348,7 @@ def format_session_comment(
 def format_stuck_subtask_comment(
     subtask_id: str,
     attempt_count: int,
-    attempts: List[dict],
+    attempts: list[dict],
     reason: str = "",
 ) -> str:
     """Format a detailed comment for stuck subtasks."""

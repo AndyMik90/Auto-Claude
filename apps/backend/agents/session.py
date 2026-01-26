@@ -16,6 +16,7 @@ from linear_updater import (
     linear_subtask_completed,
     linear_subtask_failed,
 )
+from memory import is_vault_sync_enabled, sync_to_vault
 from progress import (
     count_subtasks_detailed,
     is_build_complete,
@@ -33,8 +34,6 @@ from ui import (
     print_key_value,
     print_status,
 )
-
-from memory import is_vault_sync_enabled, sync_to_vault
 
 from .memory_manager import save_session_memory
 from .utils import (

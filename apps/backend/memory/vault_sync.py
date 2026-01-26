@@ -24,7 +24,6 @@ Configuration:
     Example: VAULT_PATH=~/.auto-claude/vault
 """
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -32,7 +31,6 @@ from pathlib import Path
 from typing import Any
 
 from .codebase_map import load_codebase_map
-from .paths import get_memory_dir
 from .patterns import load_gotchas, load_patterns
 from .sessions import load_all_insights
 

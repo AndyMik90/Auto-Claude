@@ -39,7 +39,21 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
+# Import integration tools and helpers
+from agents.tools_pkg.models import (
+    GITLAB_TOOLS,
+    JIRA_TOOLS,
+    OBSIDIAN_TOOLS,
+    is_gitlab_mcp_enabled,
+    is_jira_mcp_enabled,
+    is_obsidian_mcp_enabled,
+)
 from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.mcp_config import (
+    build_gitlab_mcp_config,
+    build_jira_mcp_config,
+    build_obsidian_mcp_config,
+)
 from debug import (
     debug,
     debug_detailed,
@@ -48,21 +62,6 @@ from debug import (
     debug_success,
 )
 from phase_config import get_thinking_budget, resolve_model_id
-
-# Import integration tools and helpers
-from agents.tools_pkg.models import (
-    JIRA_TOOLS,
-    GITLAB_TOOLS,
-    OBSIDIAN_TOOLS,
-    is_jira_mcp_enabled,
-    is_gitlab_mcp_enabled,
-    is_obsidian_mcp_enabled,
-)
-from core.mcp_config import (
-    build_jira_mcp_config,
-    build_gitlab_mcp_config,
-    build_obsidian_mcp_config,
-)
 
 
 def get_insights_allowed_tools() -> list[str]:

@@ -4,16 +4,13 @@ Memory Sync Service
 Handles syncing learnings and session data to the vault.
 """
 
-import os
 import logging
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from .config import VaultConfig
 from .mcp_client import VaultMCPClient
-
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +19,8 @@ logger = logging.getLogger(__name__)
 class SyncResult:
     """Result of a sync operation."""
     success: bool
-    path: Optional[str] = None
-    error: Optional[str] = None
+    path: str | None = None
+    error: str | None = None
     appended: bool = False
 
 
@@ -48,7 +45,7 @@ class MemorySyncService:
         self.client = VaultMCPClient(config)
         self._backup_created = False
 
-    def sync_learning(self, topic: str, content: str, tags: Optional[List[str]] = None) -> SyncResult:
+    def sync_learning(self, topic: str, content: str, tags: list[str] | None = None) -> SyncResult:
         """
         Sync a learning to the vault.
 
@@ -180,7 +177,7 @@ class MemorySyncService:
             logger.error(f"Failed to append to session: {e}")
             return SyncResult(success=False, error=str(e))
 
-    def get_context_for_prompt(self) -> Dict[str, Any]:
+    def get_context_for_prompt(self) -> dict[str, Any]:
         """
         Get vault context for inclusion in prompts.
 
@@ -195,10 +192,10 @@ class MemorySyncService:
             "agents": context.agents,
             "recent_learnings": [
                 {
-                    "topic": l["topic"],
-                    "path": l["path"],
+                    "topic": learning["topic"],
+                    "path": learning["path"],
                 }
-                for l in context.recent_learnings
+                for learning in context.recent_learnings
             ],
         }
 

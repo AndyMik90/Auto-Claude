@@ -25,17 +25,17 @@ Usage:
     token = oauth.get_user_token(user_id)
 """
 
-import os
-import json
-import time
-import secrets
 import hashlib
-import httpx
-from dataclasses import dataclass, field, asdict
-from typing import Optional, Dict, Any
-from pathlib import Path
-from datetime import datetime, timedelta
+import json
 import logging
+import os
+import secrets
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,12 @@ class OAuthToken:
 
     access_token: str
     token_type: str = "Bearer"
-    refresh_token: Optional[str] = None
-    expires_at: Optional[float] = None  # Unix timestamp
+    refresh_token: str | None = None
+    expires_at: float | None = None  # Unix timestamp
     scope: str = ""
     created_at: float = field(default_factory=time.time)
     user_id: str = ""
-    gitlab_user: Optional[Dict[str, Any]] = None  # GitLab user info
+    gitlab_user: dict[str, Any] | None = None  # GitLab user info
 
     def is_expired(self, buffer_seconds: int = 300) -> bool:
         """Check if token is expired (with buffer for safety)."""
@@ -62,19 +62,19 @@ class OAuthToken:
             return False
         return time.time() >= (self.expires_at - buffer_seconds)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OAuthToken":
+    def from_dict(cls, data: dict[str, Any]) -> "OAuthToken":
         """Create from dictionary."""
         return cls(**data)
 
     @classmethod
     def from_oauth_response(
         cls,
-        response: Dict[str, Any],
+        response: dict[str, Any],
         user_id: str = ""
     ) -> "OAuthToken":
         """Create from GitLab OAuth response."""
@@ -131,7 +131,7 @@ class UserTokenStore:
         token_path.chmod(0o600)
         logger.info(f"Saved token for user {user_id[:8]}...")
 
-    def get_token(self, user_id: str) -> Optional[OAuthToken]:
+    def get_token(self, user_id: str) -> OAuthToken | None:
         """Get user's token from storage."""
         token_path = self._get_token_path(user_id)
 
@@ -176,7 +176,7 @@ class OAuthState:
 
     state: str
     user_id: str
-    code_verifier: Optional[str] = None  # For PKCE
+    code_verifier: str | None = None  # For PKCE
     created_at: float = field(default_factory=time.time)
     redirect_uri: str = ""
 
@@ -225,7 +225,7 @@ class GitLabOAuth:
         self.user_url = f"{self.gitlab_url}/api/v4/user"
 
         # State storage for CSRF protection
-        self._pending_states: Dict[str, OAuthState] = {}
+        self._pending_states: dict[str, OAuthState] = {}
 
     def get_authorization_url(
         self,
@@ -279,7 +279,7 @@ class GitLabOAuth:
         self,
         code: str,
         state: str,
-    ) -> Optional[OAuthToken]:
+    ) -> OAuthToken | None:
         """
         Exchange authorization code for access token.
 
@@ -342,7 +342,7 @@ class GitLabOAuth:
 
         return token
 
-    async def refresh_token(self, user_id: str) -> Optional[OAuthToken]:
+    async def refresh_token(self, user_id: str) -> OAuthToken | None:
         """
         Refresh an expired token.
 
@@ -387,7 +387,7 @@ class GitLabOAuth:
 
         return new_token
 
-    async def get_valid_token(self, user_id: str) -> Optional[OAuthToken]:
+    async def get_valid_token(self, user_id: str) -> OAuthToken | None:
         """
         Get a valid token for user, refreshing if needed.
 
@@ -410,7 +410,7 @@ class GitLabOAuth:
 
         return token
 
-    async def _get_user_info(self, access_token: str) -> Dict[str, Any]:
+    async def _get_user_info(self, access_token: str) -> dict[str, Any]:
         """Fetch GitLab user info."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -420,7 +420,7 @@ class GitLabOAuth:
             response.raise_for_status()
             return response.json()
 
-    def get_user_token(self, user_id: str) -> Optional[OAuthToken]:
+    def get_user_token(self, user_id: str) -> OAuthToken | None:
         """Get user's stored token (may be expired)."""
         return self.token_store.get_token(user_id)
 

@@ -14,10 +14,10 @@ Usage:
 """
 
 import asyncio
-import webbrowser
-from aiohttp import web
-from typing import Optional
 import logging
+import webbrowser
+
+from aiohttp import web
 
 from .oauth import GitLabOAuth, OAuthToken
 
@@ -43,8 +43,8 @@ class OAuthCallbackServer:
         self.oauth = oauth
         self.user_id = user_id
         self.port = port
-        self._token: Optional[OAuthToken] = None
-        self._error: Optional[str] = None
+        self._token: OAuthToken | None = None
+        self._error: str | None = None
         self._event = asyncio.Event()
 
     async def _handle_callback(self, request: web.Request) -> web.Response:
@@ -143,7 +143,7 @@ class OAuthCallbackServer:
         finally:
             self._event.set()
 
-    async def run(self, timeout: float = 300.0) -> Optional[OAuthToken]:
+    async def run(self, timeout: float = 300.0) -> OAuthToken | None:
         """
         Start OAuth flow and wait for completion.
 
@@ -168,7 +168,7 @@ class OAuthCallbackServer:
         try:
             # Get authorization URL and open browser
             auth_url, state = self.oauth.get_authorization_url(self.user_id)
-            print(f"\nOpening browser for GitLab authentication...")
+            print("\nOpening browser for GitLab authentication...")
             print(f"If browser doesn't open, visit: {auth_url}\n")
             webbrowser.open(auth_url)
 
@@ -201,7 +201,7 @@ async def run_oauth_flow(
     user_id: str,
     port: int = DEFAULT_PORT,
     timeout: float = 300.0,
-) -> Optional[OAuthToken]:
+) -> OAuthToken | None:
     """
     Run the complete OAuth flow.
 
@@ -226,7 +226,7 @@ def run_oauth_flow_sync(
     user_id: str,
     port: int = DEFAULT_PORT,
     timeout: float = 300.0,
-) -> Optional[OAuthToken]:
+) -> OAuthToken | None:
     """
     Synchronous wrapper for run_oauth_flow.
 

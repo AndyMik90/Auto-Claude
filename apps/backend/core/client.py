@@ -128,9 +128,9 @@ def invalidate_project_cache(project_dir: Path | None = None) -> None:
 from agents.tools_pkg import (
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
+    GITLAB_TOOLS,
     GRAPHITI_MCP_TOOLS,
     JIRA_TOOLS,
-    GITLAB_TOOLS,
     LINEAR_TOOLS,
     OBSIDIAN_TOOLS,
     PUPPETEER_TOOLS,
@@ -139,17 +139,17 @@ from agents.tools_pkg import (
     get_required_mcp_servers,
     is_tools_available,
 )
-from core.mcp_config import (
-    build_jira_mcp_config,
-    build_gitlab_mcp_config,
-    build_obsidian_mcp_config,
-)
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import (
     get_sdk_env_vars,
     require_auth_token,
     validate_token_not_encrypted,
+)
+from core.mcp_config import (
+    build_gitlab_mcp_config,
+    build_jira_mcp_config,
+    build_obsidian_mcp_config,
 )
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
@@ -410,8 +410,8 @@ def _check_graphiti_server_health(url: str, timeout: float = 2.0) -> bool:
     Returns:
         True if server is responding, False otherwise
     """
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     try:
         # Just check if we can connect - don't need a valid response
