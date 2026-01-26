@@ -410,15 +410,13 @@ def _check_graphiti_server_health(url: str, timeout: float = 2.0) -> bool:
     Returns:
         True if server is responding, False otherwise
     """
-    import urllib.error
-    import urllib.request
+    import httpx
 
     try:
         # Just check if we can connect - don't need a valid response
-        req = urllib.request.Request(url, method='HEAD')
-        urllib.request.urlopen(req, timeout=timeout)
-        return True
-    except urllib.error.URLError:
+        response = httpx.head(url, timeout=timeout)
+        return response.status_code < 500
+    except httpx.RequestError:
         return False
     except Exception:
         return False
