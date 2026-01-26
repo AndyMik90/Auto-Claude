@@ -2,7 +2,60 @@
  * Mock implementation for workspace management operations
  */
 
+import type {
+  Workspace,
+  WorkspaceRepo,
+  ProjectTypeDetectionResult
+} from '../../../shared/types/workspace';
+
 export const workspaceMock = {
+  // New Workspace API (multi-repository support)
+  getWorkspaces: async () => ({
+    success: true,
+    data: [] as Workspace[]
+  }),
+
+  getWorkspace: async (_workspacePath: string) => ({
+    success: true,
+    data: null as Workspace | null
+  }),
+
+  createWorkspace: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  addRepoToWorkspace: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  removeRepoFromWorkspace: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  setDefaultRepo: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  detectProjectType: async (path: string) => ({
+    success: true,
+    data: {
+      type: 'standalone',
+      path,
+      hasGitRoot: true,
+      hasWorkspaceConfig: false
+    } as ProjectTypeDetectionResult
+  }),
+
+  deleteWorkspace: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  // Worktree operations (existing)
   getWorktreeStatus: async () => ({
     success: true,
     data: {

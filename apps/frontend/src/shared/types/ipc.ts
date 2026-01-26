@@ -5,6 +5,13 @@
 import type { IPCResult } from './common';
 import type { SupportedIDE, SupportedTerminal } from './settings';
 import type {
+  Workspace,
+  WorkspaceRepo,
+  ProjectTypeDetectionResult,
+  CreateWorkspaceOptions,
+  AddRepoOptions
+} from './workspace';
+import type {
   Project,
   ProjectSettings,
   AutoBuildVersionInfo,
@@ -593,6 +600,16 @@ export interface ElectronAPI {
 
   // Slack integration operations
   testSlackWebhook: (webhookUrl: string) => Promise<IPCResult<{ success: boolean }>>;
+
+  // Workspace operations (multi-repository support)
+  getWorkspaces: () => Promise<IPCResult<Workspace[]>>;
+  getWorkspace: (workspacePath: string) => Promise<IPCResult<Workspace | null>>;
+  createWorkspace: (options: CreateWorkspaceOptions) => Promise<IPCResult<Workspace>>;
+  addRepoToWorkspace: (options: AddRepoOptions) => Promise<IPCResult<WorkspaceRepo>>;
+  removeRepoFromWorkspace: (workspaceId: string, repoId: string) => Promise<IPCResult<void>>;
+  setDefaultRepo: (workspaceId: string, repoId: string) => Promise<IPCResult<void>>;
+  detectProjectType: (path: string) => Promise<IPCResult<ProjectTypeDetectionResult>>;
+  deleteWorkspace: (workspaceId: string) => Promise<IPCResult<void>>;
 
   // Release operations
   getReleaseableVersions: (projectId: string) => Promise<IPCResult<ReleaseableVersion[]>>;
