@@ -86,11 +86,11 @@ export function ProjectTabBar({
 
   return (
     <div className={cn(
-      'flex items-center border-b border-border bg-background',
+      'electron-drag flex items-center border-b border-border bg-background',
       'overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent',
       className
     )}>
-      <div className="flex items-center flex-1 min-w-0">
+      <div className="electron-no-drag flex items-center min-w-0">
         {projects.map((project, index) => {
           const isActiveTab = activeProjectId === project.id;
           return (
@@ -112,7 +112,10 @@ export function ProjectTabBar({
         })}
       </div>
 
-      <div className="flex items-center gap-2 px-2 py-1">
+      {/* Draggable spacer between tabs and buttons */}
+      <div className="flex-1 min-w-4 h-full" />
+
+      <div className="electron-no-drag flex items-center gap-2 px-2 py-1">
         <AuthStatusIndicator />
         <UsageIndicator />
         <Button
