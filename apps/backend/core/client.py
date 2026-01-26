@@ -504,6 +504,99 @@ def load_claude_md(project_dir: Path) -> str | None:
     return None
 
 
+def is_vault_auto_load_enabled() -> bool:
+    """Check if vault auto-load is enabled (load CLAUDE.md + learnings at session start)."""
+    return os.environ.get("VAULT_AUTO_LOAD", "").lower() == "true"
+
+
+def load_vault_context() -> dict[str, Any] | None:
+    """
+    Load vault context including CLAUDE.md and recent learnings.
+
+    This provides cross-project memory from the external vault (Obsidian/markdown).
+
+    Returns:
+        Dict with vault context (claude_md, recent_learnings) or None if not configured
+    """
+    vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
+    if not vault_path:
+        return None
+
+    expanded = Path(vault_path).expanduser().resolve()
+    if not expanded.exists():
+        logger.warning(f"Vault path does not exist: {expanded}")
+        return None
+
+    context: dict[str, Any] = {}
+
+    # Load vault's CLAUDE.md (session context)
+    vault_claude_md = expanded / ".claude" / "CLAUDE.md"
+    if vault_claude_md.exists():
+        try:
+            context["claude_md"] = vault_claude_md.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read vault CLAUDE.md: {e}")
+
+    # Load recent learnings (last 5 files, max 2000 chars each)
+    learnings_dir = expanded / "memory" / "learnings"
+    if learnings_dir.exists():
+        learning_files = sorted(
+            learnings_dir.glob("**/*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:5]  # Last 5 most recent
+
+        learnings = []
+        for learning_file in learning_files:
+            try:
+                content = learning_file.read_text(encoding="utf-8")
+                # Truncate to avoid bloating context
+                if len(content) > 2000:
+                    content = content[:2000] + "\n...(truncated)"
+                learnings.append({
+                    "path": str(learning_file.relative_to(expanded)),
+                    "content": content,
+                })
+            except Exception as e:
+                logger.warning(f"Failed to read learning {learning_file}: {e}")
+
+        if learnings:
+            context["recent_learnings"] = learnings
+
+    return context if context else None
+
+
+def format_vault_context_for_prompt(vault_context: dict[str, Any]) -> str:
+    """
+    Format vault context for inclusion in system prompt.
+
+    Args:
+        vault_context: Dict from load_vault_context()
+
+    Returns:
+        Formatted string for system prompt
+    """
+    sections = []
+
+    # Include vault's CLAUDE.md
+    if vault_context.get("claude_md"):
+        sections.append("## Vault Instructions (from vault CLAUDE.md)\n")
+        sections.append(vault_context["claude_md"])
+        sections.append("")
+
+    # Include recent learnings summaries
+    learnings = vault_context.get("recent_learnings", [])
+    if learnings:
+        sections.append("## Recent Learnings from Vault\n")
+        sections.append("These are recent discoveries from previous sessions. Use them to avoid repeating mistakes.\n")
+        for learning in learnings:
+            sections.append(f"### {learning['path']}\n")
+            sections.append(learning["content"])
+            sections.append("")
+
+    return "\n".join(sections)
+
+
 def create_client(
     project_dir: Path,
     spec_dir: Path,
@@ -896,6 +989,30 @@ def create_client(
             print("   - CLAUDE.md: not found in project root")
     else:
         print("   - CLAUDE.md: disabled by project settings")
+
+    # Include vault context if obsidian is enabled and auto-load is on
+    if "obsidian" in required_servers and is_vault_auto_load_enabled():
+        vault_context = load_vault_context()
+        if vault_context:
+            vault_prompt = format_vault_context_for_prompt(vault_context)
+            base_prompt = f"{base_prompt}\n\n# External Vault Context\n\n{vault_prompt}"
+            print("   - Vault context: included in system prompt")
+
+            # Add vault usage instructions
+            vault_instructions = (
+                "\n\n## Vault Tools Available\n"
+                "You have access to an external Obsidian vault via MCP tools (mcp__obsidian__*).\n"
+                "Use these tools to:\n"
+                "- Read additional learnings: mcp__obsidian__read_file('memory/learnings/...')\n"
+                "- Search vault: mcp__obsidian__search_files('memory/', '*.md')\n"
+                "- Write discoveries: mcp__obsidian__write_file('memory/learnings/...') (if write enabled)\n\n"
+                "The vault contains cross-project knowledge that persists between sessions."
+            )
+            base_prompt = f"{base_prompt}{vault_instructions}"
+        else:
+            print("   - Vault context: not found or empty")
+    elif "obsidian" in required_servers:
+        print("   - Vault context: auto-load disabled (VAULT_AUTO_LOAD not set)")
     print()
 
     # Build options dict, conditionally including output_format
