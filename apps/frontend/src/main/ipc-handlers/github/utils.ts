@@ -280,7 +280,7 @@ export function getGitHubConfigForRepo(project: Project, repo: string): GitHubCo
 
   // Fall back to gh CLI token
   if (!token) {
-    token = getTokenFromGhCli();
+    token = getTokenFromGhCliSync();
   }
 
   if (!token) return null;

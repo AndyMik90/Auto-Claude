@@ -253,10 +253,12 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
               prs={filteredPRs}
               selectedPRNumber={selectedPRNumber}
               isLoading={isLoading}
+              isLoadingMore={false}
               hasMore={hasMore}
               error={error}
               getReviewStateForPR={getReviewStateForPR}
               onSelectPR={selectPR}
+              onLoadMore={() => {}}
             />
           </div>
         }
