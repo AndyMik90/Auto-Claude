@@ -21,6 +21,7 @@ import {
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
+import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2328,7 +2329,9 @@ export function registerWorktreeHandlers(
                 success: true,
                 data: {
                   success: false,
-                  message: hasConflicts ? 'Merge conflicts detected' : `Merge failed: ${stderr || stdout}`,
+                  message: hasConflicts
+                    ? 'Merge conflicts detected'
+                    : `Merge failed: ${stripAnsiCodes(stderr || stdout)}`,
                   conflictFiles: hasConflicts ? [] : undefined
                 }
               });
@@ -2528,7 +2531,7 @@ export function registerWorktreeHandlers(
                 console.error('[IPC] stderr:', stderr);
                 resolve({
                   success: false,
-                  error: `Failed to parse preview result: ${stderr || stdout}`
+                  error: `Failed to parse preview result: ${stripAnsiCodes(stderr || stdout)}`
                 });
               }
             } else {
@@ -2537,7 +2540,7 @@ export function registerWorktreeHandlers(
               console.error('[IPC] stdout:', stdout);
               resolve({
                 success: false,
-                error: `Preview failed: ${stderr || stdout}`
+                error: `Preview failed: ${stripAnsiCodes(stderr || stdout)}`
               });
             }
           });
@@ -3129,7 +3132,7 @@ export function registerWorktreeHandlers(
                 // Prefer stdout over stderr since stderr often contains debug messages
                 resolve({
                   success: false,
-                  error: stdout || stderr || 'Failed to create PR'
+                  error: stripAnsiCodes(stdout || stderr || 'Failed to create PR')
                 });
               }
             }
