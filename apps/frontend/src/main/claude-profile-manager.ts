@@ -504,7 +504,7 @@ export class ClaudeProfileManager {
         : profile.configDir;
       env.CLAUDE_CONFIG_DIR = normalize(expandedConfigDir);
       if (process.env.DEBUG === 'true') {
-        console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
+        console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, env.CLAUDE_CONFIG_DIR);
       }
     } else {
       console.warn('[ClaudeProfileManager] Profile has no configDir configured:', profile?.name);
