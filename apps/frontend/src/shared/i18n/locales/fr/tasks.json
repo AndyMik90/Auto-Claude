@@ -176,6 +176,13 @@
     "largeFileWarning": "\"{{name}}\" fait {{size}}Mo. Les images volumineuses peuvent causer des problèmes de performance.",
     "screenshotFilename": "capture-{{timestamp}}.{{ext}}"
   },
+  "imagePreview": {
+    "close": "Fermer l'aperçu",
+    "unavailable": "Image indisponible",
+    "description": "Aperçu de {{filename}}",
+    "doubleClickHint": "Double-cliquez pour agrandir",
+    "lowResolution": "Aperçu basse résolution"
+  },
   "notifications": {
     "backgroundTaskTitle": "La tâche continue en arrière-plan",
     "backgroundTaskDescription": "La tâche est toujours en cours. Vous pouvez rouvrir cette boîte de dialogue pour suivre la progression."

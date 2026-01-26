@@ -177,6 +177,13 @@
     "largeFileWarning": "\"{{name}}\" is {{size}}MB. Large images may cause performance issues.",
     "screenshotFilename": "screenshot-{{timestamp}}.{{ext}}"
   },
+  "imagePreview": {
+    "close": "Close preview",
+    "unavailable": "Image unavailable",
+    "description": "Preview of {{filename}}",
+    "doubleClickHint": "Double-click to enlarge",
+    "lowResolution": "Low resolution preview"
+  },
   "notifications": {
     "backgroundTaskTitle": "Task continues in background",
     "backgroundTaskDescription": "The task is still running. You can reopen this dialog to monitor progress."
