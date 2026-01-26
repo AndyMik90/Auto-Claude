@@ -32,6 +32,35 @@ export class TaskStateManager {
 
   constructor(private readonly getMainWindow: () => BrowserWindow | null) {}
 
+  /**
+   * Cleans up resources for a specific task.
+   * Call this when a task is deleted or no longer needs tracking.
+   */
+  cleanupTask(taskId: string): void {
+    const actor = this.actors.get(taskId);
+    if (actor) {
+      actor.stop();
+      this.actors.delete(taskId);
+    }
+    this.taskContext.delete(taskId);
+    this.lastLegacy.delete(taskId);
+    logger.info(`[TaskStateManager] Cleaned up task: ${taskId}`);
+  }
+
+  /**
+   * Cleans up all resources. Call this on app shutdown.
+   */
+  cleanup(): void {
+    for (const [taskId, actor] of this.actors) {
+      actor.stop();
+      logger.info(`[TaskStateManager] Stopped actor for task: ${taskId}`);
+    }
+    this.actors.clear();
+    this.taskContext.clear();
+    this.lastLegacy.clear();
+    logger.info('[TaskStateManager] All resources cleaned up');
+  }
+
   handleExecutionProgress(task: Task, project: Project, progress: ExecutionProgress): void {
     this.taskContext.set(task.id, { task, project });
     this.logExecutionProgress(task.id, progress, project.id);
@@ -189,7 +218,8 @@ export class TaskStateManager {
     if (!actor) {
       actor = createActor(taskMachine, { id: task.id });
       actor.subscribe((snapshot) => {
-        if (!snapshot.changed) return;
+        // XState v5: 'changed' is only present when state has actually changed
+        // For subscriptions, we receive updates on every transition attempt, so check if status changed
         this.handleSnapshot(task.id, snapshot);
       });
       actor.start();
@@ -341,4 +371,15 @@ export function getTaskStateManager(getMainWindow: () => BrowserWindow | null): 
     taskStateManager = new TaskStateManager(getMainWindow);
   }
   return taskStateManager;
+}
+
+/**
+ * Cleans up and resets the singleton instance.
+ * Call this on app shutdown to prevent memory leaks.
+ */
+export function cleanupTaskStateManager(): void {
+  if (taskStateManager) {
+    taskStateManager.cleanup();
+    taskStateManager = null;
+  }
 }

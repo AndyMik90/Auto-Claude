@@ -31,9 +31,13 @@ export const taskMachine = createMachine(
   {
     id: 'taskMachine',
     initial: 'backlog',
+    types: {} as {
+      context: TaskMachineContext;
+      events: TaskMachineEvent;
+    },
     context: {
       reviewReason: undefined
-    } satisfies TaskMachineContext,
+    },
     states: {
       backlog: {
         on: {
@@ -93,7 +97,9 @@ export const taskMachine = createMachine(
       PROCESS_EXITED: [
         { guard: 'processExitedFailed', target: '.error', actions: 'setReviewReasonErrors' },
         { guard: 'processExitedPlanReview', target: '.awaitingPlanReview', actions: 'setReviewReasonPlan' },
-        { guard: 'processExitedSuccessAllDone', target: '.human_review', actions: 'setReviewReasonCompleted' }
+        { guard: 'processExitedSuccessAllDone', target: '.human_review', actions: 'setReviewReasonCompleted' },
+        // Fallback: process exited successfully but subtasks not all done - go to human_review for inspection
+        { guard: 'processExitedSuccess', target: '.human_review', actions: 'setReviewReasonStopped' }
       ],
       MANUAL_SET_STATUS: [
         { guard: 'manualSetBacklog', target: '.backlog', actions: 'clearReviewReason' },
@@ -109,23 +115,26 @@ export const taskMachine = createMachine(
       processExitedFailed: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode !== 0,
       processExitedPlanReview: ({ event }) =>
-        event.type === 'PROCESS_EXITED' && event.requireReviewBeforeCoding === true,
+        event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.requireReviewBeforeCoding === true,
       processExitedSuccessAllDone: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.hasSubtasks && event.allSubtasksDone,
+      processExitedSuccess: ({ event }) =>
+        event.type === 'PROCESS_EXITED' && event.exitCode === 0,
       manualSetBacklog: ({ event }) => event.type === 'MANUAL_SET_STATUS' && event.status === 'backlog',
       manualSetHumanReview: ({ event }) => event.type === 'MANUAL_SET_STATUS' && event.status === 'human_review',
       manualSetDone: ({ event }) => event.type === 'MANUAL_SET_STATUS' && event.status === 'done'
     },
     actions: {
-      setReviewReasonPlan: assign({ reviewReason: () => 'plan_review' }),
-      setReviewReasonCompleted: assign({ reviewReason: () => 'completed' }),
-      setReviewReasonErrors: assign({ reviewReason: () => 'errors' }),
-      setReviewReasonQaRejected: assign({ reviewReason: () => 'qa_rejected' }),
+      setReviewReasonPlan: assign({ reviewReason: (): ReviewReason => 'plan_review' }),
+      setReviewReasonCompleted: assign({ reviewReason: (): ReviewReason => 'completed' }),
+      setReviewReasonErrors: assign({ reviewReason: (): ReviewReason => 'errors' }),
+      setReviewReasonQaRejected: assign({ reviewReason: (): ReviewReason => 'qa_rejected' }),
+      setReviewReasonStopped: assign({ reviewReason: (): ReviewReason => 'stopped' }),
       setReviewReasonFromEvent: assign({
-        reviewReason: ({ event }) =>
+        reviewReason: ({ event }): ReviewReason | undefined =>
           event.type === 'MANUAL_SET_STATUS' ? event.reviewReason : undefined
       }),
-      clearReviewReason: assign({ reviewReason: () => undefined })
+      clearReviewReason: assign({ reviewReason: (): undefined => undefined })
     }
   }
 );

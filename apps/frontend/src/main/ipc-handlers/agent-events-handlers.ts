@@ -16,6 +16,7 @@ import type {
   TaskStatus,
   Project,
   ImplementationPlan,
+  ReviewReason,
 } from "../../shared/types";
 import { AgentManager } from "../agent";
 import type { ProcessType, ExecutionProgressData } from "../agent";
@@ -280,7 +281,7 @@ export function registerAgenteventsHandlers(
           allSubtasksDone,
           requireReviewBeforeCoding,
         });
-        const decisionWithFallback =
+        const decisionWithFallback: { status?: TaskStatus; reviewReason?: ReviewReason } =
           requireReviewBeforeCoding && !decision.status
             ? { status: "human_review", reviewReason: "plan_review" }
             : decision;
@@ -302,7 +303,7 @@ export function registerAgenteventsHandlers(
             );
           }
         } else {
-          const nextStatus = decisionWithFallback.status ?? "human_review";
+          const nextStatus: TaskStatus = decisionWithFallback.status ?? "human_review";
           persistStatus(nextStatus);
           taskStateMachine.emitStatusChange(
             getMainWindow,

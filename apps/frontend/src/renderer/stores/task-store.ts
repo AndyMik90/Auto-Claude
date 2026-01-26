@@ -93,10 +93,14 @@ function updateTaskAtIndex(tasks: Task[], index: number, updater: (task: Task) =
  * Returns true if valid, false if invalid/incomplete.
  */
 function validatePlanData(plan: ImplementationPlan): boolean {
+  // Allow empty phases during early execution stages
+  // planStatus tracks execution phase (planning, coding, etc.)
+  // status tracks TaskStatus (backlog, in_progress, etc.)
   const allowEmptyPhases =
     plan.planStatus === 'planning' ||
     plan.planStatus === 'in_progress' ||
-    plan.status === 'planning' ||
+    plan.planStatus === 'coding' ||
+    plan.status === 'backlog' ||
     plan.status === 'in_progress';
 
   // Validate plan has phases array
@@ -365,7 +369,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           const planStatus = plan.status;
           const isExplicitHumanReview = planStatus === 'human_review';
           const isPlanReviewStage = plan.planStatus === 'review';
-          const isActivePlanStatus = planStatus === 'planning' || planStatus === 'coding' || planStatus === 'in_progress';
+          // Check if task is in an active (non-terminal) status where it's still being worked on
+          const isActivePlanStatus = planStatus === 'backlog' || planStatus === 'in_progress' || planStatus === 'ai_review';
 
           // FIX (ACS-203): Add defensive check for terminal status transitions
           // Before allowing transition to 'done', 'human_review', or 'ai_review', verify:
