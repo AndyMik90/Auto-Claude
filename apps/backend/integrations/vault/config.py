@@ -22,7 +22,7 @@ WRITE_ALLOWED_PATHS = [
 class VaultConfig:
     """Configuration for vault integration."""
 
-    # Vault path (e.g., ~/vaults/hc/)
+    # Vault path (e.g., ~/.auto-claude/vault/)
     vault_path: str
 
     # Whether vault is enabled

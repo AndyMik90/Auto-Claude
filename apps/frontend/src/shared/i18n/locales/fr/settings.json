@@ -329,6 +329,64 @@
       "title": "Auth Claude",
       "description": "Authentification Claude"
     },
+    "integrations": {
+      "title": "Intégrations",
+      "description": "Contrôle de source, suivi des issues et serveurs MCP",
+      "tabs": {
+        "sourceControl": "Contrôle de Source",
+        "issueTracker": "Suivi des Issues"
+      },
+      "sourceControl": {
+        "provider": "Fournisseur de Contrôle de Source",
+        "providerDescription": "Choisissez votre plateforme de contrôle de source principale pour la gestion du dépôt et des branches",
+        "selectProvider": "Sélectionnez un fournisseur de contrôle de source pour configurer les paramètres du dépôt"
+      },
+      "issueTracker": {
+        "provider": "Suivi des Issues",
+        "providerDescription": "Choisissez votre système de suivi des issues principal pour la gestion des tâches",
+        "selectProvider": "Sélectionnez un suivi des issues à configurer",
+        "jira": {
+          "enable": "Activer JIRA",
+          "enableDescription": "Utiliser JIRA pour le suivi des issues et la gestion des tâches",
+          "host": "URL de l'hôte JIRA",
+          "email": "Email JIRA",
+          "token": "Jeton API",
+          "tokenDescription": "Générez un jeton API depuis",
+          "projectKey": "Clé de projet par défaut",
+          "projectKeyDescription": "Le projet JIRA par défaut pour créer et synchroniser les issues",
+          "connected": "JIRA connecté",
+          "connectionFailed": "Échec de la connexion",
+          "testConnection": "Tester la connexion",
+          "testing": "Test en cours...",
+          "authenticatedAs": "Authentifié en tant que",
+          "missingFields": "L'hôte, l'email et le jeton API sont requis",
+          "usingGlobal": "Utilisation des paramètres globaux",
+          "migratePrompt": "Vous pouvez copier les paramètres JIRA globaux vers ce projet pour une configuration indépendante.",
+          "migrateButton": "Copier vers les paramètres du projet"
+        },
+        "gitlab": {
+          "connected": "Issues GitLab connectées",
+          "usingSourceControl": "Utilisation de GitLab depuis les paramètres de Contrôle de Source",
+          "info": "Les Issues GitLab sont disponibles via votre configuration de Contrôle de Source.",
+          "notConnected": "GitLab non connecté",
+          "configureFirst": "Configurez GitLab dans l'onglet Contrôle de Source pour utiliser les Issues GitLab."
+        }
+      }
+    },
+    "jira": {
+      "title": "JIRA",
+      "description": "Remplacement du projet JIRA",
+      "integrationTitle": "Intégration JIRA",
+      "integrationDescription": "Remplacer la clé de projet JIRA pour ce projet Auto-Claude",
+      "configured": "JIRA connecté",
+      "notConfigured": "JIRA non configuré",
+      "configureInGlobal": "Configurez d'abord les identifiants JIRA dans les paramètres globaux.",
+      "goToSettings": "Aller aux paramètres JIRA",
+      "projectKey": "Remplacement de la clé de projet",
+      "projectKeyDescription": "Remplacer le projet JIRA par défaut global pour ce projet Auto-Claude. Laissez vide pour utiliser la valeur par défaut globale.",
+      "globalDefault": "Valeur par défaut globale",
+      "overrideActive": "Remplacement actif"
+    },
     "linear": {
       "title": "Linear",
       "description": "Intégration Linear",
@@ -675,6 +733,21 @@
       "autoClaude": {
         "name": "Outils Auto-Claude",
         "description": "Suivi de la progression du build"
+      },
+      "jira": {
+        "name": "JIRA",
+        "description": "Suivi des issues et intégration Confluence",
+        "notConfigured": "Configurer dans Paramètres → Intégrations → Suivi des Issues"
+      },
+      "gitlab": {
+        "name": "GitLab",
+        "description": "Gestion du code, issues et merge requests",
+        "notConfigured": "Configurer dans Paramètres → Intégrations → Contrôle de Source"
+      },
+      "obsidian": {
+        "name": "Vault",
+        "description": "Base de connaissances externe et mémoire",
+        "notConfigured": "Configurer dans Paramètres → Compte → Vault"
       }
     },
     "customServers": "Serveurs personnalisés",

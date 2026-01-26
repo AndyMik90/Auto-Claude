@@ -75,6 +75,14 @@ export function GitLabIntegration({
   const [isInstallingGlab, setIsInstallingGlab] = useState(false);
   const [glabInstallSuccess, setGlabInstallSuccess] = useState(false);
 
+  // Manual connection test state
+  const [isTestingManualConnection, setIsTestingManualConnection] = useState(false);
+  const [manualConnectionStatus, setManualConnectionStatus] = useState<{
+    connected: boolean;
+    username?: string;
+    error?: string;
+  } | null>(null);
+
   debugLog('Render - authMode:', authMode);
   debugLog('Render - projectPath:', projectPath);
   debugLog('Render - envConfig:', envConfig ? { gitlabEnabled: envConfig.gitlabEnabled, hasToken: !!envConfig.gitlabToken, defaultBranch: envConfig.defaultBranch } : null);
@@ -307,6 +315,47 @@ export function GitLabIntegration({
     }
   };
 
+  const handleTestManualConnection = async () => {
+    const instanceUrl = envConfig?.gitlabInstanceUrl || 'https://gitlab.com';
+    const token = envConfig?.gitlabToken;
+
+    if (!token) {
+      setManualConnectionStatus({
+        connected: false,
+        error: t('settings.tokenRequired')
+      });
+      return;
+    }
+
+    setIsTestingManualConnection(true);
+    setManualConnectionStatus(null);
+
+    try {
+      const result = await window.electronAPI.testGitLabConnection(instanceUrl, token);
+      debugLog('testGitLabConnection result:', result);
+
+      if (result.success && result.data) {
+        setManualConnectionStatus({
+          connected: true,
+          username: result.data.username
+        });
+      } else {
+        setManualConnectionStatus({
+          connected: false,
+          error: result.error || t('settings.connectionFailed')
+        });
+      }
+    } catch (error) {
+      debugLog('Error testing connection:', error);
+      setManualConnectionStatus({
+        connected: false,
+        error: error instanceof Error ? error.message : t('settings.connectionFailed')
+      });
+    } finally {
+      setIsTestingManualConnection(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -521,6 +570,62 @@ export function GitLabIntegration({
                 value={envConfig.gitlabProject || ''}
                 onChange={(value) => updateEnvConfig({ gitlabProject: value })}
               />
+
+              {/* Test Connection Button */}
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestManualConnection}
+                  disabled={isTestingManualConnection || !envConfig.gitlabToken}
+                  className="gap-2"
+                >
+                  {isTestingManualConnection ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t('settings.testing')}
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      {t('settings.testConnection')}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Manual Connection Status */}
+              {manualConnectionStatus && (
+                <div className={`rounded-lg border p-3 ${
+                  manualConnectionStatus.connected
+                    ? 'border-success/30 bg-success/10'
+                    : 'border-destructive/30 bg-destructive/10'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    {manualConnectionStatus.connected ? (
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-destructive" />
+                    )}
+                    <div>
+                      <p className={`text-sm font-medium ${
+                        manualConnectionStatus.connected ? 'text-success' : 'text-destructive'
+                      }`}>
+                        {manualConnectionStatus.connected
+                          ? t('settings.connectionSuccess')
+                          : t('settings.connectionFailed')}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${
+                        manualConnectionStatus.connected ? 'text-success/80' : 'text-destructive/80'
+                      }`}>
+                        {manualConnectionStatus.connected
+                          ? `${t('settings.authenticatedAs')} ${manualConnectionStatus.username}`
+                          : manualConnectionStatus.error}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

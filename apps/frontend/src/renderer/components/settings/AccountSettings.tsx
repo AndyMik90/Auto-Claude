@@ -34,15 +34,6 @@ import {
   BookOpen
 } from 'lucide-react';
 
-// GitLab icon component (lucide-react doesn't have one)
-function GitLabIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="gitlab-icon-title">
-      <title id="gitlab-icon-title">GitLab</title>
-      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
-    </svg>
-  );
-}
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -54,19 +45,8 @@ import { SettingsSection } from './SettingsSection';
 import { AuthTerminal } from './AuthTerminal';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { AccountPriorityList, type UnifiedAccount } from './AccountPriorityList';
-import { GlobalGitLabSettings } from './GlobalGitLabSettings';
-import { GlobalJiraSettings } from './GlobalJiraSettings';
 import { GlobalVaultSettings } from './GlobalVaultSettings';
 
-// JIRA icon component
-function JiraIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="jira-icon-title">
-      <title id="jira-icon-title">JIRA</title>
-      <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
-    </svg>
-  );
-}
 import { maskApiKey } from '../../lib/profile-utils';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -99,7 +79,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const { toast } = useToast();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'claude-code' | 'custom-endpoints' | 'gitlab' | 'jira' | 'vault'>('claude-code');
+  const [activeTab, setActiveTab] = useState<'claude-code' | 'custom-endpoints' | 'vault'>('claude-code');
 
   // ============================================
   // Claude Code (OAuth) state
@@ -690,7 +670,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     >
       <div className="space-y-6">
         {/* Tabs for Claude Code vs Custom Endpoints */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'custom-endpoints' | 'gitlab' | 'jira' | 'vault')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'custom-endpoints' | 'vault')}>
           <TabsList className="w-full justify-start flex-wrap">
             <TabsTrigger value="claude-code" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -699,14 +679,6 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
             <TabsTrigger value="custom-endpoints" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
               {t('accounts.tabs.customEndpoints')}
-            </TabsTrigger>
-            <TabsTrigger value="gitlab" className="flex items-center gap-2">
-              <GitLabIcon className="h-4 w-4" />
-              GitLab
-            </TabsTrigger>
-            <TabsTrigger value="jira" className="flex items-center gap-2">
-              <JiraIcon className="h-4 w-4" />
-              JIRA
             </TabsTrigger>
             <TabsTrigger value="vault" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -1301,22 +1273,6 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-          </TabsContent>
-
-          {/* GitLab Tab Content */}
-          <TabsContent value="gitlab">
-            <GlobalGitLabSettings
-              settings={settings}
-              onSettingsChange={onSettingsChange}
-            />
-          </TabsContent>
-
-          {/* JIRA Tab Content */}
-          <TabsContent value="jira">
-            <GlobalJiraSettings
-              settings={settings}
-              onSettingsChange={onSettingsChange}
-            />
           </TabsContent>
 
           {/* Vault Tab Content */}

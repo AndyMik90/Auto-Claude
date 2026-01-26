@@ -337,8 +337,18 @@ export interface ProjectEnvConfig {
   // UI Settings
   enableFancyUi: boolean;
 
-  // JIRA Integration (per-project override)
-  jiraProjectKey?: string; // Override global JIRA default project for this project
+  // JIRA Integration (full project-level configuration)
+  jiraEnabled?: boolean;           // Enable JIRA for this project
+  jiraHost?: string;               // JIRA instance URL (e.g., https://company.atlassian.net)
+  jiraEmail?: string;              // JIRA user email
+  jiraToken?: string;              // JIRA API token
+  jiraProjectKey?: string;         // Default JIRA project key for this project
+
+  // Source Control Provider Selection
+  sourceControlProvider?: 'github' | 'gitlab';
+
+  // Issue Tracker Provider Selection
+  issueTrackerProvider?: 'jira' | 'linear' | 'gitlab' | 'github';
 
   // MCP Server Configuration (per-project overrides)
   mcpServers?: {

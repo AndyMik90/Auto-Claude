@@ -329,6 +329,50 @@
       "title": "Claude Auth",
       "description": "Claude authentication"
     },
+    "integrations": {
+      "title": "Integrations",
+      "description": "Source control, issue tracking, and MCP servers",
+      "tabs": {
+        "sourceControl": "Source Control",
+        "issueTracker": "Issue Tracker"
+      },
+      "sourceControl": {
+        "provider": "Source Control Provider",
+        "providerDescription": "Choose your primary source control platform for repository and branch management",
+        "selectProvider": "Select a source control provider to configure repository settings"
+      },
+      "issueTracker": {
+        "provider": "Issue Tracker",
+        "providerDescription": "Choose your primary issue tracking system for task management",
+        "selectProvider": "Select an issue tracker to configure",
+        "jira": {
+          "enable": "Enable JIRA",
+          "enableDescription": "Use JIRA for issue tracking and task management",
+          "host": "JIRA Host URL",
+          "email": "JIRA Email",
+          "token": "API Token",
+          "tokenDescription": "Generate an API token from",
+          "projectKey": "Default Project Key",
+          "projectKeyDescription": "The default JIRA project for creating and syncing issues",
+          "connected": "JIRA Connected",
+          "connectionFailed": "Connection Failed",
+          "testConnection": "Test Connection",
+          "testing": "Testing...",
+          "authenticatedAs": "Authenticated as",
+          "missingFields": "Host, email, and API token are required",
+          "usingGlobal": "Using Global Settings",
+          "migratePrompt": "You can copy global JIRA settings to this project for independent configuration.",
+          "migrateButton": "Copy to Project Settings"
+        },
+        "gitlab": {
+          "connected": "GitLab Issues Connected",
+          "usingSourceControl": "Using GitLab from Source Control settings",
+          "info": "GitLab Issues are available through your Source Control configuration.",
+          "notConnected": "GitLab Not Connected",
+          "configureFirst": "Configure GitLab in the Source Control tab to use GitLab Issues."
+        }
+      }
+    },
     "jira": {
       "title": "JIRA",
       "description": "JIRA project override",

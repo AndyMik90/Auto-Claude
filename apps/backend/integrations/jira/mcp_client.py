@@ -3,7 +3,7 @@ Generic MCP Stdio Client
 ========================
 
 Communicates with MCP servers via stdio JSON-RPC 2.0 protocol.
-Used to bridge Auto-Claude to existing MCP servers like hc-jira.
+Used to bridge Auto-Claude to existing MCP servers like jira-mcp.
 
 This allows reusing existing MCP server configurations and authentication
 rather than duplicating API integrations.
@@ -38,7 +38,7 @@ class MCPServerConfig:
         Load MCP server config from Claude Code settings.json.
 
         Args:
-            server_name: Name of the MCP server (e.g., "hc-jira")
+            server_name: Name of the MCP server (e.g., "jira-mcp")
             settings_path: Path to settings.json (defaults to ~/.claude/settings.json)
 
         Returns:

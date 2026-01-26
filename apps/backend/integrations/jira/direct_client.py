@@ -31,7 +31,7 @@ class JiraCredentials:
     default_project: str = ""
 
     @classmethod
-    def from_mcp_settings(cls, server_name: str = "hc-jira") -> Optional["JiraCredentials"]:
+    def from_mcp_settings(cls, server_name: str = "jira-mcp") -> Optional["JiraCredentials"]:
         """Load credentials from Claude Code MCP settings."""
         settings_path = os.path.expanduser("~/.claude/settings.json")
 

@@ -84,7 +84,7 @@ META_ISSUE_TITLE = "[META] Build Progress Tracker"
 class JiraConfig:
     """Configuration for JIRA integration via MCP."""
 
-    mcp_server_name: str = "hc-jira"
+    mcp_server_name: str = "jira-mcp"
     mcp_start_script: str = ""
     host: str = ""
     email: str = ""
@@ -96,10 +96,10 @@ class JiraConfig:
     def from_env(cls) -> "JiraConfig":
         """Create config from environment variables."""
         return cls(
-            mcp_server_name=os.environ.get("JIRA_MCP_SERVER", "hc-jira"),
+            mcp_server_name=os.environ.get("JIRA_MCP_SERVER", "jira-mcp"),
             mcp_start_script=os.environ.get(
                 "JIRA_MCP_START_SCRIPT",
-                os.path.expanduser("~/vaults/hc/mcp-servers/hc-jira/start.sh")
+                os.path.expanduser("~/.auto-claude/mcp-servers/jira/start.sh")
             ),
             host=os.environ.get("JIRA_HOST", ""),
             email=os.environ.get("JIRA_EMAIL", ""),
@@ -109,7 +109,7 @@ class JiraConfig:
         )
 
     @classmethod
-    def from_mcp_settings(cls, server_name: str = "hc-jira") -> Optional["JiraConfig"]:
+    def from_mcp_settings(cls, server_name: str = "jira-mcp") -> Optional["JiraConfig"]:
         """
         Load config from Claude Code MCP settings.
 

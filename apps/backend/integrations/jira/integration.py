@@ -3,7 +3,7 @@ JIRA Integration Manager
 ========================
 
 Manages synchronization between Auto-Claude subtasks and JIRA issues.
-Communicates with JIRA via MCP bridge to reuse existing hc-jira server.
+Communicates with JIRA via MCP bridge to reuse existing jira-mcp server.
 
 The integration is OPTIONAL - if JIRA MCP is not configured, all operations
 gracefully no-op and the build continues with local tracking only.
@@ -43,7 +43,7 @@ class JiraManager:
     Manages JIRA integration for an Auto-Claude spec.
 
     Communicates with JIRA via MCP bridge, reusing existing
-    hc-jira server configuration and authentication.
+    jira-mcp server configuration and authentication.
     """
 
     def __init__(self, spec_dir: Path, project_dir: Path):
@@ -431,12 +431,12 @@ class JiraManager:
 JIRA integration is enabled but not yet initialized.
 During the planner session, configure JIRA project and sync issues.
 
-Available JIRA MCP tools (via hc-jira):
-- `mcp__hc-jira__jira_search_issues` - Search issues with JQL
-- `mcp__hc-jira__jira_create_issue` - Create issues for subtasks
-- `mcp__hc-jira__jira_update_issue` - Update issue fields
-- `mcp__hc-jira__jira_transition_issue` - Change issue status
-- `mcp__hc-jira__jira_add_comment` - Add session comments
+Available JIRA MCP tools (via jira-mcp):
+- `mcp__jira-mcp__jira_search_issues` - Search issues with JQL
+- `mcp__jira-mcp__jira_create_issue` - Create issues for subtasks
+- `mcp__jira-mcp__jira_update_issue` - Update issue fields
+- `mcp__jira-mcp__jira_transition_issue` - Change issue status
+- `mcp__jira-mcp__jira_add_comment` - Add session comments
 """
 
         lines = [
@@ -498,13 +498,13 @@ def prepare_planner_jira_instructions(spec_dir: Path) -> str:
     return f"""
 ## JIRA Integration Setup
 
-JIRA integration is ENABLED via hc-jira MCP server.
+JIRA integration is ENABLED via jira-mcp MCP server.
 Default project: {default_project}
 
 ### Step 1: Create Issues for Each Subtask
 For each subtask in implementation_plan.json:
 ```
-Use mcp__hc-jira__jira_create_issue with:
+Use mcp__jira-mcp__jira_create_issue with:
 - project: "{default_project}"
 - summary: "[subtask-id] Description"
 - description: Formatted subtask details
@@ -516,7 +516,7 @@ Save the subtask_id -> issue_key mapping to .jira_project.json
 
 ### Step 2: Create META Issue
 ```
-Use mcp__hc-jira__jira_create_issue with:
+Use mcp__jira-mcp__jira_create_issue with:
 - summary: "[META] Build Progress Tracker"
 - description: "Session summaries and overall progress tracking"
 ```
@@ -554,19 +554,19 @@ This subtask is linked to JIRA issue: `{issue_key}`
 ### At Session Start
 Transition to "In Progress":
 ```
-mcp__hc-jira__jira_transition_issue(issueKey="{issue_key}", transition="In Progress")
+mcp__jira-mcp__jira_transition_issue(issueKey="{issue_key}", transition="In Progress")
 ```
 
 ### During Work
 Add comments for significant progress or blockers:
 ```
-mcp__hc-jira__jira_add_comment(issueKey="{issue_key}", comment="...")
+mcp__jira-mcp__jira_add_comment(issueKey="{issue_key}", comment="...")
 ```
 
 ### On Completion
 Transition to "Done":
 ```
-mcp__hc-jira__jira_transition_issue(issueKey="{issue_key}", transition="Done")
+mcp__jira-mcp__jira_transition_issue(issueKey="{issue_key}", transition="Done")
 ```
 
 ### Session Summary

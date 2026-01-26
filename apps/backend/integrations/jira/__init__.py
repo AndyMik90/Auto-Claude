@@ -3,7 +3,7 @@ JIRA Integration via MCP Bridge
 ================================
 
 Provides JIRA integration for Auto-Claude by bridging to existing
-MCP servers (like hc-jira) via stdio JSON-RPC.
+MCP servers (like jira-mcp) via stdio JSON-RPC.
 
 This enables using your organization's existing JIRA MCP configuration
 rather than duplicating authentication and API code.

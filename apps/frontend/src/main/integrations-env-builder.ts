@@ -1,29 +1,41 @@
 /**
  * Integrations Environment Variable Builder
  *
- * Converts app-wide integration settings (JIRA, GitLab, Obsidian) from settings.json
+ * Converts integration settings from project-level config (with global fallback)
  * into environment variables that can be injected into Python agent processes.
  *
  * This bridges the gap between frontend settings UI and backend agent configuration.
+ *
+ * PRIORITY: Project settings take precedence over global settings.
  */
 
 import type { AppSettings } from '../shared/types/settings';
+import type { ProjectEnvConfig } from '../shared/types/project';
 
 /**
- * Build environment variables for JIRA integration from app settings.
+ * Build environment variables for JIRA integration.
+ * Reads from project settings first, falls back to global settings.
  *
- * @param settings - App-wide settings from settings.json
+ * @param projectEnv - Project-level environment config (or null)
+ * @param globalSettings - App-wide settings from settings.json
  * @returns Record of JIRA-related environment variables
  */
-export function buildJiraEnvVars(settings: AppSettings): Record<string, string> {
+export function buildJiraEnvVars(
+  projectEnv: ProjectEnvConfig | null,
+  globalSettings: AppSettings
+): Record<string, string> {
   const env: Record<string, string> = {};
 
-  // Check if JIRA is configured
-  const host = settings.globalJiraHost;
-  const email = settings.globalJiraEmail;
-  const token = settings.globalJiraToken;
+  // Project settings take precedence, fall back to global
+  const host = projectEnv?.jiraHost || globalSettings.globalJiraHost;
+  const email = projectEnv?.jiraEmail || globalSettings.globalJiraEmail;
+  const token = projectEnv?.jiraToken || globalSettings.globalJiraToken;
+  const projectKey = projectEnv?.jiraProjectKey || globalSettings.globalJiraDefaultProject;
 
-  if (host && email && token) {
+  // Check if JIRA is explicitly enabled at project level, or implicitly via config
+  const jiraEnabled = projectEnv?.jiraEnabled ?? (host && email && token);
+
+  if (jiraEnabled && host && email && token) {
     env.JIRA_MCP_ENABLED = 'true';
     env.JIRA_HOST = host;
     env.JIRA_URL = host; // Alias
@@ -32,8 +44,9 @@ export function buildJiraEnvVars(settings: AppSettings): Record<string, string> 
     env.JIRA_TOKEN = token; // Alias
 
     // Optional: default project
-    if (settings.globalJiraDefaultProject) {
-      env.JIRA_DEFAULT_PROJECT = settings.globalJiraDefaultProject;
+    if (projectKey) {
+      env.JIRA_DEFAULT_PROJECT = projectKey;
+      env.JIRA_PROJECT_KEY = projectKey; // Alias
     }
   }
 
@@ -41,41 +54,71 @@ export function buildJiraEnvVars(settings: AppSettings): Record<string, string> 
 }
 
 /**
- * Build environment variables for GitLab integration from app settings.
+ * Legacy overload for backward compatibility.
+ * @deprecated Use the two-argument version with projectEnv and globalSettings.
+ */
+export function buildJiraEnvVarsFromGlobal(settings: AppSettings): Record<string, string> {
+  return buildJiraEnvVars(null, settings);
+}
+
+/**
+ * Build environment variables for GitLab integration.
+ * Reads from project settings first, falls back to global settings.
  *
- * @param settings - App-wide settings from settings.json
+ * @param projectEnv - Project-level environment config (or null)
+ * @param globalSettings - App-wide settings from settings.json
  * @returns Record of GitLab-related environment variables
  */
-export function buildGitLabEnvVars(settings: AppSettings): Record<string, string> {
+export function buildGitLabEnvVars(
+  projectEnv: ProjectEnvConfig | null,
+  globalSettings: AppSettings
+): Record<string, string> {
   const env: Record<string, string> = {};
 
-  // Check if GitLab is configured
-  const host = settings.globalGitlabInstanceUrl;
-  const token = settings.globalGitlabToken;
+  // Project settings take precedence, fall back to global
+  const host = projectEnv?.gitlabInstanceUrl || globalSettings.globalGitlabInstanceUrl;
+  const token = projectEnv?.gitlabToken || globalSettings.globalGitlabToken;
+  const project = projectEnv?.gitlabProject;
 
-  if (host && token) {
+  // Check if GitLab is explicitly enabled at project level
+  const gitlabEnabled = projectEnv?.gitlabEnabled ?? (host && token);
+
+  if (gitlabEnabled && host && token) {
     env.GITLAB_MCP_ENABLED = 'true';
     env.GITLAB_HOST = host;
     env.GITLAB_URL = host; // Alias
     env.GITLAB_TOKEN = token;
     env.GITLAB_PRIVATE_TOKEN = token; // Alias
+
+    if (project) {
+      env.GITLAB_PROJECT = project;
+    }
   }
 
   return env;
 }
 
 /**
+ * Legacy overload for backward compatibility.
+ * @deprecated Use the two-argument version with projectEnv and globalSettings.
+ */
+export function buildGitLabEnvVarsFromGlobal(settings: AppSettings): Record<string, string> {
+  return buildGitLabEnvVars(null, settings);
+}
+
+/**
  * Build environment variables for Obsidian/Vault integration from app settings.
+ * Vault is always configured globally (no project-level override).
  *
- * @param settings - App-wide settings from settings.json
+ * @param globalSettings - App-wide settings from settings.json
  * @returns Record of Obsidian/Vault-related environment variables
  */
-export function buildObsidianEnvVars(settings: AppSettings): Record<string, string> {
+export function buildObsidianEnvVars(globalSettings: AppSettings): Record<string, string> {
   const env: Record<string, string> = {};
 
   // Check if Vault is configured and enabled
-  const vaultPath = settings.globalVaultPath;
-  const vaultEnabled = settings.vaultEnabled;
+  const vaultPath = globalSettings.globalVaultPath;
+  const vaultEnabled = globalSettings.vaultEnabled;
 
   if (vaultPath && vaultEnabled) {
     env.OBSIDIAN_MCP_ENABLED = 'true';
@@ -83,13 +126,13 @@ export function buildObsidianEnvVars(settings: AppSettings): Record<string, stri
     env.OBSIDIAN_VAULT_PATH = vaultPath; // Alias
 
     // Sync settings
-    if (settings.vaultAutoLoad) {
+    if (globalSettings.vaultAutoLoad) {
       env.VAULT_AUTO_LOAD = 'true';
     }
-    if (settings.vaultSyncLearnings) {
+    if (globalSettings.vaultSyncLearnings) {
       env.VAULT_SYNC_LEARNINGS = 'true';
     }
-    if (settings.vaultWriteEnabled) {
+    if (globalSettings.vaultWriteEnabled) {
       env.VAULT_WRITE_ENABLED = 'true';
     }
   }
@@ -98,17 +141,28 @@ export function buildObsidianEnvVars(settings: AppSettings): Record<string, stri
 }
 
 /**
- * Build all integration environment variables from app settings.
+ * Build all integration environment variables.
+ * Uses project-level config with global fallback for JIRA and GitLab.
  *
- * Combines JIRA, GitLab, and Obsidian settings into a single env object.
- *
- * @param settings - App-wide settings from settings.json
+ * @param projectEnv - Project-level environment config (or null)
+ * @param globalSettings - App-wide settings from settings.json
  * @returns Record of all integration-related environment variables
  */
-export function buildIntegrationsEnvVars(settings: AppSettings): Record<string, string> {
+export function buildIntegrationsEnvVars(
+  projectEnv: ProjectEnvConfig | null,
+  globalSettings: AppSettings
+): Record<string, string> {
   return {
-    ...buildJiraEnvVars(settings),
-    ...buildGitLabEnvVars(settings),
-    ...buildObsidianEnvVars(settings),
+    ...buildJiraEnvVars(projectEnv, globalSettings),
+    ...buildGitLabEnvVars(projectEnv, globalSettings),
+    ...buildObsidianEnvVars(globalSettings),
   };
+}
+
+/**
+ * Legacy overload for backward compatibility.
+ * @deprecated Use the two-argument version with projectEnv and globalSettings.
+ */
+export function buildIntegrationsEnvVarsFromGlobal(settings: AppSettings): Record<string, string> {
+  return buildIntegrationsEnvVars(null, settings);
 }

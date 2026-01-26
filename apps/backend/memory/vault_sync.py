@@ -21,7 +21,7 @@ Vault Structure:
 
 Configuration:
     Set VAULT_PATH or OBSIDIAN_VAULT_PATH environment variable to enable.
-    Example: VAULT_PATH=~/vaults/hc
+    Example: VAULT_PATH=~/.auto-claude/vault
 """
 
 import json

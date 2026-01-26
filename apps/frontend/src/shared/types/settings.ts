@@ -237,12 +237,18 @@ export interface AppSettings {
   globalGroqApiKey?: string;
   globalOpenRouterApiKey?: string;
   // Global GitLab settings (used as defaults for all projects)
+  /** @deprecated Use project-level gitlabInstanceUrl instead. Kept for migration fallback. */
   globalGitlabInstanceUrl?: string;  // Self-hosted GitLab URL (e.g., https://gitlab.yourcompany.com)
+  /** @deprecated Use project-level gitlabToken instead. Kept for migration fallback. */
   globalGitlabToken?: string;        // Personal Access Token with 'api' scope
   // Global JIRA settings (used as defaults for all projects)
+  /** @deprecated Use project-level jiraHost instead. Kept for migration fallback. */
   globalJiraHost?: string;           // JIRA instance URL (e.g., https://company.atlassian.net)
+  /** @deprecated Use project-level jiraEmail instead. Kept for migration fallback. */
   globalJiraEmail?: string;          // JIRA user email
+  /** @deprecated Use project-level jiraToken instead. Kept for migration fallback. */
   globalJiraToken?: string;          // JIRA API token
+  /** @deprecated Use project-level jiraProjectKey instead. Kept for migration fallback. */
   globalJiraDefaultProject?: string; // Default JIRA project key (e.g., CAP)
   // Issue Tracker preference: where issues are managed
   issueTrackerProvider?: 'gitlab' | 'jira' | 'github' | 'linear';  // Default: based on what's configured
