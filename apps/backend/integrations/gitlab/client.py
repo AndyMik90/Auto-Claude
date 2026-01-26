@@ -339,7 +339,6 @@ class GitLabClient:
         project_id: str = None,
     ) -> dict[str, Any]:
         """Add labels to an issue."""
-        pid = self._encode_project_id(project_id)
         issue = await self.get_issue(issue_iid, project_id)
         existing_labels = issue.get("labels", [])
         all_labels = list(set(existing_labels + labels))

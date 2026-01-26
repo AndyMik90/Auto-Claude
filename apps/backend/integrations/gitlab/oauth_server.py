@@ -57,13 +57,18 @@ class OAuthCallbackServer:
         if error:
             self._error = f"{error}: {error_description}"
             self._event.set()
+            # Escape user-provided values to prevent XSS
+            import html
+
+            safe_error = html.escape(error)
+            safe_desc = html.escape(error_description)
             return web.Response(
                 text=f"""
                 <html>
                 <head><title>Authentication Failed</title></head>
                 <body style="font-family: sans-serif; padding: 40px; text-align: center;">
                     <h1 style="color: #dc3545;">Authentication Failed</h1>
-                    <p>{error}: {error_description}</p>
+                    <p>{safe_error}: {safe_desc}</p>
                     <p>You can close this window.</p>
                 </body>
                 </html>
@@ -126,14 +131,18 @@ class OAuthCallbackServer:
                     content_type="text/html",
                 )
         except Exception as e:
+            # Log the actual error for debugging but don't expose to user
+            import logging
+
+            logging.getLogger(__name__).error(f"OAuth callback error: {e}")
             self._error = str(e)
             return web.Response(
-                text=f"""
+                text="""
                 <html>
                 <head><title>Authentication Error</title></head>
                 <body style="font-family: sans-serif; padding: 40px; text-align: center;">
                     <h1 style="color: #dc3545;">Authentication Error</h1>
-                    <p>{str(e)}</p>
+                    <p>An unexpected error occurred during authentication.</p>
                     <p>You can close this window.</p>
                 </body>
                 </html>

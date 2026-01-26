@@ -381,7 +381,6 @@ function getProjectJiraKey(specDir: string): string | null {
     // Stop when we find .auto-claude/.env that's NOT inside a worktree path
     while (searchPath && searchPath !== path.dirname(searchPath)) {
       const candidate = path.join(searchPath, '.auto-claude', '.env');
-      const candidateDir = path.join(searchPath, '.auto-claude');
 
       // Check if this .auto-claude is the main one (not inside worktrees/)
       if (fs.existsSync(candidate) && !searchPath.includes('/worktrees/')) {

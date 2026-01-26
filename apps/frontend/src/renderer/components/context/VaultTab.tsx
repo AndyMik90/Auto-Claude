@@ -43,7 +43,6 @@ export function VaultTab({ className }: VaultTabProps) {
     vaultFiles,
     vaultSearchResults,
     vaultSearchLoading,
-    vaultSearchQuery,
   } = useVaultStore();
 
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());

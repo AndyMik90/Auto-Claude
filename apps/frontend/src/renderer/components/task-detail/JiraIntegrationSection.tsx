@@ -4,7 +4,6 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   ClipboardList,
   ExternalLink,
@@ -34,7 +33,6 @@ interface JiraIntegrationSectionProps {
 }
 
 export function JiraIntegrationSection({ task }: JiraIntegrationSectionProps) {
-  const { t } = useTranslation(['tasks', 'settings']);
   const { toast } = useToast();
   const settings = useSettingsStore((state) => state.settings);
 

@@ -110,7 +110,7 @@ def load_vault_context() -> str:
             context_parts.append(f"## Vault Instructions (CLAUDE.md)\n{content}")
             debug("insights_runner", "Loaded vault CLAUDE.md")
         except Exception:
-            pass
+            pass  # Ignore read errors - vault context is optional
 
     # Load preferences
     preferences = vault_path / "memory" / "context" / "preferences.md"
@@ -120,7 +120,7 @@ def load_vault_context() -> str:
             context_parts.append(f"## User Preferences\n{content}")
             debug("insights_runner", "Loaded vault preferences")
         except Exception:
-            pass
+            pass  # Ignore read errors - preferences are optional
 
     # List recent learnings
     learnings_dir = vault_path / "memory" / "learnings"
@@ -142,7 +142,7 @@ def load_vault_context() -> str:
                     count=len(learning_files),
                 )
         except Exception:
-            pass
+            pass  # Ignore errors listing learnings - vault context is optional
 
     if context_parts:
         return "\n\n".join(context_parts)
