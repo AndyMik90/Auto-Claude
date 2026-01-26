@@ -1,0 +1,75 @@
+{
+  "tabs": {
+    "projectIndex": "プロジェクト構造",
+    "memories": "メモリ"
+  },
+  "projectIndex": {
+    "title": "プロジェクト構造",
+    "subtitle": "コードベースについてのAI発見された知識",
+    "refresh": "更新",
+    "refreshTooltip": "プロジェクト構造を再分析",
+    "loadError": "プロジェクトインデックスの読み込みに失敗しました",
+    "noIndex": {
+      "title": "プロジェクトインデックスが見つかりません",
+      "description": "更新ボタンをクリックしてプロジェクト構造を分析し、インデックスを作成してください。",
+      "analyzeButton": "プロジェクトを分析"
+    },
+    "overview": "概要",
+    "services": "サービス",
+    "service": "サービス",
+    "services_plural": "サービス",
+    "infrastructure": "インフラストラクチャ",
+    "dockerCompose": "Docker Compose",
+    "cicd": "CI/CD",
+    "deployment": "デプロイメント",
+    "dockerServices": "Docker サービス",
+    "conventions": "規約",
+    "pythonLinting": "Python リンティング",
+    "jsLinting": "JS リンティング",
+    "formatting": "フォーマット",
+    "gitHooks": "Git フック",
+    "typescript": "TypeScript",
+    "enabled": "有効"
+  },
+  "memories": {
+    "status": {
+      "title": "グラフメモリステータス",
+      "connected": "接続中",
+      "notAvailable": "利用不可",
+      "database": "データベース",
+      "path": "パス",
+      "notConfigured": "Graphiti メモリが設定されていません",
+      "enableHint": "グラフメモリを有効にするには、プロジェクト設定で <code>GRAPHITI_ENABLED=true</code> を設定してください。"
+    },
+    "stats": {
+      "total": "合計",
+      "prReviews": "PR レビュー",
+      "sessions": "セッション",
+      "codebase": "コードベース",
+      "patterns": "パターン",
+      "gotchas": "注意点"
+    },
+    "search": {
+      "title": "メモリを検索",
+      "placeholder": "パターン、インサイト、注意点を検索...",
+      "resultsFound": "{{count}} 件の結果が見つかりました",
+      "resultsFound_plural": "{{count}} 件の結果が見つかりました",
+      "score": "スコア: {{score}}"
+    },
+    "browser": {
+      "title": "メモリブラウザ",
+      "memoriesCount": "{{total}} 件中 {{filtered}} 件のメモリ",
+      "noMemories": "まだメモリが記録されていません。メモリは AI エージェントセッションと PR レビュー中に作成されます。",
+      "noFilterMatch": "選択したフィルターに一致するメモリがありません。",
+      "showAll": "すべてのメモリを表示"
+    },
+    "filters": {
+      "all": "すべて",
+      "pr": "PR レビュー",
+      "sessions": "セッション",
+      "codebase": "コードベース",
+      "patterns": "パターン",
+      "gotchas": "注意点"
+    }
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "wizard": {
+    "title": "セットアップウィザード",
+    "description": "いくつかの簡単なステップで Auto Claude 環境を設定",
+    "helpText": "このウィザードでは、数ステップで環境をセットアップできます。Claude OAuth トークンの設定、メモリ機能のセットアップ、最初のタスクの作成が可能です。"
+  },
+  "welcome": {
+    "title": "Auto Claude へようこそ",
+    "subtitle": "AIパワードエージェントで自律的にソフトウェアを構築",
+    "getStarted": "始める",
+    "skip": "セットアップをスキップ",
+    "features": {
+      "aiPowered": {
+        "title": "AIパワード開発",
+        "description": "Claude Code エージェントを使用してコードを生成し機能を構築"
+      },
+      "specDriven": {
+        "title": "仕様駆動ワークフロー",
+        "description": "明確な仕様でタスクを定義し、Auto Claude に実装を任せる"
+      },
+      "memory": {
+        "title": "メモリとコンテキスト",
+        "description": "Graphiti によるセッション間の永続的なメモリ"
+      },
+      "parallel": {
+        "title": "並列実行",
+        "description": "複数のエージェントを並列実行して開発サイクルを高速化"
+      }
+    }
+  },
+  "oauth": {
+    "title": "Claude 認証",
+    "description": "Claude アカウントを接続して AI 機能を有効化",
+    "configureTitle": "Claude 認証を設定",
+    "addAccountsDesc": "AI 機能を有効にするために Claude アカウントを追加",
+    "multiAccountInfo": "複数の Claude サブスクリプションを追加すると、レート制限に達した際に自動的に切り替えできます。",
+    "noAccountsYet": "まだアカウントが設定されていません",
+    "badges": {
+      "default": "デフォルト",
+      "active": "アクティブ",
+      "authenticated": "認証済み",
+      "needsAuth": "認証が必要"
+    },
+    "buttons": {
+      "authenticate": "認証",
+      "setActive": "アクティブに設定",
+      "rename": "名前を変更",
+      "delete": "削除",
+      "add": "追加",
+      "adding": "追加中...",
+      "showToken": "トークンを表示",
+      "hideToken": "トークンを隠す",
+      "copyToken": "トークンをコピー",
+      "back": "戻る",
+      "continue": "続ける",
+      "skip": "スキップ"
+    },
+    "labels": {
+      "accountName": "アカウント名",
+      "namePlaceholder": "プロファイル名（例: 仕事用、個人用）",
+      "tokenLabel": "OAuth トークン",
+      "tokenPlaceholder": "ここにトークンを入力",
+      "tokenHint": "OAuth ログイン完了後にターミナルに表示されるトークンを貼り付けてください。"
+    },
+    "keychainTitle": "セキュアストレージ",
+    "keychainDescription": "トークンはシステムのキーチェーンを使用して暗号化されます。macOS からパスワードプロンプトが表示される場合があります — 「常に許可」をクリックすると、今後表示されなくなります。",
+    "toast": {
+      "authSuccess": "プロファイルの認証に成功しました",
+      "authSuccessWithEmail": "アカウント: {{email}}",
+      "authSuccessGeneric": "認証が完了しました。このプロファイルを使用できます。",
+      "authStartFailed": "認証の開始に失敗しました",
+      "addProfileFailed": "プロファイルの追加に失敗しました",
+      "tokenSaved": "トークンが保存されました",
+      "tokenSavedDescription": "トークンが正常に保存されました。",
+      "tokenSaveFailed": "トークンの保存に失敗しました",
+      "tryAgain": "もう一度お試しください。"
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "プロファイルは作成されましたが、認証の準備に失敗しました: {{error}}",
+      "authPrepareFailed": "認証の準備に失敗しました: {{error}}",
+      "authStartFailedMessage": "認証の開始に失敗しました。もう一度お試しください。"
+    }
+  },
+  "memory": {
+    "title": "メモリ",
+    "description": "エージェント用のセッション間永続メモリを設定",
+    "contextDescription": "Auto Claude メモリはコーディングセッション間のコンテキストを記憶します",
+    "enableMemory": "メモリを有効化",
+    "enableMemoryDescription": "LadybugDB（組み込みデータベース）を使用したセッション間永続メモリ",
+    "memoryDisabledInfo": "メモリは無効です。セッションのインサイトはローカルファイルにのみ保存されます。セマンティック検索による永続的なセッション間コンテキストを使用するにはメモリを有効にしてください。",
+    "enableAgentAccess": "エージェントメモリアクセスを有効化",
+    "enableAgentAccessDescription": "エージェントが MCP 経由でナレッジグラフを検索・追加できるようにする",
+    "mcpServerUrl": "Graphiti MCP サーバー URL",
+    "mcpServerUrlDescription": "エージェントメモリアクセス用の Graphiti MCP サーバーの URL",
+    "embeddingProvider": "エンベディングプロバイダー",
+    "embeddingProviderDescription": "セマンティック検索用のプロバイダー（オプション - キーワード検索はなくても動作します）",
+    "selectEmbeddingModel": "エンベディングモデルを選択",
+    "openaiApiKey": "OpenAI API キー",
+    "openaiApiKeyDescription": "OpenAI エンベディングに必要",
+    "openaiGetKey": "キーの取得先:",
+    "voyageApiKey": "Voyage AI API キー",
+    "voyageApiKeyDescription": "Voyage AI エンベディングに必要",
+    "googleApiKey": "Google AI API キー",
+    "googleApiKeyDescription": "Google AI エンベディングに必要",
+    "azureConfig": "Azure OpenAI 設定",
+    "azureApiKey": "API キー",
+    "azureBaseUrl": "ベース URL",
+    "azureEmbeddingDeployment": "エンベディングデプロイ名",
+    "memoryInfo": "メモリはコードベースに関する発見、パターン、インサイトを保存し、将来のセッションがすでにコンテキストがロードされた状態で開始できるようにします。Docker 不要 - 組み込みデータベースを使用します。",
+    "learnMore": "メモリについて詳しく",
+    "back": "戻る",
+    "skip": "スキップ",
+    "saving": "保存中...",
+    "saveAndContinue": "保存して続ける",
+    "providers": {
+      "ollama": "Ollama（ローカル - 無料）",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azure": "Azure OpenAI"
+    }
+  },
+  "completion": {
+    "title": "準備完了！",
+    "subtitle": "Auto Claude で素晴らしいソフトウェアを構築する準備ができました",
+    "setupComplete": "セットアップ完了",
+    "setupCompleteDescription": "環境が設定され、準備ができました。すぐにタスクの作成を開始するか、自分のペースでアプリケーションを探索できます。",
+    "whatsNext": "次のステップ",
+    "createTask": {
+      "title": "タスクを作成",
+      "description": "最初のタスクを作成して Auto Claude の動作を確認しましょう。",
+      "action": "タスク作成を開く"
+    },
+    "customizeSettings": {
+      "title": "設定をカスタマイズ",
+      "description": "好みの調整、統合の設定、またはこのウィザードの再実行ができます。",
+      "action": "設定を開く"
+    },
+    "exploreDocs": {
+      "title": "ドキュメントを探索",
+      "description": "高度な機能、ベストプラクティス、トラブルシューティングについて詳しく学べます。"
+    },
+    "finish": "完了して構築を開始",
+    "rerunHint": "このウィザードは設定 → アプリケーションからいつでも再実行できます"
+  },
+  "steps": {
+    "welcome": "ようこそ",
+    "authChoice": "認証方法",
+    "auth": "認証",
+    "claudeCode": "CLI",
+    "devtools": "開発ツール",
+    "privacy": "プライバシー",
+    "memory": "メモリ",
+    "done": "完了"
+  },
+  "privacy": {
+    "title": "Auto Claude の改善にご協力ください",
+    "subtitle": "匿名のエラー報告がバグの迅速な修正に役立ちます",
+    "whatWeCollect": {
+      "title": "収集する情報",
+      "crashReports": "クラッシュレポートとエラースタックトレース",
+      "errorMessages": "エラーメッセージ（ファイルパスは匿名化）",
+      "appVersion": "アプリバージョンとプラットフォーム情報"
+    },
+    "whatWeNeverCollect": {
+      "title": "収集しない情報",
+      "code": "コードやプロジェクトファイル",
+      "filenames": "完全なファイルパス（ユーザー名はマスク）",
+      "apiKeys": "API キーやトークン",
+      "personalData": "個人情報や使用データ"
+    },
+    "toggle": {
+      "label": "匿名エラーレポートを送信",
+      "description": "問題の特定と修正に役立ちます"
+    }
+  },
+  "claudeCode": {
+    "title": "Claude Code CLI",
+    "description": "Claude Code CLI をインストールまたは更新して AI パワード機能を有効化",
+    "detecting": "Claude Code のインストールを確認中...",
+    "info": {
+      "title": "Claude Code とは？",
+      "description": "Claude Code は Auto Claude の AI 機能を支える Anthropic の公式 CLI です。安全な認証と Claude モデルへの直接アクセスを提供します。"
+    },
+    "status": {
+      "installed": "インストール済み",
+      "outdated": "アップデートあり",
+      "notFound": "未インストール"
+    },
+    "version": {
+      "current": "現在のバージョン",
+      "latest": "最新バージョン"
+    },
+    "install": {
+      "button": "Claude Code をインストール",
+      "updating": "Claude Code を更新",
+      "inProgress": "インストール中...",
+      "success": "インストールコマンドがターミナルに送信されました。そちらでインストールを完了してください。",
+      "instructions": "インストーラーがターミナルで開きます。プロンプトに従ってインストールを完了してください。"
+    },
+    "learnMore": "Claude Code について詳しく"
+  },
+  "devtools": {
+    "title": "開発者ツール",
+    "description": "Auto Claude ワークツリーで作業する際に使用する IDE とターミナルを選択",
+    "detecting": "インストール済みツールを検出中...",
+    "detectAgain": "再検出",
+    "whyConfigure": "なぜ設定するのですか？",
+    "whyConfigureDescription": "Auto Claude が分離されたワークツリーで機能を構築する際、お好みの IDE やターミナルで直接開いて変更をテスト・レビューできます。",
+    "ide": {
+      "label": "優先 IDE",
+      "description": "Auto Claude はこのエディタでワークツリーを開きます",
+      "customPath": "カスタム IDE パス"
+    },
+    "terminal": {
+      "label": "優先ターミナル",
+      "description": "Auto Claude はここでターミナルセッションを開きます",
+      "customPath": "カスタムターミナルパス"
+    },
+    "detectedSummary": "システムで検出:",
+    "noToolsDetected": "追加ツールは検出されませんでした（VS Code とシステムターミナルが使用されます）",
+    "custom": "カスタム...",
+    "saveAndContinue": "保存して続ける"
+  },
+  "ollama": {
+    "notInstalled": {
+      "title": "Ollama がインストールされていません",
+      "description": "Ollama はセマンティック検索用の無料のローカルエンベディングモデルを提供します。ワンクリックでインストールしてこの機能を有効にしてください。",
+      "installSuccess": "ターミナルでインストールが開始されました。そちらでインストールを完了し、再試行をクリックしてください。",
+      "installButton": "Ollama をインストール",
+      "installing": "インストール中...",
+      "retry": "再試行",
+      "learnMore": "詳細",
+      "fallbackNote": "Ollama がなくてもキーワード検索でメモリは動作します。"
+    },
+    "notRunning": {
+      "title": "Ollama が実行されていません",
+      "description": "Ollama はインストールされていますが、実行されていません。ローカルエンベディングモデルを使用するには Ollama を起動してください。",
+      "retry": "再試行",
+      "fallbackNote": "エンベディングがなくてもキーワード検索でメモリは動作します。"
+    }
+  }
+}

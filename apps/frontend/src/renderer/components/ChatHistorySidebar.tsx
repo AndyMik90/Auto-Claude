@@ -52,7 +52,8 @@ export function ChatHistorySidebar({
   onDeleteSession,
   onRenameSession
 }: ChatHistorySidebarProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('insights');
+  const { t: tCommon } = useTranslation('common');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
@@ -89,11 +90,11 @@ export function ChatHistorySidebar({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return 'Today';
+      return t('chatHistory.today');
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('chatHistory.yesterday');
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('chatHistory.daysAgo', { count: diffDays });
     } else {
       return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
@@ -113,7 +114,7 @@ export function ChatHistorySidebar({
     <div className="flex h-full w-64 flex-col border-r border-border bg-muted/30">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-3">
-        <h3 className="text-sm font-medium text-foreground">Chat History</h3>
+        <h3 className="text-sm font-medium text-foreground">{t('chatHistory.title')}</h3>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -121,12 +122,12 @@ export function ChatHistorySidebar({
               size="icon"
               className="h-7 w-7"
               onClick={onNewSession}
-              aria-label={t('accessibility.newConversationAriaLabel')}
+              aria-label={tCommon('accessibility.newConversationAriaLabel')}
             >
               <Plus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{t('accessibility.newConversationAriaLabel')}</TooltipContent>
+          <TooltipContent>{tCommon('accessibility.newConversationAriaLabel')}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -138,7 +139,7 @@ export function ChatHistorySidebar({
           </div>
         ) : sessions.length === 0 ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            No conversations yet
+            {t('chatHistory.noConversations')}
           </div>
         ) : (
           <div className="py-2">
@@ -172,15 +173,14 @@ export function ChatHistorySidebar({
       <AlertDialog open={!!deleteSessionId} onOpenChange={() => setDeleteSessionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogTitle>{t('chatHistory.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this conversation and all its messages.
-              This action cannot be undone.
+              {t('chatHistory.deleteDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('chatHistory.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('chatHistory.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -213,7 +213,8 @@ function SessionItem({
   onEditTitleChange,
   onDelete
 }: SessionItemProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('insights');
+  const { t: tCommon } = useTranslation('common');
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -238,7 +239,7 @@ function SessionItem({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={onSaveEdit}
-          aria-label={t('accessibility.saveEditAriaLabel')}
+          aria-label={tCommon('accessibility.saveEditAriaLabel')}
         >
           <Check className="h-3.5 w-3.5 text-success" />
         </Button>
@@ -247,7 +248,7 @@ function SessionItem({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={onCancelEdit}
-          aria-label={t('accessibility.cancelEditAriaLabel')}
+          aria-label={tCommon('accessibility.cancelEditAriaLabel')}
         >
           <X className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
@@ -281,7 +282,7 @@ function SessionItem({
             {session.title}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
+            {t(session.messageCount === 1 ? 'chatHistory.messageCount' : 'chatHistory.messageCount_plural', { count: session.messageCount })}
           </p>
         </div>
       </div>
@@ -293,7 +294,7 @@ function SessionItem({
             variant="ghost"
             size="icon"
             className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted-foreground/20 transition-opacity"
-            aria-label={t('accessibility.moreOptionsAriaLabel')}
+            aria-label={tCommon('accessibility.moreOptionsAriaLabel')}
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </Button>
@@ -301,14 +302,14 @@ function SessionItem({
         <DropdownMenuContent align="end" sideOffset={5} className="w-36 z-[100]">
           <DropdownMenuItem onSelect={onStartEdit}>
             <Pencil className="mr-2 h-3.5 w-3.5" />
-            Rename
+            {t('chatHistory.rename')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={onDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
-            Delete
+            {t('chatHistory.delete')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

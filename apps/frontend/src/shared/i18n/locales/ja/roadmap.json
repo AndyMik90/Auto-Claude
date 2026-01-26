@@ -1,0 +1,81 @@
+{
+  "emptyState": {
+    "title": "ロードマップがありません",
+    "description": "プロジェクトのターゲットユーザーを理解し、戦略的な機能計画を作成するAI搭載ロードマップを生成します。",
+    "generate": "ロードマップを生成"
+  },
+  "generation": {
+    "progress": "進行状況",
+    "stop": "停止",
+    "stopping": "停止中...",
+    "stopTooltip": "生成を停止",
+    "phases": {
+      "analyzing": {
+        "label": "分析中",
+        "description": "プロジェクト構造とコードベースを分析中..."
+      },
+      "discovering": {
+        "label": "発見中",
+        "description": "ターゲットユーザーとニーズを発見中..."
+      },
+      "generating": {
+        "label": "生成中",
+        "description": "機能ロードマップを生成中..."
+      },
+      "complete": {
+        "label": "完了",
+        "description": "ロードマップの生成が完了しました！"
+      },
+      "error": {
+        "label": "エラー",
+        "description": "生成に失敗しました"
+      }
+    },
+    "steps": {
+      "analyze": "分析",
+      "discover": "発見",
+      "generate": "生成"
+    }
+  },
+  "header": {
+    "competitorAnalysis": "競合分析",
+    "clickToView": "クリックして詳細分析を表示",
+    "analyzedCompetitors": "{{count}} 件の競合を分析、{{painPoints}} 件の課題を特定",
+    "addFeature": "機能を追加",
+    "addFeatureTooltip": "ロードマップに新しい機能を追加",
+    "regenerate": "ロードマップを再生成",
+    "target": "ターゲット:",
+    "morePersonas": "+{{count}} 件のペルソナ",
+    "secondaryPersonas": "セカンダリペルソナ:",
+    "features": "件の機能",
+    "phases": "件のフェーズ"
+  },
+  "tabs": {
+    "kanban": "カンバン",
+    "phases": "フェーズ",
+    "allFeatures": "すべての機能",
+    "byPriority": "優先度別",
+    "featureCount": "{{count}} 件の機能",
+    "impact": "{{impact}} の影響",
+    "insight": "インサイト"
+  },
+  "phase": {
+    "progress": "進捗",
+    "milestones": "マイルストーン",
+    "featuresLabel": "機能 ({{count}})",
+    "featuresProgress": "{{done}}/{{total}} 機能",
+    "moreFeatures": "+{{count}} 件の機能",
+    "viewTask": "タスクを表示",
+    "build": "ビルド"
+  },
+  "feature": {
+    "description": "説明",
+    "rationale": "根拠",
+    "complexity": "複雑さ",
+    "impact": "影響度",
+    "dependencies": "依存関係",
+    "userStories": "ユーザーストーリー",
+    "acceptanceCriteria": "受け入れ基準",
+    "priority": "優先度"
+  }
+}

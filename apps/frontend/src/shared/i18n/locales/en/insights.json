@@ -1,0 +1,64 @@
+{
+  "title": "Insights",
+  "subtitle": "Ask questions about your codebase",
+  "sidebar": {
+    "show": "Show sidebar",
+    "hide": "Hide sidebar"
+  },
+  "newChat": "New Chat",
+  "emptyState": {
+    "title": "Start a Conversation",
+    "description": "Ask questions about your codebase, get suggestions for improvements, or discuss features you'd like to implement."
+  },
+  "suggestions": {
+    "architecture": "What is the architecture of this project?",
+    "improvements": "Suggest improvements for code quality",
+    "features": "What features could I add next?",
+    "security": "Are there any security concerns?"
+  },
+  "roles": {
+    "you": "You",
+    "assistant": "Assistant"
+  },
+  "status": {
+    "thinking": "Thinking..."
+  },
+  "input": {
+    "placeholder": "Ask about your codebase...",
+    "hint": "Press Enter to send, Shift+Enter for new line"
+  },
+  "suggestedTask": {
+    "label": "Suggested Task",
+    "create": "Create Task",
+    "creating": "Creating...",
+    "created": "Task Created"
+  },
+  "tools": {
+    "used": "{{count}} tool used",
+    "used_plural": "{{count}} tools used",
+    "reading": "Reading file",
+    "searchingFiles": "Searching files",
+    "searchingCode": "Searching code"
+  },
+  "chatHistory": {
+    "title": "Chat History",
+    "noConversations": "No conversations yet",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteTitle": "Delete conversation?",
+    "deleteDescription": "This will permanently delete this conversation and all its messages. This action cannot be undone.",
+    "cancel": "Cancel"
+  },
+  "modelSelector": {
+    "label": "Agent Profile",
+    "modelTooltip": "Model: {{model}}",
+    "balanced": "Balanced",
+    "custom": "Custom...",
+    "customDescription": "Choose model & thinking level"
+  }
+}

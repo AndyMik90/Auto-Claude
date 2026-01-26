@@ -205,6 +205,19 @@
     "removeImage": "Remove image",
     "processingError": "Failed to process image"
   },
+  "imageUpload": {
+    "dropOrBrowse": "Drop images here or click to browse",
+    "maxReached": "Maximum images reached",
+    "allowedTypes": "{{types}} up to 10MB each",
+    "imageCount": "({{current}}/{{max}})",
+    "maxImagesNote": "{{max}} images maximum",
+    "maxImagesError": "Maximum of {{max}} images allowed",
+    "slotsLimitedError": "Only {{slots}} more image(s) can be added. Some files were skipped.",
+    "invalidTypeError": "\"{{filename}}\" is not a valid image type. Allowed: {{types}}",
+    "largeFileWarning": "\"{{filename}}\" is larger than 10MB. Consider compressing it for better performance.",
+    "processError": "Failed to process \"{{filename}}\"",
+    "largeFileTooltip": "Large file - consider compressing"
+  },
   "review": {
     "mergeTooltip": "Merges changes from the task's worktree branch back to your base branch. AI will resolve any conflicts. You can then choose whether to keep or remove the worktree."
   },

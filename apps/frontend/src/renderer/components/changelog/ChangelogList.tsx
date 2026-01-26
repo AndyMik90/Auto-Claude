@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FileText, GitCommit, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -33,6 +34,8 @@ export function ChangelogList({
   onContinue,
   canContinue
 }: ChangelogListProps) {
+  const { t } = useTranslation('changelog');
+
   // Get summary text for footer badge
   const getSummaryCount = () => {
     switch (sourceMode) {
@@ -47,14 +50,15 @@ export function ChangelogList({
   };
 
   const getSummaryLabel = () => {
+    const count = getSummaryCount();
     switch (sourceMode) {
       case 'tasks':
-        return 'task';
+        return count === 1 ? t('list.task') : t('list.tasks');
       case 'git-history':
       case 'branch-diff':
-        return 'commit';
+        return count === 1 ? t('list.commit') : t('list.commits');
       default:
-        return 'item';
+        return '';
     }
   };
 
@@ -67,7 +71,7 @@ export function ChangelogList({
           <div className="flex items-center justify-between border-b border-border px-6 py-3 bg-muted/30">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">
-                {selectedTaskIds.length} of {doneTasks.length} tasks selected
+                {t('list.tasksSelected', { selected: selectedTaskIds.length, total: doneTasks.length })}
               </span>
               <div className="flex gap-1">
                 <Button
@@ -76,7 +80,7 @@ export function ChangelogList({
                   onClick={onSelectAll}
                   className="h-7 px-2 text-xs"
                 >
-                  Select All
+                  {t('list.selectAll')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -84,7 +88,7 @@ export function ChangelogList({
                   onClick={onDeselectAll}
                   className="h-7 px-2 text-xs"
                 >
-                  Clear
+                  {t('list.clear')}
                 </Button>
               </div>
             </div>
@@ -96,9 +100,9 @@ export function ChangelogList({
               <div className="flex h-full items-center justify-center">
                 <div className="text-center py-12">
                   <FileText className="mx-auto h-12 w-12 text-muted-foreground/30" />
-                  <h3 className="mt-4 text-lg font-medium">No Completed Tasks</h3>
+                  <h3 className="mt-4 text-lg font-medium">{t('list.noCompletedTasks')}</h3>
                   <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                    Complete tasks in the Kanban board and mark them as "Done" to include them in your changelog.
+                    {t('list.noCompletedTasksHint')}
                   </p>
                 </div>
               </div>
@@ -125,7 +129,7 @@ export function ChangelogList({
           <div className="flex items-center justify-between border-b border-border px-6 py-3 bg-muted/30">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">
-                {previewCommits.length} commit{previewCommits.length !== 1 ? 's' : ''} found
+                {t('list.commitsFound', { count: previewCommits.length })}
               </span>
               {isLoadingCommits && (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -139,18 +143,18 @@ export function ChangelogList({
               <div className="flex h-full items-center justify-center">
                 <div className="text-center py-12">
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-                  <p className="mt-4 text-sm text-muted-foreground">Loading commits...</p>
+                  <p className="mt-4 text-sm text-muted-foreground">{t('list.loadingCommits')}</p>
                 </div>
               </div>
             ) : previewCommits.length === 0 ? (
               <div className="flex h-full items-center justify-center">
                 <div className="text-center py-12">
                   <GitCommit className="mx-auto h-12 w-12 text-muted-foreground/30" />
-                  <h3 className="mt-4 text-lg font-medium">No Commits Found</h3>
+                  <h3 className="mt-4 text-lg font-medium">{t('list.noCommitsFound')}</h3>
                   <p className="mt-2 text-sm text-muted-foreground max-w-md">
                     {sourceMode === 'git-history'
-                      ? 'Configure the history options and click "Load Commits" to preview.'
-                      : 'Select both branches and click "Load Commits" to see the changes.'}
+                      ? t('list.noCommitsHintHistory')
+                      : t('list.noCommitsHintBranch')}
                   </p>
                 </div>
               </div>
@@ -168,11 +172,11 @@ export function ChangelogList({
       {/* Footer with Continue button */}
       <div className="flex items-center justify-end border-t border-border px-6 py-4 bg-background">
         <Button onClick={onContinue} disabled={!canContinue} size="lg">
-          Continue
+          {t('list.continue')}
           <ArrowRight className="ml-2 h-4 w-4" />
           {canContinue && (
             <Badge variant="secondary" className="ml-2">
-              {getSummaryCount()} {getSummaryLabel()}{getSummaryCount() !== 1 ? 's' : ''}
+              {getSummaryCount()} {getSummaryLabel()}
             </Badge>
           )}
         </Button>

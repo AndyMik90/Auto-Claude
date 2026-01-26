@@ -1,0 +1,75 @@
+{
+  "tabs": {
+    "projectIndex": "Index du projet",
+    "memories": "Mémoires"
+  },
+  "projectIndex": {
+    "title": "Structure du projet",
+    "subtitle": "Connaissances découvertes par l'IA sur votre base de code",
+    "refresh": "Actualiser",
+    "refreshTooltip": "Ré-analyser la structure du projet",
+    "loadError": "Échec du chargement de l'index du projet",
+    "noIndex": {
+      "title": "Aucun index de projet trouvé",
+      "description": "Cliquez sur le bouton Actualiser pour analyser la structure de votre projet et créer un index.",
+      "analyzeButton": "Analyser le projet"
+    },
+    "overview": "Aperçu",
+    "services": "Services",
+    "service": "service",
+    "services_plural": "services",
+    "infrastructure": "Infrastructure",
+    "dockerCompose": "Docker Compose",
+    "cicd": "CI/CD",
+    "deployment": "Déploiement",
+    "dockerServices": "Services Docker",
+    "conventions": "Conventions",
+    "pythonLinting": "Linting Python",
+    "jsLinting": "Linting JS",
+    "formatting": "Formatage",
+    "gitHooks": "Hooks Git",
+    "typescript": "TypeScript",
+    "enabled": "Activé"
+  },
+  "memories": {
+    "status": {
+      "title": "État de la mémoire graphique",
+      "connected": "Connecté",
+      "notAvailable": "Non disponible",
+      "database": "Base de données",
+      "path": "Chemin",
+      "notConfigured": "La mémoire Graphiti n'est pas configurée",
+      "enableHint": "Pour activer la mémoire graphique, définissez <code>GRAPHITI_ENABLED=true</code> dans les paramètres du projet."
+    },
+    "stats": {
+      "total": "Total",
+      "prReviews": "Revues PR",
+      "sessions": "Sessions",
+      "codebase": "Base de code",
+      "patterns": "Modèles",
+      "gotchas": "Pièges"
+    },
+    "search": {
+      "title": "Rechercher dans les mémoires",
+      "placeholder": "Rechercher des modèles, insights, pièges...",
+      "resultsFound": "{{count}} résultat trouvé",
+      "resultsFound_plural": "{{count}} résultats trouvés",
+      "score": "Score : {{score}}"
+    },
+    "browser": {
+      "title": "Explorateur de mémoires",
+      "memoriesCount": "{{filtered}} sur {{total}} mémoires",
+      "noMemories": "Aucune mémoire enregistrée. Les mémoires sont créées lors des sessions d'agents IA et des revues de PR.",
+      "noFilterMatch": "Aucune mémoire ne correspond au filtre sélectionné.",
+      "showAll": "Afficher toutes les mémoires"
+    },
+    "filters": {
+      "all": "Tout",
+      "pr": "Revues PR",
+      "sessions": "Sessions",
+      "codebase": "Base de code",
+      "patterns": "Modèles",
+      "gotchas": "Pièges"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "sections": {
+    "project": "プロジェクト",
+    "tools": "ツール"
+  },
+  "items": {
+    "kanban": "タスク",
+    "terminals": "ターミナル",
+    "insights": "インサイト",
+    "roadmap": "ロードマップ",
+    "ideation": "アイデア",
+    "changelog": "変更履歴",
+    "context": "コンテキスト",
+    "githubIssues": "GitHub Issues",
+    "githubPRs": "GitHub PRs",
+    "gitlabIssues": "GitLab Issues",
+    "gitlabMRs": "GitLab MRs",
+    "worktrees": "ワークツリー",
+    "agentTools": "MCP 概要"
+  },
+  "actions": {
+    "settings": "設定",
+    "help": "ヘルプ・フィードバック",
+    "newTask": "新規タスク"
+  },
+  "tooltips": {
+    "settings": "アプリケーション設定",
+    "help": "ヘルプ・フィードバック"
+  },
+  "messages": {
+    "initializeToCreateTasks": "タスクを作成するには Auto Claude を初期化してください"
+  },
+  "updateBanner": {
+    "title": "アップデートあり",
+    "version": "バージョン {{version}} が利用可能です",
+    "updateAndRestart": "アップデートして再起動",
+    "installAndRestart": "インストールして再起動",
+    "downloading": "ダウンロード中...",
+    "dismiss": "閉じる",
+    "downloadError": "アップデートのダウンロードに失敗しました"
+  },
+  "claudeCode": {
+    "checking": "Claude Code を確認中...",
+    "upToDate": "Claude Code は最新です",
+    "updateAvailable": "Claude Code のアップデートがあります",
+    "notInstalled": "Claude Code がインストールされていません",
+    "error": "Claude Code の確認中にエラーが発生しました",
+    "installed": "インストール済み",
+    "outdated": "アップデートあり",
+    "missing": "未インストール",
+    "current": "現在",
+    "latest": "最新",
+    "path": "パス",
+    "lastChecked": "最終確認",
+    "learnMore": "Claude Code について詳しく",
+    "learnMoreAriaLabel": "Claude Code について詳しく（新しいウィンドウで開く）",
+    "viewChangelog": "Claude Code の変更履歴を表示",
+    "viewChangelogAriaLabel": "Claude Code の変更履歴を表示（新しいウィンドウで開く）",
+    "updateWarningTitle": "Claude Code をアップデートしますか？",
+    "updateWarningDescription": "アップデートすると、実行中のすべての Claude Code セッションが終了します。それらのセッションで保存されていない作業は失われる可能性があります。続行する前に作業を保存してください。",
+    "updateWarningTerminalNote": "ターミナルウィンドウが開き、インストールコマンドが実行されます。インストールが完了するまでお待ちください。",
+    "updateAnyway": "ターミナルを開いてアップデート",
+    "switchVersion": "バージョンを切り替え",
+    "selectVersion": "バージョンを選択",
+    "loadingVersions": "バージョンを読み込み中...",
+    "failedToLoadVersions": "バージョンの読み込みに失敗しました",
+    "installingVersion": "バージョン {{version}} をインストール中...",
+    "rollbackWarningTitle": "バージョン {{version}} に切り替えますか？",
+    "rollbackWarningDescription": "バージョンを切り替えると、実行中のすべての Claude Code セッションが終了します。それらのセッションで保存されていない作業は失われる可能性があります。続行する前に作業を保存してください。",
+    "rollbackWarningTerminalNote": "ターミナルウィンドウが開き、インストールコマンドが実行されます。インストールが完了するまでお待ちください。",
+    "switchAnyway": "ターミナルを開いて切り替え",
+    "currentVersion": "現在",
+    "switchInstallation": "インストールを切り替え",
+    "selectInstallation": "インストールを選択",
+    "loadingInstallations": "インストールを読み込み中...",
+    "failedToLoadInstallations": "インストールの読み込みに失敗しました",
+    "activeInstallation": "アクティブ",
+    "pathChangeWarningTitle": "CLI インストールを切り替えますか？",
+    "pathChangeWarningDescription": "CLI インストールを切り替えると、別の Claude Code バイナリが使用されます。実行中のセッションは再起動するまで以前のインストールを使用し続けます。",
+    "switchInstallationConfirm": "切り替え",
+    "versionUnknown": "バージョン不明"
+  }
+}

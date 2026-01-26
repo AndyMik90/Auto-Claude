@@ -1,0 +1,25 @@
+{
+  "title": "Ideation",
+  "subtitle": "AI-generated feature ideas for your project",
+  "ideas": "{{count}} ideas",
+  "emptyState": {
+    "title": "No Ideas Yet",
+    "description": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience.",
+    "enabledTypes": "Enabled Ideation Types",
+    "generate": "Generate Ideas",
+    "tokenWarning": "Claude token not configured. You'll be prompted to enter it when generating."
+  },
+  "types": {
+    "code_improvements": "Code Improvements",
+    "ui_ux": "UI/UX Improvements",
+    "documentation": "Documentation",
+    "security": "Security",
+    "performance": "Performance",
+    "code_quality": "Code Quality"
+  },
+  "header": {
+    "selected": "{{count}} selected",
+    "delete": "Delete",
+    "addMore": "Add More"
+  }
+}

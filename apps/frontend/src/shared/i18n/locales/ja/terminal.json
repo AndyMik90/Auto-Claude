@@ -1,0 +1,52 @@
+{
+  "emptyState": {
+    "title": "ターミナル",
+    "description": "複数のターミナルを起動して Claude エージェントを並列実行できます。",
+    "shortcutPrefix": "",
+    "shortcutSuffix": "で新しいターミナルを作成できます。",
+    "newTerminal": "新規ターミナル"
+  },
+  "toolbar": {
+    "invokeClaudeAll": "全て Claude を呼び出し",
+    "newTerminal": "新規ターミナル"
+  },
+  "expand": {
+    "expand": "ターミナルを展開",
+    "collapse": "ターミナルを折りたたむ"
+  },
+  "auth": {
+    "terminalTitle": "認証: {{profileName}}",
+    "maxTerminalsReached": "認証ターミナルを開けません: ターミナル数が上限に達しています。先にターミナルを閉じてください。"
+  },
+  "worktree": {
+    "create": "ワークツリー",
+    "createNew": "新規ワークツリー",
+    "existing": "ターミナルワークツリー",
+    "taskWorktrees": "タスクワークツリー",
+    "otherWorktrees": "その他",
+    "createTitle": "ターミナルワークツリーを作成",
+    "createDescription": "このターミナル用の分離されたワークスペースを作成します。すべての作業はワークツリーディレクトリで行われます。",
+    "name": "ワークツリー名",
+    "namePlaceholder": "my-feature",
+    "nameRequired": "ワークツリー名は必須です",
+    "nameInvalid": "名前は英数字で始まり、英数字で終わる必要があります",
+    "nameHelp": "小文字、数字、ハイフン、アンダースコアが使用可能（スペースはハイフンに変換）",
+    "associateTask": "タスクに紐付け",
+    "selectTask": "タスクを選択...",
+    "noTask": "タスクなし（スタンドアロンワークツリー）",
+    "createBranch": "Gitブランチを作成",
+    "branchHelp": "ブランチを作成: {{branch}}",
+    "baseBranch": "ベースブランチ",
+    "selectBaseBranch": "ベースブランチを選択...",
+    "searchBranch": "ブランチを検索...",
+    "noBranchFound": "ブランチが見つかりません",
+    "useProjectDefault": "プロジェクトのデフォルトを使用 ({{branch}})",
+    "baseBranchHelp": "ワークツリーの作成元となるブランチ",
+    "openInIDE": "IDEで開く",
+    "maxReached": "ターミナルワークツリーは最大12個までです",
+    "alreadyExists": "この名前のワークツリーは既に存在します",
+    "deleteTitle": "ワークツリーを削除しますか？",
+    "deleteDescription": "ワークツリーとそのブランチが完全に削除されます。コミットされていない変更は失われます。",
+    "detached": "(切り離し状態)"
+  }
+}

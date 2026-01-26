@@ -1,4 +1,15 @@
 {
+  "emptyState": {
+    "title": "Agent Terminals",
+    "description": "Spawn multiple terminals to run Claude agents in parallel.",
+    "shortcutPrefix": "Use",
+    "shortcutSuffix": "to create a new terminal.",
+    "newTerminal": "New Terminal"
+  },
+  "toolbar": {
+    "invokeClaudeAll": "Invoke Claude All",
+    "newTerminal": "New Terminal"
+  },
   "expand": {
     "expand": "Expand terminal",
     "collapse": "Collapse terminal"

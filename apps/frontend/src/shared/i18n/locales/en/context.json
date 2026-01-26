@@ -1,0 +1,75 @@
+{
+  "tabs": {
+    "projectIndex": "Project Index",
+    "memories": "Memories"
+  },
+  "projectIndex": {
+    "title": "Project Structure",
+    "subtitle": "AI-discovered knowledge about your codebase",
+    "refresh": "Refresh",
+    "refreshTooltip": "Re-analyze project structure",
+    "loadError": "Failed to load project index",
+    "noIndex": {
+      "title": "No Project Index Found",
+      "description": "Click the Refresh button to analyze your project structure and create an index.",
+      "analyzeButton": "Analyze Project"
+    },
+    "overview": "Overview",
+    "services": "Services",
+    "service": "service",
+    "services_plural": "services",
+    "infrastructure": "Infrastructure",
+    "dockerCompose": "Docker Compose",
+    "cicd": "CI/CD",
+    "deployment": "Deployment",
+    "dockerServices": "Docker Services",
+    "conventions": "Conventions",
+    "pythonLinting": "Python Linting",
+    "jsLinting": "JS Linting",
+    "formatting": "Formatting",
+    "gitHooks": "Git Hooks",
+    "typescript": "TypeScript",
+    "enabled": "Enabled"
+  },
+  "memories": {
+    "status": {
+      "title": "Graph Memory Status",
+      "connected": "Connected",
+      "notAvailable": "Not Available",
+      "database": "Database",
+      "path": "Path",
+      "notConfigured": "Graphiti memory is not configured",
+      "enableHint": "To enable graph memory, set <code>GRAPHITI_ENABLED=true</code> in project settings."
+    },
+    "stats": {
+      "total": "Total",
+      "prReviews": "PR Reviews",
+      "sessions": "Sessions",
+      "codebase": "Codebase",
+      "patterns": "Patterns",
+      "gotchas": "Gotchas"
+    },
+    "search": {
+      "title": "Search Memories",
+      "placeholder": "Search for patterns, insights, gotchas...",
+      "resultsFound": "{{count}} result found",
+      "resultsFound_plural": "{{count}} results found",
+      "score": "Score: {{score}}"
+    },
+    "browser": {
+      "title": "Memory Browser",
+      "memoriesCount": "{{filtered}} of {{total}} memories",
+      "noMemories": "No memories recorded yet. Memories are created during AI agent sessions and PR reviews.",
+      "noFilterMatch": "No memories match the selected filter.",
+      "showAll": "Show all memories"
+    },
+    "filters": {
+      "all": "All",
+      "pr": "PR Reviews",
+      "sessions": "Sessions",
+      "codebase": "Codebase",
+      "patterns": "Patterns",
+      "gotchas": "Gotchas"
+    }
+  }
+}

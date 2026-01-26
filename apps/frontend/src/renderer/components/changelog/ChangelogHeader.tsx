@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { RefreshCw, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -9,32 +10,33 @@ interface ChangelogHeaderProps {
 }
 
 export function ChangelogHeader({ step, onRefresh }: ChangelogHeaderProps) {
+  const { t } = useTranslation('changelog');
   return (
     <div className="flex items-center justify-between border-b border-border px-6 py-4">
       <div className="flex items-center gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Changelog Generator</h1>
+          <h1 className="text-xl font-semibold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
             {step === 1
-              ? 'Step 1: Select completed tasks to include'
+              ? t('steps.step1')
               : step === 2
-                ? 'Step 2: Configure and generate changelog'
-                : 'Step 3: Release and archive tasks'}
+                ? t('steps.step2')
+                : t('steps.step3')}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
         {/* Step indicators */}
         <div className="flex items-center gap-2 mr-4">
-          <StepIndicator step={1} currentStep={step} label="Select" />
+          <StepIndicator step={1} currentStep={step} label={t('steps.select')} />
           <div className="w-6 h-px bg-border" />
-          <StepIndicator step={2} currentStep={step} label="Generate" />
+          <StepIndicator step={2} currentStep={step} label={t('steps.generate')} />
           <div className="w-6 h-px bg-border" />
-          <StepIndicator step={3} currentStep={step} label="Release" />
+          <StepIndicator step={3} currentStep={step} label={t('steps.release')} />
         </div>
         <Button variant="outline" size="sm" onClick={onRefresh}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
+          {t('refresh')}
         </Button>
       </div>
     </div>

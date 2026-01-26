@@ -353,6 +353,7 @@ const CATEGORIES = {
 
 interface AgentCardProps {
   id: string;
+  agentId: string;
   config: typeof AGENT_CONFIGS[keyof typeof AGENT_CONFIGS];
   modelLabel: string;
   thinkingLabel: string;
@@ -363,7 +364,7 @@ interface AgentCardProps {
   onRemoveMcp: (agentId: string, mcpId: string) => void;
 }
 
-function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServerStates, customServers, onAddMcp, onRemoveMcp }: AgentCardProps) {
+function AgentCard({ id, agentId, config, modelLabel, thinkingLabel, overrides, mcpServerStates, customServers, onAddMcp, onRemoveMcp }: AgentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { t } = useTranslation(['settings']);
@@ -438,7 +439,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-medium text-sm text-foreground">{config.label}</h3>
+            <h3 className="font-medium text-sm text-foreground">{t(`mcp.agents.${agentId}.label`)}</h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-secondary-foreground">
               {modelLabel}
             </span>
@@ -446,7 +447,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
               {thinkingLabel}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground truncate">{config.description}</p>
+          <p className="text-xs text-muted-foreground truncate">{t(`mcp.agents.${agentId}.description`)}</p>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
           <span className="text-xs">
@@ -467,7 +468,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                MCP Servers
+                {t('mcp.mcpServersHeader')}
               </h4>
               {availableMcps.length > 0 && (
                 <button
@@ -550,7 +551,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
           {/* Tools */}
           <div>
             <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-              Available Tools
+              {t('mcp.availableTools')}
             </h4>
             {config.tools.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -564,7 +565,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Text-only (no tools)</p>
+              <p className="text-sm text-muted-foreground">{t('mcp.textOnlyNoTools')}</p>
             )}
           </div>
         </div>
@@ -574,7 +575,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('mcp.addMcpTo', { agent: config.label })}</DialogTitle>
+            <DialogTitle>{t('mcp.addMcpTo', { agent: t(`mcp.agents.${agentId}.label`) })}</DialogTitle>
             <DialogDescription>{t('mcp.addMcpDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-4">
@@ -1022,10 +1023,10 @@ export function AgentTools() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold text-foreground">MCP Server Overview</h1>
+              <h1 className="text-xl font-semibold text-foreground">{t('settings:mcp.title')}</h1>
               {selectedProject && (
                 <span className="text-sm text-muted-foreground">
-                  for {selectedProject.name}
+                  {t('settings:mcp.forProject', { projectName: selectedProject.name })}
                 </span>
               )}
             </div>
@@ -1332,10 +1333,10 @@ export function AgentTools() {
                   )}
                   <CategoryIcon className="h-4 w-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    {category.label}
+                    {t(`settings:mcp.categories.${categoryId}`)}
                   </h2>
                   <span className="text-xs text-muted-foreground">
-                    ({agents.length} agents)
+                    {t('settings:mcp.agentCount', { count: agents.length })}
                   </span>
                 </button>
 
@@ -1348,6 +1349,7 @@ export function AgentTools() {
                         <AgentCard
                           key={id}
                           id={id}
+                          agentId={id}
                           config={config}
                           modelLabel={getModelLabel(model)}
                           thinkingLabel={getThinkingLabel(thinking)}

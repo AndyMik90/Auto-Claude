@@ -13,6 +13,11 @@ import enGitlab from './locales/en/gitlab.json';
 import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
 import enErrors from './locales/en/errors.json';
+import enInsights from './locales/en/insights.json';
+import enRoadmap from './locales/en/roadmap.json';
+import enIdeation from './locales/en/ideation.json';
+import enChangelog from './locales/en/changelog.json';
+import enContext from './locales/en/context.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -26,6 +31,29 @@ import frGitlab from './locales/fr/gitlab.json';
 import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
+import frInsights from './locales/fr/insights.json';
+import frRoadmap from './locales/fr/roadmap.json';
+import frIdeation from './locales/fr/ideation.json';
+import frChangelog from './locales/fr/changelog.json';
+import frContext from './locales/fr/context.json';
+
+// Import Japanese translation resources
+import jaCommon from './locales/ja/common.json';
+import jaNavigation from './locales/ja/navigation.json';
+import jaSettings from './locales/ja/settings.json';
+import jaTasks from './locales/ja/tasks.json';
+import jaWelcome from './locales/ja/welcome.json';
+import jaOnboarding from './locales/ja/onboarding.json';
+import jaDialogs from './locales/ja/dialogs.json';
+import jaGitlab from './locales/ja/gitlab.json';
+import jaTaskReview from './locales/ja/taskReview.json';
+import jaTerminal from './locales/ja/terminal.json';
+import jaErrors from './locales/ja/errors.json';
+import jaInsights from './locales/ja/insights.json';
+import jaRoadmap from './locales/ja/roadmap.json';
+import jaIdeation from './locales/ja/ideation.json';
+import jaChangelog from './locales/ja/changelog.json';
+import jaContext from './locales/ja/context.json';
 
 export const defaultNS = 'common';
 
@@ -41,7 +69,12 @@ export const resources = {
     gitlab: enGitlab,
     taskReview: enTaskReview,
     terminal: enTerminal,
-    errors: enErrors
+    errors: enErrors,
+    insights: enInsights,
+    roadmap: enRoadmap,
+    ideation: enIdeation,
+    changelog: enChangelog,
+    context: enContext
   },
   fr: {
     common: frCommon,
@@ -54,7 +87,30 @@ export const resources = {
     gitlab: frGitlab,
     taskReview: frTaskReview,
     terminal: frTerminal,
-    errors: frErrors
+    errors: frErrors,
+    insights: frInsights,
+    roadmap: frRoadmap,
+    ideation: frIdeation,
+    changelog: frChangelog,
+    context: frContext
+  },
+  ja: {
+    common: jaCommon,
+    navigation: jaNavigation,
+    settings: jaSettings,
+    tasks: jaTasks,
+    welcome: jaWelcome,
+    onboarding: jaOnboarding,
+    dialogs: jaDialogs,
+    gitlab: jaGitlab,
+    taskReview: jaTaskReview,
+    terminal: jaTerminal,
+    errors: jaErrors,
+    insights: jaInsights,
+    roadmap: jaRoadmap,
+    ideation: jaIdeation,
+    changelog: jaChangelog,
+    context: jaContext
   }
 } as const;
 
@@ -62,10 +118,10 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // Default language (will be overridden by settings)
+    lng: 'ja', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'insights', 'roadmap', 'ideation', 'changelog', 'context'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

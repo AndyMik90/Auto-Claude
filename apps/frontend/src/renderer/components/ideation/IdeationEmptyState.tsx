@@ -1,10 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { Lightbulb, Settings2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Switch } from '../ui/switch';
-import {
-  IDEATION_TYPE_LABELS
-} from '../../../shared/constants';
 import type { IdeationType, IdeationConfig } from '../../../shared/types';
 import { TypeIcon } from './TypeIcon';
 import { ALL_IDEATION_TYPES } from './constants';
@@ -26,20 +24,20 @@ export function IdeationEmptyState({
   onOpenConfig,
   onToggleIdeationType
 }: IdeationEmptyStateProps) {
+  const { t } = useTranslation('ideation');
   return (
     <div className="flex h-full items-center justify-center">
       <Card className="w-full max-w-lg p-8 text-center">
         <Lightbulb className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">No Ideas Yet</h2>
+        <h2 className="text-xl font-semibold mb-2">{t('emptyState.title')}</h2>
         <p className="text-muted-foreground mb-6">
-          Generate AI-powered feature ideas based on your project's context,
-          existing patterns, and target audience.
+          {t('emptyState.description')}
         </p>
 
         {/* Configuration Preview */}
         <div className="mb-6 p-4 bg-muted/50 rounded-lg text-left">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">Enabled Ideation Types</span>
+            <span className="text-sm font-medium">{t('emptyState.enabledTypes')}</span>
             <Button
               variant="ghost"
               size="sm"
@@ -56,7 +54,7 @@ export function IdeationEmptyState({
               >
                 <div className="flex items-center gap-2">
                   <TypeIcon type={type} />
-                  <span className="text-sm">{IDEATION_TYPE_LABELS[type]}</span>
+                  <span className="text-sm">{t(`types.${type}`)}</span>
                 </div>
                 <Switch
                   checked={config.enabledTypes.includes(type)}
@@ -69,14 +67,14 @@ export function IdeationEmptyState({
 
         <Button onClick={onGenerate} size="lg" disabled={isCheckingToken}>
           <Sparkles className="h-4 w-4 mr-2" />
-          Generate Ideas
+          {t('emptyState.generate')}
         </Button>
 
         {/* Show warning if token is missing */}
         {hasToken === false && !isCheckingToken && (
           <p className="mt-3 text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4 inline-block mr-1 text-warning" />
-            Claude token not configured. You'll be prompted to enter it when generating.
+            {t('emptyState.tokenWarning')}
           </p>
         )}
       </Card>

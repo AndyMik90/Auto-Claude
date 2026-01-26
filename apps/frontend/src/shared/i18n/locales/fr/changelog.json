@@ -1,0 +1,162 @@
+{
+  "title": "Générateur de changelog",
+  "noProject": {
+    "title": "Aucun projet sélectionné",
+    "description": "Sélectionnez un projet dans la barre latérale pour générer des changelogs."
+  },
+  "steps": {
+    "step1": "Étape 1 : Sélectionner les tâches terminées à inclure",
+    "step2": "Étape 2 : Configurer et générer le changelog",
+    "step3": "Étape 3 : Publier et archiver les tâches",
+    "select": "Sélectionner",
+    "generate": "Générer",
+    "release": "Publier"
+  },
+  "refresh": "Actualiser",
+  "source": {
+    "label": "Source du changelog",
+    "tasks": "Tâches terminées",
+    "tasksDescription": "Générer à partir des tâches de spec terminées",
+    "gitHistory": "Historique Git",
+    "gitHistoryDescription": "Générer à partir des commits récents ou d'une plage de tags",
+    "branchDiff": "Comparaison de branches",
+    "branchDiffDescription": "Générer à partir des commits entre deux branches"
+  },
+  "gitOptions": {
+    "title": "Options de l'historique Git",
+    "historyType": "Type d'historique",
+    "sinceVersion": "Depuis la version",
+    "recentCommits": "Commits récents",
+    "sinceDate": "Depuis la date",
+    "tagRange": "Plage de tags",
+    "numberOfCommits": "Nombre de commits",
+    "fromTag": "Tag de départ",
+    "toTag": "Tag de fin (optionnel)",
+    "headLatest": "HEAD (dernier)",
+    "lastVersion": "Dernière version",
+    "selectTag": "Sélectionner un tag...",
+    "selectVersion": "Sélectionner une version...",
+    "allCommitsSince": "Tous les commits depuis cette version seront inclus",
+    "includeMergeCommits": "Inclure les commits de fusion",
+    "loading": "Chargement...",
+    "loadCommits": "Charger les commits"
+  },
+  "branchOptions": {
+    "title": "Comparaison de branches",
+    "baseBranch": "Branche de base",
+    "baseBranchHint": "La branche dans laquelle vous fusionnez",
+    "compareBranch": "Branche à comparer",
+    "compareBranchHint": "La branche contenant vos modifications",
+    "selectBaseBranch": "Sélectionner la branche de base...",
+    "selectCompareBranch": "Sélectionner la branche à comparer...",
+    "default": "par défaut",
+    "current": "actuelle",
+    "branchesMustBeDifferent": "Les branches doivent être différentes"
+  },
+  "list": {
+    "tasksSelected": "{{selected}} sur {{total}} tâches sélectionnées",
+    "selectAll": "Tout sélectionner",
+    "clear": "Effacer",
+    "noCompletedTasks": "Aucune tâche terminée",
+    "noCompletedTasksHint": "Terminez des tâches dans le tableau Kanban et marquez-les comme \"Terminées\" pour les inclure dans votre changelog.",
+    "commitsFound": "{{count}} commit trouvé",
+    "commitsFound_plural": "{{count}} commits trouvés",
+    "loadingCommits": "Chargement des commits...",
+    "noCommitsFound": "Aucun commit trouvé",
+    "noCommitsHintHistory": "Configurez les options d'historique et cliquez sur \"Charger les commits\" pour prévisualiser.",
+    "noCommitsHintBranch": "Sélectionnez les deux branches et cliquez sur \"Charger les commits\" pour voir les modifications.",
+    "continue": "Continuer",
+    "task": "tâche",
+    "tasks": "tâches",
+    "commit": "commit",
+    "commits": "commits"
+  },
+  "config": {
+    "backToSelection": "Retour à la sélection",
+    "including": "Incluant {{count}} {{label}}",
+    "releaseInfo": "Informations de version",
+    "version": "Version",
+    "date": "Date",
+    "previous": "Précédent : {{version}}",
+    "outputStyle": "Style de sortie",
+    "format": "Format",
+    "audience": "Public",
+    "emojis": "Emojis",
+    "advancedOptions": "Options avancées",
+    "customInstructions": "Instructions personnalisées",
+    "customInstructionsPlaceholder": "Ajoutez des instructions spéciales pour l'IA...",
+    "customInstructionsHint": "Optionnel. Guidez l'IA sur le ton, les détails spécifiques à inclure, etc.",
+    "generating": "Génération...",
+    "generateChangelog": "Générer le changelog"
+  },
+  "format": {
+    "keepChangelog": "Keep a Changelog",
+    "keepChangelogDesc": "Format standard avec sections Ajouté, Modifié, Corrigé",
+    "conversational": "Conversationnel",
+    "conversationalDesc": "Résumés en langage naturel pour les notes de version",
+    "technical": "Technique",
+    "technicalDesc": "Changements techniques détaillés pour les développeurs"
+  },
+  "audience": {
+    "general": "Général",
+    "generalDesc": "Langage convivial pour tous les publics",
+    "developers": "Développeurs",
+    "developersDesc": "Détails techniques pour les développeurs",
+    "stakeholders": "Parties prenantes",
+    "stakeholdersDesc": "Résumé d'impact orienté business"
+  },
+  "emoji": {
+    "none": "Aucun",
+    "noneDesc": "Pas d'emojis dans le changelog",
+    "minimal": "Minimal",
+    "minimalDesc": "Emojis de catégorie uniquement (✨ 🐛 etc.)",
+    "expressive": "Expressif",
+    "expressiveDesc": "Emojis partout pour l'attrait visuel"
+  },
+  "preview": {
+    "title": "Aperçu",
+    "markdown": "Markdown",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "save": "Enregistrer dans CHANGELOG.md",
+    "saved": "Enregistré !",
+    "saveTooltip": "Ajouter au début de CHANGELOG.md à la racine du projet",
+    "dropImages": "Déposez les images ici pour les ajouter au changelog",
+    "pasteImages": "Collez des images dans la description pour les enregistrer",
+    "placeholder": "Le changelog généré apparaîtra ici...",
+    "emptyState": "Cliquez sur \"Générer le changelog\" pour créer les notes de version.",
+    "loadingImage": "Chargement de l'image...",
+    "imageNotFound": "Image non trouvée"
+  },
+  "success": {
+    "title": "Changelog enregistré !",
+    "message": "La version {{version}} a été ajoutée à CHANGELOG.md",
+    "done": "Terminé"
+  },
+  "stages": {
+    "analyzing": "Analyse des changements",
+    "categorizing": "Catégorisation des changements",
+    "generating": "Génération du changelog",
+    "formatting": "Formatage de la sortie",
+    "complete": "Terminé"
+  },
+  "github": {
+    "title": "Créer une release GitHub",
+    "success": "Release créée avec succès !",
+    "viewRelease": "Voir la release sur GitHub",
+    "description": "Créer une nouvelle release {{tag}} sur GitHub avec le changelog comme notes de version.",
+    "creating": "Création de la release...",
+    "createRelease": "Créer la release {{tag}}"
+  },
+  "archive": {
+    "title": "Archiver les tâches terminées",
+    "success": "{{count}} tâche archivée !",
+    "success_plural": "{{count}} tâches archivées !",
+    "description": "Archiver {{count}} tâche pour nettoyer votre tableau Kanban. Les tâches archivées peuvent être consultées via le bouton \"Afficher les archivées\".",
+    "description_plural": "Archiver {{count}} tâches pour nettoyer votre tableau Kanban. Les tâches archivées peuvent être consultées via le bouton \"Afficher les archivées\".",
+    "archiving": "Archivage...",
+    "archiveTasks": "Archiver {{count}} tâche",
+    "archiveTasks_plural": "Archiver {{count}} tâches"
+  }
+}

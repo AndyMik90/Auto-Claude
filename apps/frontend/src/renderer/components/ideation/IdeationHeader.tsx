@@ -40,7 +40,8 @@ export function IdeationHeader({
   hasActiveIdeas,
   canAddMore
 }: IdeationHeaderProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('ideation');
+  const { t: tCommon } = useTranslation('common');
   const hasSelection = selectedCount > 0;
   return (
     <div className="shrink-0 border-b border-border p-4 bg-card/50">
@@ -48,11 +49,11 @@ export function IdeationHeader({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Lightbulb className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Ideation</h2>
-            <Badge variant="outline">{totalIdeas} ideas</Badge>
+            <h2 className="text-lg font-semibold">{t('title')}</h2>
+            <Badge variant="outline">{t('ideas', { count: totalIdeas })}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            AI-generated feature ideas for your project
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -60,7 +61,7 @@ export function IdeationHeader({
           {hasSelection ? (
             <>
               <Badge variant="secondary" className="mr-1">
-                {selectedCount} selected
+                {t('header.selected', { count: selectedCount })}
               </Badge>
               <Button
                 variant="outline"
@@ -69,7 +70,7 @@ export function IdeationHeader({
                 onClick={onDeleteSelected}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
-                Delete
+                {t('header.delete')}
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -77,12 +78,12 @@ export function IdeationHeader({
                     variant="ghost"
                     size="icon"
                     onClick={onClearSelection}
-                    aria-label={t('accessibility.clearSelectionAriaLabel')}
+                    aria-label={tCommon('accessibility.clearSelectionAriaLabel')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('accessibility.clearSelectionAriaLabel')}</TooltipContent>
+                <TooltipContent>{tCommon('accessibility.clearSelectionAriaLabel')}</TooltipContent>
               </Tooltip>
               <div className="w-px h-6 bg-border mx-1" />
             </>
@@ -94,12 +95,12 @@ export function IdeationHeader({
                     variant="ghost"
                     size="icon"
                     onClick={onSelectAll}
-                    aria-label={t('accessibility.selectAllAriaLabel')}
+                    aria-label={tCommon('accessibility.selectAllAriaLabel')}
                   >
                     <CheckSquare className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('accessibility.selectAllAriaLabel')}</TooltipContent>
+                <TooltipContent>{tCommon('accessibility.selectAllAriaLabel')}</TooltipContent>
               </Tooltip>
             )
           )}
@@ -111,13 +112,13 @@ export function IdeationHeader({
                 variant={showDismissed ? 'secondary' : 'outline'}
                 size="icon"
                 onClick={onToggleShowDismissed}
-                aria-label={showDismissed ? t('accessibility.hideDismissedAriaLabel') : t('accessibility.showDismissedAriaLabel')}
+                aria-label={showDismissed ? tCommon('accessibility.hideDismissedAriaLabel') : tCommon('accessibility.showDismissedAriaLabel')}
               >
                 {showDismissed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {showDismissed ? t('accessibility.hideDismissedAriaLabel') : t('accessibility.showDismissedAriaLabel')}
+              {showDismissed ? tCommon('accessibility.hideDismissedAriaLabel') : tCommon('accessibility.showDismissedAriaLabel')}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
@@ -126,12 +127,12 @@ export function IdeationHeader({
                 variant="outline"
                 size="icon"
                 onClick={onOpenConfig}
-                aria-label={t('accessibility.configureAriaLabel')}
+                aria-label={tCommon('accessibility.configureAriaLabel')}
               >
                 <Settings2 className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t('accessibility.configureAriaLabel')}</TooltipContent>
+            <TooltipContent>{tCommon('accessibility.configureAriaLabel')}</TooltipContent>
           </Tooltip>
           {canAddMore && (
             <Tooltip>
@@ -139,13 +140,13 @@ export function IdeationHeader({
                 <Button
                   variant="outline"
                   onClick={onOpenAddMore}
-                  aria-label={t('accessibility.addMoreAriaLabel')}
+                  aria-label={tCommon('accessibility.addMoreAriaLabel')}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add More
+                  {t('header.addMore')}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{t('accessibility.addMoreAriaLabel')}</TooltipContent>
+              <TooltipContent>{tCommon('accessibility.addMoreAriaLabel')}</TooltipContent>
             </Tooltip>
           )}
           {hasActiveIdeas && !hasSelection && (
@@ -156,21 +157,21 @@ export function IdeationHeader({
                   size="icon"
                   className="text-muted-foreground hover:text-destructive"
                   onClick={onDismissAll}
-                  aria-label={t('accessibility.dismissAllAriaLabel')}
+                  aria-label={tCommon('accessibility.dismissAllAriaLabel')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{t('accessibility.dismissAllAriaLabel')}</TooltipContent>
+              <TooltipContent>{tCommon('accessibility.dismissAllAriaLabel')}</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onRefresh} aria-label={t('accessibility.regenerateIdeasAriaLabel')}>
+              <Button variant="outline" size="icon" onClick={onRefresh} aria-label={tCommon('accessibility.regenerateIdeasAriaLabel')}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t('accessibility.regenerateIdeasAriaLabel')}</TooltipContent>
+            <TooltipContent>{tCommon('accessibility.regenerateIdeasAriaLabel')}</TooltipContent>
           </Tooltip>
         </div>
       </div>

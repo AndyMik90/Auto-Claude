@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import { TooltipProvider } from '../ui/tooltip';
 import { ChangelogHeader } from './ChangelogHeader';
@@ -80,14 +81,16 @@ export function Changelog() {
     handleRefresh
   } = useChangelog();
 
+  const { t } = useTranslation('changelog');
+
   if (!selectedProjectId) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-medium">No Project Selected</h3>
+          <h3 className="mt-4 text-lg font-medium">{t('noProject.title')}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Select a project from the sidebar to generate changelogs.
+            {t('noProject.description')}
           </p>
         </div>
       </div>

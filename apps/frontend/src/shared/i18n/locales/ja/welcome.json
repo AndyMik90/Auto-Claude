@@ -1,0 +1,17 @@
+{
+  "hero": {
+    "title": "Auto Claude へようこそ",
+    "subtitle": "AIエージェントで自律的にソフトウェアを構築"
+  },
+  "actions": {
+    "newProject": "新規プロジェクト",
+    "openProject": "プロジェクトを開く"
+  },
+  "recentProjects": {
+    "title": "最近のプロジェクト",
+    "empty": "プロジェクトがありません",
+    "emptyDescription": "新規プロジェクトを作成するか、既存のプロジェクトを開いて始めましょう",
+    "openFolder": "フォルダを開く",
+    "openProjectAriaLabel": "プロジェクト {{name}} を開く"
+  }
+}

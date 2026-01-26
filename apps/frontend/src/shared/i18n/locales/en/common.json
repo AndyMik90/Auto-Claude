@@ -91,7 +91,9 @@
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "selection": {
     "select": "Select",
@@ -107,6 +109,14 @@
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
     "daysAgo": "{{count}}d ago"
+  },
+  "fileExplorer": {
+    "projectFiles": "Project Files",
+    "dragHint": "Drag files into a terminal to insert the path",
+    "dragHintReferences": "Drag files to add as references",
+    "noFilesFound": "No files found",
+    "referencedFiles": "Referenced Files",
+    "folder": "folder"
   },
   "errors": {
     "generic": "An error occurred",

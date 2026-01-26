@@ -183,7 +183,12 @@
     "fineTuneDescription": "Ajustez de 75% à 200% par incréments de 5%",
     "default": "Par défaut",
     "comfortable": "Confortable",
-    "large": "Grand"
+    "large": "Grand",
+    "resetToDefault": "Réinitialiser par défaut (100%)",
+    "decreaseScale": "Réduire l'échelle de {{step}}%",
+    "increaseScale": "Augmenter l'échelle de {{step}}%",
+    "applyChanges": "Appliquer les changements d'échelle",
+    "apply": "Appliquer"
   },
   "general": {
     "otherAgentSettings": "Autres paramètres de l'agent",
@@ -222,6 +227,7 @@
     "sourceBundled": "Intégré",
     "sourceFallback": "Valeur par défaut",
     "notDetected": "Non détecté",
+    "detecting": "Détection en cours...",
     "autoClaudePath": "Chemin Auto Claude",
     "autoClaudePathDescription": "Chemin relatif vers le répertoire auto-claude dans les projets",
     "autoClaudePathPlaceholder": "auto-claude (par défaut)",
@@ -237,7 +243,42 @@
     "dark": "Sombre",
     "system": "Système",
     "colorTheme": "Thème de couleur",
-    "colorThemeDescription": "Choisissez votre palette de couleurs préférée"
+    "colorThemeDescription": "Choisissez votre palette de couleurs préférée",
+    "backgroundColor": "Couleur de fond",
+    "accentColor": "Couleur d'accentuation",
+    "appearanceMode": "Mode d'apparence",
+    "appearanceModeDescription": "Choisir clair, sombre ou préférence système",
+    "selectColorPalette": "Sélectionnez une palette de couleurs pour l'interface",
+    "themes": {
+      "default": {
+        "name": "Par défaut",
+        "description": "Style Oscura avec accent jaune pâle"
+      },
+      "dusk": {
+        "name": "Crépuscule",
+        "description": "Variante plus chaude avec mode sombre légèrement plus clair"
+      },
+      "lime": {
+        "name": "Citron vert",
+        "description": "Vert lime frais et énergique avec accents violets"
+      },
+      "ocean": {
+        "name": "Océan",
+        "description": "Tons bleus calmes et professionnels"
+      },
+      "retro": {
+        "name": "Rétro",
+        "description": "Ambiance ambrée chaleureuse et nostalgique"
+      },
+      "neo": {
+        "name": "Néo",
+        "description": "Rose/magenta cyberpunk moderne"
+      },
+      "forest": {
+        "name": "Forêt",
+        "description": "Tons verts naturels et terreux"
+      }
+    }
   },
   "devtools": {
     "title": "Outils de développement",
@@ -319,27 +360,126 @@
   "projectSections": {
     "general": {
       "title": "Général",
-      "description": "Auto-Build et configuration de l'agent",
+      "description": "Configurer Auto-Build, le modèle d'agent et les notifications pour la transcription",
       "useClaudeMd": "Utiliser CLAUDE.md",
-      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
+      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent",
+      "autoBuildIntegration": "Intégration Auto-Build",
+      "notInitialized": "Non initialisé",
+      "notInitializedDescription": "Initialisez Auto-Build pour activer la création de tâches et les workflows d'agents.",
+      "initializing": "Initialisation...",
+      "initializeAutoBuild": "Initialiser Auto-Build",
+      "initialized": "Initialisé",
+      "checkingStatus": "Vérification du statut...",
+      "agentConfiguration": "Configuration de l'agent",
+      "model": "Modèle",
+      "notifications": "Notifications",
+      "onTaskComplete": "À la fin d'une tâche",
+      "onTaskFailed": "En cas d'échec",
+      "onReviewNeeded": "Révision requise",
+      "sound": "Son"
     },
     "claude": {
       "title": "Auth Claude",
-      "description": "Authentification Claude"
+      "description": "Authentification Claude",
+      "claudeAuthentication": "Authentification Claude",
+      "connected": "Connecté",
+      "notConnected": "Non connecté",
+      "loadingConfiguration": "Chargement de la configuration...",
+      "claudeCLI": "Claude CLI",
+      "checking": "Vérification...",
+      "authenticatedViaOAuth": "Authentifié via OAuth",
+      "notAuthenticated": "Non authentifié",
+      "statusUnknown": "Statut inconnu",
+      "reAuthenticate": "Ré-authentifier",
+      "setupOAuth": "Configurer OAuth",
+      "oauthToken": "Jeton OAuth",
+      "oauthTokenOverride": "Jeton OAuth (remplacement)",
+      "usingGlobalToken": "Utilisation du jeton global",
+      "usingGlobalTokenDescription": "Utilisation du jeton des paramètres de l'app. Entrez un jeton spécifique au projet ci-dessous pour le remplacer.",
+      "pasteTokenFrom": "Collez un jeton depuis"
     },
     "linear": {
       "title": "Linear",
       "description": "Intégration Linear",
       "integrationTitle": "Intégration Linear",
       "integrationDescription": "Se connecter à Linear pour le suivi des issues et l'import de tâches",
-      "syncDescription": "Synchroniser avec Linear pour le suivi des issues"
+      "syncDescription": "Synchroniser avec Linear pour le suivi des issues",
+      "enableSync": "Activer la synchronisation Linear",
+      "enableSyncDescription": "Créer et mettre à jour les issues Linear automatiquement",
+      "apiKey": "Clé API",
+      "apiKeyDescription": "Obtenez votre clé API depuis",
+      "linearSettings": "Paramètres Linear",
+      "connectionStatus": "État de la connexion",
+      "checking": "Vérification...",
+      "connected": "Connecté",
+      "connectedTo": "Connecté à {{teamName}}",
+      "notConnected": "Non connecté",
+      "tasksAvailable": "{{count}}+ tâches disponibles à importer",
+      "importExistingTasks": "Importer les tâches existantes",
+      "importDescription": "Sélectionnez les issues Linear à importer dans Auto Claude.",
+      "importFromLinear": "Importer depuis Linear",
+      "realtimeSync": "Synchronisation en temps réel",
+      "realtimeSyncDescription": "Importer automatiquement les nouvelles tâches créées dans Linear",
+      "realtimeSyncWarning": "Lorsqu'activé, les nouvelles issues Linear seront automatiquement importées dans Auto Claude. Assurez-vous de configurer les filtres équipe/projet ci-dessous pour contrôler les issues importées.",
+      "teamId": "ID d'équipe (Optionnel)",
+      "teamIdPlaceholder": "Détection automatique",
+      "projectId": "ID de projet (Optionnel)",
+      "projectIdPlaceholder": "Création automatique"
     },
     "github": {
       "title": "GitHub",
       "description": "Synchronisation issues GitHub",
       "integrationTitle": "Intégration GitHub",
       "integrationDescription": "Se connecter à GitHub pour le suivi des issues",
-      "syncDescription": "Synchroniser avec GitHub Issues"
+      "syncDescription": "Synchroniser avec GitHub Issues",
+      "notConnected": "GitHub non connecté",
+      "noTokenOrRepo": "Aucun token GitHub ou dépôt configuré",
+      "enableGitHubIssues": "Activer GitHub Issues",
+      "syncIssuesDescription": "Synchroniser les issues GitHub et créer des tâches automatiquement",
+      "projectSpecificConfig": "Configuration spécifique au projet",
+      "projectSpecificConfigDescription": "Ce dépôt GitHub est configuré uniquement pour {{projectName}}. Chaque projet peut avoir son propre dépôt GitHub.",
+      "gitHubAuthentication": "Authentification GitHub",
+      "githubAuthentication": "Authentification GitHub",
+      "useManualToken": "Utiliser un token manuel",
+      "authenticatedViaOAuth": "Authentifié via GitHub OAuth (gh CLI)",
+      "connectedViaCLI": "Connecté via GitHub CLI",
+      "authenticatedAs": "Authentifié en tant que {{username}}",
+      "useDifferentToken": "Utiliser un autre token",
+      "personalAccessToken": "Token d'accès personnel",
+      "useOAuthInstead": "Utiliser OAuth à la place",
+      "createTokenDescription": "Créez un token avec le scope {{scope}} depuis",
+      "createTokenWithScope": "Créez un token avec le scope repo depuis",
+      "gitHubSettings": "Paramètres GitHub",
+      "githubSettings": "Paramètres GitHub",
+      "checking": "Vérification...",
+      "repositoryFormat": "Format : owner/repo (ex. facebook/react)",
+      "searchRepositories": "Rechercher des dépôts...",
+      "searchBranches": "Rechercher des branches...",
+      "repository": "Dépôt",
+      "repositoryFormat": "Format : {{format}} (ex. facebook/react)",
+      "enterManually": "Saisir manuellement",
+      "loadingRepositories": "Chargement des dépôts...",
+      "selectRepository": "Sélectionner un dépôt...",
+      "noMatchingRepositories": "Aucun dépôt correspondant",
+      "noRepositoriesFound": "Aucun dépôt trouvé",
+      "connectionStatus": "État de la connexion",
+      "connectedTo": "Connecté à {{repo}}",
+      "notConnectedError": "Non connecté",
+      "issuesAvailable": "Issues disponibles",
+      "issuesAvailableDescription": "Accédez aux GitHub Issues depuis la barre latérale pour voir, investiguer et créer des tâches à partir des issues.",
+      "defaultBranch": "Branche par défaut",
+      "baseBranchForWorktrees": "Branche de base pour la création de worktrees",
+      "loadingBranches": "Chargement des branches...",
+      "selectBranch": "Sélectionner une branche...",
+      "noMatchingBranches": "Aucune branche correspondante",
+      "noBranchesFound": "Aucune branche trouvée",
+      "autoSyncOnLoad": "Synchronisation automatique au chargement",
+      "autoSyncDescription": "Récupérer automatiquement les issues au chargement du projet",
+      "autoDetect": "Détection automatique (main/master)",
+      "tasksWillBranchFrom": "Toutes les nouvelles tâches seront créées à partir de",
+      "configureGitHubPrompt": "Configurez votre token GitHub et votre dépôt dans les paramètres du projet pour synchroniser les issues.",
+      "openSettings": "Ouvrir les paramètres",
+      "noIssuesMatchSearch": "Aucune issue ne correspond à votre recherche"
     },
     "gitlab": {
       "title": "GitLab",
@@ -353,7 +493,46 @@
       "description": "Backend mémoire Graphiti",
       "integrationTitle": "Mémoire",
       "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
-      "syncDescription": "Configurer la mémoire persistante"
+      "syncDescription": "Configurer la mémoire persistante",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "enableMemory": "Activer la mémoire",
+      "enableMemoryDescription": "Mémoire persistante inter-sessions utilisant une base de données graphe intégrée",
+      "fileBasedMemory": "Utilisation de la mémoire basée sur fichiers. Les insights de session sont stockés localement en fichiers JSON. Activez la mémoire pour un contexte inter-sessions persistant avec recherche sémantique.",
+      "enableAgentAccess": "Activer l'accès mémoire des agents",
+      "enableAgentAccessDescription": "Permettre aux agents de rechercher et d'ajouter au graphe de connaissances via MCP",
+      "graphitiMcpUrl": "URL du serveur MCP Graphiti",
+      "graphitiMcpUrlDescription": "URL du serveur MCP Graphiti",
+      "embeddingProvider": "Fournisseur d'embedding",
+      "embeddingProviderDescription": "Fournisseur pour la recherche sémantique (optionnel - la recherche par mot-clé fonctionne sans)",
+      "selectEmbeddingProvider": "Sélectionner un fournisseur d'embedding",
+      "ollamaLocal": "Ollama (Local - Gratuit)",
+      "openaiApiKey": "Clé API OpenAI",
+      "openaiApiKeyOverride": "Clé API OpenAI (remplacement)",
+      "usingGlobalKey": "Utilisation de la clé globale",
+      "usingGlobalKeyDescription": "Utilisation de la clé des paramètres de l'app. Entrez une clé spécifique au projet ci-dessous pour la remplacer.",
+      "requiredForOpenai": "Requis pour les embeddings OpenAI",
+      "voyageApiKey": "Clé API Voyage AI",
+      "requiredForVoyage": "Requis pour les embeddings Voyage AI",
+      "embeddingModel": "Modèle d'embedding",
+      "googleApiKey": "Clé API Google AI",
+      "requiredForGoogle": "Requis pour les embeddings Google AI",
+      "azureConfiguration": "Configuration Azure OpenAI",
+      "azureApiKey": "Clé API",
+      "azureBaseUrl": "URL de base",
+      "azureDeployment": "Nom du déploiement d'embedding",
+      "ollamaConfiguration": "Configuration Ollama",
+      "checking": "Vérification...",
+      "connected": "Connecté",
+      "notRunning": "Non démarré",
+      "baseUrl": "URL de base",
+      "recommendedModels": "Recommandé : qwen3-embedding:4b (équilibré), :8b (qualité), :0.6b (rapide)",
+      "embeddingDimension": "Dimension d'embedding",
+      "embeddingDimensionDescription": "Requis pour les embeddings Ollama (ex. 768 pour nomic-embed-text)",
+      "databaseName": "Nom de la base de données",
+      "databaseNameDescription": "Nom de la base de données mémoire (stockée dans ~/.auto-claude/memories/)",
+      "databasePath": "Chemin de la base de données (optionnel)",
+      "databasePathDescription": "Emplacement de stockage personnalisé. Par défaut : ~/.auto-claude/memories/"
     }
   },
   "agentProfile": {
@@ -497,15 +676,22 @@
     "helpTitle": "Signaler des problèmes",
     "helpText": "Lors du signalement de bugs, cliquez sur \"Copier les infos de débogage\" pour obtenir les informations système et les erreurs récentes qui nous aident à diagnostiquer le problème."
   },
+  "projectSelector": {
+    "placeholder": "Sélectionner un projet...",
+    "noProjects": "Aucun projet",
+    "addProject": "Ajouter un projet..."
+  },
   "projectSettings": {
     "noProjectSelected": {
       "title": "Aucun projet sélectionné",
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
-    }
+    },
+    "emptyState": "Sélectionnez un projet pour afficher et modifier ses paramètres"
   },
   "mcp": {
     "title": "Aperçu des serveurs MCP",
     "titleWithProject": "Aperçu des serveurs MCP pour {{projectName}}",
+    "forProject": "pour {{projectName}}",
     "description": "Configurez quels serveurs MCP sont disponibles pour les agents dans ce projet",
     "descriptionNoProject": "Sélectionnez un projet pour configurer les serveurs MCP",
     "serversEnabled": "{{count}} serveurs activés",
@@ -527,6 +713,95 @@
     "restore": "Restaurer",
     "noMcpServers": "Aucun serveur MCP",
     "cannotRemove": "Impossible à supprimer (requis)",
+    "mcpServersHeader": "Serveurs MCP",
+    "availableTools": "Outils disponibles",
+    "textOnlyNoTools": "Texte uniquement (pas d'outils)",
+    "agentCount": "({{count}} agents)",
+    "categories": {
+      "spec": "Création de spec",
+      "build": "Build",
+      "qa": "QA",
+      "utility": "Utilitaire",
+      "ideation": "Idéation"
+    },
+    "agents": {
+      "spec_gatherer": {
+        "label": "Collecteur de spec",
+        "description": "Collecte les exigences initiales de l'utilisateur"
+      },
+      "spec_researcher": {
+        "label": "Chercheur de spec",
+        "description": "Valide les intégrations externes et les APIs"
+      },
+      "spec_writer": {
+        "label": "Rédacteur de spec",
+        "description": "Crée le document spec.md"
+      },
+      "spec_critic": {
+        "label": "Critique de spec",
+        "description": "Auto-critique utilisant une analyse approfondie"
+      },
+      "spec_discovery": {
+        "label": "Découverte de spec",
+        "description": "Découverte et analyse initiale du projet"
+      },
+      "spec_context": {
+        "label": "Contexte de spec",
+        "description": "Construit le contexte à partir du code existant"
+      },
+      "spec_validation": {
+        "label": "Validation de spec",
+        "description": "Valide la complétude et la qualité de la spec"
+      },
+      "planner": {
+        "label": "Planificateur",
+        "description": "Crée le plan d'implémentation avec sous-tâches"
+      },
+      "coder": {
+        "label": "Codeur",
+        "description": "Implémente les sous-tâches individuelles"
+      },
+      "qa_reviewer": {
+        "label": "Réviseur QA",
+        "description": "Valide les critères d'acceptation"
+      },
+      "qa_fixer": {
+        "label": "Correcteur QA",
+        "description": "Corrige les problèmes signalés par le QA"
+      },
+      "pr_reviewer": {
+        "label": "Réviseur PR",
+        "description": "Révise les pull requests GitHub"
+      },
+      "commit_message": {
+        "label": "Message de commit",
+        "description": "Génère les messages de commit"
+      },
+      "merge_resolver": {
+        "label": "Résolveur de merge",
+        "description": "Résout les conflits de merge"
+      },
+      "insights": {
+        "label": "Insights",
+        "description": "Extrait les insights du code"
+      },
+      "analysis": {
+        "label": "Analyse",
+        "description": "Analyse du code avec recherche de contexte"
+      },
+      "batch_analysis": {
+        "label": "Analyse par lot",
+        "description": "Traitement par lot des issues ou éléments"
+      },
+      "ideation": {
+        "label": "Idéation",
+        "description": "Génère des idées de fonctionnalités"
+      },
+      "roadmap_discovery": {
+        "label": "Découverte de roadmap",
+        "description": "Découvre les éléments de roadmap"
+      }
+    },
     "servers": {
       "context7": {
         "name": "Context7",

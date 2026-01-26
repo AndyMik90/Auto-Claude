@@ -1,0 +1,162 @@
+{
+  "title": "変更履歴ジェネレーター",
+  "noProject": {
+    "title": "プロジェクトが選択されていません",
+    "description": "サイドバーからプロジェクトを選択して変更履歴を生成してください。"
+  },
+  "steps": {
+    "step1": "ステップ 1: 含める完了タスクを選択",
+    "step2": "ステップ 2: 変更履歴を設定して生成",
+    "step3": "ステップ 3: リリースしてタスクをアーカイブ",
+    "select": "選択",
+    "generate": "生成",
+    "release": "リリース"
+  },
+  "refresh": "更新",
+  "source": {
+    "label": "変更履歴のソース",
+    "tasks": "完了したタスク",
+    "tasksDescription": "完了したスペックタスクから生成",
+    "gitHistory": "Git 履歴",
+    "gitHistoryDescription": "最近のコミットまたはタグ範囲から生成",
+    "branchDiff": "ブランチ比較",
+    "branchDiffDescription": "2つのブランチ間のコミットから生成"
+  },
+  "gitOptions": {
+    "title": "Git 履歴オプション",
+    "historyType": "履歴タイプ",
+    "sinceVersion": "バージョン以降",
+    "recentCommits": "最近のコミット",
+    "sinceDate": "日付以降",
+    "tagRange": "タグ範囲",
+    "numberOfCommits": "コミット数",
+    "fromTag": "開始タグ",
+    "toTag": "終了タグ（任意）",
+    "headLatest": "HEAD（最新）",
+    "lastVersion": "前回のバージョン",
+    "selectTag": "タグを選択...",
+    "selectVersion": "バージョンを選択...",
+    "allCommitsSince": "このバージョン以降のすべてのコミットが含まれます",
+    "includeMergeCommits": "マージコミットを含める",
+    "loading": "読み込み中...",
+    "loadCommits": "コミットを読み込む"
+  },
+  "branchOptions": {
+    "title": "ブランチ比較",
+    "baseBranch": "ベースブランチ",
+    "baseBranchHint": "マージ先のブランチ",
+    "compareBranch": "比較ブランチ",
+    "compareBranchHint": "変更を含むブランチ",
+    "selectBaseBranch": "ベースブランチを選択...",
+    "selectCompareBranch": "比較ブランチを選択...",
+    "default": "デフォルト",
+    "current": "現在",
+    "branchesMustBeDifferent": "ブランチは異なる必要があります"
+  },
+  "list": {
+    "tasksSelected": "{{total}} 件中 {{selected}} 件のタスクを選択",
+    "selectAll": "すべて選択",
+    "clear": "クリア",
+    "noCompletedTasks": "完了したタスクがありません",
+    "noCompletedTasksHint": "タスクボードでタスクを完了し「完了」にマークすると、変更履歴に含めることができます。",
+    "commitsFound": "{{count}} 件のコミットが見つかりました",
+    "commitsFound_plural": "{{count}} 件のコミットが見つかりました",
+    "loadingCommits": "コミットを読み込み中...",
+    "noCommitsFound": "コミットが見つかりません",
+    "noCommitsHintHistory": "履歴オプションを設定し「コミットを読み込む」をクリックしてプレビューしてください。",
+    "noCommitsHintBranch": "両方のブランチを選択し「コミットを読み込む」をクリックして変更を確認してください。",
+    "continue": "続行",
+    "task": "件のタスク",
+    "tasks": "件のタスク",
+    "commit": "件のコミット",
+    "commits": "件のコミット"
+  },
+  "config": {
+    "backToSelection": "選択に戻る",
+    "including": "{{count}} {{label}}を含む",
+    "releaseInfo": "リリース情報",
+    "version": "バージョン",
+    "date": "日付",
+    "previous": "前回: {{version}}",
+    "outputStyle": "出力スタイル",
+    "format": "フォーマット",
+    "audience": "対象者",
+    "emojis": "絵文字",
+    "advancedOptions": "詳細オプション",
+    "customInstructions": "カスタム指示",
+    "customInstructionsPlaceholder": "AIへの特別な指示を追加...",
+    "customInstructionsHint": "任意。トーンや含める詳細などをAIにガイドします。",
+    "generating": "生成中...",
+    "generateChangelog": "変更履歴を生成"
+  },
+  "format": {
+    "keepChangelog": "Keep a Changelog",
+    "keepChangelogDesc": "Added、Changed、Fixedセクションを含む標準形式",
+    "conversational": "会話形式",
+    "conversationalDesc": "リリースノート向けの自然な言葉での要約",
+    "technical": "技術形式",
+    "technicalDesc": "開発者向けの詳細な技術的変更"
+  },
+  "audience": {
+    "general": "一般",
+    "generalDesc": "すべての対象者向けのわかりやすい言葉",
+    "developers": "開発者",
+    "developersDesc": "開発者向けの技術的詳細",
+    "stakeholders": "ステークホルダー",
+    "stakeholdersDesc": "ビジネス重視の影響サマリー"
+  },
+  "emoji": {
+    "none": "なし",
+    "noneDesc": "変更履歴に絵文字を使用しない",
+    "minimal": "最小限",
+    "minimalDesc": "カテゴリ絵文字のみ（✨ 🐛 など）",
+    "expressive": "表現豊か",
+    "expressiveDesc": "視覚的なアピールのために全体に絵文字を使用"
+  },
+  "preview": {
+    "title": "プレビュー",
+    "markdown": "Markdown",
+    "copy": "コピー",
+    "copied": "コピーしました！",
+    "copyToClipboard": "クリップボードにコピー",
+    "save": "CHANGELOG.md に保存",
+    "saved": "保存しました！",
+    "saveTooltip": "プロジェクトルートの CHANGELOG.md に追加",
+    "dropImages": "画像をここにドロップして変更履歴に追加",
+    "pasteImages": "画像をペーストして変更履歴に保存",
+    "placeholder": "生成された変更履歴がここに表示されます...",
+    "emptyState": "「変更履歴を生成」をクリックしてリリースノートを作成します。",
+    "loadingImage": "画像を読み込み中...",
+    "imageNotFound": "画像が見つかりません"
+  },
+  "success": {
+    "title": "変更履歴を保存しました！",
+    "message": "バージョン {{version}} が CHANGELOG.md に追加されました",
+    "done": "完了"
+  },
+  "stages": {
+    "analyzing": "変更を分析中",
+    "categorizing": "変更を分類中",
+    "generating": "変更履歴を生成中",
+    "formatting": "出力をフォーマット中",
+    "complete": "完了"
+  },
+  "github": {
+    "title": "GitHub リリースを作成",
+    "success": "リリースが正常に作成されました！",
+    "viewRelease": "GitHub でリリースを表示",
+    "description": "変更履歴をリリースノートとして GitHub に新しいリリース {{tag}} を作成します。",
+    "creating": "リリースを作成中...",
+    "createRelease": "リリース {{tag}} を作成"
+  },
+  "archive": {
+    "title": "完了したタスクをアーカイブ",
+    "success": "{{count}} 件のタスクをアーカイブしました！",
+    "success_plural": "{{count}} 件のタスクをアーカイブしました！",
+    "description": "{{count}} 件のタスクをアーカイブしてタスクボードを整理します。アーカイブしたタスクは「アーカイブを表示」トグルで確認できます。",
+    "description_plural": "{{count}} 件のタスクをアーカイブしてタスクボードを整理します。アーカイブしたタスクは「アーカイブを表示」トグルで確認できます。",
+    "archiving": "アーカイブ中...",
+    "archiveTasks": "{{count}} 件のタスクをアーカイブ",
+    "archiveTasks_plural": "{{count}} 件のタスクをアーカイブ"
+  }
+}

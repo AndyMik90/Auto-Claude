@@ -1,4 +1,15 @@
 {
+  "emptyState": {
+    "title": "Terminaux Agent",
+    "description": "Lancez plusieurs terminaux pour exécuter des agents Claude en parallèle.",
+    "shortcutPrefix": "Utilisez",
+    "shortcutSuffix": "pour créer un nouveau terminal.",
+    "newTerminal": "Nouveau Terminal"
+  },
+  "toolbar": {
+    "invokeClaudeAll": "Invoquer Claude Tous",
+    "newTerminal": "Nouveau Terminal"
+  },
   "expand": {
     "expand": "Agrandir le terminal",
     "collapse": "Reduire le terminal"

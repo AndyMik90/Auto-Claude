@@ -1,0 +1,64 @@
+{
+  "title": "インサイト",
+  "subtitle": "コードベースについて質問する",
+  "sidebar": {
+    "show": "サイドバーを表示",
+    "hide": "サイドバーを隠す"
+  },
+  "newChat": "新規チャット",
+  "emptyState": {
+    "title": "会話を始める",
+    "description": "コードベースについて質問したり、改善の提案を受けたり、実装したい機能について相談できます。"
+  },
+  "suggestions": {
+    "architecture": "このプロジェクトのアーキテクチャは？",
+    "improvements": "コード品質の改善点を提案して",
+    "features": "次に追加できる機能は？",
+    "security": "セキュリティ上の懸念はある？"
+  },
+  "roles": {
+    "you": "あなた",
+    "assistant": "アシスタント"
+  },
+  "status": {
+    "thinking": "考え中..."
+  },
+  "input": {
+    "placeholder": "コードベースについて質問...",
+    "hint": "Enter で送信、Shift+Enter で改行"
+  },
+  "suggestedTask": {
+    "label": "提案されたタスク",
+    "create": "タスクを作成",
+    "creating": "作成中...",
+    "created": "タスク作成済み"
+  },
+  "tools": {
+    "used": "{{count}} 件のツールを使用",
+    "used_plural": "{{count}} 件のツールを使用",
+    "reading": "ファイルを読み込み中",
+    "searchingFiles": "ファイルを検索中",
+    "searchingCode": "コードを検索中"
+  },
+  "chatHistory": {
+    "title": "チャット履歴",
+    "noConversations": "会話がありません",
+    "today": "今日",
+    "yesterday": "昨日",
+    "daysAgo": "{{count}} 日前",
+    "messageCount": "{{count}} 件のメッセージ",
+    "messageCount_plural": "{{count}} 件のメッセージ",
+    "rename": "名前を変更",
+    "delete": "削除",
+    "deleteTitle": "会話を削除しますか？",
+    "deleteDescription": "この会話とすべてのメッセージが完全に削除されます。この操作は元に戻せません。",
+    "cancel": "キャンセル"
+  },
+  "modelSelector": {
+    "label": "エージェントプロファイル",
+    "modelTooltip": "モデル: {{model}}",
+    "balanced": "バランス",
+    "custom": "カスタム...",
+    "customDescription": "モデルと思考レベルを選択"
+  }
+}

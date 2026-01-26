@@ -105,7 +105,7 @@
     "@biomejs/biome": "2.3.11",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@electron/rebuild": "^4.0.2",
+    "@electron/rebuild": "^0.0.0",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/dom": "^10.0.0",

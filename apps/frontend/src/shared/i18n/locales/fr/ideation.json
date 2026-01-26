@@ -1,0 +1,25 @@
+{
+  "title": "Idéation",
+  "subtitle": "Idées de fonctionnalités générées par l'IA pour votre projet",
+  "ideas": "{{count}} idées",
+  "emptyState": {
+    "title": "Pas encore d'idées",
+    "description": "Générez des idées de fonctionnalités alimentées par l'IA basées sur le contexte de votre projet, les modèles existants et le public cible.",
+    "enabledTypes": "Types d'idéation activés",
+    "generate": "Générer des idées",
+    "tokenWarning": "Token Claude non configuré. Vous serez invité à le saisir lors de la génération."
+  },
+  "types": {
+    "code_improvements": "Améliorations du code",
+    "ui_ux": "Améliorations UI/UX",
+    "documentation": "Documentation",
+    "security": "Sécurité",
+    "performance": "Performance",
+    "code_quality": "Qualité du code"
+  },
+  "header": {
+    "selected": "{{count}} sélectionné(s)",
+    "delete": "Supprimer",
+    "addMore": "Ajouter"
+  }
+}

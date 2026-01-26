@@ -1,0 +1,64 @@
+{
+  "title": "Insights",
+  "subtitle": "Posez des questions sur votre code",
+  "sidebar": {
+    "show": "Afficher la barre latérale",
+    "hide": "Masquer la barre latérale"
+  },
+  "newChat": "Nouvelle conversation",
+  "emptyState": {
+    "title": "Démarrer une conversation",
+    "description": "Posez des questions sur votre code, obtenez des suggestions d'améliorations ou discutez des fonctionnalités que vous souhaitez implémenter."
+  },
+  "suggestions": {
+    "architecture": "Quelle est l'architecture de ce projet ?",
+    "improvements": "Suggérez des améliorations pour la qualité du code",
+    "features": "Quelles fonctionnalités pourrais-je ajouter ?",
+    "security": "Y a-t-il des problèmes de sécurité ?"
+  },
+  "roles": {
+    "you": "Vous",
+    "assistant": "Assistant"
+  },
+  "status": {
+    "thinking": "Réflexion en cours..."
+  },
+  "input": {
+    "placeholder": "Posez une question sur votre code...",
+    "hint": "Entrée pour envoyer, Maj+Entrée pour nouvelle ligne"
+  },
+  "suggestedTask": {
+    "label": "Tâche suggérée",
+    "create": "Créer la tâche",
+    "creating": "Création...",
+    "created": "Tâche créée"
+  },
+  "tools": {
+    "used": "{{count}} outil utilisé",
+    "used_plural": "{{count}} outils utilisés",
+    "reading": "Lecture du fichier",
+    "searchingFiles": "Recherche de fichiers",
+    "searchingCode": "Recherche dans le code"
+  },
+  "chatHistory": {
+    "title": "Historique des conversations",
+    "noConversations": "Aucune conversation",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "daysAgo": "Il y a {{count}} jours",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "rename": "Renommer",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer la conversation ?",
+    "deleteDescription": "Cette action supprimera définitivement cette conversation et tous ses messages. Cette action est irréversible.",
+    "cancel": "Annuler"
+  },
+  "modelSelector": {
+    "label": "Profil d'agent",
+    "modelTooltip": "Modèle : {{model}}",
+    "balanced": "Équilibré",
+    "custom": "Personnalisé...",
+    "customDescription": "Choisir le modèle et le niveau de réflexion"
+  }
+}

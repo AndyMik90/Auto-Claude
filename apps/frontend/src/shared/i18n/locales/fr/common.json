@@ -91,7 +91,9 @@
     "noData": "Aucune donnée",
     "optional": "Optionnel",
     "required": "Requis",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "enabled": "Activé",
+    "disabled": "Désactivé"
   },
   "selection": {
     "select": "Sélectionner",
@@ -107,6 +109,14 @@
     "minutesAgo": "Il y a {{count}} min",
     "hoursAgo": "Il y a {{count}}h",
     "daysAgo": "Il y a {{count}}j"
+  },
+  "fileExplorer": {
+    "projectFiles": "Fichiers du projet",
+    "dragHint": "Glissez les fichiers dans un terminal pour insérer le chemin",
+    "dragHintReferences": "Glissez les fichiers pour les ajouter comme références",
+    "noFilesFound": "Aucun fichier trouvé",
+    "referencedFiles": "Fichiers référencés",
+    "folder": "dossier"
   },
   "errors": {
     "generic": "Une erreur s'est produite",

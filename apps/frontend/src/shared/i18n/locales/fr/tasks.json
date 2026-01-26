@@ -204,6 +204,19 @@
     "removeImage": "Supprimer l'image",
     "processingError": "Échec du traitement de l'image"
   },
+  "imageUpload": {
+    "dropOrBrowse": "Déposez les images ici ou cliquez pour parcourir",
+    "maxReached": "Limite d'images atteinte",
+    "allowedTypes": "{{types}} jusqu'à 10 Mo chacune",
+    "imageCount": "({{current}}/{{max}})",
+    "maxImagesNote": "{{max}} images maximum",
+    "maxImagesError": "Maximum de {{max}} images autorisées",
+    "slotsLimitedError": "Seule(s) {{slots}} image(s) supplémentaire(s) peut(vent) être ajoutée(s). Certains fichiers ont été ignorés.",
+    "invalidTypeError": "\"{{filename}}\" n'est pas un type d'image valide. Autorisés : {{types}}",
+    "largeFileWarning": "\"{{filename}}\" dépasse 10 Mo. Envisagez de le compresser pour de meilleures performances.",
+    "processError": "Échec du traitement de \"{{filename}}\"",
+    "largeFileTooltip": "Fichier volumineux - envisagez de le compresser"
+  },
   "review": {
     "mergeTooltip": "Fusionne les changements de la branche worktree de la tâche vers votre branche de base. L'IA résoudra les conflits éventuels. Vous pourrez ensuite choisir de conserver ou de supprimer le worktree."
   },

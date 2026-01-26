@@ -1,0 +1,81 @@
+{
+  "emptyState": {
+    "title": "No Roadmap Yet",
+    "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generate": "Generate Roadmap"
+  },
+  "generation": {
+    "progress": "Progress",
+    "stop": "Stop",
+    "stopping": "Stopping...",
+    "stopTooltip": "Stop generation",
+    "phases": {
+      "analyzing": {
+        "label": "Analyzing",
+        "description": "Analyzing project structure and codebase..."
+      },
+      "discovering": {
+        "label": "Discovering",
+        "description": "Discovering target audience and user needs..."
+      },
+      "generating": {
+        "label": "Generating",
+        "description": "Generating feature roadmap..."
+      },
+      "complete": {
+        "label": "Complete",
+        "description": "Roadmap generation complete!"
+      },
+      "error": {
+        "label": "Error",
+        "description": "Generation failed"
+      }
+    },
+    "steps": {
+      "analyze": "Analyze",
+      "discover": "Discover",
+      "generate": "Generate"
+    }
+  },
+  "header": {
+    "competitorAnalysis": "Competitor Analysis",
+    "clickToView": "Click to view detailed analysis",
+    "analyzedCompetitors": "Analyzed {{count}} competitors with {{painPoints}} pain points identified",
+    "addFeature": "Add Feature",
+    "addFeatureTooltip": "Add a new feature to the roadmap",
+    "regenerate": "Regenerate Roadmap",
+    "target": "Target:",
+    "morePersonas": "+{{count}} more personas",
+    "secondaryPersonas": "Secondary Personas:",
+    "features": "features",
+    "phases": "phases"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "allFeatures": "All Features",
+    "byPriority": "By Priority",
+    "featureCount": "{{count}} features",
+    "impact": "{{impact}} impact",
+    "insight": "Insight"
+  },
+  "phase": {
+    "progress": "Progress",
+    "milestones": "Milestones",
+    "featuresLabel": "Features ({{count}})",
+    "featuresProgress": "{{done}}/{{total}} features",
+    "moreFeatures": "+{{count}} more features",
+    "viewTask": "View Task",
+    "build": "Build"
+  },
+  "feature": {
+    "description": "Description",
+    "rationale": "Rationale",
+    "complexity": "Complexity",
+    "impact": "Impact",
+    "dependencies": "Dependencies",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Acceptance Criteria",
+    "priority": "Priority"
+  }
+}

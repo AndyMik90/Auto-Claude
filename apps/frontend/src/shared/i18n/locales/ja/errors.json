@@ -1,0 +1,9 @@
+{
+  "task": {
+    "parseImplementationPlan": "{{specId}} の implementation_plan.json の解析に失敗しました: {{error}}",
+    "jsonError": {
+      "titleSuffix": "(JSON エラー)",
+      "description": "JSON 解析エラー: {{error}}\n\nimplementation_plan.json ファイルの形式が正しくありません。バックエンドの自動修復を実行するか、手動でファイルを修復してください。"
+    }
+  }
+}

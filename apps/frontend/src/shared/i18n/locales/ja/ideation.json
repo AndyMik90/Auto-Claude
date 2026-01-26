@@ -1,0 +1,25 @@
+{
+  "title": "アイデア",
+  "subtitle": "プロジェクト向けのAI生成機能アイデア",
+  "ideas": "{{count}} 件のアイデア",
+  "emptyState": {
+    "title": "アイデアがありません",
+    "description": "プロジェクトのコンテキスト、既存のパターン、ターゲットユーザーに基づいて、AI搭載の機能アイデアを生成します。",
+    "enabledTypes": "有効なアイデアタイプ",
+    "generate": "アイデアを生成",
+    "tokenWarning": "Claude トークンが設定されていません。生成時に入力を求められます。"
+  },
+  "types": {
+    "code_improvements": "コード改善",
+    "ui_ux": "UI/UX 改善",
+    "documentation": "ドキュメント",
+    "security": "セキュリティ",
+    "performance": "パフォーマンス",
+    "code_quality": "コード品質"
+  },
+  "header": {
+    "selected": "{{count}} 件選択中",
+    "delete": "削除",
+    "addMore": "追加"
+  }
+}
