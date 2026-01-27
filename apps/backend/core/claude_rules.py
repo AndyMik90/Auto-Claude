@@ -43,7 +43,9 @@ DEFAULT_WHEN_VALUE = "per_subtask"
 # Cache for parsed rules to avoid re-reading files on every create_client() call
 # Key: project_dir path string
 # Value: (all_rules list, timestamp)
-_RULES_CACHE: dict[str, tuple[list[tuple[Path, list[str], list[dict], str]], float]] = {}
+_RULES_CACHE: dict[
+    str, tuple[list[tuple[Path, list[str], list[dict], str]], float]
+] = {}
 _RULES_CACHE_TTL_SECONDS = 300  # 5 minute cache, same as project index
 _RULES_CACHE_LOCK = threading.Lock()  # Protects _RULES_CACHE access
 
