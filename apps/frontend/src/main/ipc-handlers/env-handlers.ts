@@ -529,7 +529,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       // MCP Server Configuration (per-project overrides)
       // Default: context7=true, linear=true (if API key set), electron/puppeteer=false
-      console.log('[ENV_GET] AWS_MCP_ENABLED from file:', vars['AWS_MCP_ENABLED']);
       config.mcpServers = {
         context7Enabled: vars['CONTEXT7_ENABLED']?.toLowerCase() !== 'false', // default true
         graphitiEnabled: config.graphitiEnabled, // follows GRAPHITI_ENABLED
@@ -538,7 +537,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         puppeteerEnabled: vars['PUPPETEER_MCP_ENABLED']?.toLowerCase() === 'true', // default false
         awsEnabled: vars['AWS_MCP_ENABLED']?.toLowerCase() === 'true', // default false
       };
-      console.log('[ENV_GET] mcpServers.awsEnabled:', config.mcpServers.awsEnabled);
 
       // Parse per-agent MCP overrides (AGENT_MCP_<agent>_ADD/REMOVE)
       const agentMcpOverrides: Record<string, { add?: string[]; remove?: string[] }> = {};
@@ -575,8 +573,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
   ipcMain.handle(
     IPC_CHANNELS.ENV_UPDATE,
     async (_, projectId: string, config: Partial<ProjectEnvConfig>): Promise<IPCResult> => {
-      console.log('[ENV_UPDATE] Received config:', JSON.stringify(config, null, 2));
-
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: 'Project not found' };
@@ -587,7 +583,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
 
       const envPath = path.join(project.path, project.autoBuildPath, '.env');
-      console.log('[ENV_UPDATE] Writing to:', envPath);
 
       try {
         // Read existing content if file exists
@@ -598,15 +593,12 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
         // Generate new content
         const newContent = generateEnvContent(config, existingContent);
-        console.log('[ENV_UPDATE] New content preview:', newContent.slice(0, 500));
 
         // Write to file
         writeFileSync(envPath, newContent);
-        console.log('[ENV_UPDATE] File written successfully');
 
         return { success: true };
       } catch (error) {
-        console.error('[ENV_UPDATE] Error:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to update .env file'
