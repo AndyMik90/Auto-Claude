@@ -6,7 +6,6 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -65,29 +64,13 @@ vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }));
 
-// Mock other dependencies
-vi.mock('../../shared/constants', () => ({
-  IPC_CHANNELS: {
-    SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS: 'settings:claudeCode:getOnboardingStatus',
-    SETTINGS_GET: 'settings:get',
-    SETTINGS_SAVE: 'settings:save',
-    SETTINGS_GET_CLI_TOOLS_INFO: 'settings:getCliToolsInfo',
-    DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
-    DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',
-    DIALOG_GET_DEFAULT_PROJECT_LOCATION: 'dialog:getDefaultProjectLocation',
-    APP_VERSION: 'app:version',
-    SHELL_OPEN_EXTERNAL: 'shell:openExternal',
-    SHELL_OPEN_TERMINAL: 'shell:openTerminal',
-    AUTOBUILD_SOURCE_ENV_GET: 'autobuild:source:env:get',
-    AUTOBUILD_SOURCE_ENV_UPDATE: 'autobuild:source:env:update',
-    AUTOBUILD_SOURCE_ENV_CHECK_TOKEN: 'autobuild:source:env:checkToken',
-    SENTRY_STATE_CHANGED: 'sentry:state-changed',
-    GET_SENTRY_DSN: 'sentry:get-dsn',
-    GET_SENTRY_CONFIG: 'sentry:get-config',
-  },
-  DEFAULT_APP_SETTINGS: {},
-  DEFAULT_AGENT_PROFILES: [],
-}));
+// Mock other dependencies - inherit real constants to keep them in sync
+vi.mock('../../shared/constants', async () => {
+  const actual = await vi.importActual<typeof import('../../shared/constants')>('../../shared/constants');
+  return {
+    ...actual,
+  };
+});
 
 vi.mock('../cli-tool-manager', () => ({
   configureTools: vi.fn(),
@@ -126,11 +109,6 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
     registeredHandlers.clear();
     mockFiles.clear();
 
-    // Clean up any existing test file
-    if (existsSync(claudeJsonPath)) {
-      unlinkSync(claudeJsonPath);
-    }
-
     // Reset module cache to get fresh state
     vi.resetModules();
 
@@ -150,14 +128,7 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
   });
 
   afterEach(() => {
-    // Clean up test file
-    if (existsSync(claudeJsonPath)) {
-      try {
-        unlinkSync(claudeJsonPath);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
+    // Cleanup handled via mockFiles.clear()
     mockFiles.clear();
   });
 
