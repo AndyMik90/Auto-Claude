@@ -34,6 +34,7 @@ import { updateProjectSettings, useProjectStore } from '../stores/project-store'
 import { useKanbanSettingsStore, COLLAPSED_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH } from '../stores/kanban-settings-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
+import { InspectPromptsButton } from './InspectPromptsButton';
 import { BulkPRDialog } from './BulkPRDialog';
 import type { Task, TaskStatus, TaskOrderState } from '../../shared/types';
 
@@ -1400,6 +1401,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
             )}
           </div>
           <div className="flex items-center gap-2">
+            <InspectPromptsButton context="kanban" variant="ghost" size="sm" />
             {onRefresh && (
               <Button
                 variant="ghost"

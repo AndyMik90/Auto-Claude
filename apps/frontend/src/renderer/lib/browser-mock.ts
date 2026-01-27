@@ -346,6 +346,20 @@ const browserMockAPI: ElectronAPI = {
     error: 'Screenshot capture not available in browser mode'
   }),
 
+  // Prompt inspection operations
+  getPromptList: async (_context: string) => ({
+    success: true,
+    data: [
+      { name: 'Planner', filename: 'planner.md', description: 'Creates implementation plans with subtasks' },
+      { name: 'Coder', filename: 'coder.md', description: 'Implements individual subtasks' },
+      { name: 'QA Reviewer', filename: 'qa_reviewer.md', description: 'Validates acceptance criteria' }
+    ]
+  }),
+  readPrompt: async (_filename: string) => ({
+    success: true,
+    data: '# Mock Prompt Content\n\nThis is mock prompt content for browser preview.'
+  }),
+
   // Debug Operations
   getDebugInfo: async () => ({
     systemInfo: {

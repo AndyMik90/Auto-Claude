@@ -4,6 +4,7 @@ import { CompetitorAnalysisDialog } from './CompetitorAnalysisDialog';
 import { ExistingCompetitorAnalysisDialog } from './ExistingCompetitorAnalysisDialog';
 import { CompetitorAnalysisViewer } from './CompetitorAnalysisViewer';
 import { AddFeatureDialog } from './AddFeatureDialog';
+import { InspectPromptsButton } from './InspectPromptsButton';
 import { RoadmapHeader } from './roadmap/RoadmapHeader';
 import { RoadmapEmptyState } from './roadmap/RoadmapEmptyState';
 import { RoadmapTabs } from './roadmap/RoadmapTabs';
@@ -103,6 +104,11 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
         onRefresh={handleRefresh}
         onViewCompetitorAnalysis={() => setShowCompetitorViewer(true)}
       />
+
+      {/* Secondary Actions */}
+      <div className="shrink-0 flex justify-end px-4 py-2 bg-muted/30 border-b border-border">
+        <InspectPromptsButton context="roadmap" />
+      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

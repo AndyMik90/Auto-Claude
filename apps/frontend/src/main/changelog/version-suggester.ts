@@ -199,7 +199,10 @@ except Exception as e:
         newVersion = `${major}.${minor + 1}.0`;
         break;
       case 'patch':
+        newVersion = `${major}.${minor}.${patch + 1}`;
+        break;
       default:
+        // Handle unexpected bumpType values
         newVersion = `${major}.${minor}.${patch + 1}`;
         break;
     }
