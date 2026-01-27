@@ -110,6 +110,15 @@ ELECTRON_TOOLS = [
     "mcp__electron__read_electron_logs",  # Read console logs from Electron app
 ]
 
+# AWS MCP tools for AWS services (S3, EC2, CloudWatch, etc.)
+# Uses awslabs.aws-api-mcp-server to interact with AWS via CLI commands.
+# Requires AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) or AWS_PROFILE.
+AWS_TOOLS = [
+    "mcp__aws__call_aws",  # Execute AWS CLI commands
+    "mcp__aws__suggest_aws_commands",  # Get suggested AWS CLI operations
+    "mcp__aws__get_execution_plan",  # Get step-by-step guidance for complex tasks
+]
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -377,6 +386,7 @@ def _map_mcp_server_name(
         "electron": "electron",
         "puppeteer": "puppeteer",
         "auto-claude": "auto-claude",
+        "aws": "aws",
     }
     # Check if it's a known mapping
     mapped = mappings.get(name.lower().strip())

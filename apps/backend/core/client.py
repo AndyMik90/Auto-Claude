@@ -126,6 +126,7 @@ def invalidate_project_cache(project_dir: Path | None = None) -> None:
 
 
 from agents.tools_pkg import (
+    AWS_TOOLS,
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
     GRAPHITI_MCP_TOOLS,
@@ -650,6 +651,11 @@ def create_client(
                     if graphiti_mcp_enabled
                     else []
                 ),
+                *(
+                    [f"{tool}(*)" for tool in AWS_TOOLS]
+                    if "aws" in required_servers
+                    else []
+                ),
                 *[f"{tool}(*)" for tool in browser_tools_permissions],
             ],
         },
@@ -683,6 +689,8 @@ def create_client(
         mcp_servers_list.append("puppeteer (browser automation)")
     if "linear" in required_servers:
         mcp_servers_list.append("linear (project management)")
+    if "aws" in required_servers:
+        mcp_servers_list.append("aws (S3, EC2, CloudWatch, etc.)")
     if graphiti_mcp_enabled:
         mcp_servers_list.append("graphiti-memory (knowledge graph)")
     if "auto-claude" in required_servers and auto_claude_tools_enabled:
@@ -732,6 +740,21 @@ def create_client(
             "type": "http",
             "url": "https://mcp.linear.app/mcp",
             "headers": {"Authorization": f"Bearer {linear_api_key}"},
+        }
+
+    if "aws" in required_servers:
+        # AWS API MCP server for S3, EC2, CloudWatch, etc.
+        # Uses awslabs.aws-api-mcp-server via uvx
+        # Requires AWS credentials via env vars (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        # or AWS_PROFILE
+        aws_region = os.environ.get("AWS_REGION", "ap-northeast-1")
+        mcp_servers["aws"] = {
+            "command": "uvx",
+            "args": ["awslabs.aws-api-mcp-server@latest"],
+            "env": {
+                "AWS_REGION": aws_region,
+                "FASTMCP_LOG_LEVEL": "ERROR",
+            },
         }
 
     # Graphiti MCP server for knowledge graph memory

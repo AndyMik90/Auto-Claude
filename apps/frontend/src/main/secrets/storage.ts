@@ -317,3 +317,24 @@ function sanitizeEnvVarName(name: string): string {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '');
 }
+
+/**
+ * Get all secrets of a specific type as environment variables
+ * Used for built-in MCP servers that need specific secret types
+ */
+export function getSecretsByTypeAsEnv(
+  projectPath: string,
+  secretType: Secret['type']
+): Record<string, string> {
+  const store = readSecretsStore(projectPath);
+  const secretIds = store.secrets
+    .filter((s) => s.type === secretType)
+    .map((s) => s.id);
+
+  if (secretIds.length === 0) {
+    return {};
+  }
+
+  // Use first secret of this type (user can have multiple AWS configs, use the first)
+  return getSecretsAsEnv(projectPath, [secretIds[0]]);
+}

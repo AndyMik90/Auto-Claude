@@ -33,7 +33,8 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Lock
+  Lock,
+  Cloud
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ScrollArea } from './ui/scroll-area';
@@ -330,6 +331,16 @@ const MCP_SERVERS: Record<string, { name: string; description: string; icon: Rea
       'mcp__puppeteer__puppeteer_evaluate',
     ],
   },
+  aws: {
+    name: 'AWS',
+    description: 'Access AWS services (S3, EC2, CloudWatch, etc.) via AWS CLI. Requires AWS credentials.',
+    icon: Cloud,
+    tools: [
+      'mcp__aws__call_aws',
+      'mcp__aws__suggest_aws_commands',
+      'mcp__aws__get_execution_plan',
+    ],
+  },
 };
 
 // All available MCP servers that can be added to agents
@@ -339,6 +350,7 @@ const ALL_MCP_SERVERS = [
   'linear',
   'electron',
   'puppeteer',
+  'aws',
   'auto-claude'
 ] as const;
 

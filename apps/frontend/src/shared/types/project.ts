@@ -405,6 +405,8 @@ export interface ProjectEnvConfig {
     electronEnabled?: boolean;
     /** Puppeteer browser automation (QA only) - default: false */
     puppeteerEnabled?: boolean;
+    /** AWS services (S3, EC2, CloudWatch, etc.) - default: false */
+    awsEnabled?: boolean;
   };
 
   // Per-agent MCP overrides (add/remove MCPs from specific agents)

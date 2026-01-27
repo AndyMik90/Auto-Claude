@@ -8,7 +8,7 @@ import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
 import { isWindows } from '../platform';
-import { getSecretsAsEnv } from '../secrets/storage';
+import { getSecretsAsEnv, getSecretsByTypeAsEnv } from '../secrets/storage';
 
 /**
  * Configuration manager for insights service
@@ -105,8 +105,8 @@ export class InsightsConfig {
   }
 
   /**
-   * Load secrets environment variables from custom MCP server configurations
-   * For each MCP server with secretIds, decrypts and returns as env vars
+   * Load secrets environment variables from MCP server configurations
+   * Handles both custom MCP servers (via secretIds) and built-in MCP servers (via type)
    */
   loadSecretsEnv(projectPath: string): Record<string, string> {
     if (!projectPath) return {};
@@ -114,10 +114,14 @@ export class InsightsConfig {
     const envPath = path.join(projectPath, '.auto-claude', '.env');
     if (!existsSync(envPath)) return {};
 
+    const env: Record<string, string> = {};
+    const vars: Record<string, string> = {};
+
     try {
       const content = readFileSync(envPath, 'utf-8');
       const lines = content.split(/\r?\n/);
 
+      // First, parse all env vars
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue;
@@ -125,41 +129,55 @@ export class InsightsConfig {
         const eqIndex = trimmed.indexOf('=');
         if (eqIndex > 0) {
           const key = trimmed.substring(0, eqIndex).trim();
-          if (key === 'CUSTOM_MCP_SERVERS') {
-            let value = trimmed.substring(eqIndex + 1).trim();
-            if ((value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))) {
-              value = value.slice(1, -1);
+          let value = trimmed.substring(eqIndex + 1).trim();
+          if ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          vars[key] = value;
+        }
+      }
+
+      // Handle AWS MCP - auto-inject AWS secrets if enabled
+      if (vars['AWS_MCP_ENABLED']?.toLowerCase() === 'true') {
+        const awsEnv = getSecretsByTypeAsEnv(projectPath, 'aws');
+        if (Object.keys(awsEnv).length > 0) {
+          console.log('[Insights] Injecting AWS secrets');
+          Object.assign(env, awsEnv);
+        }
+      }
+
+      // Handle custom MCP servers with secretIds
+      if (vars['CUSTOM_MCP_SERVERS']) {
+        try {
+          const servers = JSON.parse(vars['CUSTOM_MCP_SERVERS']);
+          if (Array.isArray(servers)) {
+            // Collect all secretIds from MCP servers
+            const allSecretIds: string[] = [];
+            for (const server of servers) {
+              if (server.secretIds && Array.isArray(server.secretIds)) {
+                allSecretIds.push(...server.secretIds);
+              }
             }
 
-            try {
-              const servers = JSON.parse(value);
-              if (!Array.isArray(servers)) return {};
-
-              // Collect all secretIds from MCP servers
-              const allSecretIds: string[] = [];
-              for (const server of servers) {
-                if (server.secretIds && Array.isArray(server.secretIds)) {
-                  allSecretIds.push(...server.secretIds);
-                }
-              }
-
-              // Get unique secret IDs and fetch as env vars
-              const uniqueSecretIds = [...new Set(allSecretIds)];
-              if (uniqueSecretIds.length > 0) {
-                return getSecretsAsEnv(projectPath, uniqueSecretIds);
-              }
-            } catch {
-              return {};
+            // Get unique secret IDs and fetch as env vars
+            const uniqueSecretIds = [...new Set(allSecretIds)];
+            if (uniqueSecretIds.length > 0) {
+              console.log('[Insights] Injecting custom MCP secrets:', uniqueSecretIds);
+              const secretsEnv = getSecretsAsEnv(projectPath, uniqueSecretIds);
+              console.log('[Insights] Secret env vars:', Object.keys(secretsEnv));
+              Object.assign(env, secretsEnv);
             }
           }
+        } catch {
+          // Invalid JSON, ignore
         }
       }
     } catch {
       return {};
     }
 
-    return {};
+    return env;
   }
 
   /**

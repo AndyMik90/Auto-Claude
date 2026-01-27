@@ -199,6 +199,9 @@ export function registerEnvHandlers(
       if (config.mcpServers.puppeteerEnabled !== undefined) {
         existingVars['PUPPETEER_MCP_ENABLED'] = config.mcpServers.puppeteerEnabled ? 'true' : 'false';
       }
+      if (config.mcpServers.awsEnabled !== undefined) {
+        existingVars['AWS_MCP_ENABLED'] = config.mcpServers.awsEnabled ? 'true' : 'false';
+      }
       // Note: graphitiEnabled is already handled via GRAPHITI_ENABLED above
     }
 
@@ -530,6 +533,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         linearMcpEnabled: vars['LINEAR_MCP_ENABLED']?.toLowerCase() !== 'false', // default true
         electronEnabled: vars['ELECTRON_MCP_ENABLED']?.toLowerCase() === 'true', // default false
         puppeteerEnabled: vars['PUPPETEER_MCP_ENABLED']?.toLowerCase() === 'true', // default false
+        awsEnabled: vars['AWS_MCP_ENABLED']?.toLowerCase() === 'true', // default false
       };
 
       // Parse per-agent MCP overrides (AGENT_MCP_<agent>_ADD/REMOVE)
