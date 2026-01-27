@@ -90,6 +90,12 @@ export const taskMock = {
 
   unwatchTaskLogs: async () => ({ success: true }),
 
+  // Git platform detection
+  detectGitPlatform: async () => ({
+    success: true,
+    data: { platform: 'github' as const }
+  }),
+
   // Event Listeners (no-op in browser)
   onTaskProgress: () => () => {},
   onTaskError: () => () => {},

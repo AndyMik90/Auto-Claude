@@ -4,6 +4,9 @@ import { getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from '../agent/env-utils';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
+import { buildIntegrationsEnvVars } from '../integrations-env-builder';
+import { readSettingsFile } from '../settings-utils';
+import type { AppSettings } from '../../shared/types/settings';
 import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
@@ -105,7 +108,7 @@ export class InsightsConfig {
 
   /**
    * Get complete environment for process execution
-   * Includes system env, auto-claude env, and active Claude profile
+   * Includes system env, auto-claude env, integrations, and active Claude profile
    */
   async getProcessEnv(): Promise<Record<string, string>> {
     const autoBuildEnv = this.loadAutoBuildEnv();
@@ -116,6 +119,10 @@ export class InsightsConfig {
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
     const pythonEnv = pythonEnvManager.getPythonEnv();
     const autoBuildSource = this.getAutoBuildSourcePath();
+
+    // Load integrations env vars from UI settings (JIRA, GitLab, Vault)
+    const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
     const pythonPathParts = (pythonEnv.PYTHONPATH ?? '')
       .split(path.delimiter)
       .map((entry) => entry.trim())
@@ -147,6 +154,7 @@ export class InsightsConfig {
       ...augmentedEnv,
       ...pythonEnv, // Include PYTHONPATH for bundled site-packages
       ...autoBuildEnv,
+      ...integrationsEnv, // Include JIRA, GitLab, Vault settings from UI
       ...oauthModeClearVars,
       ...profileEnv,
       ...apiProfileEnv,

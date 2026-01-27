@@ -95,6 +95,44 @@ export function registerCheckConnection(): void {
 }
 
 /**
+ * Test GitLab connection with direct URL and token (for global settings)
+ * This doesn't require a project - just tests if the credentials work
+ */
+export function registerTestGlobalConnection(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.GITLAB_TEST_GLOBAL_CONNECTION,
+    async (_event, instanceUrl: string, token: string): Promise<IPCResult<{ username: string }>> => {
+      debugLog('testGlobalConnection handler called', { instanceUrl });
+
+      if (!instanceUrl || !token) {
+        return { success: false, error: 'Instance URL and token are required' };
+      }
+
+      try {
+        // Fetch current user to verify credentials
+        const user = await gitlabFetch(token, instanceUrl, '/user') as { username: string; name: string };
+
+        debugLog('Global connection test successful:', { username: user.username });
+
+        return {
+          success: true,
+          data: {
+            username: user.username
+          }
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to connect to GitLab';
+        debugLog('Global connection test failed:', errorMessage);
+        return {
+          success: false,
+          error: errorMessage
+        };
+      }
+    }
+  );
+}
+
+/**
  * Get list of GitLab projects accessible to the user
  */
 export function registerGetProjects(): void {
@@ -146,6 +184,7 @@ export function registerGetProjects(): void {
 export function registerRepositoryHandlers(): void {
   debugLog('Registering GitLab repository handlers');
   registerCheckConnection();
+  registerTestGlobalConnection();
   registerGetProjects();
   debugLog('GitLab repository handlers registered');
 }

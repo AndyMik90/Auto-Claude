@@ -85,6 +85,14 @@ from .sessions import load_all_insights, save_session_insights
 # Summary utilities
 from .summary import get_memory_summary
 
+# Vault sync
+from .vault_sync import (
+    get_vault_path,
+    is_vault_sync_enabled,
+    sync_session_to_vault,
+    sync_to_vault,
+)
+
 __all__ = [
     # Graphiti helpers
     "is_graphiti_memory_enabled",
@@ -105,4 +113,9 @@ __all__ = [
     "load_gotchas",
     # Summary
     "get_memory_summary",
+    # Vault sync
+    "is_vault_sync_enabled",
+    "get_vault_path",
+    "sync_to_vault",
+    "sync_session_to_vault",
 ]

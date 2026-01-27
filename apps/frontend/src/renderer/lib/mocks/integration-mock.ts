@@ -386,5 +386,25 @@ export const integrationMock = {
   onGitLabInvestigationError: () => () => {},
 
   // OAuth device code event listener (for streaming device code during auth)
-  onGitHubAuthDeviceCode: () => () => {}
+  onGitHubAuthDeviceCode: () => () => {},
+
+  // JIRA Integration Operations
+  testJiraConnection: async () => ({
+    success: true,
+    data: { displayName: 'Mock User' }
+  }),
+
+  createIssuesFromPlan: async () => ({
+    success: true,
+    data: {
+      created: 0,
+      skipped: 0,
+      issues: {}
+    }
+  }),
+
+  getSyncStatus: async () => ({
+    success: true,
+    data: null
+  })
 };

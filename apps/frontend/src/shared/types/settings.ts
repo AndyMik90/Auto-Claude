@@ -236,6 +236,22 @@ export interface AppSettings {
   globalGoogleApiKey?: string;
   globalGroqApiKey?: string;
   globalOpenRouterApiKey?: string;
+  // Global GitLab settings (used as defaults for all projects)
+  /** @deprecated Use project-level gitlabInstanceUrl instead. Kept for migration fallback. */
+  globalGitlabInstanceUrl?: string;  // Self-hosted GitLab URL (e.g., https://gitlab.yourcompany.com)
+  /** @deprecated Use project-level gitlabToken instead. Kept for migration fallback. */
+  globalGitlabToken?: string;        // Personal Access Token with 'api' scope
+  // Global JIRA settings (used as defaults for all projects)
+  /** @deprecated Use project-level jiraHost instead. Kept for migration fallback. */
+  globalJiraHost?: string;           // JIRA instance URL (e.g., https://company.atlassian.net)
+  /** @deprecated Use project-level jiraEmail instead. Kept for migration fallback. */
+  globalJiraEmail?: string;          // JIRA user email
+  /** @deprecated Use project-level jiraToken instead. Kept for migration fallback. */
+  globalJiraToken?: string;          // JIRA API token
+  /** @deprecated Use project-level jiraProjectKey instead. Kept for migration fallback. */
+  globalJiraDefaultProject?: string; // Default JIRA project key (e.g., CAP)
+  // Issue Tracker preference: where issues are managed
+  issueTrackerProvider?: 'gitlab' | 'jira' | 'github' | 'linear';  // Default: based on what's configured
   // Graphiti LLM provider settings (legacy)
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';
   ollamaBaseUrl?: string;
@@ -290,6 +306,17 @@ export interface AppSettings {
   seenVersionWarnings?: string[];
   // Sidebar collapsed state (icons only when true)
   sidebarCollapsed?: boolean;
+  // Vault integration settings
+  /** Path to external vault (e.g., ~/vaults/hc/) */
+  globalVaultPath?: string;
+  /** Whether vault integration is enabled */
+  vaultEnabled?: boolean;
+  /** Whether to sync learnings to vault */
+  vaultSyncLearnings?: boolean;
+  /** Whether to auto-load vault context on session start */
+  vaultAutoLoad?: boolean;
+  /** Whether to allow write operations to vault (default: false for safety) */
+  vaultWriteEnabled?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

@@ -16,6 +16,7 @@ from linear_updater import (
     linear_subtask_completed,
     linear_subtask_failed,
 )
+from memory import is_vault_sync_enabled, sync_to_vault
 from progress import (
     count_subtasks_detailed,
     is_build_complete,
@@ -190,6 +191,15 @@ async def post_session_processing(
         except Exception as e:
             logger.warning(f"Error saving session memory: {e}")
             print_status("Memory save failed", "warning")
+
+        # Sync to external vault if configured
+        if is_vault_sync_enabled():
+            try:
+                if sync_to_vault(spec_dir, project_dir):
+                    print_status("Session synced to external vault", "success")
+            except Exception as e:
+                logger.warning(f"Vault sync failed: {e}")
+                print_status("Vault sync failed (non-critical)", "warning")
 
         return True
 

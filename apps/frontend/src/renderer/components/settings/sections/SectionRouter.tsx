@@ -3,9 +3,7 @@ import type { Project, ProjectSettings as ProjectSettingsType, AutoBuildVersionI
 import { SettingsSection } from '../SettingsSection';
 import { GeneralSettings } from '../../project-settings/GeneralSettings';
 import { SecuritySettings } from '../../project-settings/SecuritySettings';
-import { LinearIntegration } from '../integrations/LinearIntegration';
-import { GitHubIntegration } from '../integrations/GitHubIntegration';
-import { GitLabIntegration } from '../integrations/GitLabIntegration';
+import { IntegrationsSection } from '../integrations/IntegrationsSection';
 import { InitializationGuard } from '../common/InitializationGuard';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -93,80 +91,28 @@ export function SectionRouter({
         </SettingsSection>
       );
 
-    case 'linear':
+    case 'integrations':
       return (
-        <SettingsSection
-          title={t('projectSections.linear.integrationTitle')}
-          description={t('projectSections.linear.integrationDescription')}
-        >
-          <InitializationGuard
-            initialized={!!project.autoBuildPath}
-            title={t('projectSections.linear.integrationTitle')}
-            description={t('projectSections.linear.syncDescription')}
-          >
-            <LinearIntegration
-              envConfig={envConfig}
-              updateEnvConfig={updateEnvConfig}
-              showLinearKey={showLinearKey}
-              setShowLinearKey={setShowLinearKey}
-              linearConnectionStatus={linearConnectionStatus}
-              isCheckingLinear={isCheckingLinear}
-              onOpenLinearImport={onOpenLinearImport}
-            />
-          </InitializationGuard>
-        </SettingsSection>
-      );
-
-    case 'github':
-      return (
-        <SettingsSection
-          title={t('projectSections.github.integrationTitle')}
-          description={t('projectSections.github.integrationDescription')}
-        >
-          <InitializationGuard
-            initialized={!!project.autoBuildPath}
-            title={t('projectSections.github.integrationTitle')}
-            description={t('projectSections.github.syncDescription')}
-          >
-            <GitHubIntegration
-              envConfig={envConfig}
-              updateEnvConfig={updateEnvConfig}
-              showGitHubToken={showGitHubToken}
-              setShowGitHubToken={setShowGitHubToken}
-              gitHubConnectionStatus={gitHubConnectionStatus}
-              isCheckingGitHub={isCheckingGitHub}
-              projectPath={project.path}
-              settings={settings}
-              setSettings={setSettings}
-            />
-          </InitializationGuard>
-        </SettingsSection>
-      );
-
-    case 'gitlab':
-      return (
-        <SettingsSection
-          title={t('projectSections.gitlab.integrationTitle')}
-          description={t('projectSections.gitlab.integrationDescription')}
-        >
-          <InitializationGuard
-            initialized={!!project.autoBuildPath}
-            title={t('projectSections.gitlab.integrationTitle')}
-            description={t('projectSections.gitlab.syncDescription')}
-          >
-            <GitLabIntegration
-              envConfig={envConfig}
-              updateEnvConfig={updateEnvConfig}
-              showGitLabToken={showGitLabToken}
-              setShowGitLabToken={setShowGitLabToken}
-              gitLabConnectionStatus={gitLabConnectionStatus}
-              isCheckingGitLab={isCheckingGitLab}
-              projectPath={project.path}
-              settings={settings}
-              setSettings={setSettings}
-            />
-          </InitializationGuard>
-        </SettingsSection>
+        <IntegrationsSection
+          project={project}
+          settings={settings}
+          setSettings={setSettings}
+          envConfig={envConfig}
+          updateEnvConfig={updateEnvConfig}
+          showGitHubToken={showGitHubToken}
+          setShowGitHubToken={setShowGitHubToken}
+          gitHubConnectionStatus={gitHubConnectionStatus}
+          isCheckingGitHub={isCheckingGitHub}
+          showGitLabToken={showGitLabToken}
+          setShowGitLabToken={setShowGitLabToken}
+          gitLabConnectionStatus={gitLabConnectionStatus}
+          isCheckingGitLab={isCheckingGitLab}
+          showLinearKey={showLinearKey}
+          setShowLinearKey={setShowLinearKey}
+          linearConnectionStatus={linearConnectionStatus}
+          isCheckingLinear={isCheckingLinear}
+          onOpenLinearImport={onOpenLinearImport}
+        />
       );
 
     case 'memory':

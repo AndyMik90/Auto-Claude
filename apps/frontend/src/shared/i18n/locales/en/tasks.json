@@ -100,6 +100,7 @@
     "selectedCountOne": "{{count}} task selected",
     "selectedCountOther": "{{count}} tasks selected",
     "createPRs": "Create PRs",
+    "createMRs": "Create MRs",
     "clearSelection": "Clear Selection",
     "collapseColumn": "Collapse column",
     "expandColumn": "Expand column",

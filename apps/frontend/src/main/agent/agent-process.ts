@@ -19,6 +19,7 @@ import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
 import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager';
 import { buildMemoryEnvVars } from '../memory-env-builder';
+import { buildIntegrationsEnvVars } from '../integrations-env-builder';
 import { readSettingsFile } from '../settings-utils';
 import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
@@ -180,6 +181,10 @@ export class AgentProcessManager {
     // are available even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
 
+    // Load integrations env vars from UI settings (JIRA, GitLab, Vault/Obsidian)
+    const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
+
     // On Windows, detect and pass git-bash path for Claude Code CLI
     // Electron can detect git via where.exe, but Python subprocess may not have the same PATH
     const gitBashEnv: Record<string, string> = {};
@@ -207,6 +212,7 @@ export class AgentProcessManager {
       ...gitBashEnv,
       ...claudeCliEnv,
       ...ghCliEnv,
+      ...integrationsEnv, // JIRA, GitLab, Vault/Obsidian from UI settings
       ...extraEnv,
       ...profileEnv,
       PYTHONUNBUFFERED: '1',
@@ -855,18 +861,29 @@ export class AgentProcessManager {
    * 4. Project settings (graphitiMcpUrl, useClaudeMd) - Runtime overrides
    */
   getCombinedEnv(projectPath: string): Record<string, string> {
-    // Load app-wide memory settings from settings.json
-    // This bridges onboarding config to backend agents
+    // Load app-wide settings from settings.json
+    // This bridges onboarding/UI config to backend agents
     const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+
+    // Build environment variables from UI settings
     const memoryEnv = buildMemoryEnvVars(appSettings as AppSettings);
+    const integrationsEnv = buildIntegrationsEnvVars(null, appSettings as AppSettings);
 
     // Existing env sources
     const autoBuildEnv = this.loadAutoBuildEnv();
     const projectFileEnv = this.loadProjectEnv(projectPath);
     const projectSettingsEnv = this.getProjectEnvVars(projectPath);
 
-    // Priority: app-wide memory -> backend .env -> project .env -> project settings
+    // Priority: app-wide (memory, integrations) -> backend .env -> project .env -> project settings
     // Later sources override earlier ones
-    return { ...memoryEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
+    const merged = { ...memoryEnv, ...integrationsEnv, ...autoBuildEnv, ...projectFileEnv, ...projectSettingsEnv };
+
+    // Respect GRAPHITI_ENABLED toggle from MCP Overview panel
+    // If explicitly disabled, remove GRAPHITI_MCP_URL to prevent agents from using it
+    if (merged['GRAPHITI_ENABLED']?.toLowerCase() === 'false') {
+      delete merged['GRAPHITI_MCP_URL'];
+    }
+
+    return merged;
   }
 }

@@ -78,6 +78,7 @@ class CompetitorAnalyzer:
             success, output = await self.agent_executor.run_agent(
                 "competitor_analysis.md",
                 additional_context=context,
+                agent_type="competitor_analysis",
             )
 
             if success and self.analysis_file.exists():

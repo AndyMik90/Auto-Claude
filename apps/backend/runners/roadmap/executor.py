@@ -86,6 +86,7 @@ class AgentExecutor:
         self,
         prompt_file: str,
         additional_context: str = "",
+        agent_type: str = "roadmap_discovery",
     ) -> tuple[bool, str]:
         """Run an agent with the given prompt."""
         prompt_path = self.prompts_dir / prompt_file
@@ -119,18 +120,21 @@ class AgentExecutor:
                 context_length=len(additional_context),
             )
 
-        # Create client with thinking budget
+        # Create client with thinking budget and agent type
+        # Agent type determines which MCP servers are available (e.g., obsidian for vault)
         debug(
             "roadmap_executor",
             "Creating Claude client",
             project_dir=str(self.project_dir),
             model=self.model,
             thinking_budget=self.thinking_budget,
+            agent_type=agent_type,
         )
         client = self.create_client(
             self.project_dir,
             self.output_dir,
             self.model,
+            agent_type=agent_type,
             max_thinking_tokens=self.thinking_budget,
         )
 

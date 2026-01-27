@@ -18,8 +18,11 @@ from .models import (
     AGENT_CONFIGS,
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
+    GITLAB_TOOLS,
     GRAPHITI_MCP_TOOLS,
+    JIRA_TOOLS,
     LINEAR_TOOLS,
+    OBSIDIAN_TOOLS,
     PUPPETEER_TOOLS,
     get_agent_config,
     get_required_mcp_servers,
@@ -105,6 +108,12 @@ def _get_mcp_tools_for_servers(servers: list[str]) -> list[str]:
             tools.extend(ELECTRON_TOOLS)
         elif server == "puppeteer":
             tools.extend(PUPPETEER_TOOLS)
+        elif server == "jira":
+            tools.extend(JIRA_TOOLS)
+        elif server == "gitlab":
+            tools.extend(GITLAB_TOOLS)
+        elif server == "obsidian":
+            tools.extend(OBSIDIAN_TOOLS)
         # auto-claude tools are already added via config["auto_claude_tools"]
 
     return tools

@@ -111,6 +111,72 @@ ELECTRON_TOOLS = [
 ]
 
 # =============================================================================
+# Integration MCP Tools (JIRA, GitLab, Vault/Obsidian)
+# =============================================================================
+
+# JIRA MCP tools via @aashari/mcp-server-atlassian-jira
+# Provides issue tracking and Confluence integration
+JIRA_TOOLS = [
+    "mcp__jira__jira_search_issues",
+    "mcp__jira__jira_get_issue",
+    "mcp__jira__jira_create_issue",
+    "mcp__jira__jira_update_issue",
+    "mcp__jira__jira_add_comment",
+    "mcp__jira__jira_transition_issue",
+    "mcp__jira__jira_get_transitions",
+    "mcp__jira__jira_get_project_issue_types",
+    "mcp__jira__confluence_create_page",
+    "mcp__jira__confluence_get_page",
+    "mcp__jira__confluence_update_page",
+    "mcp__jira__confluence_search",
+    "mcp__jira__confluence_get_spaces",
+    "mcp__jira__confluence_upload_attachment",
+    "mcp__jira__confluence_get_attachments",
+]
+
+# GitLab MCP tools via @modelcontextprotocol/server-gitlab
+# Provides code management, issues, and merge requests
+GITLAB_TOOLS = [
+    "mcp__gitlab__create_or_update_file",
+    "mcp__gitlab__search_repositories",
+    "mcp__gitlab__create_repository",
+    "mcp__gitlab__get_file_contents",
+    "mcp__gitlab__push_files",
+    "mcp__gitlab__create_issue",
+    "mcp__gitlab__create_merge_request",
+    "mcp__gitlab__fork_repository",
+    "mcp__gitlab__create_branch",
+    "mcp__gitlab__list_issues",
+    "mcp__gitlab__get_issue",
+    "mcp__gitlab__update_issue",
+    "mcp__gitlab__list_merge_requests",
+    "mcp__gitlab__get_merge_request",
+    "mcp__gitlab__update_merge_request",
+    "mcp__gitlab__list_pipelines",
+    "mcp__gitlab__get_pipeline",
+    "mcp__gitlab__list_merge_request_diffs",
+]
+
+# Vault/Obsidian MCP tools via @modelcontextprotocol/server-filesystem
+# Provides external knowledge base and memory access
+OBSIDIAN_TOOLS = [
+    "mcp__obsidian__read_file",
+    "mcp__obsidian__read_text_file",
+    "mcp__obsidian__read_media_file",
+    "mcp__obsidian__read_multiple_files",
+    "mcp__obsidian__write_file",
+    "mcp__obsidian__edit_file",
+    "mcp__obsidian__list_directory",
+    "mcp__obsidian__list_directory_with_sizes",
+    "mcp__obsidian__directory_tree",
+    "mcp__obsidian__create_directory",
+    "mcp__obsidian__move_file",
+    "mcp__obsidian__search_files",
+    "mcp__obsidian__get_file_info",
+    "mcp__obsidian__list_allowed_directories",
+]
+
+# =============================================================================
 # Configuration
 # =============================================================================
 
@@ -124,6 +190,62 @@ def is_electron_mcp_enabled() -> bool:
     via Chrome DevTools Protocol on the configured debug port.
     """
     return os.environ.get("ELECTRON_MCP_ENABLED", "").lower() == "true"
+
+
+def is_jira_mcp_enabled() -> bool:
+    """
+    Check if JIRA MCP server integration is enabled.
+
+    Enabled when:
+    - JIRA_MCP_ENABLED is set to 'true', OR
+    - JIRA credentials are configured (JIRA_HOST + JIRA_EMAIL + JIRA_TOKEN)
+
+    When enabled, agents can use JIRA tools for issue tracking and Confluence.
+    """
+    if os.environ.get("JIRA_MCP_ENABLED", "").lower() == "true":
+        return True
+    # Check for JIRA credentials
+    jira_host = os.environ.get("JIRA_HOST") or os.environ.get("JIRA_URL")
+    jira_email = os.environ.get("JIRA_EMAIL")
+    jira_token = os.environ.get("JIRA_API_TOKEN") or os.environ.get("JIRA_TOKEN")
+    return bool(jira_host and jira_email and jira_token)
+
+
+def is_gitlab_mcp_enabled() -> bool:
+    """
+    Check if GitLab MCP server integration is enabled.
+
+    Enabled when:
+    - GITLAB_MCP_ENABLED is set to 'true', OR
+    - GitLab credentials are configured (GITLAB_HOST + GITLAB_TOKEN)
+
+    When enabled, agents can use GitLab tools for code and issue management.
+    """
+    if os.environ.get("GITLAB_MCP_ENABLED", "").lower() == "true":
+        return True
+    # Check for GitLab credentials
+    gitlab_host = os.environ.get("GITLAB_HOST") or os.environ.get("GITLAB_URL")
+    gitlab_token = os.environ.get("GITLAB_TOKEN") or os.environ.get(
+        "GITLAB_PRIVATE_TOKEN"
+    )
+    return bool(gitlab_host and gitlab_token)
+
+
+def is_obsidian_mcp_enabled() -> bool:
+    """
+    Check if Obsidian/Vault MCP server integration is enabled.
+
+    Enabled when:
+    - OBSIDIAN_MCP_ENABLED is set to 'true', OR
+    - VAULT_PATH or OBSIDIAN_VAULT_PATH is set
+
+    When enabled, agents can access external vault for context and learnings.
+    """
+    if os.environ.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true":
+        return True
+    # Check for vault path
+    vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
+    return bool(vault_path)
 
 
 # =============================================================================
@@ -187,11 +309,12 @@ AGENT_CONFIGS = {
     # ═══════════════════════════════════════════════════════════════════════
     # BUILD PHASES (Full tools + Graphiti memory)
     # Note: "linear" is conditional on project setting "update_linear_with_tasks"
+    # Note: "jira", "gitlab", "obsidian" are conditional on global settings
     # ═══════════════════════════════════════════════════════════════════════
     "planner": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude"],
-        "mcp_servers_optional": ["linear"],  # Only if project setting enabled
+        "mcp_servers_optional": ["linear", "jira", "gitlab", "obsidian"],
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
             TOOL_GET_SESSION_CONTEXT,
@@ -202,7 +325,7 @@ AGENT_CONFIGS = {
     "coder": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude"],
-        "mcp_servers_optional": ["linear"],
+        "mcp_servers_optional": ["linear", "jira", "gitlab", "obsidian"],
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,
             TOOL_GET_BUILD_PROGRESS,
@@ -220,7 +343,7 @@ AGENT_CONFIGS = {
         # Note: Reviewer writes to spec directory only (qa_report.md, implementation_plan.json)
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
-        "mcp_servers_optional": ["linear"],  # For updating issue status
+        "mcp_servers_optional": ["linear", "jira", "gitlab", "obsidian"],
         "auto_claude_tools": [
             TOOL_GET_BUILD_PROGRESS,
             TOOL_UPDATE_QA_STATUS,
@@ -231,7 +354,7 @@ AGENT_CONFIGS = {
     "qa_fixer": {
         "tools": BASE_READ_TOOLS + BASE_WRITE_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7", "graphiti", "auto-claude", "browser"],
-        "mcp_servers_optional": ["linear"],
+        "mcp_servers_optional": ["linear", "jira", "gitlab", "obsidian"],
         "auto_claude_tools": [
             TOOL_UPDATE_SUBTASK_STATUS,
             TOOL_GET_BUILD_PROGRESS,
@@ -305,22 +428,26 @@ AGENT_CONFIGS = {
     },
     # ═══════════════════════════════════════════════════════════════════════
     # ROADMAP & IDEATION
+    # Note: "obsidian" is optional - provides vault context for strategic planning
     # ═══════════════════════════════════════════════════════════════════════
     "roadmap_discovery": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
     "competitor_analysis": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": ["context7"],  # WebSearch for competitor research
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
     "ideation": {
         "tools": BASE_READ_TOOLS + WEB_TOOLS,
         "mcp_servers": [],
+        "mcp_servers_optional": ["obsidian"],
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
@@ -377,6 +504,11 @@ def _map_mcp_server_name(
         "electron": "electron",
         "puppeteer": "puppeteer",
         "auto-claude": "auto-claude",
+        # External integrations
+        "jira": "jira",
+        "gitlab": "gitlab",
+        "obsidian": "obsidian",
+        "vault": "obsidian",
     }
     # Check if it's a known mapping
     mapped = mappings.get(name.lower().strip())
@@ -435,6 +567,41 @@ def get_required_mcp_servers(
         linear_mcp_enabled = mcp_config.get("LINEAR_MCP_ENABLED", "true")
         if str(linear_mcp_enabled).lower() != "false":
             servers.append("linear")
+
+    # Handle JIRA integration (enabled via JIRA_MCP_ENABLED env var or credentials)
+    if "jira" in optional:
+        # Check mcp_config (per-project .auto-claude/.env), env var, or credentials
+        jira_enabled = (
+            mcp_config.get("JIRA_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("JIRA_MCP_ENABLED", "").lower() == "true"
+        )
+        jira_host = os.environ.get("JIRA_HOST") or os.environ.get("JIRA_URL")
+        if jira_enabled or jira_host:
+            servers.append("jira")
+
+    # Handle GitLab integration (enabled via GITLAB_MCP_ENABLED env var or credentials)
+    if "gitlab" in optional:
+        # Check mcp_config (per-project .auto-claude/.env), env var, or credentials
+        gitlab_enabled = (
+            mcp_config.get("GITLAB_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("GITLAB_MCP_ENABLED", "").lower() == "true"
+        )
+        gitlab_host = os.environ.get("GITLAB_HOST") or os.environ.get("GITLAB_URL")
+        if gitlab_enabled or gitlab_host:
+            servers.append("gitlab")
+
+    # Handle Obsidian/Vault integration (enabled via OBSIDIAN_MCP_ENABLED env var or path)
+    if "obsidian" in optional:
+        # Check mcp_config (per-project .auto-claude/.env), env var, or vault path
+        obsidian_enabled = (
+            mcp_config.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
+            or os.environ.get("OBSIDIAN_MCP_ENABLED", "").lower() == "true"
+        )
+        vault_path = os.environ.get("VAULT_PATH") or os.environ.get(
+            "OBSIDIAN_VAULT_PATH"
+        )
+        if obsidian_enabled or vault_path:
+            servers.append("obsidian")
 
     # Handle dynamic "browser" → electron/puppeteer based on project type and config
     if "browser" in servers:

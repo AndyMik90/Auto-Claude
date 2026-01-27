@@ -1,0 +1,93 @@
+{
+  "task_type": "feature_enhancement",
+  "existing_implementation": {
+    "description": "Git integration is already 80% complete. Backend has push-only sync, frontend has full settings UI. Missing: pull/import, webhooks, and merge conflict detection.",
+    "backend_files": [
+      "service/git/GitSyncService.java",
+      "service/git/GitProvider.java",
+      "service/git/GitHubProvider.java",
+      "service/git/GitLabProvider.java",
+      "service/git/AzureDevOpsProvider.java",
+      "service/git/GitProviderFactory.java",
+      "service/git/TenantGitConfigService.java",
+      "controller/GitConfigController.java",
+      "model/entity/TenantGitConfig.java",
+      "model/entity/GitSyncHistory.java",
+      "repository/TenantGitConfigRepository.java",
+      "repository/GitSyncHistoryRepository.java"
+    ],
+    "frontend_files": [
+      "components/settings/GitSettings.tsx",
+      "api/gitSync.ts (inferred - needs verification)",
+      "types/gitSync.ts (referenced in GitSettings.tsx)"
+    ]
+  },
+  "files_to_modify": {
+    "backend": [
+      "service/git/GitProvider.java - add pullFiles(), detectConflicts() methods",
+      "service/git/GitHubProvider.java - implement new pull methods",
+      "service/git/GitLabProvider.java - implement new pull methods",
+      "service/git/AzureDevOpsProvider.java - implement new pull methods",
+      "service/git/GitSyncService.java - add importFromGit() method",
+      "controller/GitConfigController.java - add webhook endpoints"
+    ],
+    "frontend": [
+      "components/settings/GitSettings.tsx - add import UI section",
+      "components/settings/GitWebhookConfig.tsx (new) - webhook setup UI"
+    ]
+  },
+  "files_to_create": {
+    "backend": [
+      "controller/GitWebhookController.java - webhook receiver endpoints",
+      "dto/GitWebhookPayload.java - webhook DTO",
+      "dto/GitImportRequest.java - import request DTO",
+      "dto/GitImportResponse.java - import response DTO",
+      "dto/GitConflictResponse.java - conflict detection response",
+      "service/git/GitWebhookService.java - webhook processing",
+      "service/git/GitImportService.java - import/pull logic"
+    ],
+    "frontend": [
+      "types/gitWebhook.ts - webhook types",
+      "api/gitWebhook.ts - webhook API client"
+    ]
+  },
+  "files_to_reference": {
+    "backend": [
+      "service/git/GitSyncService.java - pattern for async operations, retry logic",
+      "controller/GitConfigController.java - pattern for REST endpoints",
+      "service/BlobStorageService.java - pattern for file storage operations"
+    ],
+    "frontend": [
+      "components/settings/GitSettings.tsx - existing UI patterns",
+      "components/ui/*.tsx - reusable UI components"
+    ]
+  },
+  "patterns": {
+    "backend_service": "Services use @Service, @RequiredArgsConstructor (Lombok), and @Slf4j for logging. Async operations use @Async annotation with CompletableFuture return type.",
+    "backend_controller": "Controllers use @RestController, @RequestMapping, @RequiredArgsConstructor. Endpoints return ResponseEntity<T>. Use TenantContext.getTenantId() for tenant context.",
+    "backend_dto": "DTOs use @Builder, @Data (Lombok), validation annotations (@Valid, @NotNull). Request/Response naming convention.",
+    "backend_async": "Async operations use @Async(\"gitSyncExecutor\") and @Retryable for fault tolerance.",
+    "frontend_api": "API clients in api/ folder use axios via api/client.ts. Export typed functions.",
+    "frontend_components": "Components use TypeScript, Tailwind CSS, lucide-react icons. State with useState, useEffect hooks."
+  },
+  "technology_notes": {
+    "git_providers": "Existing providers use REST APIs (GitHub API, GitLab API, Azure DevOps API) - no JGit or libgit2. Keep this pattern for pull operations.",
+    "authentication": "Git auth tokens encrypted in database (TenantGitConfig.authTokenEncrypted). Never expose in responses.",
+    "async_processing": "Git operations use Spring async executor (gitSyncExecutor) to avoid blocking API responses.",
+    "retry_logic": "Spring Retry with exponential backoff for transient Git API failures.",
+    "webhooks": "Need to implement signature verification for GitHub/GitLab webhooks to prevent spoofing."
+  },
+  "acceptance_criteria_analysis": {
+    "already_complete": [
+      "Users can connect their Git repository (GitHub, GitLab, Azure DevOps)",
+      "Templates can be pushed to Git",
+      "Commit history is visible within the application",
+      "Branch management allows working on features separately"
+    ],
+    "to_implement": [
+      "Templates can be pulled from Git (bidirectional sync)",
+      "Merge conflicts are detected and can be resolved",
+      "Webhooks trigger updates on repository changes"
+    ]
+  }
+}

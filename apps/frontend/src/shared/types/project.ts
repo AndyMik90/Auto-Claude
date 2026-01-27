@@ -337,6 +337,19 @@ export interface ProjectEnvConfig {
   // UI Settings
   enableFancyUi: boolean;
 
+  // JIRA Integration (full project-level configuration)
+  jiraEnabled?: boolean;           // Enable JIRA for this project
+  jiraHost?: string;               // JIRA instance URL (e.g., https://company.atlassian.net)
+  jiraEmail?: string;              // JIRA user email
+  jiraToken?: string;              // JIRA API token
+  jiraProjectKey?: string;         // Default JIRA project key for this project
+
+  // Source Control Provider Selection
+  sourceControlProvider?: 'github' | 'gitlab';
+
+  // Issue Tracker Provider Selection
+  issueTrackerProvider?: 'jira' | 'linear' | 'gitlab' | 'github';
+
   // MCP Server Configuration (per-project overrides)
   mcpServers?: {
     /** Context7 documentation lookup - default: true */
@@ -349,6 +362,12 @@ export interface ProjectEnvConfig {
     electronEnabled?: boolean;
     /** Puppeteer browser automation (QA only) - default: false */
     puppeteerEnabled?: boolean;
+    /** JIRA issue tracking - default: follows global JIRA config */
+    jiraEnabled?: boolean;
+    /** GitLab code management - default: follows global GitLab config */
+    gitlabEnabled?: boolean;
+    /** Obsidian/Vault integration - default: follows global vault config */
+    obsidianEnabled?: boolean;
   };
 
   // Per-agent MCP overrides (add/remove MCPs from specific agents)

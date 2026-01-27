@@ -180,6 +180,7 @@ export interface ElectronAPI {
   mergeWorktree: (taskId: string, options?: { noCommit?: boolean }) => Promise<IPCResult<WorktreeMergeResult>>;
   mergeWorktreePreview: (taskId: string) => Promise<IPCResult<WorktreeMergeResult>>;
   createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions) => Promise<IPCResult<WorktreeCreatePRResult>>;
+  detectGitPlatform: (projectId: string) => Promise<IPCResult<{ platform: 'github' | 'gitlab' | null }>>;
   discardWorktree: (taskId: string, skipStatusChange?: boolean) => Promise<IPCResult<WorktreeDiscardResult>>;
   clearStagedState: (taskId: string) => Promise<IPCResult<{ cleared: boolean }>>;
   listWorktrees: (projectId: string, options?: { includeStats?: boolean }) => Promise<IPCResult<WorktreeListResult>>;
@@ -500,12 +501,41 @@ export interface ElectronAPI {
     callback: (projectId: string, error: string) => void
   ) => () => void;
 
+  // JIRA integration operations
+  testJiraConnection: (host: string, email: string, token: string) => Promise<IPCResult<{ displayName: string }>>;
+  getTaskIssue: (specsPath: string) => Promise<IPCResult<{
+    parentIssueKey: string;
+    parentIssueUrl: string;
+    createdAt: string;
+    projectKey: string;
+    subtaskMapping: Record<string, string>;
+    totalSubtasks: number;
+  } | null>>;
+  createTaskIssue: (specsPath: string, title: string, description: string) => Promise<IPCResult<{
+    parentIssueKey: string;
+    parentIssueUrl: string;
+    createdAt: string;
+    projectKey: string;
+    subtaskMapping: Record<string, string>;
+    totalSubtasks: number;
+  }>>;
+
+  // Vault integration operations (external vault/Obsidian)
+  testVaultConnection: (vaultPath: string) => Promise<IPCResult<import('./vault').VaultConnectionResult>>;
+  listVaultFiles: (vaultPath: string, subPath?: string) => Promise<IPCResult<import('./vault').VaultFile[]>>;
+  readVaultFile: (vaultPath: string, filePath: string) => Promise<IPCResult<string>>;
+  searchVault: (vaultPath: string, query: string) => Promise<IPCResult<import('./vault').VaultSearchResult[]>>;
+  getVaultContext: (vaultPath: string) => Promise<IPCResult<import('./vault').VaultContext>>;
+  syncVaultLearning: (vaultPath: string, topic: string, content: string) => Promise<IPCResult<import('./vault').VaultSyncResult>>;
+  writeVaultFile: (vaultPath: string, filePath: string, content: string) => Promise<IPCResult<{ path: string }>>;
+
   // GitLab integration operations
   getGitLabProjects: (projectId: string) => Promise<IPCResult<GitLabProject[]>>;
   getGitLabIssues: (projectId: string, state?: 'opened' | 'closed' | 'all') => Promise<IPCResult<GitLabIssue[]>>;
   getGitLabIssue: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabIssue>>;
   getGitLabIssueNotes: (projectId: string, issueIid: number) => Promise<IPCResult<GitLabNote[]>>;
   checkGitLabConnection: (projectId: string) => Promise<IPCResult<GitLabSyncStatus>>;
+  testGitLabConnection: (instanceUrl: string, token: string) => Promise<IPCResult<{ username: string }>>;
   investigateGitLabIssue: (projectId: string, issueIid: number, selectedNoteIds?: number[]) => void;
   importGitLabIssues: (projectId: string, issueIids: number[]) => Promise<IPCResult<GitLabImportResult>>;
   createGitLabRelease: (

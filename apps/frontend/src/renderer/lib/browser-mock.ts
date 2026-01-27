@@ -249,6 +249,69 @@ const browserMockAPI: ElectronAPI = {
     onQueueBlockedNoProfiles: () => () => {}
   },
 
+  // GitLab Operations (global settings test)
+  testGitLabConnection: async () => ({ success: true, data: { username: 'mock-user' } }),
+
+  // JIRA Operations (global settings test)
+  testJiraConnection: async () => ({ success: true, data: { displayName: 'Mock User' } }),
+  getTaskIssue: async () => ({ success: true, data: null }),
+  createTaskIssue: async () => ({
+    success: true,
+    data: {
+      parentIssueKey: 'MOCK-1',
+      parentIssueUrl: 'https://jira.example.com/browse/MOCK-1',
+      createdAt: new Date().toISOString(),
+      projectKey: 'MOCK',
+      subtaskMapping: {},
+      totalSubtasks: 0
+    }
+  }),
+
+  // Vault Operations (external vault integration)
+  testVaultConnection: async (_vaultPath: string) => ({
+    success: true,
+    data: {
+      success: true,
+      vaultPath: '/mock/vault',
+      hasClaudeMd: true,
+      hasMemoryDir: true,
+      hasAgentsDir: true,
+    }
+  }),
+  listVaultFiles: async () => ({
+    success: true,
+    data: []
+  }),
+  readVaultFile: async () => ({
+    success: true,
+    data: '# Mock vault file content'
+  }),
+  searchVault: async () => ({
+    success: true,
+    data: []
+  }),
+  getVaultContext: async () => ({
+    success: true,
+    data: {
+      claudeMd: null,
+      preferences: null,
+      agents: [],
+      recentLearnings: [],
+    }
+  }),
+  syncVaultLearning: async () => ({
+    success: true,
+    data: {
+      success: true,
+      path: 'memory/learnings/mock-learning.md',
+      appended: false,
+    }
+  }),
+  writeVaultFile: async () => ({
+    success: true,
+    data: { path: 'memory/learnings/mock-file.md' }
+  }),
+
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,

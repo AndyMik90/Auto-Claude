@@ -141,8 +141,8 @@ export function CreatePRDialog({
             <div className="bg-success/10 border border-success/30 rounded-lg p-4">
               <p className="text-sm text-success font-medium mb-2">
                 {result.alreadyExists
-                  ? t('taskReview:pr.success.alreadyExists')
-                  : t('taskReview:pr.success.created')}
+                  ? t(result.platform === 'gitlab' ? 'taskReview:pr.success.alreadyExistsGitlab' : 'taskReview:pr.success.alreadyExists')
+                  : t(result.platform === 'gitlab' ? 'taskReview:pr.success.createdGitlab' : 'taskReview:pr.success.created')}
               </p>
               {result.prUrl && (
                 <button

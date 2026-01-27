@@ -1,0 +1,77 @@
+{
+  "project_type": "monorepo",
+  "services": {
+    "backend": {
+      "path": "./backend",
+      "tech_stack": ["java", "spring-boot", "maven", "postgresql", "redis"],
+      "version": "Java 17, Spring Boot 3.2.1",
+      "port": 8080,
+      "dev_command": "cd backend && mvn spring-boot:run",
+      "test_command": "cd backend && mvn test",
+      "build_command": "cd backend && mvn clean package"
+    },
+    "frontend": {
+      "path": "./frontend",
+      "tech_stack": ["typescript", "react", "vite", "tailwindcss"],
+      "port": 3000,
+      "dev_command": "cd frontend && npm run dev",
+      "test_command": "cd frontend && npm test",
+      "build_command": "cd frontend && npm run build"
+    },
+    "validator": {
+      "path": "./validator",
+      "tech_stack": ["fhir", "hapi"],
+      "port": 8083,
+      "description": "HAPI FHIR Validator service"
+    },
+    "fhir-converter": {
+      "path": "../centaur-fhir-converter",
+      "tech_stack": ["dotnet", "csharp"],
+      "port": 8081,
+      "description": "Microsoft .NET FHIR Converter"
+    }
+  },
+  "infrastructure": {
+    "docker": true,
+    "docker_compose": "docker-compose.yml",
+    "database": "postgresql",
+    "cache": "redis",
+    "storage": "azure-blob",
+    "ci_cd": "azure-devops"
+  },
+  "conventions": {
+    "backend": {
+      "language": "Java",
+      "framework": "Spring Boot",
+      "package_structure": "com.healthchain.fhirmapper",
+      "entity_pattern": "model/entity/*.java",
+      "dto_pattern": "dto/*Request.java, dto/*Response.java",
+      "service_pattern": "service/*.java",
+      "controller_pattern": "controller/*Controller.java",
+      "repository_pattern": "repository/*Repository.java",
+      "test_framework": "JUnit 5, Mockito, Spring Boot Test",
+      "build_tool": "Maven",
+      "linter": "Checkstyle",
+      "formatter": "google-java-format"
+    },
+    "frontend": {
+      "language": "TypeScript",
+      "framework": "React",
+      "bundler": "Vite",
+      "styling": "Tailwind CSS",
+      "state_management": "Zustand stores",
+      "api_client": "api/client.ts",
+      "component_pattern": "components/[feature]/*.tsx",
+      "test_framework": "Vitest",
+      "linter": "ESLint",
+      "formatter": "Prettier"
+    }
+  },
+  "git_integration": {
+    "existing_implementation": true,
+    "providers_supported": ["GITHUB", "GITLAB", "GITLAB_SELFHOSTED", "AZURE_DEVOPS"],
+    "backend_service": "service/git/GitSyncService.java",
+    "frontend_component": "components/settings/GitSettings.tsx",
+    "missing_features": ["pull/import", "webhooks", "merge_conflict_detection"]
+  }
+}

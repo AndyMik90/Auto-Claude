@@ -30,8 +30,10 @@ import {
   Server,
   Globe,
   Clock,
-  TrendingUp
+  TrendingUp,
+  BookOpen
 } from 'lucide-react';
+
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -43,6 +45,8 @@ import { SettingsSection } from './SettingsSection';
 import { AuthTerminal } from './AuthTerminal';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { AccountPriorityList, type UnifiedAccount } from './AccountPriorityList';
+import { GlobalVaultSettings } from './GlobalVaultSettings';
+
 import { maskApiKey } from '../../lib/profile-utils';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -75,7 +79,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const { toast } = useToast();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'claude-code' | 'custom-endpoints'>('claude-code');
+  const [activeTab, setActiveTab] = useState<'claude-code' | 'custom-endpoints' | 'vault'>('claude-code');
 
   // ============================================
   // Claude Code (OAuth) state
@@ -666,8 +670,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     >
       <div className="space-y-6">
         {/* Tabs for Claude Code vs Custom Endpoints */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'custom-endpoints')}>
-          <TabsList className="w-full justify-start">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'custom-endpoints' | 'vault')}>
+          <TabsList className="w-full justify-start flex-wrap">
             <TabsTrigger value="claude-code" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               {t('accounts.tabs.claudeCode')}
@@ -675,6 +679,10 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
             <TabsTrigger value="custom-endpoints" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
               {t('accounts.tabs.customEndpoints')}
+            </TabsTrigger>
+            <TabsTrigger value="vault" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Vault
             </TabsTrigger>
           </TabsList>
 
@@ -1265,6 +1273,14 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+          </TabsContent>
+
+          {/* Vault Tab Content */}
+          <TabsContent value="vault">
+            <GlobalVaultSettings
+              settings={settings}
+              onSettingsChange={onSettingsChange}
+            />
           </TabsContent>
         </Tabs>
 

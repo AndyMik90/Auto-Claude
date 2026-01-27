@@ -139,6 +139,22 @@ vi.mock('../env-utils', () => ({
   getAugmentedEnv: vi.fn(() => ({ ...process.env }))
 }));
 
+// Mock settings-utils to avoid file system reads during tests
+vi.mock('../settings-utils', () => ({
+  readSettingsFile: vi.fn(() => ({}))
+}));
+
+// Mock integrations-env-builder to return empty env vars during tests
+vi.mock('../integrations-env-builder', () => ({
+  buildIntegrationsEnvVars: vi.fn(() => ({})),
+  buildIntegrationsEnvVarsFromGlobal: vi.fn(() => ({}))
+}));
+
+// Mock memory-env-builder to return empty env vars during tests
+vi.mock('../memory-env-builder', () => ({
+  buildMemoryEnvVars: vi.fn(() => ({}))
+}));
+
 // Mock fs.existsSync for getAutoBuildSourcePath path validation
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();

@@ -39,7 +39,21 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
+# Import integration tools and helpers
+from agents.tools_pkg.models import (
+    GITLAB_TOOLS,
+    JIRA_TOOLS,
+    OBSIDIAN_TOOLS,
+    is_gitlab_mcp_enabled,
+    is_jira_mcp_enabled,
+    is_obsidian_mcp_enabled,
+)
 from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.mcp_config import (
+    build_gitlab_mcp_config,
+    build_jira_mcp_config,
+    build_obsidian_mcp_config,
+)
 from debug import (
     debug,
     debug_detailed,
@@ -48,6 +62,91 @@ from debug import (
     debug_success,
 )
 from phase_config import get_thinking_budget, resolve_model_id
+
+
+def get_insights_allowed_tools() -> list[str]:
+    """Build allowed tools list for Insights agent based on configured integrations."""
+    # Base tools for codebase exploration
+    tools = ["Read", "Glob", "Grep"]
+
+    # Add integration tools if configured
+    if is_obsidian_mcp_enabled():
+        tools.extend(OBSIDIAN_TOOLS)
+        debug("insights_runner", "Obsidian vault tools enabled")
+
+    if is_jira_mcp_enabled():
+        tools.extend(JIRA_TOOLS)
+        debug("insights_runner", "JIRA tools enabled")
+
+    if is_gitlab_mcp_enabled():
+        tools.extend(GITLAB_TOOLS)
+        debug("insights_runner", "GitLab tools enabled")
+
+    return tools
+
+
+def load_vault_context() -> str:
+    """Load context from configured Obsidian vault if enabled."""
+    import os
+
+    if not is_obsidian_mcp_enabled():
+        return ""
+
+    vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
+    if not vault_path:
+        return ""
+
+    vault_path = Path(vault_path).expanduser()
+    if not vault_path.exists():
+        return ""
+
+    context_parts = []
+
+    # Load CLAUDE.md from vault
+    claude_md = vault_path / ".claude" / "CLAUDE.md"
+    if claude_md.exists():
+        try:
+            content = claude_md.read_text(encoding="utf-8")
+            context_parts.append(f"## Vault Instructions (CLAUDE.md)\n{content}")
+            debug("insights_runner", "Loaded vault CLAUDE.md")
+        except Exception:
+            pass  # Ignore read errors - vault context is optional
+
+    # Load preferences
+    preferences = vault_path / "memory" / "context" / "preferences.md"
+    if preferences.exists():
+        try:
+            content = preferences.read_text(encoding="utf-8")
+            context_parts.append(f"## User Preferences\n{content}")
+            debug("insights_runner", "Loaded vault preferences")
+        except Exception:
+            pass  # Ignore read errors - preferences are optional
+
+    # List recent learnings
+    learnings_dir = vault_path / "memory" / "learnings"
+    if learnings_dir.exists():
+        try:
+            learning_files = sorted(
+                learnings_dir.glob("*.md"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )[:5]
+            if learning_files:
+                learning_names = [f.stem for f in learning_files]
+                context_parts.append(
+                    "## Recent Learnings (in vault)\n- " + "\n- ".join(learning_names)
+                )
+                debug(
+                    "insights_runner",
+                    "Found vault learnings",
+                    count=len(learning_files),
+                )
+        except Exception:
+            pass  # Ignore errors listing learnings - vault context is optional
+
+    if context_parts:
+        return "\n\n".join(context_parts)
+    return ""
 
 
 def load_project_context(project_dir: str) -> str:
@@ -114,11 +213,17 @@ def load_project_context(project_dir: str) -> str:
 def build_system_prompt(project_dir: str) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
+    vault_context = load_vault_context()
+
+    # Combine contexts
+    all_context = context
+    if vault_context:
+        all_context = f"{vault_context}\n\n{context}"
 
     return f"""You are an AI assistant helping developers understand and work with their codebase.
-You have access to the following project context:
+You have access to the following context:
 
-{context}
+{all_context}
 
 Your capabilities:
 1. Answer questions about the codebase structure, patterns, and architecture
@@ -190,14 +295,63 @@ Current question: {message}"""
     )
 
     try:
+        # Get dynamic tools list based on configured integrations
+        allowed_tools = get_insights_allowed_tools()
+
+        # Build MCP servers dict for enabled integrations (spawned internally via npx)
+        mcp_servers = {}
+        integrations_status = []
+
+        if is_obsidian_mcp_enabled():
+            config = build_obsidian_mcp_config()
+            if config:
+                mcp_servers["obsidian"] = config
+                integrations_status.append("Vault/Obsidian")
+
+        if is_jira_mcp_enabled():
+            config = build_jira_mcp_config()
+            if config:
+                mcp_servers["jira"] = config
+                integrations_status.append("JIRA")
+
+        if is_gitlab_mcp_enabled():
+            config = build_gitlab_mcp_config()
+            if config:
+                mcp_servers["gitlab"] = config
+                integrations_status.append("GitLab")
+
+        # Log integration status visibly for user feedback
+        if integrations_status:
+            print(
+                f"Active integrations: {', '.join(integrations_status)}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "No integrations enabled (configure in Settings → Account)",
+                file=sys.stderr,
+            )
+
+        debug(
+            "insights_runner",
+            "Tools configuration",
+            allowed_tools=allowed_tools,
+            integrations=integrations_status,
+            mcp_servers=list(mcp_servers.keys()),
+        )
+
         # Build options dict - only include max_thinking_tokens if not None
         options_kwargs = {
             "model": resolve_model_id(model),  # Resolve via API Profile if configured
             "system_prompt": system_prompt,
-            "allowed_tools": ["Read", "Glob", "Grep"],
+            "allowed_tools": allowed_tools,
             "max_turns": 30,  # Allow sufficient turns for codebase exploration
             "cwd": str(project_path),
         }
+
+        # Only add mcp_servers if we have any configured
+        if mcp_servers:
+            options_kwargs["mcp_servers"] = mcp_servers
 
         # Only add thinking tokens if the thinking level is not "none"
         if max_thinking_tokens is not None:

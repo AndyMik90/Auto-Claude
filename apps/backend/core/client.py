@@ -128,8 +128,11 @@ def invalidate_project_cache(project_dir: Path | None = None) -> None:
 from agents.tools_pkg import (
     CONTEXT7_TOOLS,
     ELECTRON_TOOLS,
+    GITLAB_TOOLS,
     GRAPHITI_MCP_TOOLS,
+    JIRA_TOOLS,
     LINEAR_TOOLS,
+    OBSIDIAN_TOOLS,
     PUPPETEER_TOOLS,
     create_auto_claude_mcp_server,
     get_allowed_tools,
@@ -142,6 +145,11 @@ from core.auth import (
     get_sdk_env_vars,
     require_auth_token,
     validate_token_not_encrypted,
+)
+from core.mcp_config import (
+    build_gitlab_mcp_config,
+    build_jira_mcp_config,
+    build_obsidian_mcp_config,
 )
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
@@ -338,6 +346,10 @@ def load_project_mcp_config(project_dir: Path) -> dict:
         "LINEAR_MCP_ENABLED",
         "ELECTRON_MCP_ENABLED",
         "PUPPETEER_MCP_ENABLED",
+        # External integrations
+        "JIRA_MCP_ENABLED",
+        "GITLAB_MCP_ENABLED",
+        "OBSIDIAN_MCP_ENABLED",
     }
 
     try:
@@ -387,14 +399,62 @@ def load_project_mcp_config(project_dir: Path) -> dict:
     return config
 
 
+def _check_graphiti_server_health(url: str, timeout: float = 2.0) -> bool:
+    """
+    Check if the Graphiti MCP server is actually responding.
+
+    Args:
+        url: The Graphiti MCP URL to check
+        timeout: Connection timeout in seconds
+
+    Returns:
+        True if server is responding, False otherwise
+    """
+    import httpx
+
+    try:
+        # Just check if we can connect - don't need a valid response
+        response = httpx.head(url, timeout=timeout)
+        return response.status_code < 500
+    except httpx.RequestError:
+        return False
+    except Exception:
+        return False
+
+
+# Cache for graphiti health check (reset per process)
+_graphiti_health_checked = False
+_graphiti_is_healthy = False
+
+
 def is_graphiti_mcp_enabled() -> bool:
     """
-    Check if Graphiti MCP server integration is enabled.
+    Check if Graphiti MCP server integration is enabled AND responding.
 
     Requires GRAPHITI_MCP_URL to be set (e.g., http://localhost:8000/mcp/)
     This is separate from GRAPHITI_ENABLED which controls the Python library integration.
+
+    Also performs a health check to ensure the server is actually running.
+    If the server is not responding, returns False to prevent connection hangs.
     """
-    return bool(os.environ.get("GRAPHITI_MCP_URL"))
+    global _graphiti_health_checked, _graphiti_is_healthy
+
+    url = os.environ.get("GRAPHITI_MCP_URL")
+    if not url:
+        return False
+
+    # Check health only once per process to avoid repeated connection attempts
+    if not _graphiti_health_checked:
+        _graphiti_health_checked = True
+        _graphiti_is_healthy = _check_graphiti_server_health(url)
+        if not _graphiti_is_healthy:
+            logger.warning(
+                f"Graphiti MCP server at {url} is not responding. "
+                "Disabling graphiti-memory integration to prevent connection hangs. "
+                "Start the Graphiti server or disable graphitiMcpEnabled in project settings."
+            )
+
+    return _graphiti_is_healthy
 
 
 def get_graphiti_mcp_url() -> str:
@@ -440,6 +500,103 @@ def load_claude_md(project_dir: Path) -> str | None:
         except Exception:
             return None
     return None
+
+
+def is_vault_auto_load_enabled() -> bool:
+    """Check if vault auto-load is enabled (load CLAUDE.md + learnings at session start)."""
+    return os.environ.get("VAULT_AUTO_LOAD", "").lower() == "true"
+
+
+def load_vault_context() -> dict[str, Any] | None:
+    """
+    Load vault context including CLAUDE.md and recent learnings.
+
+    This provides cross-project memory from the external vault (Obsidian/markdown).
+
+    Returns:
+        Dict with vault context (claude_md, recent_learnings) or None if not configured
+    """
+    vault_path = os.environ.get("VAULT_PATH") or os.environ.get("OBSIDIAN_VAULT_PATH")
+    if not vault_path:
+        return None
+
+    expanded = Path(vault_path).expanduser().resolve()
+    if not expanded.exists():
+        logger.warning(f"Vault path does not exist: {expanded}")
+        return None
+
+    context: dict[str, Any] = {}
+
+    # Load vault's CLAUDE.md (session context)
+    vault_claude_md = expanded / ".claude" / "CLAUDE.md"
+    if vault_claude_md.exists():
+        try:
+            context["claude_md"] = vault_claude_md.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read vault CLAUDE.md: {e}")
+
+    # Load recent learnings (last 5 files, max 2000 chars each)
+    learnings_dir = expanded / "memory" / "learnings"
+    if learnings_dir.exists():
+        learning_files = sorted(
+            learnings_dir.glob("**/*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:5]  # Last 5 most recent
+
+        learnings = []
+        for learning_file in learning_files:
+            try:
+                content = learning_file.read_text(encoding="utf-8")
+                # Truncate to avoid bloating context
+                if len(content) > 2000:
+                    content = content[:2000] + "\n...(truncated)"
+                learnings.append(
+                    {
+                        "path": str(learning_file.relative_to(expanded)),
+                        "content": content,
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to read learning {learning_file}: {e}")
+
+        if learnings:
+            context["recent_learnings"] = learnings
+
+    return context if context else None
+
+
+def format_vault_context_for_prompt(vault_context: dict[str, Any]) -> str:
+    """
+    Format vault context for inclusion in system prompt.
+
+    Args:
+        vault_context: Dict from load_vault_context()
+
+    Returns:
+        Formatted string for system prompt
+    """
+    sections = []
+
+    # Include vault's CLAUDE.md
+    if vault_context.get("claude_md"):
+        sections.append("## Vault Instructions (from vault CLAUDE.md)\n")
+        sections.append(vault_context["claude_md"])
+        sections.append("")
+
+    # Include recent learnings summaries
+    learnings = vault_context.get("recent_learnings", [])
+    if learnings:
+        sections.append("## Recent Learnings from Vault\n")
+        sections.append(
+            "These are recent discoveries from previous sessions. Use them to avoid repeating mistakes.\n"
+        )
+        for learning in learnings:
+            sections.append(f"### {learning['path']}\n")
+            sections.append(learning["content"])
+            sections.append("")
+
+    return "\n".join(sections)
 
 
 def create_client(
@@ -651,6 +808,22 @@ def create_client(
                     else []
                 ),
                 *[f"{tool}(*)" for tool in browser_tools_permissions],
+                # External integration tools
+                *(
+                    [f"{tool}(*)" for tool in JIRA_TOOLS]
+                    if "jira" in required_servers
+                    else []
+                ),
+                *(
+                    [f"{tool}(*)" for tool in GITLAB_TOOLS]
+                    if "gitlab" in required_servers
+                    else []
+                ),
+                *(
+                    [f"{tool}(*)" for tool in OBSIDIAN_TOOLS]
+                    if "obsidian" in required_servers
+                    else []
+                ),
             ],
         },
     }
@@ -687,6 +860,13 @@ def create_client(
         mcp_servers_list.append("graphiti-memory (knowledge graph)")
     if "auto-claude" in required_servers and auto_claude_tools_enabled:
         mcp_servers_list.append(f"auto-claude ({agent_type} tools)")
+    # External integration MCP servers (spawned internally via npx)
+    if "jira" in required_servers:
+        mcp_servers_list.append("jira (issue tracking)")
+    if "gitlab" in required_servers:
+        mcp_servers_list.append("gitlab (code management)")
+    if "obsidian" in required_servers:
+        mcp_servers_list.append("obsidian (vault/memory)")
     if mcp_servers_list:
         print(f"   - MCP servers: {', '.join(mcp_servers_list)}")
     else:
@@ -771,6 +951,24 @@ def create_client(
                 server_config["headers"] = custom["headers"]
             mcp_servers[server_id] = server_config
 
+    # JIRA MCP Server (spawned internally via npx)
+    if "jira" in required_servers:
+        jira_config = build_jira_mcp_config()
+        if jira_config:
+            mcp_servers["jira"] = jira_config
+
+    # GitLab MCP Server (spawned internally via npx)
+    if "gitlab" in required_servers:
+        gitlab_config = build_gitlab_mcp_config()
+        if gitlab_config:
+            mcp_servers["gitlab"] = gitlab_config
+
+    # Obsidian/Vault MCP Server (spawned internally via npx)
+    if "obsidian" in required_servers:
+        obsidian_config = build_obsidian_mcp_config()
+        if obsidian_config:
+            mcp_servers["obsidian"] = obsidian_config
+
     # Build system prompt
     base_prompt = (
         f"You are an expert full-stack developer building production-quality software. "
@@ -793,6 +991,30 @@ def create_client(
             print("   - CLAUDE.md: not found in project root")
     else:
         print("   - CLAUDE.md: disabled by project settings")
+
+    # Include vault context if obsidian is enabled and auto-load is on
+    if "obsidian" in required_servers and is_vault_auto_load_enabled():
+        vault_context = load_vault_context()
+        if vault_context:
+            vault_prompt = format_vault_context_for_prompt(vault_context)
+            base_prompt = f"{base_prompt}\n\n# External Vault Context\n\n{vault_prompt}"
+            print("   - Vault context: included in system prompt")
+
+            # Add vault usage instructions
+            vault_instructions = (
+                "\n\n## Vault Tools Available\n"
+                "You have access to an external Obsidian vault via MCP tools (mcp__obsidian__*).\n"
+                "Use these tools to:\n"
+                "- Read additional learnings: mcp__obsidian__read_file('memory/learnings/...')\n"
+                "- Search vault: mcp__obsidian__search_files('memory/', '*.md')\n"
+                "- Write discoveries: mcp__obsidian__write_file('memory/learnings/...') (if write enabled)\n\n"
+                "The vault contains cross-project knowledge that persists between sessions."
+            )
+            base_prompt = f"{base_prompt}{vault_instructions}"
+        else:
+            print("   - Vault context: not found or empty")
+    elif "obsidian" in required_servers:
+        print("   - Vault context: auto-load disabled (VAULT_AUTO_LOAD not set)")
     print()
 
     # Build options dict, conditionally including output_format
