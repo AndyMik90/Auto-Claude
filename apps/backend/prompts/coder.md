@@ -319,6 +319,37 @@ If subtask says "Add Stripe payment integration":
 - Missing required configuration
 - Security anti-patterns
 
+### AWS MCP Tools (When Available)
+
+If your task involves AWS services (S3, EC2, CloudWatch, etc.), use the AWS MCP tools instead of direct `aws` CLI commands. The direct CLI is blocked by security rules.
+
+**Available AWS MCP Tools:**
+
+1. **`mcp__aws__call_aws`** - Execute AWS CLI commands safely
+   ```
+   Tool: mcp__aws__call_aws
+   Input: { "command": "s3api list-buckets" }
+   ```
+
+2. **`mcp__aws__suggest_aws_commands`** - Get command suggestions for a task
+   ```
+   Tool: mcp__aws__suggest_aws_commands
+   Input: { "task": "list all S3 buckets with their sizes" }
+   ```
+
+3. **`mcp__aws__get_execution_plan`** - Get step-by-step guidance for complex AWS tasks
+   ```
+   Tool: mcp__aws__get_execution_plan
+   Input: { "task": "set up CloudWatch alarms for EC2 instances" }
+   ```
+
+**Example workflow for S3 operations:**
+1. Use `mcp__aws__call_aws` with command "s3api list-buckets"
+2. Parse the JSON response
+3. Document results as needed
+
+**IMPORTANT:** Never use `aws` CLI directly via Bash - it will be blocked. Always use the `mcp__aws__*` tools.
+
 ---
 
 ## STEP 5.5: GENERATE & REVIEW PRE-IMPLEMENTATION CHECKLIST

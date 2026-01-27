@@ -20,6 +20,14 @@ import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 
 /**
+ * Check if a project path is a workspace (has .auto-claude/workspace.json)
+ */
+function isWorkspace(projectPath: string): boolean {
+  const workspaceConfigPath = path.join(projectPath, '.auto-claude', 'workspace.json');
+  return existsSync(workspaceConfigPath);
+}
+
+/**
  * Atomic file write to prevent TOCTOU race conditions.
  * Writes to a temporary file first, then atomically renames to target.
  * This ensures the target file is never in an inconsistent state.
@@ -723,18 +731,23 @@ export function registerTaskExecutionHandlers(
         if (status === 'in_progress' && !agentManager.isRunning(taskId)) {
           const mainWindow = getMainWindow();
 
-          // Check git status before auto-starting
-          const gitStatusCheck = checkGitStatus(project.path);
-          if (!gitStatusCheck.isGitRepo || !gitStatusCheck.hasCommits) {
-            console.warn('[TASK_UPDATE_STATUS] Git check failed, cannot auto-start task');
-            if (mainWindow) {
-              mainWindow.webContents.send(
-                IPC_CHANNELS.TASK_ERROR,
-                taskId,
-                gitStatusCheck.error || 'Git repository with commits required to run tasks.'
-              );
+          // Check git status before auto-starting (skip for workspaces - they manage git at repo level)
+          const projectIsWorkspace = isWorkspace(project.path);
+          if (!projectIsWorkspace) {
+            const gitStatusCheck = checkGitStatus(project.path);
+            if (!gitStatusCheck.isGitRepo || !gitStatusCheck.hasCommits) {
+              console.warn('[TASK_UPDATE_STATUS] Git check failed, cannot auto-start task');
+              if (mainWindow) {
+                mainWindow.webContents.send(
+                  IPC_CHANNELS.TASK_ERROR,
+                  taskId,
+                  gitStatusCheck.error || 'Git repository with commits required to run tasks.'
+                );
+              }
+              return { success: false, error: gitStatusCheck.error || 'Git repository required' };
             }
-            return { success: false, error: gitStatusCheck.error || 'Git repository required' };
+          } else {
+            console.log('[TASK_UPDATE_STATUS] Workspace detected, skipping git check for workspace root');
           }
 
           // Check authentication before auto-starting

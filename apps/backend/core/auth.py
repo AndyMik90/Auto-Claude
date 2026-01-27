@@ -346,7 +346,41 @@ def _try_decrypt_token(token: str | None) -> str | None:
     return token
 
 
-def get_token_from_keychain() -> str | None:
+def _calculate_config_dir_hash(config_dir: str) -> str:
+    """
+    Calculate SHA256 hash of config directory path (first 8 hex chars).
+
+    This matches the frontend's credential-utils.ts calculateConfigDirHash().
+    """
+    import hashlib
+    return hashlib.sha256(config_dir.encode()).hexdigest()[:8]
+
+
+def _get_keychain_service_name(config_dir: str | None = None) -> str:
+    """
+    Get the Keychain service name for a config directory.
+
+    All profiles use hash-based keychain entries for isolation.
+    This matches frontend's credential-utils.ts getKeychainServiceName().
+
+    Args:
+        config_dir: CLAUDE_CONFIG_DIR path. If None, returns legacy name.
+
+    Returns:
+        Service name like "Claude Code-credentials-d74c9506" or "Claude Code-credentials"
+    """
+    if not config_dir:
+        return "Claude Code-credentials"
+
+    # Expand ~ to home directory
+    expanded_config_dir = os.path.expanduser(config_dir)
+
+    # Calculate hash and return hash-based service name
+    hash_suffix = _calculate_config_dir_hash(expanded_config_dir)
+    return f"Claude Code-credentials-{hash_suffix}"
+
+
+def get_token_from_keychain(config_dir: str | None = None) -> str | None:
     """
     Get authentication token from system credential store.
 
@@ -355,11 +389,14 @@ def get_token_from_keychain() -> str | None:
     - Windows: Credential Manager
     - Linux: Secret Service API (via dbus/secretstorage)
 
+    Args:
+        config_dir: Optional CLAUDE_CONFIG_DIR for profile-specific credentials.
+
     Returns:
         Token string if found, None otherwise
     """
     if is_macos():
-        return _get_token_from_macos_keychain()
+        return _get_token_from_macos_keychain(config_dir)
     elif is_windows():
         return _get_token_from_windows_credential_files()
     else:
@@ -367,15 +404,22 @@ def get_token_from_keychain() -> str | None:
         return _get_token_from_linux_secret_service()
 
 
-def _get_token_from_macos_keychain() -> str | None:
-    """Get token from macOS Keychain."""
+def _get_token_from_macos_keychain(config_dir: str | None = None) -> str | None:
+    """Get token from macOS Keychain.
+
+    Args:
+        config_dir: Optional CLAUDE_CONFIG_DIR for profile-specific credentials.
+                   If provided, uses hash-based service name matching frontend behavior.
+    """
+    service_name = _get_keychain_service_name(config_dir)
+
     try:
         result = subprocess.run(
             [
                 "/usr/bin/security",
                 "find-generic-password",
                 "-s",
-                "Claude Code-credentials",
+                service_name,
                 "-w",
             ],
             capture_output=True,
@@ -384,6 +428,10 @@ def _get_token_from_macos_keychain() -> str | None:
         )
 
         if result.returncode != 0:
+            # If hash-based lookup failed and config_dir was provided,
+            # fall back to legacy service name
+            if config_dir:
+                return _get_token_from_macos_keychain(None)
             return None
 
         credentials_json = result.stdout.strip()
@@ -589,14 +637,14 @@ def get_auth_token(config_dir: str | None = None) -> str | None:
     env_config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
     effective_config_dir = config_dir or env_config_dir
 
-    # If a custom config directory is specified, read from there
+    # If a custom config directory is specified, try reading from credentials file first
     if effective_config_dir:
         token = _get_token_from_config_dir(effective_config_dir)
         if token:
             return _try_decrypt_token(token)
 
-    # Fallback to system credential store (default locations)
-    return _try_decrypt_token(get_token_from_keychain())
+    # Fallback to system credential store (with config_dir for hash-based lookup)
+    return _try_decrypt_token(get_token_from_keychain(effective_config_dir))
 
 
 def get_auth_token_source(config_dir: str | None = None) -> str | None:
