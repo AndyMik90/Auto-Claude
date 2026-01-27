@@ -12,6 +12,7 @@ import { mkdirSync, rmSync, existsSync, writeFileSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 import { findPythonCommand, parsePythonCommand } from '../../main/python-detector';
+import { isWindows } from '../../main/platform';
 
 // Test directories - use secure temp directory with random suffix
 let TEST_DIR: string;
@@ -361,7 +362,7 @@ describe('Subprocess Spawn Integration', () => {
 
       expect(result).toBe(true);
       // On Windows, kill() is called without arguments; on Unix, kill('SIGTERM') is used
-      if (process.platform === 'win32') {
+      if (isWindows()) {
         expect(mockProcess.kill).toHaveBeenCalled();
       } else {
         expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
@@ -394,11 +395,15 @@ describe('Subprocess Spawn Integration', () => {
         expect(manager.getRunningTasks()).toHaveLength(2);
       }, { timeout: 5000 });
 
-      // Both tasks share the same mock process, so emit exit once triggers both handlers
-      mockProcess.emit('exit', 0);
+      // Wait for spawn to complete (ensures exit handlers are attached)
+      await new Promise(resolve => setImmediate(resolve));
 
-      // Wait for both promises to resolve
+      // Emit exit for task-1 (first task's handler)
+      mockProcess.emit('exit', 0);
       await promise1;
+
+      // Emit exit for task-2 (second task's handler replaces first due to shared mock process)
+      mockProcess.emit('exit', 0);
       await promise2;
 
       // Tasks should be removed from tracking after exit
