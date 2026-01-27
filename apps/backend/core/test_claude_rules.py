@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Unit tests for core/client.py glob pattern matching and frontmatter parsing.
+Unit tests for core/claude_rules.py glob pattern matching and frontmatter parsing.
 
-Run with: apps/backend/.venv/bin/pytest apps/backend/core/test_client.py -v
+Run with: apps/backend/.venv/bin/pytest apps/backend/core/test_claude_rules.py -v
 
 Note: conftest.py handles sys.path setup for imports.
 """
 
-from core.client import _match_glob_pattern, _parse_rule_frontmatter
+from core.claude_rules import _match_glob_pattern, _parse_rule_frontmatter
 
 
 class TestMatchGlobPattern:
