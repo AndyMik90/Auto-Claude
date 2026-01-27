@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -47,6 +48,7 @@ DEFAULT_WHEN_VALUE = "per_subtask"
 # Value: (all_rules list, timestamp)
 _RULES_CACHE: dict[str, tuple[list[tuple[Path, list[str], list[dict], str]], float]] = {}
 _RULES_CACHE_TTL_SECONDS = 300  # 5 minute cache, same as project index
+_RULES_CACHE_LOCK = threading.Lock()  # Protects _RULES_CACHE access
 
 
 def _parse_inline_array(value: str) -> list[str]:
@@ -407,11 +409,12 @@ def _collect_all_rules(
     cache_key = str(project_dir)
     current_time = time.time()
 
-    if cache_key in _RULES_CACHE:
-        cached_rules, cached_time = _RULES_CACHE[cache_key]
-        if current_time - cached_time < _RULES_CACHE_TTL_SECONDS:
-            logger.debug(f"Using cached rules for {project_dir}")
-            return cached_rules
+    with _RULES_CACHE_LOCK:
+        if cache_key in _RULES_CACHE:
+            cached_rules, cached_time = _RULES_CACHE[cache_key]
+            if current_time - cached_time < _RULES_CACHE_TTL_SECONDS:
+                logger.debug(f"Using cached rules for {project_dir}")
+                return list(cached_rules)  # Return copy to prevent mutation
 
     # Cache miss or expired - read and parse all rules
     rules = []
@@ -446,7 +449,8 @@ def _collect_all_rules(
             logger.warning(f"Failed to read rule file {rule_path}: {e}")
 
     # Update cache
-    _RULES_CACHE[cache_key] = (rules, current_time)
+    with _RULES_CACHE_LOCK:
+        _RULES_CACHE[cache_key] = (rules, current_time)
     logger.debug(f"Cached {len(rules)} rules for {project_dir}")
 
     return rules
