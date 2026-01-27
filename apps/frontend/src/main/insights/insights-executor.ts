@@ -15,12 +15,22 @@ import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
 
 /**
+ * Token usage data from session
+ */
+interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalCostUsd?: number;
+}
+
+/**
  * Message processor result
  */
 interface ProcessorResult {
   fullResponse: string;
   suggestedTask?: InsightsChatMessage['suggestedTask'];
   toolsUsed: InsightsToolUsage[];
+  tokenUsage?: TokenUsage;
 }
 
 /**
@@ -129,6 +139,7 @@ export class InsightsExecutor extends EventEmitter {
       let fullResponse = '';
       let suggestedTask: InsightsChatMessage['suggestedTask'] | undefined;
       const toolsUsed: InsightsToolUsage[] = [];
+      let tokenUsage: TokenUsage | undefined;
       let allInsightsOutput = '';
       let stderrOutput = '';
 
@@ -148,6 +159,9 @@ export class InsightsExecutor extends EventEmitter {
             this.handleToolStart(projectId, line, toolsUsed);
           } else if (line.startsWith('__TOOL_END__:')) {
             this.handleToolEnd(projectId, line);
+          } else if (line.startsWith('__TOKEN_USAGE__:')) {
+            // Capture token usage for analytics
+            tokenUsage = this.handleTokenUsage(line);
           } else if (line.trim()) {
             fullResponse += line + '\n';
             this.emit('stream-chunk', projectId, {
@@ -195,7 +209,8 @@ export class InsightsExecutor extends EventEmitter {
           resolve({
             fullResponse: fullResponse.trim(),
             suggestedTask,
-            toolsUsed
+            toolsUsed,
+            tokenUsage
           });
         } else {
           // Include stderr output in error message for debugging
@@ -296,6 +311,24 @@ export class InsightsExecutor extends EventEmitter {
       } as InsightsStreamChunk);
     } catch {
       // Ignore parse errors for tool markers
+    }
+  }
+
+  /**
+   * Handle token usage marker for analytics
+   */
+  private handleTokenUsage(line: string): TokenUsage | undefined {
+    try {
+      const usageJson = line.substring('__TOKEN_USAGE__:'.length);
+      const usageData = JSON.parse(usageJson);
+      return {
+        inputTokens: usageData.input_tokens || 0,
+        outputTokens: usageData.output_tokens || 0,
+        totalCostUsd: usageData.total_cost_usd
+      };
+    } catch {
+      // Ignore parse errors for token usage
+      return undefined;
     }
   }
 

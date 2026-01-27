@@ -176,7 +176,8 @@ export class InsightsService extends EventEmitter {
         content: result.fullResponse,
         timestamp: new Date(),
         suggestedTask: result.suggestedTask,
-        toolsUsed: result.toolsUsed.length > 0 ? result.toolsUsed : undefined
+        toolsUsed: result.toolsUsed.length > 0 ? result.toolsUsed : undefined,
+        tokenUsage: result.tokenUsage
       };
 
       session.messages.push(assistantMessage);

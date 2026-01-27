@@ -37,7 +37,7 @@ for (const envPath of possibleEnvPaths) {
 
 import { app, BrowserWindow, shell, nativeImage, session, screen } from 'electron';
 import { join } from 'path';
-import { accessSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { readFileSync, rmSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { setupIpcHandlers } from './ipc-setup';
 import { AgentManager } from './agent';
@@ -52,6 +52,7 @@ import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager, getClaudeProfileManager } from './claude-profile-manager';
+import { getEffectiveSourcePath } from './updater/path-resolver';
 import { isMacOS, isWindows } from './platform';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
@@ -297,79 +298,32 @@ app.whenReady().then(() => {
   agentManager = new AgentManager();
 
   // Load settings and configure agent manager with Python and auto-claude paths
-  // Uses EAFP pattern (try/catch) instead of LBYL (existsSync) to avoid TOCTOU race conditions
+  // Uses getEffectiveSourcePath() which handles:
+  // 1. AUTO_BUILD_PATH env var override
+  // 2. Development mode: local detection (supports worktrees)
+  // 3. Production mode: settings, userData override, bundled
   const settingsPath = join(app.getPath('userData'), 'settings.json');
+  let pythonPath: string | undefined;
+
   try {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-
-    // Validate and migrate autoBuildPath - must contain runners/spec_runner.py
-    // Uses EAFP pattern (try/catch with accessSync) instead of existsSync to avoid TOCTOU race conditions
-    let validAutoBuildPath = settings.autoBuildPath;
-    if (validAutoBuildPath) {
-      const specRunnerPath = join(validAutoBuildPath, 'runners', 'spec_runner.py');
-      let specRunnerExists = false;
-      try {
-        accessSync(specRunnerPath);
-        specRunnerExists = true;
-      } catch {
-        // File doesn't exist or isn't accessible
-      }
-
-      if (!specRunnerExists) {
-        // Migration: Try to fix stale paths from old project structure
-        // Old structure: /path/to/project/auto-claude
-        // New structure: /path/to/project/apps/backend
-        let migrated = false;
-        if (validAutoBuildPath.endsWith('/auto-claude') || validAutoBuildPath.endsWith('\\auto-claude')) {
-          const basePath = validAutoBuildPath.replace(/[/\\]auto-claude$/, '');
-          const correctedPath = join(basePath, 'apps', 'backend');
-          const correctedSpecRunnerPath = join(correctedPath, 'runners', 'spec_runner.py');
-
-          let correctedPathExists = false;
-          try {
-            accessSync(correctedSpecRunnerPath);
-            correctedPathExists = true;
-          } catch {
-            // Corrected path doesn't exist
-          }
-
-          if (correctedPathExists) {
-            console.log('[main] Migrating autoBuildPath from old structure:', validAutoBuildPath, '->', correctedPath);
-            settings.autoBuildPath = correctedPath;
-            validAutoBuildPath = correctedPath;
-            migrated = true;
-
-            // Save the corrected setting - we're the only process modifying settings at startup
-            try {
-              writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-              console.log('[main] Successfully saved migrated autoBuildPath to settings');
-            } catch (writeError) {
-              console.warn('[main] Failed to save migrated autoBuildPath:', writeError);
-            }
-          }
-        }
-
-        if (!migrated) {
-          console.warn('[main] Configured autoBuildPath is invalid (missing runners/spec_runner.py), will use auto-detection:', validAutoBuildPath);
-          validAutoBuildPath = undefined; // Let auto-detection find the correct path
-        }
-      }
-    }
-
-    if (settings.pythonPath || validAutoBuildPath) {
-      console.warn('[main] Configuring AgentManager with settings:', {
-        pythonPath: settings.pythonPath,
-        autoBuildPath: validAutoBuildPath
-      });
-      agentManager.configure(settings.pythonPath, validAutoBuildPath);
-    }
+    pythonPath = settings.pythonPath;
   } catch (error: unknown) {
     // ENOENT means no settings file yet - that's fine, use defaults
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-      // No settings file, use defaults - this is expected on first run
-    } else {
+    if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
       console.warn('[main] Failed to load settings for agent configuration:', error);
     }
+  }
+
+  // Use centralized path resolution for autoBuildPath
+  const validAutoBuildPath = getEffectiveSourcePath();
+
+  if (pythonPath || validAutoBuildPath) {
+    console.warn('[main] Configuring AgentManager with settings:', {
+      pythonPath,
+      autoBuildPath: validAutoBuildPath
+    });
+    agentManager.configure(pythonPath, validAutoBuildPath);
   }
 
   // Initialize terminal manager

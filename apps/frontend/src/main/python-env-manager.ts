@@ -47,6 +47,10 @@ export class PythonEnvManager extends EventEmitter {
    * Get the path where the venv should be created.
    * For packaged apps, this is in userData to avoid read-only filesystem issues.
    * For development, this is inside the source directory.
+   *
+   * Worktree support: If running from a worktree and the main project has a venv,
+   * use that instead of creating a new one. This mirrors how node_modules is
+   * symlinked for worktrees.
    */
   private getVenvBasePath(): string | null {
     if (!this.autoBuildSourcePath) return null;
@@ -55,6 +59,34 @@ export class PythonEnvManager extends EventEmitter {
     // This fixes Linux AppImage where resources are read-only
     if (app.isPackaged) {
       return path.join(app.getPath('userData'), 'python-venv');
+    }
+
+    // Development mode - check if we're in a worktree
+    // Worktree paths contain '.auto-claude/worktrees/' in their path
+    const isWorktree = this.autoBuildSourcePath.includes('.auto-claude/worktrees/');
+
+    if (isWorktree) {
+      // Try to find the main project's backend venv
+      // Worktree path: /path/to/project/.auto-claude/worktrees/{type}/{name}/apps/backend
+      // Main backend path: /path/to/project/apps/backend
+      const worktreeMarker = '.auto-claude/worktrees/';
+      const markerIndex = this.autoBuildSourcePath.indexOf(worktreeMarker);
+
+      if (markerIndex > 0) {
+        const mainProjectDir = this.autoBuildSourcePath.substring(0, markerIndex);
+        const mainBackendVenv = path.join(mainProjectDir, 'apps', 'backend', '.venv');
+        const mainVenvPython = isWindows()
+          ? path.join(mainBackendVenv, 'Scripts', 'python.exe')
+          : path.join(mainBackendVenv, 'bin', 'python');
+
+        if (existsSync(mainVenvPython)) {
+          console.log(`[PythonEnvManager] Worktree detected, using main project venv: ${mainBackendVenv}`);
+          return mainBackendVenv;
+        } else {
+          console.log(`[PythonEnvManager] Worktree detected but main venv not found at: ${mainBackendVenv}`);
+          // Fall through to create venv in worktree
+        }
+      }
     }
 
     // Development mode - use source directory

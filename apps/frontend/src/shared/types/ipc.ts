@@ -136,6 +136,7 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type { AnalyticsSummary, DateFilter } from './analytics';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -410,6 +411,9 @@ export interface ElectronAPI {
   getMemoryStatus: (projectId: string) => Promise<IPCResult<GraphitiMemoryStatus>>;
   searchMemories: (projectId: string, query: string) => Promise<IPCResult<ContextSearchResult[]>>;
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEpisode[]>>;
+
+  // Analytics operations
+  getAnalytics: (projectId: string, filter: DateFilter) => Promise<IPCResult<AnalyticsSummary>>;
 
   // Environment configuration operations
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;

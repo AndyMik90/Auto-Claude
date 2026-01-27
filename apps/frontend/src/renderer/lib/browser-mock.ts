@@ -103,6 +103,25 @@ const browserMockAPI: ElectronAPI = {
   // Context Operations
   ...contextMock,
 
+  // Analytics Operations
+  getAnalytics: async () => ({
+    success: true,
+    data: {
+      period: 'all_time',
+      dateRange: { start: new Date(), end: new Date() },
+      totalTokens: 0,
+      totalTasks: 0,
+      totalCostUsd: 0,
+      averageDurationMs: 0,
+      successRate: 0,
+      successCount: 0,
+      errorCount: 0,
+      inProgressCount: 0,
+      byFeature: {} as any,
+      tasks: []
+    }
+  }),
+
   // Environment Configuration & Integration Operations
   ...integrationMock,
 

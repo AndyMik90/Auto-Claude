@@ -72,6 +72,72 @@ def find_phase_for_subtask(plan: dict, subtask_id: str) -> dict | None:
     return None
 
 
+def save_implementation_plan(spec_dir: Path, plan: dict) -> bool:
+    """
+    Save the implementation plan JSON.
+
+    Args:
+        spec_dir: Spec directory containing the plan
+        plan: Implementation plan dict to save
+
+    Returns:
+        True if saved successfully, False otherwise
+    """
+    plan_file = spec_dir / "implementation_plan.json"
+    try:
+        with open(plan_file, "w", encoding="utf-8") as f:
+            json.dump(plan, f, indent=2)
+        return True
+    except (OSError, TypeError) as e:
+        logger.warning(f"Failed to save implementation plan: {e}")
+        return False
+
+
+def update_subtask_token_usage(
+    spec_dir: Path,
+    subtask_id: str,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    total_cost_usd: float | None = None,
+) -> bool:
+    """
+    Update token usage for a subtask in the implementation plan.
+
+    Args:
+        spec_dir: Spec directory containing the plan
+        subtask_id: ID of the subtask to update
+        input_tokens: Number of input tokens used
+        output_tokens: Number of output tokens used
+        total_cost_usd: Total cost in USD (if available)
+
+    Returns:
+        True if updated successfully, False otherwise
+    """
+    plan = load_implementation_plan(spec_dir)
+    if not plan:
+        logger.warning("Cannot update token usage: implementation plan not found")
+        return False
+
+    subtask = find_subtask_in_plan(plan, subtask_id)
+    if not subtask:
+        logger.warning(f"Cannot update token usage: subtask {subtask_id} not found")
+        return False
+
+    # Accumulate tokens (don't overwrite, add to existing)
+    subtask["input_tokens"] = subtask.get("input_tokens", 0) + input_tokens
+    subtask["output_tokens"] = subtask.get("output_tokens", 0) + output_tokens
+
+    # Handle cost accumulation
+    if total_cost_usd is not None:
+        existing_cost = subtask.get("total_cost_usd")
+        if existing_cost is not None:
+            subtask["total_cost_usd"] = existing_cost + total_cost_usd
+        else:
+            subtask["total_cost_usd"] = total_cost_usd
+
+    return save_implementation_plan(spec_dir, plan)
+
+
 def sync_spec_to_source(spec_dir: Path, source_spec_dir: Path | None) -> bool:
     """
     Sync ALL spec files from worktree back to source spec directory.

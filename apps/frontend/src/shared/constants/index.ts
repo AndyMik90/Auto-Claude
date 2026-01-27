@@ -35,3 +35,6 @@ export * from './api-profiles';
 
 // Configuration and paths
 export * from './config';
+
+// AI model pricing
+export * from './pricing';

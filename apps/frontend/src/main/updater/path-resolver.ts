@@ -53,9 +53,41 @@ export function getUpdateCachePath(): string {
 
 /**
  * Get the effective source path (considers override from updates and settings)
+ *
+ * Priority order:
+ * 1. Environment variable AUTO_BUILD_PATH (for explicit override)
+ * 2. In development: Local detection first (supports worktrees)
+ * 3. In production: User settings, then userData override, then bundled
  */
 export function getEffectiveSourcePath(): string {
-  // First, check user settings for configured autoBuildPath
+  // Layer 1: Environment variable override (highest priority)
+  // This allows explicit override for testing or special workflows
+  const envOverride = process.env.AUTO_BUILD_PATH;
+  if (envOverride) {
+    const resolvedPath = path.resolve(process.cwd(), envOverride);
+    const markerPath = path.join(resolvedPath, 'runners', 'spec_runner.py');
+    if (existsSync(resolvedPath) && existsSync(markerPath)) {
+      console.log(`[path-resolver] Using AUTO_BUILD_PATH override: ${resolvedPath}`);
+      return resolvedPath;
+    }
+    console.warn(
+      `[path-resolver] AUTO_BUILD_PATH "${envOverride}" is invalid (missing runners/spec_runner.py), falling back to detection`
+    );
+  }
+
+  // Layer 2: In development mode, prioritize local detection
+  // This ensures worktree development uses the local backend, not saved global settings
+  if (!app.isPackaged) {
+    const localBackend = getBundledSourcePath();
+    const localMarker = path.join(localBackend, 'runners', 'spec_runner.py');
+    if (existsSync(localBackend) && existsSync(localMarker)) {
+      console.log(`[path-resolver] Development mode: using local backend: ${localBackend}`);
+      return localBackend;
+    }
+    // Fall through to settings if local detection fails
+  }
+
+  // Layer 3: Check user settings for configured autoBuildPath
   try {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json');
     if (existsSync(settingsPath)) {
@@ -76,8 +108,8 @@ export function getEffectiveSourcePath(): string {
     // Ignore settings read errors
   }
 
+  // Layer 4: In production, check for user-updated source
   if (app.isPackaged) {
-    // Check for user-updated source first
     const overridePath = path.join(app.getPath('userData'), 'backend-source');
     const overrideMarker = path.join(overridePath, 'runners', 'spec_runner.py');
     if (existsSync(overridePath) && existsSync(overrideMarker)) {

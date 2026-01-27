@@ -188,6 +188,12 @@ export interface InsightsChatMessage {
   };
   // Tools used during this response (assistant messages only)
   toolsUsed?: InsightsToolUsage[];
+  // Token usage for this message (assistant messages only)
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalCostUsd?: number;
+  };
 }
 
 export interface InsightsSession {

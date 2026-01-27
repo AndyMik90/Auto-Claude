@@ -1,0 +1,161 @@
+{
+  "title": "Analytics",
+  "description": "Track and analyze usage patterns across all features",
+  "dateFilter": {
+    "label": "Date Range",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last7Days": "Last 7 days",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "last6Months": "Last 6 months",
+    "thisYear": "This year",
+    "allTime": "All time"
+  },
+  "features": {
+    "overview": "Overview",
+    "kanban": "Kanban Board",
+    "insights": "Insights",
+    "roadmap": "Roadmap",
+    "ideation": "Ideation",
+    "changelog": "Changelog",
+    "githubPRs": "GitHub PRs"
+  },
+  "metrics": {
+    "tokenUsage": {
+      "title": "Token Usage",
+      "description": "Total tokens consumed across all tasks",
+      "total": "Total Tokens",
+      "average": "Average per Task",
+      "byPhase": "Tokens by Phase"
+    },
+    "duration": {
+      "title": "Task Duration",
+      "description": "Time spent on tasks from start to completion",
+      "total": "Total Time",
+      "average": "Average Duration",
+      "byPhase": "Duration by Phase"
+    },
+    "successRate": {
+      "title": "Success Rate",
+      "description": "Completion status of tasks",
+      "rate": "Success Rate",
+      "total": "Total Tasks",
+      "successful": "Successful",
+      "failed": "Failed",
+      "inProgress": "In Progress"
+    }
+  },
+  "outcomes": {
+    "done": "Done",
+    "prCreated": "PR Created",
+    "staged": "Staged",
+    "error": "Error",
+    "inProgress": "In Progress",
+    "merged": "Merged"
+  },
+  "phases": {
+    "planning": "Planning",
+    "coding": "Coding",
+    "validation": "Validation",
+    "reviewing": "Reviewing",
+    "fixing": "Fixing"
+  },
+  "drillDown": {
+    "levels": {
+      "app": "Application",
+      "feature": "Feature",
+      "task": "Task",
+      "phase": "Phase",
+      "subagent": "Subagent"
+    },
+    "backToOverview": "Back to Overview",
+    "backTo": "Back to {{level}}",
+    "viewDetails": "View Details",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All"
+  },
+  "charts": {
+    "tokens": "Tokens",
+    "duration": "Duration",
+    "tasks": "Tasks",
+    "noData": "No data to display"
+  },
+  "empty": {
+    "title": "No analytics data yet",
+    "description": "Analytics will appear here once you start running tasks",
+    "noDataForPeriod": "No data available for the selected period",
+    "noDataForFeature": "No data available for this feature",
+    "tokenTrackingNotEnabled": "No token usage recorded",
+    "tokenTrackingDescription": "Token data will appear here as tasks are completed",
+    "noTasks": "No tasks found for this filter"
+  },
+  "loading": {
+    "title": "Loading analytics...",
+    "aggregating": "Aggregating data..."
+  },
+  "errors": {
+    "loadFailed": "Failed to load analytics data",
+    "aggregationFailed": "Failed to aggregate metrics",
+    "retry": "Retry"
+  },
+  "labels": {
+    "tokens": "tokens",
+    "tasks": "tasks",
+    "hours": "hours",
+    "minutes": "minutes",
+    "seconds": "seconds",
+    "percentage": "{{value}}%",
+    "of": "of",
+    "total": "Total",
+    "average": "Average",
+    "count": "Count",
+    "inputTokens": "Input",
+    "outputTokens": "Output",
+    "cacheRead": "Cache Read",
+    "cacheWrite": "Cache Write",
+    "model": "Model",
+    "cost": "Cost",
+    "estimatedCost": "Est. API Cost",
+    "actualCost": "Actual Cost",
+    "rateLimitImpact": "Rate Limit Impact",
+    "session": "Session",
+    "messages": "messages",
+    "costNoteInsightsChat": "Insights Chat uses your Claude Code subscription rate limit, not API billing.",
+    "costNoteSubscription": "Cost shown is the estimated API price. Claude Code subscription users are not charged per-token.",
+    "insightsChatNote": "Insights Chat sessions are conversational and don't have execution phases like build tasks.",
+    "subagentBreakdownNote": "Subagent-level breakdown will be available in a future update."
+  },
+  "tooltips": {
+    "tokenUsage": "Total tokens consumed by AI models during task execution",
+    "duration": "Time elapsed from task start to completion",
+    "successRate": "Percentage of tasks completed successfully (done, PR created, or staged)",
+    "drillDown": "Click to view detailed breakdown",
+    "cost": "Total API cost in USD for all AI model calls"
+  },
+  "summary": {
+    "title": "Summary",
+    "totalTasks": "Total Tasks",
+    "totalTokens": "Total Tokens",
+    "averageDuration": "Avg Duration",
+    "successRate": "Success Rate",
+    "periodComparison": "vs previous period"
+  },
+  "actions": {
+    "refresh": "Refresh Data",
+    "export": "Export",
+    "filter": "Filter"
+  },
+  "sorting": {
+    "showing": "{{count}} tasks",
+    "sortBy": "Sort by",
+    "dateNewest": "Date (Newest)",
+    "dateOldest": "Date (Oldest)",
+    "tokensHighest": "Tokens (Highest)",
+    "tokensLowest": "Tokens (Lowest)",
+    "durationSlowest": "Duration (Slowest)",
+    "durationFastest": "Duration (Fastest)",
+    "costHighest": "Cost (Highest)",
+    "costLowest": "Cost (Lowest)"
+  }
+}

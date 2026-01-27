@@ -43,6 +43,11 @@ class Subtask:
     completed_at: str | None = None
     session_id: int | None = None  # Which session completed this
 
+    # Token usage tracking (from Claude SDK ResultMessage)
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_cost_usd: float | None = None  # Cost if available from SDK
+
     # Self-Critique
     critique_result: dict | None = None  # Results from self-critique before completion
 
@@ -75,6 +80,12 @@ class Subtask:
             result["completed_at"] = self.completed_at
         if self.session_id is not None:
             result["session_id"] = self.session_id
+        if self.input_tokens > 0:
+            result["input_tokens"] = self.input_tokens
+        if self.output_tokens > 0:
+            result["output_tokens"] = self.output_tokens
+        if self.total_cost_usd is not None:
+            result["total_cost_usd"] = self.total_cost_usd
         if self.critique_result:
             result["critique_result"] = self.critique_result
         return result
@@ -101,6 +112,9 @@ class Subtask:
             started_at=data.get("started_at"),
             completed_at=data.get("completed_at"),
             session_id=data.get("session_id"),
+            input_tokens=data.get("input_tokens", 0),
+            output_tokens=data.get("output_tokens", 0),
+            total_cost_usd=data.get("total_cost_usd"),
             critique_result=data.get("critique_result"),
         )
 
@@ -126,3 +140,31 @@ class Subtask:
         self.completed_at = None  # Clear to maintain consistency (failed != completed)
         if reason:
             self.actual_output = f"FAILED: {reason}"
+
+    def add_token_usage(
+        self,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cost_usd: float | None = None,
+    ):
+        """
+        Add token usage from a session to this subtask.
+
+        Accumulates tokens across multiple sessions if needed.
+        """
+        self.input_tokens += input_tokens
+        self.output_tokens += output_tokens
+        if cost_usd is not None:
+            if self.total_cost_usd is None:
+                self.total_cost_usd = cost_usd
+            else:
+                self.total_cost_usd += cost_usd
+
+    @property
+    def total_tokens(self) -> int:
+        """Total tokens (input + output) for this subtask."""
+        return self.input_tokens + self.output_tokens
+
+
+# Backwards compatibility alias
+Chunk = Subtask
