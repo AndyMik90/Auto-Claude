@@ -21,6 +21,7 @@ import { parsePythonCommand } from '../../../python-detector';
 import { detectAuthFailure } from '../../../rate-limit-detector';
 import { getClaudeProfileManager } from '../../../claude-profile-manager';
 import { isWindows, isMacOS } from '../../../platform';
+import { getToolPath } from '../../../cli-tool-manager';
 
 const execAsync = promisify(exec);
 
@@ -444,12 +445,10 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
     return result;
   }
 
-  // 2. Check gh CLI installation (cross-platform)
-  try {
-    const whichCommand = isWindows() ? 'where gh' : 'which gh';
-    await execAsync(whichCommand);
-    result.ghCliInstalled = true;
-  } catch {
+  // 2. Check gh CLI installation using robust detection (includes Homebrew paths on macOS)
+  const ghPath = getToolPath('gh');
+  if (!ghPath || ghPath === 'gh') {
+    // getToolPath returns the tool name as fallback when not found
     result.ghCliInstalled = false;
     const installInstructions = isWindows()
       ? 'winget install --id GitHub.cli'
@@ -459,10 +458,11 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
     result.error = `GitHub CLI (gh) is not installed. Install it with:\n  ${installInstructions}`;
     return result;
   }
+  result.ghCliInstalled = true;
 
-  // 3. Check gh authentication
+  // 3. Check gh authentication using the detected path
   try {
-    await execAsync('gh auth status 2>&1');
+    await execAsync(`"${ghPath}" auth status 2>&1`);
     result.ghAuthenticated = true;
   } catch (error: any) {
     // gh auth status returns non-zero when not authenticated
