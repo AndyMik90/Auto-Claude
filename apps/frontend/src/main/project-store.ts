@@ -14,10 +14,19 @@ interface TabState {
   tabOrder: string[];
 }
 
+interface KanbanColumnPreference {
+  width: number;
+  isCollapsed: boolean;
+  isLocked: boolean;
+}
+
+type KanbanPreferences = Record<string, KanbanColumnPreference>;
+
 interface StoreData {
   projects: Project[];
   settings: Record<string, unknown>;
   tabState?: TabState;
+  kanbanPreferences?: Record<string, KanbanPreferences>;
 }
 
 interface TasksCacheEntry {
@@ -174,6 +183,24 @@ export class ProjectStore {
         : null,
       tabOrder: tabState.tabOrder.filter(id => validProjectIds.includes(id))
     };
+    this.save();
+  }
+
+  /**
+   * Get kanban column preferences for a specific project
+   */
+  getKanbanPreferences(projectId: string): KanbanPreferences | null {
+    return this.data.kanbanPreferences?.[projectId] ?? null;
+  }
+
+  /**
+   * Save kanban column preferences for a specific project
+   */
+  saveKanbanPreferences(projectId: string, preferences: KanbanPreferences): void {
+    if (!this.data.kanbanPreferences) {
+      this.data.kanbanPreferences = {};
+    }
+    this.data.kanbanPreferences[projectId] = preferences;
     this.save();
   }
 
