@@ -132,7 +132,8 @@ export async function createSpecForIssue(
     };
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
-      JSON.stringify(implementationPlan, null, 2)
+      JSON.stringify(implementationPlan, null, 2),
+      'utf-8'
     );
 
     // requirements.json
@@ -142,7 +143,8 @@ export async function createSpecForIssue(
     };
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
-      JSON.stringify(requirements, null, 2)
+      JSON.stringify(requirements, null, 2),
+      'utf-8'
     );
 
     // Determine category from GitHub issue labels
@@ -160,7 +162,8 @@ export async function createSpecForIssue(
     };
     writeFileSync(
       path.join(specDir, 'task_metadata.json'),
-      JSON.stringify(metadata, null, 2)
+      JSON.stringify(metadata, null, 2),
+      'utf-8'
     );
 
     return {
@@ -228,7 +231,7 @@ export function updateImplementationPlanStatus(specDir: string, status: string):
     const plan = JSON.parse(content);
     plan.status = status;
     plan.updated_at = new Date().toISOString();
-    writeFileSync(planPath, JSON.stringify(plan, null, 2));
+    writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
   } catch (error) {
     // File doesn't exist or couldn't be read - this is expected for new specs
     // Log legitimate errors (malformed JSON, disk write failures, permission errors)

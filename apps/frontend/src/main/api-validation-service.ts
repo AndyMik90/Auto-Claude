@@ -62,7 +62,7 @@ export async function validateOpenAIApiKey(
         let data = '';
 
         res.on('data', (chunk: Buffer) => {
-          data += chunk;
+          data += chunk.toString('utf8');
         });
 
         res.on('end', () => {

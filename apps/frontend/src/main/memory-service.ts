@@ -219,11 +219,11 @@ async function executeQuery(
     let stderr = '';
 
     proc.stdout.on('data', (data) => {
-      stdout += data.toString();
+      stdout += data.toString('utf8');
     });
 
     proc.stderr.on('data', (data) => {
-      stderr += data.toString();
+      stderr += data.toString('utf8');
     });
 
     proc.on('close', (code) => {
@@ -361,11 +361,11 @@ async function executeSemanticQuery(
     let stderr = '';
 
     proc.stdout.on('data', (data) => {
-      stdout += data.toString();
+      stdout += data.toString('utf8');
     });
 
     proc.stderr.on('data', (data) => {
-      stderr += data.toString();
+      stderr += data.toString('utf8');
     });
 
     proc.on('close', (code) => {

@@ -207,7 +207,7 @@ function ensureGitignoreEntries(projectPath: string, entries: string[]): void {
   if (existsSync(gitignorePath)) {
     appendFileSync(gitignorePath, appendContent);
   } else {
-    writeFileSync(gitignorePath, '# Auto Claude data directory\n' + entriesToAdd.join('\n') + '\n');
+    writeFileSync(gitignorePath, '# Auto Claude data directory\n' + entriesToAdd.join('\n') + '\n', 'utf-8');
   }
 
   debug('Added entries to .gitignore', { entries: entriesToAdd });
@@ -315,7 +315,7 @@ export function initializeProject(projectPath: string): InitializationResult {
       const dirPath = path.join(dotAutoBuildPath, dataDir);
       debug('Creating data directory', { dataDir, dirPath });
       mkdirSync(dirPath, { recursive: true });
-      writeFileSync(path.join(dirPath, '.gitkeep'), '');
+      writeFileSync(path.join(dirPath, '.gitkeep'), '', 'utf-8');
     }
 
     // Update .gitignore to exclude .auto-claude/
@@ -353,7 +353,7 @@ export function ensureDataDirectories(projectPath: string): InitializationResult
       if (!existsSync(dirPath)) {
         debug('Creating missing data directory', { dataDir, dirPath });
         mkdirSync(dirPath, { recursive: true });
-        writeFileSync(path.join(dirPath, '.gitkeep'), '');
+        writeFileSync(path.join(dirPath, '.gitkeep'), '', 'utf-8');
       }
     }
     return { success: true };

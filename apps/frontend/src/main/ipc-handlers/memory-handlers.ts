@@ -319,11 +319,11 @@ async function executeOllamaDetector(
     let stderr = '';
 
     proc.stdout.on('data', (data) => {
-      stdout += data.toString();
+      stdout += data.toString('utf8');
     });
 
     proc.stderr.on('data', (data) => {
-      stderr += data.toString();
+      stderr += data.toString('utf8');
     });
 
     // Single timeout mechanism to avoid race condition
@@ -796,11 +796,11 @@ export function registerMemoryHandlers(): void {
           let stderrBuffer = ''; // Buffer for NDJSON parsing
 
           proc.stdout.on('data', (data) => {
-            stdout += data.toString();
+            stdout += data.toString('utf8');
           });
 
           proc.stderr.on('data', (data) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stderr += chunk;
             stderrBuffer += chunk;
 

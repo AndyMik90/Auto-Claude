@@ -556,7 +556,7 @@ export class ReleaseService extends EventEmitter {
 
       // Preserve formatting (detect indent)
       const indent = pkgContent.match(/^(\s+)/m)?.[1] || '  ';
-      writeFileSync(pkgPath, JSON.stringify(pkg, null, indent) + '\n');
+      writeFileSync(pkgPath, JSON.stringify(pkg, null, indent) + '\n', 'utf-8');
 
       // Stage and commit only package.json
       this.emitProgress(projectId, {
@@ -712,11 +712,11 @@ export class ReleaseService extends EventEmitter {
         let stderr = '';
 
         child.stdout?.on('data', (data: Buffer) => {
-          stdout += data.toString();
+          stdout += data.toString('utf8');
         });
 
         child.stderr?.on('data', (data: Buffer) => {
-          stderr += data.toString();
+          stderr += data.toString('utf8');
         });
 
         child.on('exit', (code) => {

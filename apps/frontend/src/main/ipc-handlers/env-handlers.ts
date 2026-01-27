@@ -572,7 +572,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         const newContent = generateEnvContent(config, existingContent);
 
         // Write to file
-        writeFileSync(envPath, newContent);
+        writeFileSync(envPath, newContent, 'utf-8');
 
         return { success: true };
       } catch (error) {
@@ -612,11 +612,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
           let _stderr = '';
 
           proc.stdout?.on('data', (data: Buffer) => {
-            _stdout += data.toString();
+            _stdout += data.toString('utf8');
           });
 
           proc.stderr?.on('data', (data: Buffer) => {
-            _stderr += data.toString();
+            _stderr += data.toString('utf8');
           });
 
           proc.on('close', (code: number | null) => {

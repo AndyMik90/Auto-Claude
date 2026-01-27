@@ -155,7 +155,7 @@ export class ChangelogGenerator extends EventEmitter {
     let errorOutput = '';
 
     childProcess.stdout?.on('data', (data: Buffer) => {
-      const chunk = data.toString();
+      const chunk = data.toString('utf8');
       output += chunk;
       this.debug('stdout chunk received', { chunkLength: chunk.length, totalOutput: output.length });
 
@@ -167,7 +167,7 @@ export class ChangelogGenerator extends EventEmitter {
     });
 
     childProcess.stderr?.on('data', (data: Buffer) => {
-      const chunk = data.toString();
+      const chunk = data.toString('utf8');
       errorOutput += chunk;
       this.debug('stderr chunk received', { chunk: chunk.substring(0, 200) });
     });

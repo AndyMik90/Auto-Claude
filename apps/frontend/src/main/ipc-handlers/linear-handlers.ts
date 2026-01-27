@@ -497,14 +497,14 @@ ${issue.description || 'No description provided.'}
               status: 'pending',
               phases: []
             };
-            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2));
+            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2), 'utf-8');
 
             // Create requirements.json
             const requirements = {
               task_description: description,
               workflow_type: 'feature'
             };
-            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2));
+            writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2), 'utf-8');
 
             // Build metadata
             const metadata: TaskMetadata = {
@@ -514,7 +514,7 @@ ${issue.description || 'No description provided.'}
               linearUrl: issue.url,
               category: 'feature'
             };
-            writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2));
+            writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2), 'utf-8');
 
             // Start spec creation with the existing spec directory
             agentManager.startSpecCreation(specId, project.path, description, specDir, metadata);

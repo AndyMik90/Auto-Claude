@@ -75,7 +75,7 @@ export class ProjectStore {
    * Save store to disk
    */
   private save(): void {
-    writeFileSync(this.storePath, JSON.stringify(this.data, null, 2));
+    writeFileSync(this.storePath, JSON.stringify(this.data, null, 2), 'utf-8');
   }
 
   /**
@@ -785,7 +785,7 @@ export class ProjectStore {
             metadata.archivedInVersion = version;
           }
 
-          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
           console.log(`[ProjectStore] archiveTasks: Successfully archived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] archiveTasks: Failed to archive task ${taskId} at ${specPath}:`, error);
@@ -844,7 +844,7 @@ export class ProjectStore {
 
           delete metadata.archivedAt;
           delete metadata.archivedInVersion;
-          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+          writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
           console.log(`[ProjectStore] unarchiveTasks: Successfully unarchived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] unarchiveTasks: Failed to unarchive task ${taskId} at ${specPath}:`, error);

@@ -64,11 +64,11 @@ export class VersionSuggester {
       let errorOutput = '';
 
       childProcess.stdout?.on('data', (data: Buffer) => {
-        output += data.toString();
+        output += data.toString('utf8');
       });
 
       childProcess.stderr?.on('data', (data: Buffer) => {
-        errorOutput += data.toString();
+        errorOutput += data.toString('utf8');
       });
 
       childProcess.on('exit', (code: number | null) => {

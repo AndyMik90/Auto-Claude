@@ -190,11 +190,11 @@ export class TerminalNameGenerator extends EventEmitter {
       }, 30000); // 30 second timeout
 
       childProcess.stdout?.on('data', (data: Buffer) => {
-        output += data.toString();
+        output += data.toString('utf8');
       });
 
       childProcess.stderr?.on('data', (data: Buffer) => {
-        errorOutput += data.toString();
+        errorOutput += data.toString('utf8');
       });
 
       childProcess.on('exit', (code: number | null) => {

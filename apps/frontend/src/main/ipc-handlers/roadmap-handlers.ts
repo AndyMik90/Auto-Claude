@@ -407,7 +407,7 @@ export function registerRoadmapHandlers(
         existingRoadmap.metadata = existingRoadmap.metadata || {};
         existingRoadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2));
+        writeFileSync(roadmapPath, JSON.stringify(existingRoadmap, null, 2), 'utf-8');
 
         return { success: true };
       } catch (error) {
@@ -456,7 +456,7 @@ export function registerRoadmapHandlers(
         roadmap.metadata = roadmap.metadata || {};
         roadmap.metadata.updated_at = new Date().toISOString();
 
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2), 'utf-8');
 
         return { success: true };
       } catch (error) {
@@ -561,7 +561,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         };
         writeFileSync(
           path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
-          JSON.stringify(implementationPlan, null, 2)
+          JSON.stringify(implementationPlan, null, 2),
+          'utf-8'
         );
 
         // Create requirements.json
@@ -571,11 +572,12 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         };
         writeFileSync(
           path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
-          JSON.stringify(requirements, null, 2)
+          JSON.stringify(requirements, null, 2),
+          'utf-8'
         );
 
         // Create spec.md (required by backend spec creation process)
-        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE), taskDescription);
+        writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE), taskDescription, 'utf-8');
 
         // Build metadata
         const metadata: TaskMetadata = {
@@ -583,7 +585,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
           featureId: feature.id,
           category: "feature",
         };
-        writeFileSync(path.join(specDir, "task_metadata.json"), JSON.stringify(metadata, null, 2));
+        writeFileSync(path.join(specDir, "task_metadata.json"), JSON.stringify(metadata, null, 2), 'utf-8');
 
         // NOTE: We do NOT auto-start spec creation here - user should explicitly start the task
         // from the kanban board when they're ready
@@ -593,7 +595,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         feature.linked_spec_id = specId;
         roadmap.metadata = roadmap.metadata || {};
         roadmap.metadata.updated_at = new Date().toISOString();
-        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2));
+        writeFileSync(roadmapPath, JSON.stringify(roadmap, null, 2), 'utf-8');
 
         // Create task object
         const task: Task = {

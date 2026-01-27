@@ -171,7 +171,7 @@ function saveTriageConfig(project: Project, config: GitLabTriageConfig): void {
     triage_enable_comments: config.enableComments,
   };
 
-  fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
+  fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2), 'utf-8');
 }
 
 /**
@@ -440,7 +440,8 @@ export function registerTriageHandlers(
             // Save result
             fs.writeFileSync(
               path.join(triageDir, `triage_${sanitizedResult.issue_iid}.json`),
-              JSON.stringify(sanitizedResult, null, 2)
+              JSON.stringify(sanitizedResult, null, 2),
+              'utf-8'
             );
 
             results.push(result);

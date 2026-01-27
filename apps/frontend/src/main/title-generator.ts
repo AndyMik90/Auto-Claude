@@ -169,11 +169,11 @@ export class TitleGenerator extends EventEmitter {
       }, 60000); // 60 second timeout for SDK initialization + API call
 
       childProcess.stdout?.on('data', (data: Buffer) => {
-        output += data.toString();
+        output += data.toString('utf8');
       });
 
       childProcess.stderr?.on('data', (data: Buffer) => {
-        errorOutput += data.toString();
+        errorOutput += data.toString('utf8');
       });
 
       childProcess.on('exit', (code: number | null) => {

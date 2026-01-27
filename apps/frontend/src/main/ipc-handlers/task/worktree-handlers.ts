@@ -2040,13 +2040,13 @@ export function registerWorktreeHandlers(
           }, MERGE_TIMEOUT_MS);
 
           mergeProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stdout += chunk;
             debug('STDOUT:', chunk);
           });
 
           mergeProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stderr += chunk;
             debug('STDERR:', chunk);
           });
@@ -2240,7 +2240,7 @@ export function registerWorktreeHandlers(
                         plan.stagedAt = new Date().toISOString();
                         plan.stagedInMainProject = true;
                       }
-                      await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2));
+                      await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2), 'utf-8');
 
                       // Verify the write succeeded by reading back
                       const verifyContent = await fsPromises.readFile(planPath, 'utf-8');
@@ -2473,13 +2473,13 @@ export function registerWorktreeHandlers(
           let stderr = '';
 
           previewProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stdout += chunk;
             console.warn('[IPC] merge-preview stdout:', chunk);
           });
 
           previewProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stderr += chunk;
             console.warn('[IPC] merge-preview stderr:', chunk);
           });
@@ -2860,7 +2860,7 @@ export function registerWorktreeHandlers(
         delete plan.stagedAt;
         plan.updated_at = new Date().toISOString();
 
-        await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2));
+        await fsPromises.writeFile(planPath, JSON.stringify(plan, null, 2), 'utf-8');
 
         // Also update worktree plan if it exists
         const worktreePath = findTaskWorktree(project.path, task.specId);
@@ -2872,7 +2872,7 @@ export function registerWorktreeHandlers(
             delete worktreePlan.stagedInMainProject;
             delete worktreePlan.stagedAt;
             worktreePlan.updated_at = new Date().toISOString();
-            await fsPromises.writeFile(worktreePlanPath, JSON.stringify(worktreePlan, null, 2));
+            await fsPromises.writeFile(worktreePlanPath, JSON.stringify(worktreePlan, null, 2), 'utf-8');
           } catch (e) {
             // Non-fatal - worktree plan update is best-effort
             // ENOENT is expected when worktree has no plan file
@@ -3027,13 +3027,13 @@ export function registerWorktreeHandlers(
           }, PR_CREATION_TIMEOUT_MS);
 
           createPRProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stdout += chunk;
             debug('STDOUT:', chunk);
           });
 
           createPRProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString();
+            const chunk = data.toString('utf8');
             stderr += chunk;
             debug('STDERR:', chunk);
           });
