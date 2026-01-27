@@ -158,6 +158,10 @@ export interface ElectronAPI {
   getTabState: () => Promise<IPCResult<TabState>>;
   saveTabState: (tabState: TabState) => Promise<IPCResult>;
 
+  // Kanban Preferences (persisted in main process per project)
+  getKanbanPreferences: (projectId: string) => Promise<IPCResult<Record<string, { width: number; isCollapsed: boolean; isLocked: boolean }> | null>>;
+  saveKanbanPreferences: (projectId: string, preferences: Record<string, { width: number; isCollapsed: boolean; isLocked: boolean }>) => Promise<IPCResult>;
+
   // Task operations
   getTasks: (projectId: string, options?: { forceRefresh?: boolean }) => Promise<IPCResult<Task[]>>;
   createTask: (projectId: string, title: string, description: string, metadata?: TaskMetadata) => Promise<IPCResult<Task>>;
