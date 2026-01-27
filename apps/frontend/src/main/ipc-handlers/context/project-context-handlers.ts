@@ -187,11 +187,11 @@ export function registerProjectContextHandlers(
           });
 
           proc.stdout?.on('data', (data) => {
-            stdout += data.toString('utf8');
+            stdout += data.toString('utf-8');
           });
 
           proc.stderr?.on('data', (data) => {
-            stderr += data.toString('utf8');
+            stderr += data.toString('utf-8');
           });
 
           proc.on('close', (code: number) => {

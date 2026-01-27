@@ -2043,13 +2043,13 @@ export function registerWorktreeHandlers(
           }, MERGE_TIMEOUT_MS);
 
           mergeProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stdout += chunk;
             debug('STDOUT:', chunk);
           });
 
           mergeProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stderr += chunk;
             debug('STDERR:', chunk);
           });
@@ -2482,13 +2482,13 @@ export function registerWorktreeHandlers(
           let stderr = '';
 
           previewProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stdout += chunk;
             console.warn('[IPC] merge-preview stdout:', chunk);
           });
 
           previewProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stderr += chunk;
             console.warn('[IPC] merge-preview stderr:', chunk);
           });
@@ -3049,13 +3049,13 @@ export function registerWorktreeHandlers(
           }, PR_CREATION_TIMEOUT_MS);
 
           createPRProcess.stdout.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stdout += chunk;
             debug('STDOUT:', chunk);
           });
 
           createPRProcess.stderr.on('data', (data: Buffer) => {
-            const chunk = data.toString('utf8');
+            const chunk = data.toString('utf-8');
             stderr += chunk;
             debug('STDERR:', chunk);
           });

@@ -719,11 +719,11 @@ export class ReleaseService extends EventEmitter {
         let stderr = '';
 
         child.stdout?.on('data', (data: Buffer) => {
-          stdout += data.toString('utf8');
+          stdout += data.toString('utf-8');
         });
 
         child.stderr?.on('data', (data: Buffer) => {
-          stderr += data.toString('utf8');
+          stderr += data.toString('utf-8');
         });
 
         child.on('exit', (code) => {

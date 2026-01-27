@@ -612,11 +612,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
           let _stderr = '';
 
           proc.stdout?.on('data', (data: Buffer) => {
-            _stdout += data.toString('utf8');
+            _stdout += data.toString('utf-8');
           });
 
           proc.stderr?.on('data', (data: Buffer) => {
-            _stderr += data.toString('utf8');
+            _stderr += data.toString('utf-8');
           });
 
           proc.on('close', (code: number | null) => {

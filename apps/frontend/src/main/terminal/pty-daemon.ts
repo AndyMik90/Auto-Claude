@@ -130,7 +130,7 @@ class PtyDaemon {
     let buffer = '';
 
     socket.on('data', (chunk) => {
-      buffer += chunk.toString('utf8');
+      buffer += chunk.toString('utf-8');
 
       // Handle newline-delimited JSON messages
       const lines = buffer.split('\n');

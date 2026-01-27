@@ -316,7 +316,7 @@ if sys.version_info >= (3, 12):
       }, PythonEnvManager.VENV_CREATION_TIMEOUT_MS);
 
       proc.stderr?.on('data', (data) => {
-        stderr += data.toString('utf8');
+        stderr += data.toString('utf-8');
       });
 
       proc.on('close', (code) => {
@@ -367,7 +367,7 @@ if sys.version_info >= (3, 12):
 
       let stderr = '';
       proc.stderr?.on('data', (data) => {
-        stderr += data.toString('utf8');
+        stderr += data.toString('utf-8');
       });
 
       proc.on('close', (code) => {
@@ -424,9 +424,9 @@ if sys.version_info >= (3, 12):
       let stderr = '';
 
       proc.stdout?.on('data', (data) => {
-        stdout += data.toString('utf8');
+        stdout += data.toString('utf-8');
         // Emit progress updates for long-running installations
-        const lines = data.toString('utf8').split('\n');
+        const lines = data.toString('utf-8').split('\n');
         for (const line of lines) {
           if (line.includes('Installing') || line.includes('Successfully')) {
             this.emit('status', line.trim());
@@ -435,7 +435,7 @@ if sys.version_info >= (3, 12):
       });
 
       proc.stderr?.on('data', (data) => {
-        stderr += data.toString('utf8');
+        stderr += data.toString('utf-8');
       });
 
       proc.on('close', (code) => {
