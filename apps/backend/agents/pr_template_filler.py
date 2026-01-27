@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 MAX_DIFF_CHARS = 30_000
 
 
-def detect_pr_template(project_dir: Path) -> str | None:
+def detect_pr_template(project_dir: Path | str) -> str | None:
     """
     Detect a GitHub PR template in the project.
 
@@ -34,6 +34,7 @@ def detect_pr_template(project_dir: Path) -> str | None:
     Returns:
         The template content as a string, or None if no template is found.
     """
+    project_dir = Path(project_dir)
     # Check for single template file
     single_template = project_dir / ".github" / "PULL_REQUEST_TEMPLATE.md"
     if single_template.is_file():
