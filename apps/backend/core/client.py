@@ -24,8 +24,8 @@ from typing import Any
 from core.claude_rules import (
     get_files_from_implementation_plan,
     load_claude_rules,
-    should_use_claude_rules,
 )
+from core.config import should_use_claude_md, should_use_claude_rules
 from core.platform import (
     is_windows,
     validate_cli_path,
@@ -423,11 +423,6 @@ def get_electron_debug_port() -> int:
     return int(os.environ.get("ELECTRON_DEBUG_PORT", "9222"))
 
 
-def should_use_claude_md() -> bool:
-    """Check if CLAUDE.md instructions should be included in system prompt."""
-    return os.environ.get("USE_CLAUDE_MD", "").lower() == "true"
-
-
 def load_claude_md(project_dir: Path) -> str | None:
     """
     Load CLAUDE.md content from project root if it exists.
@@ -447,8 +442,8 @@ def load_claude_md(project_dir: Path) -> str | None:
     return None
 
 
-# Note: Claude Code Rules support is now in core/claude_rules.py
-# Exported functions: should_use_claude_rules, load_claude_rules, get_files_from_implementation_plan
+# Note: Claude Code Rules support is in core/claude_rules.py
+# Feature flags (should_use_claude_md, should_use_claude_rules) are in core/config.py
 
 
 def create_client(

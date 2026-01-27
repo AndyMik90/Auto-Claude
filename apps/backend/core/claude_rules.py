@@ -17,6 +17,13 @@ Rule files use YAML frontmatter with 'paths' array containing glob patterns:
 
   # Rule Content Here
   ...
+
+Note on YAML parsing:
+    This module uses a custom lightweight parser for frontmatter, NOT a full YAML
+    parser like PyYAML. This is intentional to avoid adding dependencies. The parser
+    supports only the subset needed for rules: paths lists, require_skills with
+    nested properties, and inline arrays. Complex YAML features (anchors, aliases,
+    multi-line strings with | or >, etc.) are NOT supported.
 """
 
 import fnmatch
@@ -24,7 +31,10 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
+
+from core.config import should_use_claude_rules
 
 logger = logging.getLogger(__name__)
 
@@ -32,25 +42,11 @@ logger = logging.getLogger(__name__)
 VALID_WHEN_VALUES = frozenset({"planning", "per_subtask", "end_of_coding", "qa_phase"})
 DEFAULT_WHEN_VALUE = "per_subtask"
 
-
-def should_use_claude_rules() -> bool:
-    """
-    Check if .claude/rules/ should be loaded based on environment settings.
-
-    When USE_CLAUDE_MD is enabled, rules are also enabled by default.
-    Can be explicitly disabled with USE_CLAUDE_RULES=false.
-    """
-    # Deferred import to avoid circular dependency:
-    # client.py imports from claude_rules.py, and this function needs should_use_claude_md from client.py
-    from core.client import should_use_claude_md
-
-    explicit_setting = os.environ.get("USE_CLAUDE_RULES", "").lower()
-    if explicit_setting == "false":
-        return False
-    if explicit_setting == "true":
-        return True
-    # Default: enabled if USE_CLAUDE_MD is enabled
-    return should_use_claude_md()
+# Cache for parsed rules to avoid re-reading files on every create_client() call
+# Key: project_dir path string
+# Value: (all_rules list, timestamp)
+_RULES_CACHE: dict[str, tuple[list[tuple[Path, list[str], list[dict], str]], float]] = {}
+_RULES_CACHE_TTL_SECONDS = 300  # 5 minute cache, same as project index
 
 
 def _parse_inline_array(value: str) -> list[str]:
@@ -376,7 +372,7 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
     try:
         resolved_rules = rules_dir.resolve()
         resolved_project = project_dir.resolve()
-        if not str(resolved_rules).startswith(str(resolved_project) + os.sep):
+        if not resolved_rules.is_relative_to(resolved_project):
             logger.warning(
                 f"Rules directory {rules_dir} resolves outside project: {resolved_rules}"
             )
@@ -390,17 +386,34 @@ def _discover_rules_directory(project_dir: Path) -> Path | None:
 
 def _collect_all_rules(
     rules_dir: Path,
+    project_dir: Path,
 ) -> list[tuple[Path, list[str], list[dict], str]]:
     """
     Recursively collect all rule files from the rules directory.
 
+    Uses a 5-minute cache to avoid re-reading files on every create_client() call.
+    This is important because create_client() is called for each subtask and QA iteration,
+    potentially 60+ times per task.
+
     Args:
         rules_dir: Path to .claude/rules/
+        project_dir: Root directory of the project (used as cache key)
 
     Returns:
         List of tuples: (rule_path, path_patterns, required_skills, rule_content)
         where required_skills is a list of dicts with 'skill', 'when', and optional 'paths' keys
     """
+    # Check cache first
+    cache_key = str(project_dir)
+    current_time = time.time()
+
+    if cache_key in _RULES_CACHE:
+        cached_rules, cached_time = _RULES_CACHE[cache_key]
+        if current_time - cached_time < _RULES_CACHE_TTL_SECONDS:
+            logger.debug(f"Using cached rules for {project_dir}")
+            return cached_rules
+
+    # Cache miss or expired - read and parse all rules
     rules = []
     rules_dir_resolved = rules_dir.resolve()
 
@@ -430,7 +443,11 @@ def _collect_all_rules(
                     f"Skipping rule {rule_path}: no paths defined in frontmatter"
                 )
         except Exception as e:
-            logger.debug(f"Failed to read rule file {rule_path}: {e}")
+            logger.warning(f"Failed to read rule file {rule_path}: {e}")
+
+    # Update cache
+    _RULES_CACHE[cache_key] = (rules, current_time)
+    logger.debug(f"Cached {len(rules)} rules for {project_dir}")
 
     return rules
 
@@ -460,7 +477,7 @@ def load_claude_rules(
     if not rules_dir:
         return "", [], []
 
-    all_rules = _collect_all_rules(rules_dir)
+    all_rules = _collect_all_rules(rules_dir, project_dir)
     if not all_rules:
         return "", [], []
 
