@@ -347,7 +347,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         } catch (planErr: unknown) {
           // File missing or invalid JSON - continue anyway
           if ((planErr as NodeJS.ErrnoException).code !== 'ENOENT') {
-            // Log non-ENOENT errors (malformed JSON, permission issues)
+            console.error('[TASK_UPDATE] Error updating implementation plan:', planErr);
           }
         }
 
@@ -377,7 +377,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         } catch (specErr: unknown) {
           // File missing or update failed - continue anyway
           if ((specErr as NodeJS.ErrnoException).code !== 'ENOENT') {
-            // Log non-ENOENT errors
+            console.error('[TASK_UPDATE] Error updating spec.md:', specErr);
           }
         }
 

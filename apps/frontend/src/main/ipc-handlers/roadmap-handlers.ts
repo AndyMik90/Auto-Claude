@@ -35,24 +35,24 @@ function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
   const settingsPath = path.join(app.getPath("userData"), "settings.json");
 
   try {
-    if (existsSync(settingsPath)) {
-      const content = readFileSync(settingsPath, "utf-8");
-      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
+    const content = readFileSync(settingsPath, "utf-8");
+    const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
 
-      // Get roadmap-specific settings
-      const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
-      const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
+    // Get roadmap-specific settings
+    const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
+    const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
 
-      return {
-        model: featureModels.roadmap,
-        thinkingLevel: featureThinking.roadmap,
-      };
-    }
+    return {
+      model: featureModels.roadmap,
+      thinkingLevel: featureThinking.roadmap,
+    };
   } catch (error) {
-    debugError("[Roadmap Handler] Failed to read feature settings:", error);
+    // Return defaults if settings file doesn't exist (ENOENT) or fails to parse
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      debugError("[Roadmap Handler] Failed to read feature settings:", error);
+    }
   }
 
-  // Return defaults if settings file doesn't exist or fails to parse
   return {
     model: DEFAULT_FEATURE_MODELS.roadmap,
     thinkingLevel: DEFAULT_FEATURE_THINKING.roadmap,
@@ -677,7 +677,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
           is_running: isRunning,
         };
 
-        writeFileSync(progressPath, JSON.stringify(fileData, null, 2));
+        writeFileSync(progressPath, JSON.stringify(fileData, null, 2), 'utf-8');
         debugLog("[Roadmap Handler] Saved progress checkpoint:", { projectId, phase: progressData.phase });
 
         return { success: true };

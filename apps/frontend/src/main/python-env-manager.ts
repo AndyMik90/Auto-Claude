@@ -252,7 +252,7 @@ if sys.version_info >= (3, 12):
         stdio: 'pipe',
         timeout: 5000,
         encoding: 'utf-8'
-      }).toString().trim();
+      }).trim();
 
       console.log(`[PythonEnvManager] Found Python at: ${pythonPath}`);
       return pythonPath;
