@@ -15,6 +15,7 @@ This allows:
 """
 
 import asyncio
+import logging
 import os
 import re
 import shutil
@@ -29,6 +30,8 @@ from typing import TypedDict, TypeVar
 from core.gh_executable import get_gh_executable, invalidate_gh_cache
 from core.git_executable import get_git_executable, get_isolated_git_env, run_git
 from debug import debug_warning
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -1192,8 +1195,22 @@ class WorktreeManager:
         target = target_branch or self.base_branch
         pr_title = title or f"auto-claude: {spec_name}"
 
-        # Get PR body from spec.md if available
-        pr_body = self._extract_spec_summary(spec_name)
+        # Try AI-powered PR body from project's PR template, fall back to spec summary
+        pr_body: str | None = None
+        try:
+            diff_summary, commit_log = self._gather_pr_context(spec_name, target)
+            pr_body = self._try_ai_pr_body(
+                spec_name=spec_name,
+                target_branch=target,
+                branch_name=info.branch,
+                diff_summary=diff_summary,
+                commit_log=commit_log,
+            )
+        except Exception as e:
+            logger.warning(f"AI PR body generation encountered an error: {e}")
+
+        if not pr_body:
+            pr_body = self._extract_spec_summary(spec_name)
 
         # Find gh executable before attempting PR creation
         gh_executable = get_gh_executable()
@@ -1314,6 +1331,141 @@ class WorktreeManager:
                 success=False,
                 error="gh CLI not found. Install from https://cli.github.com/",
             )
+
+    def _gather_pr_context(
+        self, spec_name: str, target_branch: str
+    ) -> tuple[str, str]:
+        """
+        Gather diff summary and commit log for PR template filling.
+
+        Args:
+            spec_name: The spec folder name
+            target_branch: The target branch for the PR
+
+        Returns:
+            Tuple of (diff_summary, commit_log)
+        """
+        worktree_path = self.get_worktree_path(spec_name)
+        info = self.get_worktree_info(spec_name)
+        branch = info.branch if info else self.get_branch_name(spec_name)
+
+        # Get diff summary (stat + short diff)
+        diff_result = self._run_git(
+            ["diff", "--stat", f"{target_branch}...{branch}"],
+            cwd=worktree_path,
+            timeout=30,
+        )
+        diff_summary = diff_result.stdout.strip() if diff_result.returncode == 0 else ""
+
+        # Also get a condensed patch for more context
+        patch_result = self._run_git(
+            ["diff", "--shortstat", f"{target_branch}...{branch}"],
+            cwd=worktree_path,
+            timeout=30,
+        )
+        if patch_result.returncode == 0 and patch_result.stdout.strip():
+            diff_summary += "\n\n" + patch_result.stdout.strip()
+
+        # Get commit log
+        log_result = self._run_git(
+            [
+                "log",
+                "--oneline",
+                "--no-merges",
+                f"{target_branch}..{branch}",
+            ],
+            cwd=worktree_path,
+            timeout=30,
+        )
+        commit_log = log_result.stdout.strip() if log_result.returncode == 0 else ""
+
+        return diff_summary, commit_log
+
+    def _try_ai_pr_body(
+        self,
+        spec_name: str,
+        target_branch: str,
+        branch_name: str,
+        diff_summary: str,
+        commit_log: str,
+    ) -> str | None:
+        """
+        Attempt to generate a PR body using the AI template filler agent.
+
+        Runs the async agent synchronously with a 30-second timeout.
+        Returns None on any failure so the caller can fall back gracefully.
+
+        Args:
+            spec_name: The spec folder name
+            target_branch: The target branch for the PR
+            branch_name: The source branch name
+            diff_summary: Git diff summary of changes
+            commit_log: Git log of commits
+
+        Returns:
+            The AI-generated PR body string, or None if unavailable.
+        """
+        try:
+            from agents.pr_template_filler import detect_pr_template, run_pr_template_filler
+        except ImportError:
+            logger.warning("PR template filler module not available, skipping AI PR body")
+            return None
+
+        # Check if a PR template exists before doing any heavy lifting
+        template = detect_pr_template(self.project_dir)
+        if template is None:
+            return None
+
+        # Resolve spec directory
+        spec_dir = self.project_dir / ".auto-claude" / "specs" / spec_name
+        if not spec_dir.is_dir():
+            # Try worktree-local spec path
+            worktree_path = self.get_worktree_path(spec_name)
+            spec_dir = worktree_path / ".auto-claude" / "specs" / spec_name
+            if not spec_dir.is_dir():
+                logger.warning("Spec directory not found for AI PR body generation")
+                return None
+
+        async def _run_with_timeout() -> str | None:
+            try:
+                return await asyncio.wait_for(
+                    run_pr_template_filler(
+                        project_dir=self.project_dir,
+                        spec_dir=spec_dir,
+                        model="sonnet",
+                        thinking_budget=None,
+                        branch_name=branch_name,
+                        target_branch=target_branch,
+                        diff_summary=diff_summary,
+                        commit_log=commit_log,
+                        verbose=False,
+                    ),
+                    timeout=30.0,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("PR template filler timed out after 30s")
+                return None
+
+        try:
+            # Check if there's already a running event loop
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                # We're already inside an async context — run in a new thread
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(asyncio.run, _run_with_timeout())
+                    return future.result(timeout=35)
+            else:
+                return asyncio.run(_run_with_timeout())
+
+        except Exception as e:
+            logger.warning(f"AI PR body generation failed: {e}")
+            return None
 
     def _extract_spec_summary(self, spec_name: str) -> str:
         """Extract a summary from spec.md for PR body."""
