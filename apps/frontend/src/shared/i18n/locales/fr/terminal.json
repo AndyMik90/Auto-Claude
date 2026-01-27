@@ -19,6 +19,10 @@
     "files": "Fichiers",
     "terminal": "Terminal"
   },
+  "resume": {
+    "pending": "Reprise disponible",
+    "pendingTooltip": "Cliquez pour reprendre la session Claude précédente"
+  },
   "auth": {
     "terminalTitle": "Auth : {{profileName}}",
     "maxTerminalsReached": "Impossible d'ouvrir le terminal d'auth : nombre maximum de terminaux atteint. Fermez d'abord un terminal."

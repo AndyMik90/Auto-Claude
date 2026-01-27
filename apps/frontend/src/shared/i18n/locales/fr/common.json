@@ -95,9 +95,22 @@
     "discard": "Abandonner",
     "switch": "Changer",
     "add": "Ajouter",
+    "apply": "Appliquer",
     "gotIt": "Compris",
     "continue": "Continuer",
     "saving": "Enregistrement..."
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "apply": "Appliquer",
+    "delete": "Supprimer",
+    "settings": "Paramètres"
+  },
+  "os": {
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+    "unknown": "Inconnu"
   },
   "labels": {
     "loading": "Chargement...",

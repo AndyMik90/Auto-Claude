@@ -25,6 +25,7 @@ import type {
   McpHealthCheckResult,
   McpTestConnectionResult
 } from './project';
+import type { ScreenshotSource } from './screenshot';
 import type {
   Task,
   TaskStatus,
@@ -168,6 +169,9 @@ export interface ElectronAPI {
   updateTaskStatus: (taskId: string, status: TaskStatus, options?: { forceCleanup?: boolean }) => Promise<IPCResult & { worktreeExists?: boolean; worktreePath?: string }>;
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
+
+  // Image operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
 
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
@@ -744,6 +748,9 @@ export interface ElectronAPI {
   onInsightsError: (
     callback: (projectId: string, error: string) => void
   ) => () => void;
+  onInsightsSessionUpdated: (
+    callback: (projectId: string, session: InsightsSession) => void
+  ) => () => void;
 
   // Task logs operations
   getTaskLogs: (projectId: string, specId: string) => Promise<IPCResult<TaskLogs | null>>;
@@ -854,11 +861,7 @@ export interface ElectronAPI {
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
 
   // Screenshot capture operations
-  getSources: () => Promise<IPCResult<Array<{
-    id: string;
-    name: string;
-    thumbnail: string;
-  }>>>;
+  getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
 
   // Queue Routing API (rate limit recovery)
