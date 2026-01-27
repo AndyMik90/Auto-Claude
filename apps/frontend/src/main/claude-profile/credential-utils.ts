@@ -804,23 +804,19 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
 
       # Use CredRead from advapi32.dll to read generic credentials
       $sig = @'
-      using System;
-      using System.Runtime.InteropServices;
-      using System.Runtime.InteropServices.ComTypes;
-
-      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
 
-      [DllImport("advapi32.dll", SetLastError = true)]
+      [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
       public static extern bool CredFree(IntPtr cred);
 
-      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public struct CREDENTIAL {
         public int Flags;
         public int Type;
         public string TargetName;
         public string Comment;
-        public FILETIME LastWritten;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
         public int CredentialBlobSize;
         public IntPtr CredentialBlob;
         public int Persist;
@@ -1381,23 +1377,19 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
       # Use CredRead from advapi32.dll to read generic credentials
       $sig = @'
-      using System;
-      using System.Runtime.InteropServices;
-      using System.Runtime.InteropServices.ComTypes;
-
-      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
 
-      [DllImport("advapi32.dll", SetLastError = true)]
+      [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
       public static extern bool CredFree(IntPtr cred);
 
-      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public struct CREDENTIAL {
         public int Flags;
         public int Type;
         public string TargetName;
         public string Comment;
-        public FILETIME LastWritten;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
         public int CredentialBlobSize;
         public IntPtr CredentialBlob;
         public int Persist;
@@ -1914,7 +1906,7 @@ function updateWindowsCredentialManagerCredentials(
 
       # Use CredWrite from advapi32.dll to write generic credentials
       $sig = @'
-      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public struct CREDENTIAL {
         public int Flags;
         public int Type;
@@ -1930,7 +1922,7 @@ function updateWindowsCredentialManagerCredentials(
         public string UserName;
       }
 
-      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+      [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
       public static extern bool CredWrite(ref CREDENTIAL credential, int flags);
 '@
       Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
