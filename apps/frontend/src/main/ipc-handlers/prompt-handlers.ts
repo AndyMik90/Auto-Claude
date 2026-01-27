@@ -2,16 +2,7 @@ import { ipcMain, app } from 'electron';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { IPCResult } from '../../shared/types';
-
-/**
- * Prompt information returned by the list handler
- */
-export interface PromptInfo {
-  name: string;
-  filename: string;
-  description: string;
-}
+import type { IPCResult, PromptInfo } from '../../shared/types';
 
 /**
  * Context-specific prompt configurations

@@ -1,21 +1,15 @@
 import { IPC_CHANNELS } from '../../../shared/constants';
 import { invokeIpc } from './ipc-utils';
-import type { IPCResult } from '../../../shared/types';
+import type { IPCResult, PromptInfo, PromptContext } from '../../../shared/types';
 
-/**
- * Prompt information returned by the list handler
- */
-export interface PromptInfo {
-  name: string;
-  filename: string;
-  description: string;
-}
+// Re-export for consumers of this module
+export type { PromptInfo, PromptContext };
 
 /**
  * Prompt Operations API
  */
 export interface PromptAPI {
-  getPromptList: (context: string) => Promise<IPCResult<PromptInfo[]>>;
+  getPromptList: (context: PromptContext) => Promise<IPCResult<PromptInfo[]>>;
   readPrompt: (filename: string) => Promise<IPCResult<string>>;
 }
 

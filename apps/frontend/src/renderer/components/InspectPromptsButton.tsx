@@ -4,8 +4,10 @@ import { FileText } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { PromptInspectionModal } from './PromptInspectionModal';
+import type { PromptContext } from '../../shared/types';
 
-export type PromptContext = 'roadmap' | 'kanban';
+// Re-export for consumers
+export type { PromptContext };
 
 export interface InspectPromptsButtonProps {
   /** The context determines which prompts are shown */

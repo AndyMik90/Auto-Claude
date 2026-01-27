@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -12,13 +12,7 @@ import { Button } from './ui/button';
 import { useToast } from '../hooks/use-toast';
 import { Loader2, Copy, Check, AlertCircle, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { PromptContext } from './InspectPromptsButton';
-
-interface PromptInfo {
-  name: string;
-  filename: string;
-  description: string;
-}
+import type { PromptContext, PromptInfo } from '../../shared/types';
 
 export interface PromptInspectionModalProps {
   /** The context determines which prompts are shown */
@@ -55,9 +49,27 @@ export function PromptInspectionModal({
   // State for copy button
   const [hasCopied, setHasCopied] = useState(false);
 
-  // Load prompt list when modal opens
+  // Refs for preventing race conditions and cleanup
+  const currentRequestRef = useRef<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Load prompt list when modal opens or context changes
   useEffect(() => {
     if (open) {
+      // Reset state before loading new list to prevent stale data
+      setSelectedPrompt(null);
+      setPromptContent('');
+      setContentError(null);
+      setHasCopied(false);
       loadPromptList();
     } else {
       // Reset state when modal closes
@@ -91,35 +103,50 @@ export function PromptInspectionModal({
     }
   }, [context, t]);
 
-  // Load prompt content when selected prompt changes
-  useEffect(() => {
-    if (selectedPrompt) {
-      loadPromptContent(selectedPrompt.filename);
-    }
-  }, [selectedPrompt]);
-
-  // Load prompt content from IPC
-  const loadPromptContent = async (filename: string) => {
+  // Load prompt content from IPC with race condition protection
+  const loadPromptContent = useCallback(async (filename: string) => {
+    // Track current request to prevent stale responses from overwriting
+    currentRequestRef.current = filename;
     setIsLoadingContent(true);
     setContentError(null);
     setPromptContent('');
 
     try {
       const result = await window.electronAPI.readPrompt(filename);
+
+      // Only update state if this is still the current request
+      if (currentRequestRef.current !== filename) {
+        return; // Stale request, ignore response
+      }
+
       if (result.success && result.data) {
         setPromptContent(result.data);
       } else {
         setContentError(result.error || t('promptInspection.contentError', { defaultValue: 'Failed to load prompt content' }));
       }
     } catch (error) {
+      // Only update state if this is still the current request
+      if (currentRequestRef.current !== filename) {
+        return; // Stale request, ignore response
+      }
       setContentError(error instanceof Error ? error.message : t('promptInspection.contentError', { defaultValue: 'Failed to load prompt content' }));
     } finally {
-      setIsLoadingContent(false);
+      // Only update loading state if this is still the current request
+      if (currentRequestRef.current === filename) {
+        setIsLoadingContent(false);
+      }
     }
-  };
+  }, [t]);
+
+  // Load prompt content when selected prompt changes
+  useEffect(() => {
+    if (selectedPrompt) {
+      loadPromptContent(selectedPrompt.filename);
+    }
+  }, [selectedPrompt, loadPromptContent]);
 
   // Copy prompt content to clipboard
-  const handleCopyToClipboard = async () => {
+  const handleCopyToClipboard = useCallback(async () => {
     if (!promptContent) return;
 
     try {
@@ -131,9 +158,15 @@ export function PromptInspectionModal({
         duration: 2000,
       });
 
+      // Clear any existing timeout
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+
       // Reset copy state after 2 seconds
-      setTimeout(() => {
+      copyTimeoutRef.current = setTimeout(() => {
         setHasCopied(false);
+        copyTimeoutRef.current = null;
       }, 2000);
     } catch (error) {
       toast({
@@ -143,7 +176,7 @@ export function PromptInspectionModal({
         duration: 3000,
       });
     }
-  };
+  }, [promptContent, toast, t]);
 
   // Get context-specific title
   const getContextTitle = () => {
