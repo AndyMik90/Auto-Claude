@@ -159,6 +159,7 @@ playwright/.cache/
 *.bak
 *.tmp
 *.temp
+tmpclaude-*-cwd
 
 # Development
 dev/

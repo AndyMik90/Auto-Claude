@@ -461,11 +461,11 @@ export function handleRateLimit(
  * Handle OAuth token detection and auto-save
  * Also handles "Login successful" detection for claude /login flow
  */
-export function handleOAuthToken(
+export async function handleOAuthToken(
   terminal: TerminalProcess,
   data: string,
   getWindow: WindowGetter
-): void {
+): Promise<void> {
   // Extract profile ID from auth terminal ID pattern (if this is an auth terminal)
   const profileId = extractProfileIdFromAuthTerminalId(terminal.id);
 
@@ -549,7 +549,7 @@ export function handleOAuthToken(
     } else {
       // Token not in Keychain yet, but profile may still be authenticated via configDir
       // Check if profile has valid auth (credentials exist in configDir)
-      const hasCredentials = profileManager.hasValidAuth(profileId);
+      const hasCredentials = await profileManager.hasValidAuth(profileId);
 
       if (hasCredentials) {
         console.warn('[ClaudeIntegration] Profile credentials verified (no Keychain token):', profileId);
