@@ -898,6 +898,10 @@
         "name": "Puppeteer",
         "description": "テスト用 Web ブラウザ自動化"
       },
+      "aws": {
+        "name": "AWS",
+        "description": "AWS CLI で S3、EC2、CloudWatch にアクセス"
+      },
       "autoClaude": {
         "name": "Auto-Claude ツール",
         "description": "ビルド進捗追跡"

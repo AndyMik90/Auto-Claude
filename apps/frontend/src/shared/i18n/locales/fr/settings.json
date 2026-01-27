@@ -1013,6 +1013,10 @@
         "name": "Puppeteer",
         "description": "Automatisation du navigateur web pour les tests"
       },
+      "aws": {
+        "name": "AWS",
+        "description": "Accès S3, EC2, CloudWatch via AWS CLI"
+      },
       "autoClaude": {
         "name": "Outils Auto-Claude",
         "description": "Suivi de la progression du build"

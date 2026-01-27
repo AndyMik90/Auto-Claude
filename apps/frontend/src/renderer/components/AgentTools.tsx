@@ -414,6 +414,7 @@ function AgentCard({ id, agentId, config, modelLabel, thinkingLabel, overrides, 
         case 'linear': return mcpServerStates.linearMcpEnabled !== false;
         case 'electron': return mcpServerStates.electronEnabled !== false;
         case 'puppeteer': return mcpServerStates.puppeteerEnabled !== false;
+        case 'aws': return mcpServerStates.awsEnabled === true;
         default: return true;
       }
     });
@@ -990,6 +991,7 @@ export function AgentTools() {
     mcpServers.linearMcpEnabled !== false && envConfig?.linearEnabled,
     mcpServers.electronEnabled,
     mcpServers.puppeteerEnabled,
+    mcpServers.awsEnabled,
     true, // auto-claude always enabled
   ].filter(Boolean).length;
 
@@ -1172,7 +1174,7 @@ export function AgentTools() {
                   </div>
 
                   {/* Puppeteer */}
-                  <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <div className="flex items-center gap-3">
                       <Globe className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -1183,6 +1185,21 @@ export function AgentTools() {
                     <Switch
                       checked={mcpServers.puppeteerEnabled === true}
                       onCheckedChange={(checked) => updateMcpServer('puppeteerEnabled', checked)}
+                    />
+                  </div>
+
+                  {/* AWS */}
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-3">
+                      <Cloud className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-sm font-medium">{t('settings:mcp.servers.aws.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.aws.description')}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={mcpServers.awsEnabled === true}
+                      onCheckedChange={(checked) => updateMcpServer('awsEnabled', checked)}
                     />
                   </div>
                 </div>
