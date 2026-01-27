@@ -804,11 +804,31 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
 
       # Use CredRead from advapi32.dll to read generic credentials
       $sig = @'
+      using System;
+      using System.Runtime.InteropServices;
+      using System.Runtime.InteropServices.ComTypes;
+
       [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
       public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
 
       [DllImport("advapi32.dll", SetLastError = true)]
       public static extern bool CredFree(IntPtr cred);
+
+      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      public struct CREDENTIAL {
+        public int Flags;
+        public int Type;
+        public string TargetName;
+        public string Comment;
+        public FILETIME LastWritten;
+        public int CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public int Persist;
+        public int AttributeCount;
+        public IntPtr Attributes;
+        public string TargetAlias;
+        public string UserName;
+      }
 '@
       Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
 
@@ -818,7 +838,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
 
       if ($success) {
         try {
-          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][System.Management.Automation.PSCredential].Assembly.GetType('Microsoft.PowerShell.Commands.CREDENTIAL'))
+          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][Win32.CREDENTIAL])
 
           # Read the credential blob (password field)
           $blobSize = $cred.CredentialBlobSize
@@ -1361,11 +1381,31 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
       # Use CredRead from advapi32.dll to read generic credentials
       $sig = @'
+      using System;
+      using System.Runtime.InteropServices;
+      using System.Runtime.InteropServices.ComTypes;
+
       [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
       public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
 
       [DllImport("advapi32.dll", SetLastError = true)]
       public static extern bool CredFree(IntPtr cred);
+
+      [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+      public struct CREDENTIAL {
+        public int Flags;
+        public int Type;
+        public string TargetName;
+        public string Comment;
+        public FILETIME LastWritten;
+        public int CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public int Persist;
+        public int AttributeCount;
+        public IntPtr Attributes;
+        public string TargetAlias;
+        public string UserName;
+      }
 '@
       Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
 
@@ -1375,7 +1415,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
       if ($success) {
         try {
-          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][System.Management.Automation.PSCredential].Assembly.GetType('Microsoft.PowerShell.Commands.CREDENTIAL'))
+          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][Win32.CREDENTIAL])
 
           # Read the credential blob (password field)
           $blobSize = $cred.CredentialBlobSize
