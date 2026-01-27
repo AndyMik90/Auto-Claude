@@ -1061,12 +1061,23 @@ class WorktreeManager:
             if self._branch_exists(target_branch):
                 # Move the branch ref to current commit and switch to it
                 current_commit = self._run_git(["rev-parse", "HEAD"], cwd=info.path)
-                if current_commit.returncode == 0:
-                    commit_sha = current_commit.stdout.strip()
-                    # Update the branch to point to current commit
-                    self._run_git(
-                        ["branch", "-f", target_branch, commit_sha],
-                        cwd=info.path,
+                if current_commit.returncode != 0:
+                    return PushBranchResult(
+                        success=False,
+                        branch=target_branch,
+                        error=f"Failed to resolve HEAD commit: {current_commit.stderr}",
+                    )
+                commit_sha = current_commit.stdout.strip()
+                # Update the branch to point to current commit
+                branch_update = self._run_git(
+                    ["branch", "-f", target_branch, commit_sha],
+                    cwd=info.path,
+                )
+                if branch_update.returncode != 0:
+                    return PushBranchResult(
+                        success=False,
+                        branch=target_branch,
+                        error=f"Failed to update branch '{target_branch}' to commit {commit_sha}: {branch_update.stderr}",
                     )
                 # Switch to the branch
                 switch_result = self._run_git(
