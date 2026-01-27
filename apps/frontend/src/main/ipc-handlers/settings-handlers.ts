@@ -280,6 +280,48 @@ export function registerSettingsHandlers(
     }
   );
 
+  /**
+   * Read ~/.claude.json to check if Claude Code onboarding is complete.
+   * This allows Auto-Claude to respect Claude Code's onboarding status and
+   * avoid showing the onboarding wizard to users who have already completed it.
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS,
+    async (): Promise<IPCResult<{ hasCompletedOnboarding: boolean }>> => {
+      try {
+        const homeDir = app.getPath('home');
+        const claudeJsonPath = path.join(homeDir, '.claude.json');
+
+        // If file doesn't exist, user hasn't completed Claude Code onboarding
+        if (!existsSync(claudeJsonPath)) {
+          return {
+            success: true,
+            data: { hasCompletedOnboarding: false }
+          };
+        }
+
+        const content = readFileSync(claudeJsonPath, 'utf-8');
+        const claudeConfig = JSON.parse(content);
+
+        // Check for hasCompletedOnboarding field
+        const hasCompletedOnboarding = claudeConfig.hasCompletedOnboarding === true;
+
+        return {
+          success: true,
+          data: { hasCompletedOnboarding }
+        };
+      } catch (error) {
+        // On error (parse error, read error, etc.), log and return false
+        // This ensures we don't block onboarding due to corrupted .claude.json
+        console.warn('[SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS] Error reading ~/.claude.json:', error);
+        return {
+          success: true,
+          data: { hasCompletedOnboarding: false }
+        };
+      }
+    }
+  );
+
   // ============================================
   // Dialog Operations
   // ============================================

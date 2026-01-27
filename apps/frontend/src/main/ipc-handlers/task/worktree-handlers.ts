@@ -5,10 +5,11 @@ import path from 'path';
 import { minimatch } from 'minimatch';
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { execSync, execFileSync, spawn, spawnSync, exec, execFile } from 'child_process';
+import { homedir } from 'os';
 import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
-import { getProfileEnv } from '../../rate-limit-detector';
+import { getBestAvailableProfileEnv } from '../../rate-limit-detector';
 import { findTaskAndProject } from './shared';
 import { parsePythonCommand } from '../../python-detector';
 import { getToolPath } from '../../cli-tool-manager';
@@ -18,8 +19,9 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
+import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -951,7 +953,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
   const desktopDirs = [
     '/usr/share/applications',
     '/usr/local/share/applications',
-    `${process.env.HOME}/.local/share/applications`,
+    `${homedir()}/.local/share/applications`,
     '/var/lib/flatpak/exports/share/applications',
     '/var/lib/snapd/desktop/applications'
   ];
@@ -1021,7 +1023,7 @@ function isAppInstalled(
   for (const checkPath of specificPaths) {
     const expandedPath = checkPath
       .replace('%USERNAME%', process.env.USERNAME || process.env.USER || '')
-      .replace('~', process.env.HOME || '');
+      .replace('~', homedir());
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {
@@ -1962,7 +1964,8 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token for AI merge resolution
-        const profileEnv = getProfileEnv();
+        const profileResult = getBestAvailableProfileEnv();
+        const profileEnv = profileResult.env;
         debug('Profile env for merge:', {
           hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
           hasConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR
@@ -2326,7 +2329,9 @@ export function registerWorktreeHandlers(
                 success: true,
                 data: {
                   success: false,
-                  message: hasConflicts ? 'Merge conflicts detected' : `Merge failed: ${stderr || stdout}`,
+                  message: hasConflicts
+                    ? 'Merge conflicts detected'
+                    : `Merge failed: ${stripAnsiCodes(stderr || stdout)}`,
                   conflictFiles: hasConflicts ? [] : undefined
                 }
               });
@@ -2401,6 +2406,8 @@ export function registerWorktreeHandlers(
         let uncommittedFiles: string[] = [];
         if (isGitWorkTree(project.path)) {
           try {
+            refreshGitIndex(project.path);
+
             const gitStatus = execFileSync(getToolPath('git'), ['status', '--porcelain'], {
               cwd: project.path,
               encoding: 'utf-8'
@@ -2412,7 +2419,8 @@ export function registerWorktreeHandlers(
               uncommittedFiles = gitStatus
                 .split('\n')
                 .filter(line => line.trim())
-                .map(line => line.substring(3).trim()); // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .map(line => line.substring(3).trim()) // Skip 2 status chars + 1 space, trim any trailing whitespace
+                .filter(file => file); // Remove empty strings from short/malformed status lines
 
               hasUncommittedChanges = uncommittedFiles.length > 0;
             }
@@ -2457,7 +2465,8 @@ export function registerWorktreeHandlers(
         console.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
 
         // Get profile environment for consistency
-        const previewProfileEnv = getProfileEnv();
+        const previewProfileResult = getBestAvailableProfileEnv();
+        const previewProfileEnv = previewProfileResult.env;
         // Get Python environment for bundled packages
         const previewPythonEnv = pythonEnvManagerSingleton.getPythonEnv();
 
@@ -2522,7 +2531,7 @@ export function registerWorktreeHandlers(
                 console.error('[IPC] stderr:', stderr);
                 resolve({
                   success: false,
-                  error: `Failed to parse preview result: ${stderr || stdout}`
+                  error: `Failed to parse preview result: ${stripAnsiCodes(stderr || stdout)}`
                 });
               }
             } else {
@@ -2531,7 +2540,7 @@ export function registerWorktreeHandlers(
               console.error('[IPC] stdout:', stdout);
               resolve({
                 success: false,
-                error: `Preview failed: ${stderr || stdout}`
+                error: `Preview failed: ${stripAnsiCodes(stderr || stdout)}`
               });
             }
           });
@@ -2582,25 +2591,37 @@ export function registerWorktreeHandlers(
 
         try {
           // Get the branch name before removing
-          const branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
+          // Use shared utility to validate detected branch matches expected pattern
+          // This prevents deleting wrong branch when worktree is corrupted/orphaned
+          const { branch, usingFallback } = detectWorktreeBranch(
+            worktreePath,
+            task.specId,
+            { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
+          );
 
           // Remove the worktree
           execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
             cwd: project.path,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv(),
+            timeout: 30000
           });
 
           // Delete the branch
           try {
             execFileSync(getToolPath('git'), ['branch', '-D', branch], {
               cwd: project.path,
-              encoding: 'utf-8'
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
             });
-          } catch {
+          } catch (branchDeleteError) {
             // Branch might already be deleted or not exist
+            if (usingFallback) {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+            } else {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`, branchDeleteError);
+            }
           }
 
           // Only send status change to backlog if not skipped
@@ -2977,7 +2998,8 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token
-        const profileEnv = getProfileEnv();
+        const profileResult = getBestAvailableProfileEnv();
+        const profileEnv = profileResult.env;
 
         return new Promise((resolve) => {
           let timeoutId: NodeJS.Timeout | null = null;
@@ -3110,7 +3132,7 @@ export function registerWorktreeHandlers(
                 // Prefer stdout over stderr since stderr often contains debug messages
                 resolve({
                   success: false,
-                  error: stdout || stderr || 'Failed to create PR'
+                  error: stripAnsiCodes(stdout || stderr || 'Failed to create PR')
                 });
               }
             }
