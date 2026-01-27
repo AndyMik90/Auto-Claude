@@ -51,8 +51,8 @@ def print_result(success: bool, message: str) -> None:
     print(f"  {status}: {message}")
 
 
-def test_glab_detection() -> bool:
-    """Test 1: Verify glab CLI detection."""
+def _check_glab_detection() -> bool:
+    """Helper: Verify glab CLI detection."""
     print_test("Detect glab CLI installation")
 
     glab_path = get_glab_executable()
@@ -148,8 +148,8 @@ def create_test_git_repo(repo_path: Path, remote_url: str) -> bool:
         return False
 
 
-def test_provider_detection_gitlab_cloud() -> bool:
-    """Test 2: Provider detection for various URL patterns."""
+def _check_provider_detection() -> bool:
+    """Helper: Provider detection for various URL patterns."""
     print_test("Detect provider from various remote URL patterns")
 
     test_cases = [
@@ -184,8 +184,8 @@ def test_provider_detection_gitlab_cloud() -> bool:
     return all_passed
 
 
-def test_worktree_manager_method_signatures() -> bool:
-    """Test 3: WorktreeManager has correct method signatures."""
+def _check_method_signatures() -> bool:
+    """Helper: WorktreeManager has correct method signatures."""
     print_test("Verify WorktreeManager method signatures")
 
     try:
@@ -223,8 +223,8 @@ def test_worktree_manager_method_signatures() -> bool:
         return False
 
 
-def test_error_message_missing_glab() -> bool:
-    """Test 4: Error message when glab is not installed."""
+def _check_error_message_missing_glab() -> bool:
+    """Helper: Error message when glab is not installed."""
     print_test("Error handling for missing glab CLI")
 
     try:
@@ -252,8 +252,8 @@ def test_error_message_missing_glab() -> bool:
         return False
 
 
-def test_worktree_integration() -> bool:
-    """Test 5: Integration test with WorktreeManager."""
+def _check_worktree_integration() -> bool:
+    """Helper: Integration test with WorktreeManager."""
     print_test("WorktreeManager integration with GitLab remote")
 
     try:
@@ -287,6 +287,36 @@ def test_worktree_integration() -> bool:
         return False
 
 
+# =============================================================================
+# Pytest Test Functions
+# =============================================================================
+
+
+def test_glab_detection():
+    """Pytest: Verify glab CLI detection."""
+    assert _check_glab_detection(), "glab CLI detection failed"
+
+
+def test_provider_detection():
+    """Pytest: Provider detection for various URL patterns."""
+    assert _check_provider_detection(), "Provider detection failed for one or more URL patterns"
+
+
+def test_worktree_manager_method_signatures():
+    """Pytest: WorktreeManager has correct method signatures."""
+    assert _check_method_signatures(), "WorktreeManager method signature check failed"
+
+
+def test_error_message_missing_glab():
+    """Pytest: Error message when glab is not installed."""
+    assert _check_error_message_missing_glab(), "Missing glab error message check failed"
+
+
+def test_worktree_integration():
+    """Pytest: Integration test with WorktreeManager."""
+    assert _check_worktree_integration(), "WorktreeManager integration test failed"
+
+
 def run_all_tests() -> int:
     """Run all end-to-end tests."""
     print_header("GitLab Support - End-to-End Testing")
@@ -303,11 +333,11 @@ def run_all_tests() -> int:
     # Run all tests
     print_header("Running Tests")
 
-    results["glab_detection"] = test_glab_detection()
-    results["provider_detection"] = test_provider_detection_gitlab_cloud()
-    results["method_signatures"] = test_worktree_manager_method_signatures()
-    results["missing_glab_error"] = test_error_message_missing_glab()
-    results["worktree_integration"] = test_worktree_integration()
+    results["glab_detection"] = _check_glab_detection()
+    results["provider_detection"] = _check_provider_detection()
+    results["method_signatures"] = _check_method_signatures()
+    results["missing_glab_error"] = _check_error_message_missing_glab()
+    results["worktree_integration"] = _check_worktree_integration()
 
     # Print summary
     print_header("Test Summary")
