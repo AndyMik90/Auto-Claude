@@ -133,6 +133,8 @@ def get_config(args) -> GitHubRunnerConfig:
 
     if not repo and gh_path:
         # Try to detect from git remote
+        # Convert Path to str for Windows compatibility with subprocess cwd
+        project_dir = str(args.project.resolve()) if args.project else None
         try:
             result = subprocess.run(
                 [
@@ -144,12 +146,14 @@ def get_config(args) -> GitHubRunnerConfig:
                     "-q",
                     ".nameWithOwner",
                 ],
-                cwd=args.project,
+                cwd=project_dir,
                 capture_output=True,
                 text=True,
             )
             if result.returncode == 0:
                 repo = result.stdout.strip()
+                if os.environ.get("DEBUG"):
+                    safe_print(f"[DEBUG] Detected repo from project dir: {repo} (cwd={project_dir})")
             elif os.environ.get("DEBUG"):
                 safe_print(f"[DEBUG] gh repo view failed: {result.stderr}")
         except FileNotFoundError:

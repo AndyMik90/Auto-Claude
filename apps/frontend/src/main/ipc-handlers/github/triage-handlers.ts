@@ -256,7 +256,15 @@ async function runTriage(
 
   debugLog('Spawning triage process', { args, model, thinkingLevel });
 
-  const subprocessEnv = await getRunnerEnv();
+  // Build environment with project-specific GITHUB_REPO
+  // This ensures multi-project support - each project uses its own repo
+  // @see https://12factor.net/config - Config should be per-deployment
+  const ghConfig = getGitHubConfig(project);
+  const projectEnv: Record<string, string> = {};
+  if (ghConfig?.repo) {
+    projectEnv.GITHUB_REPO = ghConfig.repo;
+  }
+  const subprocessEnv = await getRunnerEnv(projectEnv);
 
   const { promise } = runPythonSubprocess<TriageResult[]>({
     pythonPath: getPythonPath(backendPath),

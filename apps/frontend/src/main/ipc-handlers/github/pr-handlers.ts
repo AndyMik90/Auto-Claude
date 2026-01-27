@@ -1156,7 +1156,16 @@ async function runPRReview(
   const logCollector = new PRLogCollector(project, prNumber, repo, false);
 
   // Build environment with project settings
-  const subprocessEnv = await getRunnerEnv(getClaudeMdEnv(project));
+  // Pass project-specific GITHUB_REPO to override backend's .env default
+  // This ensures multi-project support - each project uses its own repo
+  // @see https://12factor.net/config - Config should be per-deployment
+  const projectEnv: Record<string, string> = {
+    ...getClaudeMdEnv(project),
+  };
+  if (config?.repo) {
+    projectEnv.GITHUB_REPO = config.repo;
+  }
+  const subprocessEnv = await getRunnerEnv(projectEnv);
 
   const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
     pythonPath: getPythonPath(backendPath),
@@ -2528,7 +2537,14 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           const logCollector = new PRLogCollector(project, prNumber, repo, true);
 
           // Build environment with project settings
-          const followupEnv = await getRunnerEnv(getClaudeMdEnv(project));
+          // Pass project-specific GITHUB_REPO to override backend's .env default
+          const followupProjectEnv: Record<string, string> = {
+            ...getClaudeMdEnv(project),
+          };
+          if (config?.repo) {
+            followupProjectEnv.GITHUB_REPO = config.repo;
+          }
+          const followupEnv = await getRunnerEnv(followupProjectEnv);
 
           const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
             pythonPath: getPythonPath(backendPath),

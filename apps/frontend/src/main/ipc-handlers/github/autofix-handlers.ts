@@ -297,7 +297,16 @@ async function checkNewIssues(
 
   const backendPath = validation.backendPath!;
   const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'check-new');
-  const subprocessEnv = await getRunnerEnv();
+
+  // Build environment with project-specific GITHUB_REPO
+  // This ensures multi-project support - each project uses its own repo
+  // @see https://12factor.net/config - Config should be per-deployment
+  const ghConfig = getGitHubConfig(project);
+  const projectEnv: Record<string, string> = {};
+  if (ghConfig?.repo) {
+    projectEnv.GITHUB_REPO = ghConfig.repo;
+  }
+  const subprocessEnv = await getRunnerEnv(projectEnv);
 
   const { promise } = runPythonSubprocess<Array<{number: number}>>({
     pythonPath: getPythonPath(backendPath),
@@ -642,7 +651,16 @@ export function registerAutoFixHandlers(
           const backendPath = validation.backendPath!;
           const additionalArgs = issueNumbers && issueNumbers.length > 0 ? issueNumbers.map(n => n.toString()) : [];
           const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'batch-issues', additionalArgs);
-          const subprocessEnv = await getRunnerEnv();
+
+          // Build environment with project-specific GITHUB_REPO
+          // This ensures multi-project support - each project uses its own repo
+          // @see https://12factor.net/config - Config should be per-deployment
+          const batchGhConfig = getGitHubConfig(project);
+          const batchProjectEnv: Record<string, string> = {};
+          if (batchGhConfig?.repo) {
+            batchProjectEnv.GITHUB_REPO = batchGhConfig.repo;
+          }
+          const subprocessEnv = await getRunnerEnv(batchProjectEnv);
 
           debugLog('Spawning batch process', { args });
 
@@ -766,7 +784,16 @@ export function registerAutoFixHandlers(
           }
 
           const args = buildRunnerArgs(getRunnerPath(backendPath), project.path, 'analyze-preview', additionalArgs);
-          const subprocessEnv = await getRunnerEnv();
+
+          // Build environment with project-specific GITHUB_REPO
+          // This ensures multi-project support - each project uses its own repo
+          // @see https://12factor.net/config - Config should be per-deployment
+          const analyzeGhConfig = getGitHubConfig(project);
+          const analyzeProjectEnv: Record<string, string> = {};
+          if (analyzeGhConfig?.repo) {
+            analyzeProjectEnv.GITHUB_REPO = analyzeGhConfig.repo;
+          }
+          const subprocessEnv = await getRunnerEnv(analyzeProjectEnv);
           debugLog('Spawning analyze-preview process', { args });
 
           const { promise } = runPythonSubprocess<AnalyzePreviewResult>({
