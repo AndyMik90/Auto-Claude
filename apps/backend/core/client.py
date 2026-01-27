@@ -310,9 +310,44 @@ def _validate_custom_mcp_server(server: dict) -> bool:
     return True
 
 
+def _get_original_project_dir(project_dir: Path) -> Path:
+    """
+    Get the original project directory, resolving worktree paths.
+
+    When running in a worktree (e.g., .auto-claude/worktrees/tasks/spec-name/),
+    this returns the parent project directory. Otherwise returns project_dir unchanged.
+
+    Args:
+        project_dir: Current project directory (may be a worktree path)
+
+    Returns:
+        Original project directory Path
+    """
+    resolved = project_dir.resolve()
+    project_path_posix = str(resolved).replace("\\", "/")
+
+    # Worktree location markers - check if we're inside one
+    worktree_markers = [
+        "/.auto-claude/worktrees/tasks/",  # Spec/task worktrees
+        "/.auto-claude/github/pr/worktrees/",  # PR review worktrees
+        "/.worktrees/",  # Legacy worktree location
+    ]
+
+    for marker in worktree_markers:
+        if marker in project_path_posix:
+            # Extract the original project directory (parent of worktree location)
+            original_project_str = project_path_posix.rsplit(marker, 1)[0]
+            return Path(original_project_str)
+
+    return project_dir
+
+
 def load_project_mcp_config(project_dir: Path) -> dict:
     """
     Load MCP configuration from project's .auto-claude/.env file.
+
+    If project_dir is a worktree, loads from the original project directory
+    to ensure consistent MCP settings across all worktrees.
 
     Returns a dict of MCP-related env vars:
     - CONTEXT7_ENABLED (default: true)
@@ -330,7 +365,10 @@ def load_project_mcp_config(project_dir: Path) -> dict:
     Returns:
         Dict of MCP configuration values (string values, except CUSTOM_MCP_SERVERS which is parsed JSON)
     """
-    env_path = project_dir / ".auto-claude" / ".env"
+    # Resolve worktree paths to original project directory
+    # This ensures MCP config is always read from the main project
+    original_project_dir = _get_original_project_dir(project_dir)
+    env_path = original_project_dir / ".auto-claude" / ".env"
     if not env_path.exists():
         return {}
 
@@ -526,7 +564,13 @@ def create_client(
     project_index, project_capabilities = _get_cached_project_data(project_dir)
 
     # Load per-project MCP configuration from .auto-claude/.env
+    # This resolves worktree paths to the original project directory
     mcp_config = load_project_mcp_config(project_dir)
+
+    # Debug: Show AWS MCP configuration status
+    aws_enabled = mcp_config.get("AWS_MCP_ENABLED", "false")
+    if str(aws_enabled).lower() == "true":
+        print(f"   - AWS MCP: enabled (from project config)")
 
     # Get allowed tools using phase-aware configuration
     # This respects AGENT_CONFIGS and only includes tools the agent needs
