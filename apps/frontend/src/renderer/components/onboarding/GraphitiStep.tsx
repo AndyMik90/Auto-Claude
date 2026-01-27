@@ -249,11 +249,17 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
       });
 
       if (result?.success && result?.data) {
+        // During onboarding, "database not found" is expected - don't treat it as an error
+        const isDatabaseNotFound = result.data.database.message?.includes('Database not found');
+        const databaseSuccess = result.data.database.success || isDatabaseNotFound;
+
         setValidationStatus({
           database: {
             tested: true,
-            success: result.data.database.success,
-            message: result.data.database.message
+            success: databaseSuccess,
+            message: isDatabaseNotFound
+              ? 'Database will be created automatically'
+              : result.data.database.message
           },
           provider: {
             tested: true,
@@ -266,7 +272,8 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
 
         if (!result.data.ready) {
           const errors: string[] = [];
-          if (!result.data.database.success) {
+          // Only show database error if it's not just "not found" (which is expected during onboarding)
+          if (!result.data.database.success && !isDatabaseNotFound) {
             errors.push(`Database: ${result.data.database.message}`);
           }
           if (!result.data.llmProvider.success) {
