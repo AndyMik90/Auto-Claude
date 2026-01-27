@@ -12,10 +12,13 @@ The client factory now uses AGENT_CONFIGS from agents/tools_pkg/models.py as the
 single source of truth for phase-aware tool and MCP server configuration.
 """
 
+import atexit
 import copy
+import importlib
 import json
 import logging
 import os
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -25,6 +28,18 @@ from core.platform import (
     is_windows,
     validate_cli_path,
 )
+
+# Track whether the runtime patch is available for large system prompts
+# This enables large system prompts to be passed via temp file to avoid ARG_MAX limits
+_PATCH_AVAILABLE = False
+
+try:
+    importlib.import_module("scripts.patch_sdk_system_prompt")
+    _PATCH_AVAILABLE = True
+except ImportError:
+    # Patch module not available (e.g., during testing)
+    # Large prompts will fail fast when _temp_prompt_file is set
+    _PATCH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +52,12 @@ logger = logging.getLogger(__name__)
 _PROJECT_INDEX_CACHE: dict[str, tuple[dict[str, Any], dict[str, bool], float]] = {}
 _CACHE_TTL_SECONDS = 300  # 5 minute TTL
 _CACHE_LOCK = threading.Lock()  # Protects _PROJECT_INDEX_CACHE access
+
+# Lock for protecting CLAUDE_SYSTEM_PROMPT_FILE environment variable access
+# Prevents race conditions when multiple clients are created concurrently with large prompts
+# The lock must be held from when we set the env var until after the SDK client is created
+# (including the __init__ monkey-patch that reads and clears the env var)
+_PROMPT_FILE_LOCK = threading.Lock()
 
 
 def _get_cached_project_data(
@@ -437,9 +458,140 @@ def load_claude_md(project_dir: Path) -> str | None:
     if claude_md_path.exists():
         try:
             return claude_md_path.read_text(encoding="utf-8")
-        except Exception:
+        except OSError as e:
+            logger.warning(f"Failed to read CLAUDE.md from {claude_md_path}: {e}")
+            return None
+        except UnicodeDecodeError as e:
+            logger.warning(f"CLAUDE.md at {claude_md_path} has encoding issues: {e}")
             return None
     return None
+
+
+# Linux ARG_MAX limit is typically 128KB per single argument (MAX_ARG_STRLEN).
+# Use a safe threshold of 90KB to leave room for other command-line arguments.
+# See: https://github.com/AndyMik90/Auto-Claude/issues/384
+_SYSTEM_PROMPT_SIZE_THRESHOLD = 90 * 1024  # 90KB
+
+# Track temp files for cleanup on exit
+_system_prompt_temp_files: list[str] = []
+# Lock for thread-safe access to _system_prompt_temp_files
+_TEMP_FILES_LOCK = threading.Lock()
+
+
+def _cleanup_temp_files() -> None:
+    """Clean up temporary files created for system prompts.
+
+    This is called automatically on process exit via atexit.
+    Thread-safe: copies the list before iterating to avoid race conditions.
+    """
+    with _TEMP_FILES_LOCK:
+        files_to_clean = list(_system_prompt_temp_files)
+
+    cleaned = []
+    for temp_file_path in files_to_clean:
+        try:
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                logger.debug(f"Cleaned up temp file: {temp_file_path}")
+            cleaned.append(temp_file_path)
+        except Exception as e:
+            logger.warning(f"Failed to clean up temp file {temp_file_path}: {e}")
+
+    # Remove cleaned files from tracking list
+    if cleaned:
+        with _TEMP_FILES_LOCK:
+            for path in cleaned:
+                if path in _system_prompt_temp_files:
+                    _system_prompt_temp_files.remove(path)
+
+
+# Register cleanup handler to run on process exit
+atexit.register(_cleanup_temp_files)
+
+
+def _prepare_system_prompt(
+    project_dir: Path,
+) -> tuple[str, str | None]:
+    """
+    Build and prepare the system prompt, handling large prompts via temp file.
+
+    On Linux, there's a kernel limit (MAX_ARG_STRLEN) of ~128KB for single
+    command-line arguments. When CLAUDE.md is large, the combined system prompt
+    can exceed this limit, causing errno 7 (E2BIG - "Argument list too long").
+
+    This function detects when the prompt would exceed a safe threshold and
+    writes it to a temporary file. The file path is passed via environment
+    variable (CLAUDE_SYSTEM_PROMPT_FILE) since the CLI does not support
+    @filepath syntax for --system-prompt.
+
+    Note: This is a workaround until the SDK/CLI supports --system-prompt-file
+    or system_prompt_file option. See: https://github.com/anthropics/claude-code
+
+    Args:
+        project_dir: Root directory of the project
+
+    Returns:
+        Tuple of (system_prompt_value, temp_file_path)
+        - system_prompt_value: Empty string when using temp file, prompt content otherwise
+        - temp_file_path: Path to temp file if created, None otherwise
+    """
+    # Build base prompt
+    base_prompt = (
+        f"You are an expert full-stack developer building production-quality software. "
+        f"Your working directory is: {project_dir.resolve()}\n"
+        f"Your filesystem access is RESTRICTED to this directory only. "
+        f"Use relative paths (starting with ./) for all file operations. "
+        f"Never use absolute paths or try to access files outside your working directory.\n\n"
+        f"You follow existing code patterns, write clean maintainable code, and verify "
+        f"your work through thorough testing. You communicate progress through Git commits "
+        f"and build-progress.txt updates."
+    )
+
+    # Include CLAUDE.md if enabled and present
+    claude_md_content: str | None = None
+    if should_use_claude_md():
+        claude_md_content = load_claude_md(project_dir)
+        if claude_md_content:
+            base_prompt = f"{base_prompt}\n\n# Project Instructions (from CLAUDE.md)\n\n{claude_md_content}"
+
+    # Check if prompt exceeds safe threshold
+    prompt_size = len(base_prompt.encode("utf-8"))
+    if prompt_size > _SYSTEM_PROMPT_SIZE_THRESHOLD:
+        # Write to temp file - path will be passed via CLAUDE_SYSTEM_PROMPT_FILE env var
+        # Use delete=False to keep the file for the CLI subprocess to read
+        # File is tracked and cleaned up on exit via atexit handler
+        temp_file_path: str
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".txt",
+                delete=False,
+                encoding="utf-8",
+            ) as temp_file:
+                temp_file.write(base_prompt)
+                temp_file_path = temp_file.name
+        except OSError as e:
+            logger.error(f"Failed to create temp file for large system prompt: {e}")
+            raise RuntimeError(
+                f"Failed to write large system prompt ({prompt_size:,} bytes) to temp file. "
+                f"Ensure temp directory is writable or reduce CLAUDE.md size."
+            ) from e
+
+        # Register for cleanup on exit (thread-safe)
+        with _TEMP_FILES_LOCK:
+            _system_prompt_temp_files.append(temp_file_path)
+
+        logger.info(
+            f"System prompt size ({prompt_size:,} bytes) exceeds threshold "
+            f"({_SYSTEM_PROMPT_SIZE_THRESHOLD:,} bytes). Using temp file: {temp_file_path}"
+        )
+
+        # Return empty string for system_prompt_value since we'll pass the file path
+        # via environment variable (CLAUDE_SYSTEM_PROMPT_FILE) in create_client()
+        return "", temp_file_path
+
+    # Prompt is small enough to pass directly
+    return base_prompt, None
 
 
 def create_client(
@@ -771,34 +923,14 @@ def create_client(
                 server_config["headers"] = custom["headers"]
             mcp_servers[server_id] = server_config
 
-    # Build system prompt
-    base_prompt = (
-        f"You are an expert full-stack developer building production-quality software. "
-        f"Your working directory is: {project_dir.resolve()}\n"
-        f"Your filesystem access is RESTRICTED to this directory only. "
-        f"Use relative paths (starting with ./) for all file operations. "
-        f"Never use absolute paths or try to access files outside your working directory.\n\n"
-        f"You follow existing code patterns, write clean maintainable code, and verify "
-        f"your work through thorough testing. You communicate progress through Git commits "
-        f"and build-progress.txt updates."
-    )
-
-    # Include CLAUDE.md if enabled and present
-    if should_use_claude_md():
-        claude_md_content = load_claude_md(project_dir)
-        if claude_md_content:
-            base_prompt = f"{base_prompt}\n\n# Project Instructions (from CLAUDE.md)\n\n{claude_md_content}"
-            print("   - CLAUDE.md: included in system prompt")
-        else:
-            print("   - CLAUDE.md: not found in project root")
-    else:
-        print("   - CLAUDE.md: disabled by project settings")
-    print()
+    # Build system prompt (handles large prompts via temp file to avoid errno 7)
+    # See: https://github.com/AndyMik90/Auto-Claude/issues/384
+    system_prompt_value, _temp_prompt_file = _prepare_system_prompt(project_dir)
 
     # Build options dict, conditionally including output_format
     options_kwargs: dict[str, Any] = {
         "model": model,
-        "system_prompt": base_prompt,
+        "system_prompt": system_prompt_value,
         "allowed_tools": allowed_tools_list,
         "mcp_servers": mcp_servers,
         "hooks": {
@@ -836,4 +968,39 @@ def create_client(
     if agents:
         options_kwargs["agents"] = agents
 
-    return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+    # Use lock to prevent race conditions when multiple clients are created concurrently
+    # The lock ensures the environment variable is set and the SDK client is created atomically
+    # The __init__ monkey-patch reads and clears the env var during client creation
+
+    # Fail fast if large prompt requires the patch but it's not available
+    if _temp_prompt_file and not _PATCH_AVAILABLE:
+        raise RuntimeError(
+            "Large system prompts require scripts.patch_sdk_system_prompt to be "
+            "importable. The patch module could not be imported. "
+            "Either enable the patch or reduce CLAUDE.md size below 90KB. "
+            "See: https://github.com/AndyMik90/Auto-Claude/issues/384"
+        )
+
+    with _PROMPT_FILE_LOCK:
+        # Log when using temp file for large prompt
+        if _temp_prompt_file:
+            # Pass temp file path via environment variable for the monkey-patch
+            # The monkey-patch in SubprocessCLITransport.__init__ reads this env var
+            # and stores it on the instance, then clears the env var immediately.
+            os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            # sdk_env is NOT used by the monkey-patch (it reads from os.environ)
+            # But we set it for documentation purposes and potential future use
+            sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
+            print("   - CLAUDE.md: large prompt (using temp file)")
+        print()
+
+        # Create SDK client while holding the lock
+        # The monkey-patch in __init__ will capture and clear the env var atomically
+        # Use try/finally to ensure env var is cleaned up even if client creation fails
+        try:
+            return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
+        finally:
+            # Clean up env var if client creation fails
+            # (normally cleared by patched_init, but this handles the exception path)
+            if _temp_prompt_file:
+                os.environ.pop("CLAUDE_SYSTEM_PROMPT_FILE", None)
