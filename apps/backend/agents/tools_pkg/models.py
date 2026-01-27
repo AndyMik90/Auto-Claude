@@ -467,6 +467,11 @@ def get_required_mcp_servers(
                 if str(puppeteer_enabled).lower() == "true":
                     servers.append("puppeteer")
 
+    # Add AWS MCP server if enabled by project config
+    aws_enabled = mcp_config.get("AWS_MCP_ENABLED", "false")
+    if str(aws_enabled).lower() == "true" and "aws" not in servers:
+        servers.append("aws")
+
     # Filter graphiti if not enabled
     if "graphiti" in servers:
         if not os.environ.get("GRAPHITI_MCP_URL"):
