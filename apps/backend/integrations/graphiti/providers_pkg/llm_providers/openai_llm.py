@@ -40,10 +40,15 @@ def create_openai_llm_client(config: "GraphitiConfig") -> Any:
             f"Error: {e}"
         )
 
-    llm_config = LLMConfig(
-        api_key=config.openai_api_key,
-        model=config.openai_model,
-    )
+    # Build LLM config with optional custom base URL
+    llm_config_kwargs = {
+        "api_key": config.openai_api_key,
+        "model": config.openai_model,
+    }
+    if config.openai_base_url:
+        llm_config_kwargs["base_url"] = config.openai_base_url
+
+    llm_config = LLMConfig(**llm_config_kwargs)
 
     # GPT-5 family and o1/o3 models support reasoning/verbosity params
     model_lower = config.openai_model.lower()

@@ -90,6 +90,7 @@ class LLMProvider(str, Enum):
     OLLAMA = "ollama"
     GOOGLE = "google"
     OPENROUTER = "openrouter"
+    ZAI = "zai"
 
 
 class EmbedderProvider(str, Enum):
@@ -121,6 +122,7 @@ class GraphitiConfig:
 
     # OpenAI settings
     openai_api_key: str = ""
+    openai_base_url: str = ""  # Custom base URL (e.g., for Z.AI, OpenRouter, etc.)
     openai_model: str = "gpt-5-mini"
     openai_embedding_model: str = "text-embedding-3-small"
 
@@ -149,6 +151,11 @@ class GraphitiConfig:
     openrouter_llm_model: str = "anthropic/claude-sonnet-4"
     openrouter_embedding_model: str = "openai/text-embedding-3-small"
 
+    # Z.AI settings (OpenAI-compatible)
+    zai_api_key: str = ""
+    zai_base_url: str = "https://api.z.ai/api/coding/paas/v4"
+    zai_model: str = "GLM-4.7"
+
     # Ollama settings (local)
     ollama_base_url: str = DEFAULT_OLLAMA_BASE_URL
     ollama_llm_model: str = ""
@@ -174,6 +181,7 @@ class GraphitiConfig:
 
         # OpenAI settings
         openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+        openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
         openai_model = os.environ.get("OPENAI_MODEL", "gpt-5-mini")
         openai_embedding_model = os.environ.get(
             "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
@@ -216,6 +224,13 @@ class GraphitiConfig:
             "OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small"
         )
 
+        # Z.AI settings
+        zai_api_key = os.environ.get("ZAI_API_KEY", "")
+        zai_base_url = os.environ.get(
+            "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
+        )
+        zai_model = os.environ.get("ZAI_MODEL", "GLM-4.7")
+
         # Ollama settings
         ollama_base_url = os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
         ollama_llm_model = os.environ.get("OLLAMA_LLM_MODEL", "")
@@ -234,6 +249,7 @@ class GraphitiConfig:
             database=database,
             db_path=db_path,
             openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url,
             openai_model=openai_model,
             openai_embedding_model=openai_embedding_model,
             anthropic_api_key=anthropic_api_key,
@@ -251,6 +267,9 @@ class GraphitiConfig:
             openrouter_base_url=openrouter_base_url,
             openrouter_llm_model=openrouter_llm_model,
             openrouter_embedding_model=openrouter_embedding_model,
+            zai_api_key=zai_api_key,
+            zai_base_url=zai_base_url,
+            zai_model=zai_model,
             ollama_base_url=ollama_base_url,
             ollama_llm_model=ollama_llm_model,
             ollama_embedding_model=ollama_embedding_model,
@@ -684,6 +703,10 @@ def get_available_providers() -> dict:
     if config.openrouter_api_key:
         available_llm.append("openrouter")
         available_embedder.append("openrouter")
+
+    # Check Z.AI (requires both API key and base URL)
+    if config.zai_api_key and config.zai_base_url:
+        available_llm.append("zai")
 
     # Check Ollama
     if config.ollama_llm_model:
