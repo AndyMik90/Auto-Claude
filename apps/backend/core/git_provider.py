@@ -86,8 +86,9 @@ def _classify_hostname(hostname: str) -> str:
     """
     hostname_lower = hostname.lower()
 
-    # Check for GitHub
-    if "github.com" in hostname_lower:
+    # Check for GitHub (cloud and self-hosted/enterprise)
+    # Match github.com or any domain containing 'github'
+    if "github.com" in hostname_lower or "github" in hostname_lower:
         return "github"
 
     # Check for GitLab (cloud and self-hosted)
