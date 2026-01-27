@@ -111,7 +111,7 @@
     "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
-    "@types/minimatch": "^5.1.2",
+    "@types/minimatch": "^6.0.0",
     "@types/node": "^25.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
