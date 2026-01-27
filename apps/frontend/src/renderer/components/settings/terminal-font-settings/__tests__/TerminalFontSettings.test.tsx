@@ -17,13 +17,12 @@ import { useTerminalFontSettingsStore } from '../../../../stores/terminal-font-s
 import i18n from '../../../../../shared/i18n';
 
 // Polyfill ResizeObserver for jsdom environment
-global.ResizeObserver = vi.fn().mockImplementation(function() {
-  return {
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  };
-});
+class ResizeObserverMock {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+global.ResizeObserver = ResizeObserverMock;
 
 // Mock the toast hook
 vi.mock('../../../../hooks/use-toast', () => ({
@@ -67,6 +66,9 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
     const store = useTerminalFontSettingsStore.getState();
     store.resetToDefaults();
   });
+
+  // Note: This fix addresses a React/Zustand selector issue that is platform-agnostic.
+  // The bug occurred on all platforms, so platform-specific mocking is not required.
 
   describe('Component Rendering', () => {
     it('should render without throwing errors', () => {
@@ -138,11 +140,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
 
       // Verify store state updated
       expect(useTerminalFontSettingsStore.getState().fontSize).toBe(16);
-
-      // Reset for other tests
-      act(() => {
-        useTerminalFontSettingsStore.getState().setFontSize(13);
-      });
     });
   });
 
@@ -150,26 +147,17 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
     it('should handle rapid state changes without infinite loop', async () => {
       renderWithI18n(<TerminalFontSettings />);
 
-      const originalFontSize = useTerminalFontSettingsStore.getState().fontSize;
-
       // Simulate rapid state changes (like dragging a slider)
       const sizes = [14, 15, 16, 17, 18, 17, 16, 15, 14];
 
       for (const size of sizes) {
-        await act(async () => {
+        act(() => {
           useTerminalFontSettingsStore.getState().setFontSize(size);
-          // Small delay to simulate user interaction
-          await new Promise((resolve) => setTimeout(resolve, 5));
         });
       }
 
       // If we reach here without timeout, the infinite loop is fixed
       expect(useTerminalFontSettingsStore.getState().fontSize).toBe(14);
-
-      // Reset
-      act(() => {
-        useTerminalFontSettingsStore.getState().setFontSize(originalFontSize);
-      });
     });
 
     it('should handle preset application without infinite loop', async () => {
@@ -183,11 +171,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       // Verify preset was applied
       const state = useTerminalFontSettingsStore.getState();
       expect(state.fontFamily).toContain('Consolas');
-
-      // Reset for other tests
-      act(() => {
-        useTerminalFontSettingsStore.getState().resetToDefaults();
-      });
     });
 
     it('should handle reset to defaults without infinite loop', async () => {
@@ -221,10 +204,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
     it('should handle concurrent updates without race conditions', async () => {
       renderWithI18n(<TerminalFontSettings />);
 
-      const originalFontSize = useTerminalFontSettingsStore.getState().fontSize;
-      const originalFontWeight = useTerminalFontSettingsStore.getState().fontWeight;
-      const originalLineHeight = useTerminalFontSettingsStore.getState().lineHeight;
-
       // Simulate concurrent updates
       const promises = [
         Promise.resolve().then(() => act(() => useTerminalFontSettingsStore.getState().setFontSize(16))),
@@ -239,13 +218,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       expect(state.fontSize).toBe(16);
       expect(state.fontWeight).toBe(500);
       expect(state.lineHeight).toBe(1.5);
-
-      // Reset
-      act(() => {
-        useTerminalFontSettingsStore.getState().setFontSize(originalFontSize);
-        useTerminalFontSettingsStore.getState().setFontWeight(originalFontWeight);
-        useTerminalFontSettingsStore.getState().setLineHeight(originalLineHeight);
-      });
     });
   });
 
@@ -288,11 +260,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       // Verify store state reflects imported settings
       expect(useTerminalFontSettingsStore.getState().fontSize).toBe(16);
       expect(useTerminalFontSettingsStore.getState().fontFamily).toEqual(['Fira Code', 'monospace']);
-
-      // Reset
-      act(() => {
-        useTerminalFontSettingsStore.getState().resetToDefaults();
-      });
     });
   });
 
@@ -357,7 +324,7 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       // If useMemo wasn't working correctly, this might cause issues
       for (let i = 0; i < 5; i++) {
         act(() => {
-          rerender(<TerminalFontSettings />);
+          rerender(<I18nextProvider i18n={i18n}><TerminalFontSettings /></I18nextProvider>);
         });
       }
 
