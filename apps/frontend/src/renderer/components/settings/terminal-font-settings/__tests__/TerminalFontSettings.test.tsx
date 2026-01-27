@@ -7,7 +7,7 @@
  * Tests the infinite re-render loop fix using individual selectors + useMemo
  * Verifies component renders without errors and maintains stable object references
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
@@ -174,6 +174,13 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
     });
 
     it('should handle reset to defaults without infinite loop', async () => {
+      // Capture defaults before mutating
+      const defaults = useTerminalFontSettingsStore.getState();
+      const defaultFontSize = defaults.fontSize;
+      const defaultFontWeight = defaults.fontWeight;
+      const defaultFontFamily = defaults.fontFamily;
+      const defaultLineHeight = defaults.lineHeight;
+
       // First change some settings
       act(() => {
         useTerminalFontSettingsStore.getState().setFontSize(20);
@@ -193,12 +200,12 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
         store.resetToDefaults();
       });
 
-      // Verify reset restored default values (not specific OS values)
+      // Verify reset restored default values
       const state = useTerminalFontSettingsStore.getState();
-      expect(state.fontSize).not.toBe(20);
-      expect(state.fontWeight).toBe(400);
-      expect(state.fontFamily).toBeDefined();
-      expect(state.lineHeight).toBeDefined();
+      expect(state.fontSize).toBe(defaultFontSize);
+      expect(state.fontWeight).toBe(defaultFontWeight);
+      expect(state.fontFamily).toEqual(defaultFontFamily);
+      expect(state.lineHeight).toBe(defaultLineHeight);
     });
 
     it('should handle concurrent updates without race conditions', async () => {
@@ -278,6 +285,10 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
   });
 
   describe('Regression Prevention', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it('should not log React warnings about getSnapshot caching', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -289,8 +300,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       );
 
       expect(warnCalls.length).toBe(0);
-
-      consoleWarnSpy.mockRestore();
     });
 
     it('should not cause "Maximum update depth exceeded" error', () => {
@@ -308,8 +317,6 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       );
 
       expect(errorCalls.length).toBe(0);
-
-      consoleErrorSpy.mockRestore();
     });
   });
 
