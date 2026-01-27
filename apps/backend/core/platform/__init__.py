@@ -514,3 +514,87 @@ def get_platform_description() -> str:
 
     arch = platform.machine()
     return f"{os_name} ({arch})"
+
+
+# ============================================================================
+# Subprocess PATH Construction
+# ============================================================================
+
+
+def build_subprocess_path(base_path: str | None = None) -> str:
+    """
+    Build a complete PATH for subprocess environments.
+
+    Constructs a PATH that includes standard binary directories (Homebrew,
+    user, and system) prepended to the existing PATH. This ensures that
+    tools installed via package managers like Homebrew are accessible
+    in subprocess environments.
+
+    Args:
+        base_path: Base PATH to extend. If None, uses current environment PATH.
+
+    Returns:
+        Complete PATH string with platform-appropriate delimiter.
+
+    Example:
+        >>> path = build_subprocess_path()
+        >>> "/opt/homebrew/bin" in path  # On macOS Apple Silicon
+        True
+    """
+    delimiter = get_path_delimiter()
+
+    # Get the base PATH
+    if base_path is None:
+        base_path = os.environ.get("PATH", "")
+
+    # Parse existing PATH entries
+    existing_entries = [p for p in base_path.split(delimiter) if p]
+
+    # Get platform-specific binary directories
+    bin_dirs = get_binary_directories()
+
+    # Build ordered list of directories to prepend
+    # Order: Homebrew (macOS) → user directories → system directories
+    prepend_dirs: list[str] = []
+
+    # On macOS, add Homebrew paths first for priority
+    if is_macos():
+        homebrew_paths = [
+            "/opt/homebrew/bin",  # Apple Silicon
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",  # Intel Mac
+            "/usr/local/sbin",
+        ]
+        for brew_path in homebrew_paths:
+            if os.path.isdir(brew_path):
+                prepend_dirs.append(brew_path)
+
+    # Add user directories
+    for user_dir in bin_dirs.get("user", []):
+        if os.path.isdir(user_dir):
+            prepend_dirs.append(user_dir)
+
+    # Add system directories
+    for sys_dir in bin_dirs.get("system", []):
+        if os.path.isdir(sys_dir):
+            prepend_dirs.append(sys_dir)
+
+    # Build final PATH with deduplication (preserve order, prepend takes priority)
+    seen: set[str] = set()
+    final_entries: list[str] = []
+
+    # Add prepended directories first
+    for entry in prepend_dirs:
+        normalized = os.path.normpath(entry)
+        if normalized not in seen:
+            seen.add(normalized)
+            final_entries.append(entry)
+
+    # Add existing PATH entries (that aren't duplicates)
+    for entry in existing_entries:
+        normalized = os.path.normpath(entry)
+        if normalized not in seen:
+            seen.add(normalized)
+            final_entries.append(entry)
+
+    return delimiter.join(final_entries)
