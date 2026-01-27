@@ -78,44 +78,35 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
     it('should render all expected sections', () => {
       renderWithI18n(<TerminalFontSettings />);
 
-      // Main sections
-      expect(screen.getByText(/terminal fonts/i)).toBeInTheDocument();
+      // Main sections - use getAllByText for text that may appear multiple times
+      expect(screen.getAllByText(/terminal fonts/i).length).toBeGreaterThan(0);
 
       // Import/Export buttons
-      expect(screen.getByText(/export json/i)).toBeInTheDocument();
-      expect(screen.getByText(/import json/i)).toBeInTheDocument();
-      expect(screen.getByText(/copy to clipboard/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/export json/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/import json/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/copy to clipboard/i).length).toBeGreaterThan(0);
 
       // Configuration sections
-      expect(screen.getByText(/font configuration/i)).toBeInTheDocument();
-      expect(screen.getByText(/cursor configuration/i)).toBeInTheDocument();
-      expect(screen.getByText(/performance settings/i)).toBeInTheDocument();
-      // Use getAllByText for text that might appear multiple times
+      expect(screen.getAllByText(/font configuration/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/cursor configuration/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/performance settings/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/quick presets/i).length).toBeGreaterThan(0);
 
       // Preview section
-      expect(screen.getByText(/live preview/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/live preview/i).length).toBeGreaterThan(0);
     });
 
-    it('should complete render cycle within reasonable time', async () => {
-      const startTime = Date.now();
-
+    it('should complete render cycle without hanging', async () => {
       renderWithI18n(<TerminalFontSettings />);
 
       // Wait for component to fully render
+      // The waitFor timeout provides the safety net for catching hangs/infinite loops
       await waitFor(
         () => {
           expect(screen.getByText(/terminal fonts/i)).toBeInTheDocument();
         },
         { timeout: 2000 }
       );
-
-      const endTime = Date.now();
-      const renderTime = endTime - startTime;
-
-      // If there's an infinite loop, this would timeout
-      // A healthy render should complete quickly
-      expect(renderTime).toBeLessThan(2000);
     });
   });
 
@@ -137,15 +128,21 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       expect(state.scrollback).toBeDefined();
     });
 
-    it('should handle individual setting updates', () => {
+    it('should update store state when component is rendered', () => {
       renderWithI18n(<TerminalFontSettings />);
 
-      // Update a single setting
+      // Update a single setting via store
       act(() => {
         useTerminalFontSettingsStore.getState().setFontSize(16);
       });
 
+      // Verify store state updated
       expect(useTerminalFontSettingsStore.getState().fontSize).toBe(16);
+
+      // Reset for other tests
+      act(() => {
+        useTerminalFontSettingsStore.getState().setFontSize(13);
+      });
     });
   });
 
@@ -202,15 +199,23 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
 
       renderWithI18n(<TerminalFontSettings />);
 
+      // Verify settings changed
+      expect(useTerminalFontSettingsStore.getState().fontSize).toBe(20);
+
+      // Get the OS-specific defaults to know what to expect
+      const store = useTerminalFontSettingsStore.getState();
+
       // Reset to defaults - if there's an infinite loop, this will timeout
       await act(async () => {
-        useTerminalFontSettingsStore.getState().resetToDefaults();
-        // Small delay to allow any potential infinite loop to manifest
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        store.resetToDefaults();
       });
 
-      // If we reach here, no infinite loop occurred
-      expect(true).toBe(true);
+      // Verify reset restored default values (not specific OS values)
+      const state = useTerminalFontSettingsStore.getState();
+      expect(state.fontSize).not.toBe(20);
+      expect(state.fontWeight).toBe(400);
+      expect(state.fontFamily).toBeDefined();
+      expect(state.lineHeight).toBeDefined();
     });
 
     it('should handle concurrent updates without race conditions', async () => {
@@ -261,7 +266,7 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       expect(parsed.fontSize).toBeDefined();
     });
 
-    it('should import valid settings without errors', () => {
+    it('should import settings and update store state', () => {
       renderWithI18n(<TerminalFontSettings />);
 
       const json = JSON.stringify({
@@ -279,6 +284,8 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
       const success = useTerminalFontSettingsStore.getState().importSettings(json);
 
       expect(success).toBe(true);
+
+      // Verify store state reflects imported settings
       expect(useTerminalFontSettingsStore.getState().fontSize).toBe(16);
       expect(useTerminalFontSettingsStore.getState().fontFamily).toEqual(['Fira Code', 'monospace']);
 
@@ -290,22 +297,16 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
   });
 
   describe('Child Component Integration', () => {
-    it('should pass settings to child components', () => {
+    it('should render FontConfigPanel with current settings', () => {
       renderWithI18n(<TerminalFontSettings />);
 
-      // Verify child components render (indicates successful prop passing)
-      expect(screen.getByText(/font configuration/i)).toBeInTheDocument();
-      expect(screen.getByText(/cursor configuration/i)).toBeInTheDocument();
-      expect(screen.getByText(/performance settings/i)).toBeInTheDocument();
-      // Use getAllByText for text that might appear multiple times
-      expect(screen.getAllByText(/quick presets/i).length).toBeGreaterThan(0);
-    });
+      // Verify FontConfigPanel renders
+      expect(screen.getAllByText(/font size/i).length).toBeGreaterThan(0);
 
-    it('should initialize xterm.js terminal for preview', () => {
-      renderWithI18n(<TerminalFontSettings />);
-
-      // If we reach here without errors, xterm.js initialized correctly
-      expect(true).toBe(true);
+      // Verify the current font size value is accessible from store
+      const fontSize = useTerminalFontSettingsStore.getState().fontSize;
+      expect(fontSize).toBeGreaterThan(0);
+      expect(fontSize).toBeLessThanOrEqual(24);
     });
   });
 
@@ -346,22 +347,22 @@ describe('TerminalFontSettings - Infinite Re-render Loop Fix', () => {
   });
 
   describe('Memoization - Stable References', () => {
-    it('should use useMemo for settings object reconstruction', () => {
-      // This test verifies the component structure uses useMemo
-      // by checking that multiple re-renders don't cause issues
+    it('should maintain stable component state across re-renders', () => {
+      // This test verifies useMemo provides stable references
+      // by checking that multiple re-renders don't break the component
 
       const { rerender } = renderWithI18n(<TerminalFontSettings />);
 
       // Rerender multiple times without state changes
-      // If useMemo wasn't used, this might cause issues with child components
+      // If useMemo wasn't working correctly, this might cause issues
       for (let i = 0; i < 5; i++) {
         act(() => {
           rerender(<TerminalFontSettings />);
         });
       }
 
-      // If we reach here without errors, useMemo is working correctly
-      expect(true).toBe(true);
+      // Verify component still renders correctly after multiple re-renders
+      expect(screen.getAllByText(/terminal fonts/i).length).toBeGreaterThan(0);
     });
   });
 });
