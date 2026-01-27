@@ -43,7 +43,9 @@ USE_CLAUDE_MD=true
 
 ## Rule File Format
 
-Rules are markdown files in `.claude/rules/` with YAML frontmatter specifying path patterns:
+Rules are markdown files in `.claude/rules/` with YAML frontmatter specifying path patterns.
+
+> **Note:** Auto-Claude uses a lightweight custom parser for frontmatter, not a full YAML parser. Only the subset needed for rules is supported: `paths` lists, `require_skills` with nested properties, and inline arrays `[a, b]`. Complex YAML features (anchors, aliases, multi-line strings with `|` or `>`) are **not** supported.
 
 ```markdown
 ---
