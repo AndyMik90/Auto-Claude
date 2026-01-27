@@ -29,13 +29,10 @@ Note on YAML parsing:
 import fnmatch
 import json
 import logging
-import os
 import re
 import threading
 import time
 from pathlib import Path
-
-from core.config import should_use_claude_rules
 
 logger = logging.getLogger(__name__)
 
