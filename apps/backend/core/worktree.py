@@ -414,14 +414,14 @@ class WorktreeManager:
                 try:
                     if current_path.exists() and resolved_path.exists():
                         if os.path.samefile(resolved_path, current_path):
-                            return line[len("branch refs/heads/"):]
+                            return line[len("branch refs/heads/") :]
                 except OSError:
                     pass
                 # Fallback to normalized case comparison
                 if os.path.normcase(str(resolved_path)) == os.path.normcase(
                     str(current_path)
                 ):
-                    return line[len("branch refs/heads/"):]
+                    return line[len("branch refs/heads/") :]
             elif line == "":
                 current_path = None
 
@@ -1045,9 +1045,7 @@ class WorktreeManager:
         # Verify we have an actual branch name (not detached HEAD)
         # get_worktree_info already falls back to expected branch name for detached HEAD,
         # but we also need to re-attach HEAD to the branch in the worktree so git push works.
-        head_check = self._run_git(
-            ["rev-parse", "--abbrev-ref", "HEAD"], cwd=info.path
-        )
+        head_check = self._run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=info.path)
         if head_check.returncode == 0 and head_check.stdout.strip() == "HEAD":
             # Resolve the target branch: first check git's worktree registry (which
             # tracks the original branch even when detached), then fall back to the
@@ -1062,9 +1060,7 @@ class WorktreeManager:
             # Check if the target branch exists locally
             if self._branch_exists(target_branch):
                 # Move the branch ref to current commit and switch to it
-                current_commit = self._run_git(
-                    ["rev-parse", "HEAD"], cwd=info.path
-                )
+                current_commit = self._run_git(["rev-parse", "HEAD"], cwd=info.path)
                 if current_commit.returncode == 0:
                     commit_sha = current_commit.stdout.strip()
                     # Update the branch to point to current commit
