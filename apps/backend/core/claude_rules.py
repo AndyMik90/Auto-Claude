@@ -66,9 +66,7 @@ def _parse_inline_array(value: str) -> list[str]:
     return []
 
 
-def _parse_paths_section(
-    lines: list[str], start_idx: int
-) -> tuple[list[str], int]:
+def _parse_paths_section(lines: list[str], start_idx: int) -> tuple[list[str], int]:
     """
     Parse a paths: section from frontmatter lines.
 
@@ -189,9 +187,7 @@ def _parse_skill_entry(
         return None, start_idx + 1
 
 
-def _parse_skills_section(
-    lines: list[str], start_idx: int
-) -> tuple[list[dict], int]:
+def _parse_skills_section(lines: list[str], start_idx: int) -> tuple[list[dict], int]:
     """
     Parse a require_skills: section from frontmatter lines.
 
