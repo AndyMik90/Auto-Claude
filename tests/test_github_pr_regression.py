@@ -7,6 +7,8 @@ This test suite verifies that:
 3. gh CLI is still invoked with correct arguments
 4. No regressions in existing GitHub PR functionality
 5. Provider field is correctly set to "github"
+
+Fixtures (temp_project_dir, worktree_manager) are defined in conftest.py.
 """
 
 import subprocess
@@ -23,66 +25,6 @@ if str(_backend_dir) not in sys.path:
 
 from core.git_provider import detect_git_provider
 from core.worktree import PullRequestResult, WorktreeInfo, WorktreeManager
-
-
-@pytest.fixture
-def temp_project_dir(tmp_path):
-    """Create a temporary project directory with proper git setup."""
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
-
-    # Initialize git repo
-    subprocess.run(
-        ["git", "init"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Test User"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.email", "test@example.com"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-
-    # Create initial commit
-    readme = project_dir / "README.md"
-    readme.write_text("# Test Project\n")
-    subprocess.run(
-        ["git", "add", "README.md"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "commit", "-m", "Initial commit"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-
-    return project_dir
-
-
-@pytest.fixture
-def worktree_manager(temp_project_dir):
-    """Create a WorktreeManager instance."""
-    # Create .auto-claude directories
-    auto_claude_dir = temp_project_dir / ".auto-claude"
-    auto_claude_dir.mkdir(exist_ok=True)
-    (auto_claude_dir / "specs").mkdir(exist_ok=True)
-    (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
-
-    return WorktreeManager(
-        project_dir=temp_project_dir,
-        base_branch="main",
-    )
 
 
 class TestGitHubProviderDetection:
