@@ -25,6 +25,7 @@ import type {
   McpHealthCheckResult,
   McpTestConnectionResult
 } from './project';
+import type { ScreenshotSource } from './screenshot';
 import type {
   Task,
   TaskStatus,
@@ -66,6 +67,7 @@ import type {
   ClaudeAutoSwitchSettings,
   ClaudeAuthResult,
   ClaudeUsageSnapshot,
+  AllProfilesUsage,
   TerminalProfileChangedEvent
 } from './agent';
 import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult } from './settings';
@@ -105,7 +107,8 @@ import type {
 import type {
   Roadmap,
   RoadmapFeatureStatus,
-  RoadmapGenerationStatus
+  RoadmapGenerationStatus,
+  PersistedRoadmapProgress
 } from './roadmap';
 import type {
   LinearTeam,
@@ -156,7 +159,7 @@ export interface ElectronAPI {
   saveTabState: (tabState: TabState) => Promise<IPCResult>;
 
   // Task operations
-  getTasks: (projectId: string) => Promise<IPCResult<Task[]>>;
+  getTasks: (projectId: string, options?: { forceRefresh?: boolean }) => Promise<IPCResult<Task[]>>;
   createTask: (projectId: string, title: string, description: string, metadata?: TaskMetadata) => Promise<IPCResult<Task>>;
   deleteTask: (taskId: string) => Promise<IPCResult>;
   updateTask: (taskId: string, updates: { title?: string; description?: string }) => Promise<IPCResult<Task>>;
@@ -167,6 +170,9 @@ export interface ElectronAPI {
   recoverStuckTask: (taskId: string, options?: TaskRecoveryOptions) => Promise<IPCResult<TaskRecoveryResult>>;
   checkTaskRunning: (taskId: string) => Promise<IPCResult<boolean>>;
 
+  // Image operations
+  loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
+
   // Workspace management (for human review)
   // Per-spec architecture: Each spec has its own worktree at .worktrees/{spec-name}/
   getWorktreeStatus: (taskId: string) => Promise<IPCResult<WorktreeStatus>>;
@@ -176,7 +182,7 @@ export interface ElectronAPI {
   createWorktreePR: (taskId: string, options?: WorktreeCreatePROptions) => Promise<IPCResult<WorktreeCreatePRResult>>;
   discardWorktree: (taskId: string, skipStatusChange?: boolean) => Promise<IPCResult<WorktreeDiscardResult>>;
   clearStagedState: (taskId: string) => Promise<IPCResult<{ cleared: boolean }>>;
-  listWorktrees: (projectId: string) => Promise<IPCResult<WorktreeListResult>>;
+  listWorktrees: (projectId: string, options?: { includeStats?: boolean }) => Promise<IPCResult<WorktreeListResult>>;
   worktreeOpenInIDE: (worktreePath: string, ide: SupportedIDE, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeOpenInTerminal: (worktreePath: string, terminal: SupportedTerminal, customPath?: string) => Promise<IPCResult<{ opened: boolean }>>;
   worktreeDetectTools: () => Promise<IPCResult<{ ides: Array<{ id: string; name: string; path: string; installed: boolean }>; terminals: Array<{ id: string; name: string; path: string; installed: boolean }> }>>;
@@ -292,6 +298,10 @@ export interface ElectronAPI {
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */
   updateAutoSwitchSettings: (settings: Partial<ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
+  /** Get unified account priority order (both OAuth and API profiles) */
+  getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
+  /** Set unified account priority order */
+  setAccountPriorityOrder: (order: string[]) => Promise<IPCResult>;
   /** Request usage fetch from a terminal (sends /usage command) */
   fetchClaudeUsage: (terminalId: string) => Promise<IPCResult>;
   /** Get the best available profile (for manual switching) */
@@ -306,6 +316,10 @@ export interface ElectronAPI {
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
+  /** Request all profiles usage immediately (for startup/refresh)
+   * @param forceRefresh - If true, bypasses cache to get fresh data for all profiles
+   */
+  requestAllProfilesUsage: (forceRefresh?: boolean) => Promise<IPCResult<AllProfilesUsage | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */
@@ -315,6 +329,8 @@ export interface ElectronAPI {
     reason: string;
     usageSnapshot: ClaudeUsageSnapshot;
   }) => void) => () => void;
+  /** Listen for all profiles usage updates (for multi-profile display) */
+  onAllProfilesUsageUpdated?: (callback: (allProfilesUsage: AllProfilesUsage) => void) => () => void;
 
   // App settings
   getSettings: () => Promise<IPCResult<AppSettings>>;
@@ -331,6 +347,8 @@ export interface ElectronAPI {
     gh: import('./cli').ToolDetectionResult;
     claude: import('./cli').ToolDetectionResult;
   }>>;
+  /** Check if Claude Code onboarding is complete (reads ~/.claude.json) */
+  getClaudeCodeOnboardingStatus: () => Promise<IPCResult<{ hasCompletedOnboarding: boolean }>>;
 
   // API Profile management (custom Anthropic-compatible endpoints)
   getAPIProfiles: () => Promise<IPCResult<ProfilesFile>>;
@@ -366,6 +384,11 @@ export interface ElectronAPI {
     projectId: string,
     featureId: string
   ) => Promise<IPCResult<Task>>;
+
+  // Roadmap progress persistence
+  saveRoadmapProgress: (projectId: string, progress: PersistedRoadmapProgress) => Promise<IPCResult>;
+  loadRoadmapProgress: (projectId: string) => Promise<IPCResult<PersistedRoadmapProgress | null>>;
+  clearRoadmapProgress: (projectId: string) => Promise<IPCResult>;
 
   // Roadmap event listeners
   onRoadmapProgress: (
@@ -727,6 +750,9 @@ export interface ElectronAPI {
   onInsightsError: (
     callback: (projectId: string, error: string) => void
   ) => () => void;
+  onInsightsSessionUpdated: (
+    callback: (projectId: string, session: InsightsSession) => void
+  ) => () => void;
 
   // Task logs operations
   getTaskLogs: (projectId: string, specId: string) => Promise<IPCResult<TaskLogs | null>>;
@@ -835,6 +861,13 @@ export interface ElectronAPI {
   // MCP Server health check operations
   checkMcpHealth: (server: CustomMcpServer) => Promise<IPCResult<McpHealthCheckResult>>;
   testMcpConnection: (server: CustomMcpServer) => Promise<IPCResult<McpTestConnectionResult>>;
+
+  // Screenshot capture operations
+  getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
+  capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // Queue Routing API (rate limit recovery)
+  queue: import('../../preload/api/queue-api').QueueAPI;
 }
 
 declare global {

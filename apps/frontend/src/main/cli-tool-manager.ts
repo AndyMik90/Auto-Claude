@@ -307,7 +307,7 @@ class CLIToolManager {
     // Check cache first
     const cached = this.cache.get(tool);
     if (cached) {
-      console.warn(
+      console.debug(
         `[CLI Tools] Using cached ${tool}: ${cached.path} (${cached.source})`
       );
       return cached.path;
@@ -328,6 +328,30 @@ class CLIToolManager {
     // Fallback to tool name (let system PATH resolve it)
     console.warn(`[CLI Tools] ${tool} not found, using fallback: "${tool}"`);
     return tool;
+  }
+
+  /**
+   * Get Claude CLI path for SDK usage
+   *
+   * Returns null when a .cmd file is detected on Windows, so the SDK
+   * can use its bundled claude.exe instead. The SDK's bundled CLI is
+   * a proper Windows executable that can be spawned by anyio.open_process().
+   *
+   * @returns Claude CLI path, or null if SDK should use bundled CLI
+   */
+  getClaudeCliPathForSdk(): string | null {
+    const claudePath = this.getToolPath('claude');
+
+    // On Windows, .cmd files cannot be executed by anyio.open_process() / asyncio.create_subprocess_exec().
+    // Return null so the Claude Agent SDK uses its bundled claude.exe instead.
+    if (isWindows() && claudePath.toLowerCase().endsWith('.cmd')) {
+      console.warn(
+        `[CLI Tools] Claude CLI is .cmd file, returning null so SDK uses bundled CLI: ${claudePath}`
+      );
+      return null;
+    }
+
+    return claudePath;
   }
 
   /**
@@ -1009,7 +1033,7 @@ class CLIToolManager {
     // Check cache first (instant return if cached)
     const cached = this.cache.get(tool);
     if (cached) {
-      console.warn(
+      console.debug(
         `[CLI Tools] Using cached ${tool}: ${cached.path} (${cached.source})`
       );
       return cached.path;
@@ -1030,6 +1054,29 @@ class CLIToolManager {
     // Fallback to tool name (let system PATH resolve it)
     console.warn(`[CLI Tools] ${tool} not found, using fallback: "${tool}"`);
     return tool;
+  }
+
+  /**
+   * Get Claude CLI path for SDK usage asynchronously (non-blocking)
+   *
+   * Returns null when a .cmd file is detected on Windows, so the SDK
+   * can use its bundled claude.exe instead.
+   *
+   * @returns Promise resolving to Claude CLI path, or null if SDK should use bundled CLI
+   */
+  async getClaudeCliPathForSdkAsync(): Promise<string | null> {
+    const claudePath = await this.getToolPathAsync('claude');
+
+    // On Windows, .cmd files cannot be executed by anyio.open_process() / asyncio.create_subprocess_exec().
+    // Return null so the Claude Agent SDK uses its bundled claude.exe instead.
+    if (isWindows() && claudePath.toLowerCase().endsWith('.cmd')) {
+      console.warn(
+        `[CLI Tools] Claude CLI is .cmd file, returning null so SDK uses bundled CLI: ${claudePath}`
+      );
+      return null;
+    }
+
+    return claudePath;
   }
 
   /**
@@ -1764,6 +1811,31 @@ export function getToolPath(tool: CLITool): string {
 }
 
 /**
+ * Get Claude CLI path for SDK usage
+ *
+ * Returns null when a .cmd file is detected on Windows, so the SDK
+ * can use its bundled claude.exe instead. The SDK's bundled CLI is
+ * a proper Windows executable that can be spawned by anyio.open_process().
+ *
+ * Use this function when passing a CLI path to the Claude Agent SDK.
+ * For other uses (like spawning claude directly), use getToolPath('claude').
+ *
+ * @returns Claude CLI path, or null if SDK should use bundled CLI
+ *
+ * @example
+ * ```typescript
+ * import { getClaudeCliPathForSdk } from './cli-tool-manager';
+ *
+ * const cliPath = getClaudeCliPathForSdk();
+ * // Pass to Python backend which uses Claude Agent SDK
+ * // If null, SDK will use its bundled claude.exe
+ * ```
+ */
+export function getClaudeCliPathForSdk(): string | null {
+  return cliToolManager.getClaudeCliPathForSdk();
+}
+
+/**
  * Configure CLI tools with user settings
  *
  * Call this when user updates CLI tool paths in Settings.
@@ -1871,6 +1943,26 @@ export function isPathFromWrongPlatform(pathStr: string | undefined): boolean {
  */
 export async function getToolPathAsync(tool: CLITool): Promise<string> {
   return cliToolManager.getToolPathAsync(tool);
+}
+
+/**
+ * Get Claude CLI path for SDK usage asynchronously (non-blocking)
+ *
+ * Returns null when a .cmd file is detected on Windows, so the SDK
+ * can use its bundled claude.exe instead.
+ *
+ * @returns Promise resolving to Claude CLI path, or null if SDK should use bundled CLI
+ *
+ * @example
+ * ```typescript
+ * import { getClaudeCliPathForSdkAsync } from './cli-tool-manager';
+ *
+ * const cliPath = await getClaudeCliPathForSdkAsync();
+ * // Pass to Python backend which uses Claude Agent SDK
+ * ```
+ */
+export async function getClaudeCliPathForSdkAsync(): Promise<string | null> {
+  return cliToolManager.getClaudeCliPathForSdkAsync();
 }
 
 /**
