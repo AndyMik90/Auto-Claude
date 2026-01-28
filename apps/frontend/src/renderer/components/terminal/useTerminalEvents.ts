@@ -42,11 +42,8 @@ export function useTerminalEvents({
     const cleanup = window.electronAPI.onTerminalExit((id, exitCode) => {
       if (id === terminalId) {
         // #region agent log
-        const fs = await import('fs');
-        const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
         const isRecreating = isRecreatingRef?.current ?? false;
-        const line = JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'TERMINAL_EXIT received', data: { terminalId, exitCode, isRecreating, willSkip: isRecreating }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }) + '\n';
-        fs.appendFileSync(logPath, line);
+        console.log('[DEBUG] TERMINAL_EXIT', JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'TERMINAL_EXIT received', data: { terminalId, exitCode, isRecreating, willSkip: isRecreating }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }));
         // #endregion
         // During deliberate recreation (e.g., worktree switching), skip the normal
         // exit handling to prevent setting status to 'exited' and scheduling removal.

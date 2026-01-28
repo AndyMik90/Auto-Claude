@@ -499,11 +499,7 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     // Note: The terminal session is preserved via isRecreatingRef flag, which prevents
     // the exit handler from removing the terminal when the old PTY exits.
     // #region agent log
-    const fs = await import('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const worktreeExists = fs.existsSync(config.worktreePath);
-    const line = JSON.stringify({ location: 'Terminal.tsx:applyWorktreeConfig', message: 'About to destroy terminal and recreate', data: { id, worktreePath: config.worktreePath, worktreeExists, isRecreating: isRecreatingRef.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }) + '\n';
-    fs.appendFileSync(logPath, line);
+    console.log('[DEBUG] applyWorktreeConfig', JSON.stringify({ location: 'Terminal.tsx:applyWorktreeConfig', message: 'About to destroy terminal and recreate', data: { id, worktreePath: config.worktreePath, isRecreating: isRecreatingRef.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }));
     // #endregion
     if (isCreatedRef.current) {
       await window.electronAPI.destroyTerminal(id);
