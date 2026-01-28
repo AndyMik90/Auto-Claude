@@ -176,9 +176,18 @@ export function getKeychainServiceName(configDir?: string): string {
   }
 
   // Normalize the configDir: expand ~ and resolve to absolute path
-  const normalizedConfigDir = configDir.startsWith('~')
+  let normalizedConfigDir = configDir.startsWith('~')
     ? join(homedir(), configDir.slice(1))
     : configDir;
+
+  // CRITICAL: Normalize path separators to match Claude CLI behavior on Windows
+  // Claude CLI on Windows uses backslashes, so we must too for hash consistency
+  // Mixed slashes (C:\Users\bill/.claude-profiles) produce different hashes than
+  // consistent slashes (C:\Users\bill\.claude-profiles)
+  // Only normalize if this looks like a Windows path (has drive letter or backslashes)
+  if (process.platform === 'win32' && /^[A-Za-z]:|\\/.test(normalizedConfigDir)) {
+    normalizedConfigDir = normalizedConfigDir.replace(/\//g, '\\');
+  }
 
   // ALL profiles now use hash-based keychain entries for isolation
   // This prevents interference with external Claude Code CLI
@@ -902,29 +911,52 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
   try {
     // PowerShell script to read from Credential Manager
     // Uses the Windows Credential Manager API via .NET
+    // NOTE: The CREDENTIAL struct must use IntPtr for string fields (blittable requirement)
+    // and strings must be manually marshaled after PtrToStructure
     const psScript = `
       $ErrorActionPreference = 'Stop'
-      Add-Type -AssemblyName System.Runtime.WindowsRuntime
 
-      # Use CredRead from advapi32.dll to read generic credentials
-      $sig = @'
-      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-      public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
+      # Define the CREDENTIAL struct with IntPtr for string fields (required for marshaling)
+      Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
 
-      [DllImport("advapi32.dll", SetLastError = true)]
-      public static extern bool CredFree(IntPtr cred);
+[StructLayout(LayoutKind.Sequential)]
+public struct CREDENTIAL {
+    public uint Flags;
+    public uint Type;
+    public IntPtr TargetName;
+    public IntPtr Comment;
+    public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+    public uint CredentialBlobSize;
+    public IntPtr CredentialBlob;
+    public uint Persist;
+    public uint AttributeCount;
+    public IntPtr Attributes;
+    public IntPtr TargetAlias;
+    public IntPtr UserName;
+}
 '@
-      Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
+
+      # Import CredRead and CredFree from advapi32.dll
+      Add-Type -MemberDefinition @'
+[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+public static extern bool CredRead(string target, uint type, uint reservedFlag, out IntPtr credentialPtr);
+
+[DllImport("advapi32.dll", SetLastError = true)]
+public static extern bool CredFree(IntPtr cred);
+'@ -Namespace Win32 -Name CredApi
 
       $credPtr = [IntPtr]::Zero
       # CRED_TYPE_GENERIC = 1
-      $success = [Win32.Credential]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
+      $success = [Win32.CredApi]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
 
       if ($success) {
         try {
-          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][System.Management.Automation.PSCredential].Assembly.GetType('Microsoft.PowerShell.Commands.CREDENTIAL'))
+          # Marshal the pointer to our CREDENTIAL struct
+          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][CREDENTIAL])
 
-          # Read the credential blob (password field)
+          # Read the credential blob (password field) - contains the JSON
           $blobSize = $cred.CredentialBlobSize
           if ($blobSize -gt 0) {
             $blob = [byte[]]::new($blobSize)
@@ -933,7 +965,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
             Write-Output $password
           }
         } finally {
-          [Win32.Credential]::CredFree($credPtr) | Out-Null
+          [Win32.CredApi]::CredFree($credPtr) | Out-Null
         }
       } else {
         # Credential not found - this is expected if user hasn't authenticated
@@ -1312,29 +1344,51 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
   try {
     // PowerShell script to read from Credential Manager (same as basic credentials)
+    // NOTE: The CREDENTIAL struct must use IntPtr for string fields (blittable requirement)
     const psScript = `
       $ErrorActionPreference = 'Stop'
-      Add-Type -AssemblyName System.Runtime.WindowsRuntime
 
-      # Use CredRead from advapi32.dll to read generic credentials
-      $sig = @'
-      [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-      public static extern bool CredRead(string target, int type, int reservedFlag, out IntPtr credentialPtr);
+      # Define the CREDENTIAL struct with IntPtr for string fields (required for marshaling)
+      Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
 
-      [DllImport("advapi32.dll", SetLastError = true)]
-      public static extern bool CredFree(IntPtr cred);
+[StructLayout(LayoutKind.Sequential)]
+public struct CREDENTIAL {
+    public uint Flags;
+    public uint Type;
+    public IntPtr TargetName;
+    public IntPtr Comment;
+    public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+    public uint CredentialBlobSize;
+    public IntPtr CredentialBlob;
+    public uint Persist;
+    public uint AttributeCount;
+    public IntPtr Attributes;
+    public IntPtr TargetAlias;
+    public IntPtr UserName;
+}
 '@
-      Add-Type -MemberDefinition $sig -Namespace Win32 -Name Credential
+
+      # Import CredRead and CredFree from advapi32.dll
+      Add-Type -MemberDefinition @'
+[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+public static extern bool CredRead(string target, uint type, uint reservedFlag, out IntPtr credentialPtr);
+
+[DllImport("advapi32.dll", SetLastError = true)]
+public static extern bool CredFree(IntPtr cred);
+'@ -Namespace Win32 -Name CredApi
 
       $credPtr = [IntPtr]::Zero
       # CRED_TYPE_GENERIC = 1
-      $success = [Win32.Credential]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
+      $success = [Win32.CredApi]::CredRead("${escapePowerShellString(targetName)}", 1, 0, [ref]$credPtr)
 
       if ($success) {
         try {
-          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][System.Management.Automation.PSCredential].Assembly.GetType('Microsoft.PowerShell.Commands.CREDENTIAL'))
+          # Marshal the pointer to our CREDENTIAL struct
+          $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($credPtr, [Type][CREDENTIAL])
 
-          # Read the credential blob (password field)
+          # Read the credential blob (password field) - contains the JSON
           $blobSize = $cred.CredentialBlobSize
           if ($blobSize -gt 0) {
             $blob = [byte[]]::new($blobSize)
@@ -1343,7 +1397,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
             Write-Output $password
           }
         } finally {
-          [Win32.Credential]::CredFree($credPtr) | Out-Null
+          [Win32.CredApi]::CredFree($credPtr) | Out-Null
         }
       } else {
         # Credential not found - this is expected if user hasn't authenticated
