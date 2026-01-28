@@ -57,7 +57,7 @@ export function IdeationEmptyState({
               >
                 <div className="flex items-center gap-2">
                   <TypeIcon type={type} />
-                  <span className="text-sm">{t(`settings.types.${type}`)}</span>
+                  <span className="text-sm">{t(`types.${type}.label`)}</span>
                 </div>
                 <Switch
                   checked={config.enabledTypes.includes(type)}
@@ -77,7 +77,7 @@ export function IdeationEmptyState({
         {hasToken === false && !isCheckingToken && (
           <p className="mt-3 text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4 inline-block mr-1 text-warning" />
-            Claude token not configured. You'll be prompted to enter it when generating.
+            {t('empty.tokenWarning')}
           </p>
         )}
       </Card>

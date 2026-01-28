@@ -1,29 +1,70 @@
 {
-    "title": "Idéation & Planification",
-    "subtitle": "Collaborez avec l'IA pour concevoir de nouvelles fonctionnalités",
-    "empty": {
-        "title": "Aucune session d'idéation",
-        "description": "Commencez par décrire une idée ou un problème pour générer des propositions techniques.",
-        "action": "Nouvelle Idée"
-    },
-    "sessions": {
-        "recent": "Sessions récentes",
-        "createNew": "Nouvelle session"
-    },
-    "stages": {
-        "brainstorm": "Brainstorming",
-        "spec": "Spécification",
-        "plan": "Planification",
-        "review": "Révision"
-    },
+    "title": "Idéation",
+    "subtitle": "Idées de fonctionnalités générées par l'IA pour votre projet",
+    "ideas_count": "{{count}} idées",
+    "selected_count": "{{count}} sélectionnés",
     "actions": {
-        "generate": "Générer des idées",
-        "refine": "Affiner",
-        "export": "Exporter vers Roadmap",
-        "delete": "Supprimer la session"
+        "delete": "Supprimer",
+        "addMore": "Ajouter plus"
     },
-    "chat": {
-        "placeholder": "Décrivez votre idée ici...",
-        "suggestion": "Ex: Je veux ajouter un système d'authentification par JWT..."
+    "empty": {
+        "title": "Pas encore d'idées",
+        "description": "Générez des idées de fonctionnalités basées sur l'IA en fonction du contexte de votre projet, des modèles existants et du public cible.",
+        "tokenWarning": "Jeton Claude non configuré. Vous serez invité à le saisir lors de la génération."
+    },
+    "filters": {
+        "all": "Tout",
+        "code": "Code",
+        "ui_ux": "UI/UX",
+        "docs": "Docs",
+        "security": "Sécurité",
+        "performance": "Performance"
+    },
+    "config": {
+        "title": "Configuration de l'idéation",
+        "description": "Configurez les types d'idées à générer",
+        "typesTitle": "Types d'idéation",
+        "contextTitle": "Sources de contexte",
+        "includeRoadmap": "Inclure le contexte de la Roadmap",
+        "includeKanban": "Inclure le contexte du Kanban",
+        "close": "Fermer"
+    },
+    "addMore": {
+        "title": "Ajouter plus d'idées",
+        "description": "Sélectionnez des types d'idéation supplémentaires à générer. Vos idées existantes seront conservées.",
+        "allGenerated": "Vous avez déjà généré tous les types d'idéation !",
+        "regenerateTip": "Utilisez « Régénérer » pour rafraîchir les idées existantes.",
+        "cancel": "Annuler",
+        "generate": "Générer {{count}} types",
+        "generateGeneric": "Générer des idées"
+    },
+    "settings": {
+        "enabledTypes": "Types d'idéation activés"
+    },
+    "types": {
+        "code_improvements": {
+            "label": "Améliorations du code",
+            "description": "Opportunités révélées par le code à partir de l'analyse des modèles, de l'architecture et de l'infrastructure"
+        },
+        "ui_ux_improvements": {
+            "label": "Améliorations UI/UX",
+            "description": "Améliorations visuelles et d'interaction identifiées par l'analyse de l'application"
+        },
+        "documentation_gaps": {
+            "label": "Documentation",
+            "description": "Documentation manquante ou obsolète nécessitant une attention particulière"
+        },
+        "security_hardening": {
+            "label": "Sécurité",
+            "description": "Vulnérabilités de sécurité et opportunités de renforcement"
+        },
+        "performance_optimizations": {
+            "label": "Performance",
+            "description": "Goulots d'étranglement de performance et opportunités d'optimisation"
+        },
+        "code_quality": {
+            "label": "Qualité du code",
+            "description": "Opportunités de refactorisation, fichiers volumineux, « code smells » et violations des meilleures pratiques"
+        }
     }
 }
