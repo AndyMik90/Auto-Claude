@@ -2707,45 +2707,31 @@ export function registerWorktreeHandlers(
           };
         }
 
-        // FIX: Get the branch name before removing (may fail for orphaned worktrees)
-        // This mirrors the behavior in the regular discardWorktree handler
-        let branch: string | null = null;
-        try {
-          branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-            cwd: worktreePath,
-            encoding: 'utf-8'
-          }).trim();
-        } catch {
-          // Branch detection failed (corrupted git state) - continue anyway
-        }
+        // Use cleanupWorktree which auto-commits any uncommitted changes before deletion
+        // This preserves work in git history (recoverable via reflog for ~90 days)
+        const cleanupResult = await cleanupWorktree({
+          worktreePath,
+          projectPath: project.path,
+          specId: specName,
+          commitMessage: 'Auto-save before orphaned worktree deletion',
+          logPrefix: '[ORPHAN_CLEANUP]',
+          deleteBranch: true
+        });
 
-        // Delete worktree using async shared utility (handles git remove + fallback to force-delete with Windows retry)
-        const deleteResult = await forceDeleteWorktreeAsync(worktreePath, project.path);
-        if (!deleteResult.success) {
+        if (!cleanupResult.success) {
           return {
             success: false,
-            error: deleteResult.error
+            error: cleanupResult.warnings.join(', ') || 'Failed to cleanup orphaned worktree'
           };
-        }
-
-        // FIX: Delete the branch (if we got the branch name)
-        // This prevents orphaned branches from accumulating in the repository
-        if (branch) {
-          try {
-            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
-              cwd: project.path,
-              encoding: 'utf-8'
-            });
-          } catch {
-            // Branch might already be deleted or not exist
-          }
         }
 
         return {
           success: true,
           data: {
             success: true,
-            message: 'Orphaned worktree deleted successfully'
+            message: cleanupResult.autoCommitted
+              ? 'Orphaned worktree deleted (uncommitted changes were auto-saved)'
+              : 'Orphaned worktree deleted successfully'
           }
         };
       } catch (error) {
