@@ -244,11 +244,11 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
       const { existsSync, readFileSync } = await import('fs');
 
       // Save original mock implementations to restore after test
-      const originalExistsSync = (existsSync as any).getMockImplementation();
-      const originalReadFileSync = (readFileSync as any).getMockImplementation();
+      const originalExistsSync = (existsSync as ReturnType<typeof vi.fn>).getMockImplementation();
+      const originalReadFileSync = (readFileSync as ReturnType<typeof vi.fn>).getMockImplementation();
 
       // Override existsSync to make file appear to exist
-      (existsSync as any).mockImplementation((path: string) => {
+      (existsSync as ReturnType<typeof vi.fn>).mockImplementation((path: string) => {
         if (path === claudeJsonPath) {
           return true; // File appears to exist
         }
@@ -256,7 +256,7 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
       });
 
       // Override readFileSync to throw error for our specific file
-      (readFileSync as any).mockImplementation((path: string) => {
+      (readFileSync as ReturnType<typeof vi.fn>).mockImplementation((path: string) => {
         if (path === claudeJsonPath) {
           throw new Error('EACCES: permission denied, open \'' + path + '\'');
         }
@@ -272,8 +272,8 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
       expect(result.data?.hasCompletedOnboarding).toBe(false);
 
       // Restore original mocks
-      (existsSync as any).mockImplementation(originalExistsSync);
-      (readFileSync as any).mockImplementation(originalReadFileSync);
+      (existsSync as ReturnType<typeof vi.fn>).mockImplementation(originalExistsSync);
+      (readFileSync as ReturnType<typeof vi.fn>).mockImplementation(originalReadFileSync);
     });
   });
 });
