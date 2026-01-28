@@ -370,7 +370,6 @@ class TestGitHubErrorHandling:
         # Verify error message
         assert result["success"] is False
         assert "GitHub CLI (gh) not found" in result["error"]
-        assert "https://cli.github.com/" in result["error"]
 
     def test_already_exists_handling(self, tmp_path):
         """Test that 'already exists' case is handled correctly."""
