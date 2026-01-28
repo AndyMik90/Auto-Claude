@@ -262,6 +262,29 @@ def get_project_dir(provided_dir: Path | None) -> Path:
     return project_dir
 
 
+def resolve_project_dir_for_spec(project_dir: Path, spec_identifier: str) -> Path:
+    """
+    Resolve project dir if the spec exists under a child project folder.
+
+    This handles cases where --project-dir is a parent (e.g., E:\\projects)
+    but the spec lives under a child repo (e.g., E:\\projects\\auto-claude).
+    """
+    if find_spec(project_dir, spec_identifier):
+        return project_dir
+
+    try:
+        for child in project_dir.iterdir():
+            if not child.is_dir():
+                continue
+            if find_spec(child, spec_identifier):
+                return child
+    except OSError:
+        # Non-fatal: fall back to original project_dir
+        pass
+
+    return project_dir
+
+
 def find_specs_dir(project_dir: Path) -> Path:
     """
     Find the specs directory for a project.

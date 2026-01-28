@@ -1,0 +1,96 @@
+import type { BrowserWindow } from 'electron';
+import { IPC_CHANNELS } from '../shared/constants';
+import type { ExecutionProgress, ReviewReason, Task, TaskStatus } from '../shared/types';
+import { logger } from './app-logger';
+import { isDebugEnabled } from './task-state-utils';
+import { safeSendToRenderer } from './ipc-handlers/utils';
+
+export type ProcessExitSnapshot = {
+  taskId: string;
+  exitCode: number;
+  task: Task | undefined;
+  hasSubtasks: boolean;
+  allSubtasksDone: boolean;
+  hasCompletedSubtasks?: boolean;
+  isQAApproved?: boolean;
+  requireReviewBeforeCoding: boolean;
+};
+
+export class TaskStateMachine {
+  emitStatusChange(
+    getMainWindow: () => BrowserWindow | null,
+    taskId: string,
+    status: TaskStatus,
+    projectId?: string,
+    reviewReason?: ReviewReason
+  ): void {
+    if (isDebugEnabled()) {
+      const payload = {
+        taskId,
+        status,
+        reviewReason: reviewReason ?? 'none',
+        projectId: projectId ?? 'none'
+      };
+      logger.info(`[TASK_STATUS_CHANGE] ${JSON.stringify(payload)}`);
+    }
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, status, projectId, reviewReason);
+  }
+
+  logExecutionProgress(taskId: string, progress: ExecutionProgress, projectId?: string): void {
+    logger.info(
+      `[EXECUTION_PROGRESS] taskId=${taskId} phase=${progress.phase} phaseProgress=${progress.phaseProgress} overallProgress=${progress.overallProgress} projectId=${projectId ?? 'none'}`
+    );
+  }
+
+  logProcessExit(snapshot: ProcessExitSnapshot): void {
+    logger.info(
+      `[PROCESS_EXITED] taskId=${snapshot.taskId} code=${snapshot.exitCode} hasSubtasks=${snapshot.hasSubtasks} allSubtasksDone=${snapshot.allSubtasksDone} hasCompletedSubtasks=${snapshot.hasCompletedSubtasks ?? false} isQAApproved=${snapshot.isQAApproved ?? false} requireReviewBeforeCoding=${snapshot.requireReviewBeforeCoding}`
+    );
+  }
+
+  getStatusForExecutionProgress(progress: ExecutionProgress): TaskStatus | null {
+    const phaseToStatus: Record<string, TaskStatus | null> = {
+      idle: null,
+      planning: 'in_progress',
+      coding: 'in_progress',
+      qa_review: 'ai_review',
+      qa_fixing: 'ai_review',
+      complete: 'human_review',
+      failed: 'human_review'
+    };
+
+    return phaseToStatus[progress.phase] ?? null;
+  }
+
+  getStatusForProcessExit(snapshot: ProcessExitSnapshot): {
+    status?: TaskStatus;
+    reviewReason?: ReviewReason;
+  } {
+    if (snapshot.exitCode !== 0) {
+      return { status: 'human_review', reviewReason: 'errors' };
+    }
+
+    // QA approved (planStatus === "completed") - always completed
+    if (snapshot.isQAApproved) {
+      return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // All subtasks done - completed
+    if (snapshot.hasSubtasks && snapshot.allSubtasksDone) {
+      return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // Some subtasks completed (coding has progressed) - completed
+    if (snapshot.hasCompletedSubtasks) {
+      return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // Only use plan_review if requireReviewBeforeCoding AND no coding has started
+    if (snapshot.requireReviewBeforeCoding && !snapshot.hasCompletedSubtasks) {
+      return { status: 'human_review', reviewReason: 'plan_review' };
+    }
+
+    // No review required and no completed subtasks -> keep current status
+    return {};
+  }
+}

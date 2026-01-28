@@ -61,7 +61,7 @@ if sys.platform == "win32":
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
-                pass
+                pass  # reconfigure not supported, try TextIOWrapper fallback
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
             if hasattr(_stream, "buffer"):
@@ -73,7 +73,7 @@ if sys.platform == "win32":
                 )
                 setattr(sys, _stream_name, _new_stream)
         except (AttributeError, io.UnsupportedOperation, OSError):
-            pass
+            pass  # TextIOWrapper fallback failed, continue with default encoding
     # Clean up temporary variables
     del _stream_name, _stream
     if "_new_stream" in dir():
@@ -111,6 +111,42 @@ from phase_config import resolve_model_id
 from review import ReviewState
 from spec import SpecOrchestrator
 from ui import Icons, highlight, muted, print_section, print_status
+
+
+def _set_plan_review_status(spec_dir: Path) -> None:
+    """Set implementation_plan.json status to indicate plan needs human review.
+
+    This is called when spec creation completes in non-interactive mode but
+    the spec requires human review before coding can begin. By setting
+    status='human_review' and planStatus='review', the frontend can detect
+    that the task is awaiting plan approval.
+
+    Args:
+        spec_dir: Path to the spec directory containing implementation_plan.json
+    """
+    import json
+
+    plan_path = spec_dir / "implementation_plan.json"
+    if not plan_path.exists():
+        debug(
+            "spec_runner", "No implementation_plan.json found, skipping status update"
+        )
+        return
+
+    try:
+        with open(plan_path, encoding="utf-8") as f:
+            plan = json.load(f)
+
+        # Set status fields to indicate plan review is needed
+        plan["status"] = "human_review"
+        plan["planStatus"] = "review"
+
+        with open(plan_path, "w", encoding="utf-8") as f:
+            json.dump(plan, f, indent=2)
+
+        debug("spec_runner", "Updated plan status to human_review/review for frontend")
+    except Exception as e:
+        debug_error("spec_runner", f"Failed to update plan status: {e}")
 
 
 def main():
@@ -252,9 +288,19 @@ Examples:
     # Find project root (look for auto-claude folder)
     project_dir = args.project_dir
 
-    # Auto-detect if running from within auto-claude directory (the source code)
-    if project_dir.name == "auto-claude" and (project_dir / "run.py").exists():
-        # Running from within auto-claude/ source directory, go up 1 level
+    # Auto-detect if running from within auto-claude/apps/backend/ source directory.
+    # This happens when developers run spec_runner.py directly from the source tree.
+    # We check for run.py as a FILE (not directory) AND core/client.py to confirm
+    # we're in the actual backend source directory, not just a project named "auto-claude"
+    # that happens to have a run.py file or directory at its root.
+    run_py_path = project_dir / "run.py"
+    if (
+        project_dir.name == "auto-claude"
+        and run_py_path.exists()
+        and run_py_path.is_file()
+        and (project_dir / "core" / "client.py").exists()
+    ):
+        # Running from within auto-claude/apps/backend/ source directory, go up 1 level
         project_dir = project_dir.parent
     elif not (project_dir / ".auto-claude").exists():
         # No .auto-claude folder found - try to find project root
@@ -300,15 +346,25 @@ Examples:
             )
         )
 
-        if not success:
+        # Check if spec was created successfully (files exist) even if orchestrator returned False
+        # orchestrator.run() returns False when review is needed but spec creation succeeded
+        spec_created = (
+            orchestrator.spec_dir
+            and orchestrator.spec_dir.exists()
+            and (orchestrator.spec_dir / "spec.md").exists()
+        )
+
+        if not success and not spec_created:
+            # Actual failure - spec files don't exist
             debug_error("spec_runner", "Spec creation failed")
             sys.exit(1)
 
-        debug_success(
-            "spec_runner",
-            "Spec creation succeeded",
-            spec_dir=str(orchestrator.spec_dir),
-        )
+        if spec_created:
+            debug_success(
+                "spec_runner",
+                "Spec creation succeeded",
+                spec_dir=str(orchestrator.spec_dir),
+            )
 
         # Auto-start build unless --no-build is specified
         if not args.no_build:
@@ -318,6 +374,14 @@ Examples:
             if not review_state.is_approved():
                 debug_error("spec_runner", "Spec not approved - cannot start build")
                 print()
+                if not args.interactive:
+                    # Update implementation_plan.json to signal frontend that plan needs review
+                    # This allows the UI to show "Needs Review" with plan_review reason
+                    _set_plan_review_status(orchestrator.spec_dir)
+                    print_status(
+                        "Spec requires human review. Build not started.", "warning"
+                    )
+                    sys.exit(0)
                 print_status("Build cannot start: spec not approved.", "error")
                 print()
                 print(f"  {muted('To approve the spec, run:')}")

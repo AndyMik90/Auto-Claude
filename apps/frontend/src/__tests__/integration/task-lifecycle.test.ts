@@ -235,18 +235,18 @@ describe('Task Lifecycle Integration', () => {
       );
 
       // Simulate status change event from main process
-      // The event handler signature is: (_event, taskId, status)
+      // The event handler signature is: (_event, taskId, status, projectId, reviewReason)
       const eventHandler = mockIpcRenderer.on.mock.calls.find(
         (call) => call[0] === 'task:statusChange'
       )?.[1];
 
       if (eventHandler) {
-        eventHandler({}, 'task-001', 'spec_complete');
+        eventHandler({}, 'task-001', 'spec_complete', undefined, undefined);
       }
 
-      // Verify callback was invoked with correct parameters (taskId, status, projectId)
-      // Note: projectId is optional and undefined when not provided
-      expect(callback).toHaveBeenCalledWith('task-001', 'spec_complete', undefined);
+      // Verify callback was invoked with correct parameters (taskId, status, projectId, reviewReason)
+      // Note: projectId and reviewReason are optional and undefined when not provided
+      expect(callback).toHaveBeenCalledWith('task-001', 'spec_complete', undefined, undefined);
     });
 
     it('should emit task:progress event with updated plan during spec creation', async () => {

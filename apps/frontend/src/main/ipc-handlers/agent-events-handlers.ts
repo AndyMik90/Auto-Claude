@@ -16,6 +16,7 @@ import type {
   TaskStatus,
   Project,
   ImplementationPlan,
+  ReviewReason,
 } from "../../shared/types";
 import { AgentManager } from "../agent";
 import type { ProcessType, ExecutionProgressData } from "../agent";
@@ -28,6 +29,8 @@ import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
+import { TaskStateMachine } from "../task-state-machine";
+import { getTaskStateManager } from '../task-state-manager';
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -109,6 +112,7 @@ export function registerAgenteventsHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const taskStateMachine = new TaskStateMachine();
   // ============================================
   // Agent Manager Events → Renderer
   // ============================================
@@ -185,6 +189,25 @@ export function registerAgenteventsHandlers(
 
     if (processType === "spec-creation") {
       console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
+
+      // Invalidate task cache to ensure we get fresh data after spec creation
+      const projects = projectStore.getProjects();
+      for (const p of projects) {
+        projectStore.invalidateTasksCache(p.id);
+      }
+
+      // Spec creation tasks also need XState handling for proper plan review state
+      const { task: specTask, project: specProject } = findTaskAndProject(taskId);
+      if (specTask && specProject) {
+        const manager = getTaskStateManager(getMainWindow);
+        const requireReviewBeforeCoding = specTask.metadata?.requireReviewBeforeCoding === true;
+        // Spec creation has no subtasks yet, so hasSubtasks=false, allSubtasksDone=false, hasCompletedSubtasks=false
+        // isQAApproved=false since spec just finished
+        console.warn(`[Task ${taskId}] Calling handleProcessExit: code=${code ?? 0}, requireReviewBeforeCoding=${requireReviewBeforeCoding}`);
+        manager.handleProcessExit(specTask, specProject, code ?? 0, false, false, false, false, requireReviewBeforeCoding);
+      } else {
+        console.warn(`[Task ${taskId}] Spec creation exit: task or project not found - specTask=${!!specTask}, specProject=${!!specProject}`);
+      }
       return;
     }
 
@@ -247,49 +270,99 @@ export function registerAgenteventsHandlers(
           }
         };
 
+        const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+
+        // Use finalPlan (most up-to-date) for subtask data instead of potentially stale task.subtasks
+        // This ensures XState decisions are based on current plan state, not cached task object
+        const planData = finalPlan as ImplementationPlan | undefined;
+        const planStatusFromFile = planData?.planStatus;
+        const isQAApproved = planStatusFromFile === "completed";
+
+        // Extract subtasks from plan phases (the authoritative source)
+        const allPlanSubtasks = planData?.phases?.flatMap((p) => p.subtasks) ?? [];
+        const hasSubtasks = allPlanSubtasks.length > 0;
+        const allSubtasksDone = hasSubtasks && allPlanSubtasks.every((s) => s.status === "completed");
+        const hasCompletedSubtasks = allPlanSubtasks.some((s) => s.status === "completed");
+
+        console.warn(`[Task ${taskId}] Exit handler: planStatus=${planStatusFromFile}, isQAApproved=${isQAApproved}, hasSubtasks=${hasSubtasks}, allSubtasksDone=${allSubtasksDone}, hasCompletedSubtasks=${hasCompletedSubtasks}`);
+
+        taskStateMachine.logProcessExit({
+          taskId,
+          exitCode: code ?? 0,
+          task,
+          hasSubtasks,
+          allSubtasksDone,
+          hasCompletedSubtasks,
+          isQAApproved,
+          requireReviewBeforeCoding,
+        });
+
+        // hasCompletedSubtasks is now calculated from finalPlan above (line 266)
+        const manager = getTaskStateManager(getMainWindow);
+        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone, hasCompletedSubtasks, isQAApproved, requireReviewBeforeCoding);
+
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+        } else {
+          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
+        }
 
-          // Fallback: Ensure status is updated even if COMPLETE phase event was missed
-          // This prevents tasks from getting stuck in ai_review status
-          // FIX (ACS-71): Only move to human_review if subtasks exist AND are all completed
-          // If no subtasks exist, the task is still in planning and shouldn't move to human_review
+        const decision = taskStateMachine.getStatusForProcessExit({
+          taskId,
+          exitCode: code ?? 0,
+          task,
+          hasSubtasks,
+          allSubtasksDone,
+          requireReviewBeforeCoding,
+        });
+
+        // Determine the correct reviewReason based on plan state:
+        // 1. If QA approved (planStatus === "completed"), always use "completed"
+        // 2. If subtasks have been completed, use "completed" (coding/QA done)
+        // 3. If requireReviewBeforeCoding and no coding yet, use "plan_review"
+        let decisionWithFallback: { status?: TaskStatus; reviewReason?: ReviewReason };
+
+        if (decision.status && decision.reviewReason) {
+          // State machine gave us a complete decision
+          decisionWithFallback = decision;
+        } else if (isQAApproved) {
+          // QA approved - always use "completed" reviewReason
+          decisionWithFallback = { status: "human_review", reviewReason: "completed" };
+        } else if (requireReviewBeforeCoding && !hasCompletedSubtasks) {
+          // Spec creation finished, no coding yet - plan review
+          decisionWithFallback = { status: "human_review", reviewReason: "plan_review" };
+        } else if (hasCompletedSubtasks) {
+          // Coding done (subtasks completed) - completed review
+          decisionWithFallback = { status: "human_review", reviewReason: "completed" };
+        } else {
+          decisionWithFallback = decision;
+        }
+
+        if (code === 0) {
           const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";
-          const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-          const hasIncompleteSubtasks =
-            hasSubtasks && task.subtasks.some((s) => s.status !== "completed");
-
-          if (isActiveStatus && hasSubtasks && !hasIncompleteSubtasks) {
-            // All subtasks completed - safe to move to human_review
-            console.warn(
-              `[Task ${taskId}] Fallback: Moving to human_review (process exited successfully, all ${task.subtasks.length} subtasks completed)`
-            );
-            persistStatus("human_review");
-            // Include projectId for multi-project filtering (issue #723)
-            safeSendToRenderer(
+          if (decisionWithFallback.status) {
+            persistStatus(decisionWithFallback.status);
+            taskStateMachine.emitStatusChange(
               getMainWindow,
-              IPC_CHANNELS.TASK_STATUS_CHANGE,
               taskId,
-              "human_review" as TaskStatus,
-              projectId
+              decisionWithFallback.status,
+              projectId,
+              decisionWithFallback.reviewReason
             );
-          } else if (isActiveStatus && !hasSubtasks) {
-            // No subtasks yet - task is still in planning phase, don't change status
-            // This prevents the bug where tasks jump to human_review before planning completes
+          } else if (isActiveStatus) {
             console.warn(
-              `[Task ${taskId}] Process exited but no subtasks created yet - keeping current status (${task.status})`
+              `[Task ${taskId}] Process exited but status unchanged (current status: ${task.status})`
             );
           }
         } else {
-          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          persistStatus("human_review");
-          // Include projectId for multi-project filtering (issue #723)
-          safeSendToRenderer(
+          const nextStatus: TaskStatus = decisionWithFallback.status ?? "human_review";
+          persistStatus(nextStatus);
+          taskStateMachine.emitStatusChange(
             getMainWindow,
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
             taskId,
-            "human_review" as TaskStatus,
-            projectId
+            nextStatus,
+            projectId,
+            decisionWithFallback.reviewReason
           );
         }
       }
@@ -303,6 +376,8 @@ export function registerAgenteventsHandlers(
     const { task, project } = findTaskAndProject(taskId);
     const taskProjectId = project?.id;
 
+    taskStateMachine.logExecutionProgress(taskId, progress, taskProjectId);
+
     // Include projectId in execution progress event for multi-project filtering
     safeSendToRenderer(
       getMainWindow,
@@ -312,42 +387,30 @@ export function registerAgenteventsHandlers(
       taskProjectId
     );
 
-    const phaseToStatus: Record<string, TaskStatus | null> = {
-      idle: null,
-      planning: "in_progress",
-      coding: "in_progress",
-      qa_review: "ai_review",
-      qa_fixing: "ai_review",
-      complete: "human_review",
-      failed: "human_review",
-    };
+    if (task && project) {
+      const manager = getTaskStateManager(getMainWindow);
+      const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+      manager.handleExecutionProgress(task, project, progress, requireReviewBeforeCoding);
 
-    const newStatus = phaseToStatus[progress.phase];
-    // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
-    if (newStatus && validateStatusTransition(task, newStatus, progress.phase)) {
-      // Include projectId in status change event for multi-project filtering
-      safeSendToRenderer(
-        getMainWindow,
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        newStatus,
-        taskProjectId
-      );
-
-      // CRITICAL: Persist status to plan file(s) to prevent flip-flop on task list refresh
-      // When getTasks() is called, it reads status from the plan file. Without persisting,
-      // the status in the file might differ from the UI, causing inconsistent state.
-      // Uses shared utility with locking to prevent race conditions.
-      // IMPORTANT: We persist to BOTH main project AND worktree (if exists) to ensure
-      // consistency, since getTasks() prefers the worktree version.
-      if (task && project) {
+      const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
+      if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {
+        if (validateStatusTransition(task, fallbackStatus, progress.phase)) {
+          const reviewReason =
+            fallbackStatus === "human_review" && progress.phase === "complete"
+              ? "completed"
+              : undefined;
+          taskStateMachine.emitStatusChange(
+            getMainWindow,
+            taskId,
+            fallbackStatus,
+            taskProjectId,
+            reviewReason
+          );
+        }
         try {
-          // Persist to main project plan file
           const mainPlanPath = getPlanPath(project, task);
-          persistPlanStatusSync(mainPlanPath, newStatus, project.id);
+          persistPlanStatusSync(mainPlanPath, fallbackStatus, project.id);
 
-          // Also persist to worktree plan file if it exists
-          // This ensures consistency since getTasks() prefers worktree version
           const worktreePath = findTaskWorktree(project.path, task.specId);
           if (worktreePath) {
             const specsBaseDir = getSpecsDir(project.autoBuildPath);
@@ -358,12 +421,11 @@ export function registerAgenteventsHandlers(
               AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
             );
             if (existsSync(worktreePlanPath)) {
-              persistPlanStatusSync(worktreePlanPath, newStatus, project.id);
+              persistPlanStatusSync(worktreePlanPath, fallbackStatus, project.id);
             }
           }
         } catch (err) {
-          // Ignore persistence errors - UI will still work, just might flip on refresh
-          console.warn("[execution-progress] Could not persist status:", err);
+          console.warn("[execution-progress] Could not persist xstate fallback:", err);
         }
       }
     }

@@ -22,6 +22,11 @@ vi.mock('electron', () => ({
   }
 }));
 
+// Mock task-state-manager to avoid XState initialization in tests
+vi.mock('../task-state-manager', () => ({
+  getXStateTaskStatus: vi.fn(() => null)
+}));
+
 // Setup test directories with unique secure temp dir
 function setupTestDirs(): void {
   // Create a unique, secure temporary directory

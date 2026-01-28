@@ -2,11 +2,12 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, ExecutionProgress } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
-import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
+import { findAllSpecPaths } from './utils/spec-path-helpers';
+import { getXStateTaskStatus } from './task-state-manager';
 
 interface TabState {
   openProjectIds: string[];
@@ -436,9 +437,12 @@ export class ProjectStore {
           ? `${JSON_ERROR_PREFIX}${jsonErrorMessage}`
           : description;
         // Tasks with JSON errors go to human_review with errors reason
+        // PRIORITY: Check XState first for active tasks (prevents status flip-flop during refresh)
+        // XState is the source of truth for running tasks - only fall back to plan file for idle tasks
+        const xstateStatus = getXStateTaskStatus(dir.name, projectId);
         const { status: finalStatus, reviewReason: finalReviewReason } = hasJsonError
           ? { status: 'human_review' as TaskStatus, reviewReason: 'errors' as ReviewReason }
-          : this.determineTaskStatusAndReason(plan, specPath, metadata);
+          : xstateStatus ?? this.determineTaskStatusAndReason(plan, specPath, metadata);
 
         // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
         const subtasks = plan?.phases?.flatMap((phase) => {
@@ -477,6 +481,32 @@ export class ProjectStore {
           }
         }
 
+        // Determine executionProgress based on status for phase progress indicators
+        // Done tasks show all phases complete, human_review with completed subtasks show complete
+        // Plan review (no completed subtasks) shows planning phase complete
+        // In progress tasks infer phase from subtask state
+        const hasCompletedSubtasks = subtasks.some((s) => s.status === 'completed');
+        const hasInProgressSubtasks = subtasks.some((s) => s.status === 'in_progress');
+        let executionProgress: ExecutionProgress | undefined;
+        if (finalStatus === 'done') {
+          executionProgress = { phase: 'complete', phaseProgress: 100, overallProgress: 100 };
+        } else if (finalStatus === 'human_review' && hasCompletedSubtasks) {
+          // All phases done, awaiting human review for merge
+          executionProgress = { phase: 'complete', phaseProgress: 100, overallProgress: 100 };
+        } else if (finalStatus === 'human_review' && finalReviewReason === 'plan_review') {
+          // Plan review - planning done, coding not started
+          executionProgress = { phase: 'planning', phaseProgress: 100, overallProgress: 20 };
+        } else if (finalStatus === 'in_progress') {
+          // Task is running - infer phase from subtask state
+          // If subtasks exist and some are in_progress or completed, we're in coding phase
+          // If no subtasks or all pending, we're in planning phase
+          if (subtasks.length > 0 && (hasInProgressSubtasks || hasCompletedSubtasks)) {
+            executionProgress = { phase: 'coding', phaseProgress: 0, overallProgress: 30 };
+          } else {
+            executionProgress = { phase: 'planning', phaseProgress: 0, overallProgress: 10 };
+          }
+        }
+
         tasks.push({
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
@@ -488,6 +518,7 @@ export class ProjectStore {
           logs: [],
           metadata,
           ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
+          ...(executionProgress !== undefined && { executionProgress }),
           stagedInMainProject,
           stagedAt,
           location, // Add location metadata (main vs worktree)
@@ -575,7 +606,9 @@ export class ProjectStore {
       }
 
       // Plan review stage (human approval of spec before coding starts)
-      if (isPlanReviewStage && storedStatus === 'human_review') {
+      // Only show plan_review if NO subtasks have been completed yet
+      const hasCompletedSubtasks = allSubtasks.some((s) => s.status === 'completed');
+      if (isPlanReviewStage && storedStatus === 'human_review' && !hasCompletedSubtasks) {
         return { status: 'human_review', reviewReason: 'plan_review' };
       }
 

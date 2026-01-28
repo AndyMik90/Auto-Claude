@@ -15,7 +15,7 @@ interface TaskState {
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
-  updateTaskStatus: (taskId: string, status: TaskStatus) => void;
+  updateTaskStatus: (taskId: string, status: TaskStatus, reviewReason?: ReviewReason) => void;
   updateTaskFromPlan: (taskId: string, plan: ImplementationPlan) => void;
   updateExecutionProgress: (taskId: string, progress: Partial<ExecutionProgress>) => void;
   appendLog: (taskId: string, log: string) => void;
@@ -93,8 +93,21 @@ function updateTaskAtIndex(tasks: Task[], index: number, updater: (task: Task) =
  * Returns true if valid, false if invalid/incomplete.
  */
 function validatePlanData(plan: ImplementationPlan): boolean {
+  // Allow empty phases during early execution stages
+  // planStatus tracks execution phase (planning, coding, etc.)
+  // status tracks TaskStatus (backlog, in_progress, etc.)
+  const allowEmptyPhases =
+    plan.planStatus === 'planning' ||
+    plan.planStatus === 'in_progress' ||
+    plan.planStatus === 'coding' ||
+    plan.status === 'backlog' ||
+    plan.status === 'in_progress';
+
   // Validate plan has phases array
   if (!plan.phases || !Array.isArray(plan.phases)) {
+    if (allowEmptyPhases) {
+      return true;
+    }
     console.warn('[validatePlanData] Invalid plan: missing or invalid phases array');
     return false;
   }
@@ -103,6 +116,9 @@ function validatePlanData(plan: ImplementationPlan): boolean {
   for (let i = 0; i < plan.phases.length; i++) {
     const phase = plan.phases[i];
     if (!phase || !phase.subtasks || !Array.isArray(phase.subtasks)) {
+      if (allowEmptyPhases) {
+        continue;
+      }
       console.warn(`[validatePlanData] Invalid phase ${i}: missing or invalid subtasks array`);
       return false;
     }
@@ -201,7 +217,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
     }),
 
-  updateTaskStatus: (taskId, status) => {
+  updateTaskStatus: (taskId, status, reviewReason) => {
     // Capture old status before update
     const state = get();
     const index = findTaskIndex(state.tasks, taskId);
@@ -246,7 +262,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             newPhase: executionProgress?.phase
           });
 
-          return { ...t, status, executionProgress, updatedAt: new Date() };
+          const nextReviewReason = status === 'human_review'
+            ? (reviewReason ?? t.reviewReason)
+            : undefined;
+
+          return { ...t, status, reviewReason: nextReviewReason, executionProgress, updatedAt: new Date() };
         })
       };
     });
@@ -348,6 +368,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // Note: ImplementationPlan type already defines status?: TaskStatus
           const planStatus = plan.status;
           const isExplicitHumanReview = planStatus === 'human_review';
+          const isPlanReviewStage = plan.planStatus === 'review';
+          // Check if task is in an active (non-terminal) status where it's still being worked on
+          const isActivePlanStatus = planStatus === 'backlog' || planStatus === 'in_progress' || planStatus === 'ai_review';
 
           // FIX (ACS-203): Add defensive check for terminal status transitions
           // Before allowing transition to 'done', 'human_review', or 'ai_review', verify:
@@ -384,7 +407,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // 3. NOT in a terminal task status (pr_created, done) - finalized workflow states
           // 4. Plan doesn't explicitly say human_review
           // 5. Would not create an invalid terminal transition (ACS-203)
-          if (!isInActivePhase && !isInTerminalPhase && !isInTerminalStatus && !isExplicitHumanReview) {
+          const shouldForceInProgress =
+            isActivePlanStatus &&
+            !isExplicitHumanReview &&
+            !isPlanReviewStage &&
+            !(t.status === 'human_review' && reviewReason === 'plan_review');
+          if (shouldForceInProgress) {
+            status = 'in_progress';
+          } else if (!isInActivePhase && !isInTerminalPhase && !isInTerminalStatus && !isExplicitHumanReview) {
             if (allCompleted && hasSubtasks) {
               // FIX (Flip-Flop Bug): Don't downgrade from terminal statuses to ai_review
               // Once a task reaches human_review or done, it should stay there
@@ -398,6 +428,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             } else if (anyInProgress || anyCompleted) {
               status = 'in_progress';
             }
+          }
+
+          // If plan is explicitly in review and user requested review-before-coding,
+          // ensure reviewReason is plan_review (used by UI to show Approve Plan)
+          if (isPlanReviewStage && (isExplicitHumanReview || t.status === 'human_review') && t.metadata?.requireReviewBeforeCoding) {
+            reviewReason = 'plan_review';
+          } else if (status === 'human_review' && reviewReason === 'plan_review' && allCompleted && hasSubtasks) {
+            // If coding finished and subtasks are complete, upgrade to completed review
+            reviewReason = 'completed';
           }
 
           // FIX (ACS-203): Final validation - prevent invalid terminal status transitions
@@ -1077,6 +1116,12 @@ export function isIncompleteHumanReview(task: Task): boolean {
 
   // JSON error tasks are intentionally in human_review with no subtasks - not incomplete
   if (task.reviewReason === 'errors') return false;
+
+  // Plan review tasks are intentionally in human_review before coding - not incomplete
+  if (task.reviewReason === 'plan_review') return false;
+
+  // Stopped tasks are intentionally in human_review - not incomplete
+  if (task.reviewReason === 'stopped') return false;
 
   // If no subtasks defined, task hasn't been planned yet (shouldn't be in human_review)
   if (!task.subtasks || task.subtasks.length === 0) return true;

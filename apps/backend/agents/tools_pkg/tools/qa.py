@@ -58,12 +58,15 @@ def _apply_qa_update(
 
     # Update plan status to match QA result
     # This ensures the UI shows the correct column after QA
+    # NOTE: planStatus is used by frontend to differentiate:
+    #   - "review" = plan awaiting approval BEFORE coding starts
+    #   - "completed" = QA passed, awaiting human approval to merge
     if status == "approved":
         plan["status"] = "human_review"
-        plan["planStatus"] = "review"
+        plan["planStatus"] = "completed"  # Distinct from plan_review
     elif status == "rejected":
         plan["status"] = "human_review"
-        plan["planStatus"] = "review"
+        plan["planStatus"] = "qa_rejected"
 
     plan["last_updated"] = datetime.now(timezone.utc).isoformat()
 
