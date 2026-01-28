@@ -83,10 +83,21 @@ function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | 
  * - 'beta': Receive pre-release/beta versions
  *
  * @param channel - The update channel to use
+ * @param updater - Optional updater instance (for testing). If omitted, initializes module-scoped autoUpdater.
  */
 export function setUpdateChannel(channel: UpdateChannel, updater?: AppUpdater): void {
-  const autoUpdater = updater || require('electron-updater').autoUpdater;
-  autoUpdater.channel = channel;
+  // If no updater provided, ensure module-scoped autoUpdater is initialized
+  if (!updater && !autoUpdater) {
+    const updaterModule = require('electron-updater');
+    autoUpdater = updaterModule.autoUpdater;
+  }
+
+  const updaterInstance = updater || autoUpdater;
+  if (!updaterInstance) {
+    throw new Error('[app-updater] autoUpdater not initialized');
+  }
+
+  updaterInstance.channel = channel;
   // Clear any downloaded update info when channel changes to prevent showing
   // an Install button for an update from a different channel
   downloadedUpdateInfo = null;
