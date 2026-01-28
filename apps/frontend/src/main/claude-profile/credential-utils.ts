@@ -1942,6 +1942,121 @@ function updateWindowsCredentialManagerCredentials(
 }
 
 /**
+ * Update credentials in Windows .credentials.json file with new tokens (fallback).
+ *
+ * This is the fallback method for Windows when Credential Manager is unavailable.
+ * Claude CLI on Windows primarily uses file-based storage (.credentials.json),
+ * so this fallback ensures credentials are persisted even if Credential Manager fails.
+ *
+ * @param configDir - Config directory for the profile (undefined for default profile)
+ * @param credentials - New credentials to store
+ * @returns Result indicating success or failure
+ */
+function updateWindowsFileCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const credentialsPath = getWindowsCredentialsPath(configDir);
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate credentials path
+  if (!isValidCredentialsPath(credentialsPath)) {
+    return { success: false, error: 'Invalid credentials path' };
+  }
+
+  try {
+    // Read existing credentials to preserve email and other fields
+    const existing = getFullCredentialsFromWindowsFile(configDir);
+
+    // Build new credential JSON with all fields
+    const newCredentialData = {
+      claudeAiOauth: {
+        accessToken: credentials.accessToken,
+        refreshToken: credentials.refreshToken,
+        expiresAt: credentials.expiresAt,
+        scopes: credentials.scopes || existing.scopes || [],
+        email: existing.email || undefined,
+        emailAddress: existing.email || undefined
+      },
+      email: existing.email || undefined
+    };
+
+    const credentialsJson = JSON.stringify(newCredentialData, null, 2);
+
+    // Ensure directory exists
+    const dirPath = credentialsPath.substring(0, credentialsPath.lastIndexOf('\\') || credentialsPath.lastIndexOf('/'));
+    if (!existsSync(dirPath)) {
+      const { mkdirSync } = require('fs');
+      mkdirSync(dirPath, { recursive: true });
+    }
+
+    // Write to file (Windows doesn't support Unix permission modes, but we write securely)
+    writeFileSync(credentialsPath, credentialsJson, { encoding: 'utf-8' });
+
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Update] Successfully updated credentials file:', credentialsPath);
+    }
+
+    // Clear cached credentials to ensure fresh values are read
+    clearCredentialCache(configDir);
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[CredentialUtils:Windows:Update] Failed to update credentials file:', errorMessage);
+    return { success: false, error: `File update failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Update credentials in Windows - tries Credential Manager first, falls back to file.
+ *
+ * Claude CLI on Windows primarily uses file-based storage (.credentials.json),
+ * but we try Credential Manager first for forward compatibility in case Claude CLI
+ * changes its storage mechanism in the future.
+ *
+ * @param configDir - Config directory for the profile (undefined for default profile)
+ * @param credentials - New credentials to store
+ * @returns Result indicating success or failure
+ */
+function updateWindowsCredentials(
+  configDir: string | undefined,
+  credentials: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    scopes?: string[];
+  }
+): UpdateCredentialsResult {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Try Credential Manager first (for forward compatibility)
+  const psPath = findPowerShellPath();
+  if (psPath) {
+    const credManagerResult = updateWindowsCredentialManagerCredentials(configDir, credentials);
+    if (credManagerResult.success) {
+      // Also update the file for consistency (Claude CLI reads from file)
+      const fileResult = updateWindowsFileCredentials(configDir, credentials);
+      if (!fileResult.success && isDebug) {
+        console.warn('[CredentialUtils:Windows:Update] Credential Manager succeeded but file update failed:', fileResult.error);
+      }
+      return credManagerResult;
+    }
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Update] Credential Manager update failed, trying file fallback:', credManagerResult.error);
+    }
+  }
+
+  // Fall back to file-based storage (what Claude CLI actually uses on Windows)
+  return updateWindowsFileCredentials(configDir, credentials);
+}
+
+/**
  * Update credentials in the platform-specific secure storage with new tokens.
  * Called after a successful OAuth token refresh to persist the new tokens.
  *
@@ -1970,7 +2085,7 @@ export function updateKeychainCredentials(
   }
 
   if (isWindows()) {
-    return updateWindowsCredentialManagerCredentials(configDir, credentials);
+    return updateWindowsCredentials(configDir, credentials);
   }
 
   return { success: false, error: `Unsupported platform: ${process.platform}` };
