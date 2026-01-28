@@ -163,5 +163,16 @@
     "downloadError": "Échec du téléchargement de la mise à jour",
     "claudeCodeChangelog": "Voir le journal des modifications Claude Code",
     "claudeCodeChangelogAriaLabel": "Voir le journal des modifications Claude Code (s'ouvre dans une nouvelle fenêtre)"
+  },
+  "versionWarning": {
+    "title": "Action requise",
+    "subtitle": "Mise à jour version 2.7.5",
+    "description": "En raison de changements d'authentification dans cette version, vous devez réauthentifier votre profil Claude.",
+    "instructions": "Pour vous réauthentifier :",
+    "step1": "Allez dans Paramètres",
+    "step2": "Naviguez vers Paramètres de l'app > Intégrations",
+    "step3": "Cliquez sur « Réauthentifier » sur votre profil",
+    "gotIt": "Compris",
+    "goToSettings": "Aller aux paramètres"
   }
 }

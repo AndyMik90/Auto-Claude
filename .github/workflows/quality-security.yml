@@ -1,9 +1,8 @@
 name: Quality Security
 
-# CodeQL is slow (20-30 min per language), so:
-# - Run on push to main only (not PRs or develop)
-# - Run weekly scheduled scan
-# Bandit is fast (5-10 min), so keep it on all PRs
+# CodeQL runs on all PRs, pushes to main, and weekly schedule
+# Note: CodeQL takes 20-30 min per language (40-60 min total)
+# Bandit is fast (5-10 min)
 
 on:
   push:
@@ -35,13 +34,10 @@ permissions:
   actions: read
 
 jobs:
-  # CodeQL only on push to main or scheduled (NOT on PRs - saves 40-60 min per PR)
   codeql:
     name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only run on push to main or scheduled - skip PRs for speed
-    if: github.event_name == 'push' || github.event_name == 'schedule'
     strategy:
       fail-fast: false
       matrix:
@@ -74,7 +70,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -93,7 +89,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Analyze Bandit results
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -153,7 +149,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check security results
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const codeql = '${{ needs.codeql.result }}';

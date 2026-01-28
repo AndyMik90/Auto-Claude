@@ -17,7 +17,7 @@ import {
 } from './plan-file-utils';
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
-import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -210,7 +210,7 @@ export function registerTaskExecutionHandlers(
         // Start spec creation process - pass the existing spec directory
         // so spec_runner uses it instead of creating a new one
         // Also pass baseBranch so worktrees are created from the correct branch
-        agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranch);
+        agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranch);
       } else if (needsImplementation) {
         // Spec exists but no subtasks - run run.py to create implementation plan and execute
         // Read the spec.md to get the task description
@@ -384,13 +384,15 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             qaReportPath,
-            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
+            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`,
+            'utf-8'
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA report:', error);
           return { success: false, error: 'Failed to write QA report file' };
         }
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -398,6 +400,20 @@ export function registerTaskExecutionHandlers(
             taskId,
             'done'
           );
+        }
+
+        // CRITICAL: Persist 'done' status to implementation_plan.json
+        // Without this, the old status would be shown after page refresh since
+        // getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'done', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted approved status (done) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist approved status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
         }
       } else {
         // Reset and discard all changes from worktree merge in main
@@ -506,7 +522,8 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             fixRequestPath,
-            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`
+            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`,
+            'utf-8'
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA fix request:', error);
@@ -519,6 +536,7 @@ export function registerTaskExecutionHandlers(
         console.warn('[TASK_REVIEW] Starting QA process with projectPath:', qaProjectPath);
         agentManager.startQAProcess(taskId, qaProjectPath, task.specId);
 
+        // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(
@@ -526,6 +544,20 @@ export function registerTaskExecutionHandlers(
             taskId,
             'in_progress'
           );
+        }
+
+        // CRITICAL: Persist 'in_progress' status to implementation_plan.json
+        // Without this, the old status (e.g., 'human_review') would be shown after page refresh
+        // since getTasks() reads status from the plan file, not from the Zustand store.
+        const planPath = getPlanPath(project, task);
+        try {
+          const persisted = await persistPlanStatus(planPath, 'in_progress', project.id);
+          if (persisted) {
+            console.warn('[TASK_REVIEW] Persisted rejected status (in_progress) to implementation_plan.json');
+          }
+        } catch (err) {
+          console.error('[TASK_REVIEW] Failed to persist rejected status:', err);
+          // Non-fatal: UI already updated, file persistence is best-effort
         }
       }
 
@@ -567,21 +599,13 @@ export function registerTaskExecutionHandlers(
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
               // Get the branch name before removing the worktree
-              let branch = '';
-              let usingFallbackBranch = false;
-              try {
-                branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
-                  cwd: worktreePath,
-                  encoding: 'utf-8',
-                  timeout: 30000,
-                  env: getIsolatedGitEnv()
-                }).trim();
-              } catch (branchError) {
-                // If we can't get branch name, use the default pattern
-                branch = `auto-claude/${task.specId}`;
-                usingFallbackBranch = true;
-                console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
-              }
+              // Use shared utility to validate detected branch matches expected pattern
+              // This prevents deleting wrong branch when worktree is corrupted/orphaned
+              const { branch, usingFallback: usingFallbackBranch } = detectWorktreeBranch(
+                worktreePath,
+                task.specId,
+                { timeout: 30000, logPrefix: '[TASK_UPDATE_STATUS]' }
+              );
 
               // Remove the worktree
               execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
@@ -607,7 +631,10 @@ export function registerTaskExecutionHandlers(
                   // More concerning - fallback pattern didn't match actual branch
                   console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
                 } else {
-                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`);
+                  console.warn(
+                    `[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`,
+                    branchDeleteError
+                  );
                 }
               }
 
@@ -753,7 +780,7 @@ export function registerTaskExecutionHandlers(
             // No spec file - need to run spec_runner.py to create the spec
             const taskDescription = task.description || task.title;
             console.warn('[TASK_UPDATE_STATUS] Starting spec creation for:', task.specId);
-            agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate);
+            agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate);
           } else if (needsImplementation) {
             // Spec exists but no subtasks - run run.py to create implementation plan and execute
             console.warn('[TASK_UPDATE_STATUS] Starting task execution (no subtasks) for:', task.specId);
@@ -964,6 +991,10 @@ export function registerTaskExecutionHandlers(
               };
             }
 
+            // CRITICAL: Invalidate cache AFTER file writes complete
+            // This ensures getTasks() returns fresh data reflecting the recovery
+            projectStore.invalidateTasksCache(project.id);
+
             return {
               success: true,
               data: {
@@ -1025,6 +1056,10 @@ export function registerTaskExecutionHandlers(
               error: 'Failed to write plan file during recovery'
             };
           }
+
+          // CRITICAL: Invalidate cache AFTER file writes complete
+          // This ensures getTasks() returns fresh data reflecting the recovery
+          projectStore.invalidateTasksCache(project.id);
         }
 
         // Stop file watcher if it was watching this task
@@ -1032,7 +1067,7 @@ export function registerTaskExecutionHandlers(
 
         // Auto-restart the task if requested
         let autoRestarted = false;
-        if (autoRestart && project) {
+        if (autoRestart) {
           // Check git status before auto-restarting
           const gitStatusForRestart = checkGitStatus(project.path);
           if (!gitStatusForRestart.isGitRepo || !gitStatusForRestart.hasCommits) {
@@ -1101,6 +1136,10 @@ export function registerTaskExecutionHandlers(
                   // The plan status will be updated by the agent when it starts
                 }
               }
+
+              // CRITICAL: Invalidate cache AFTER file writes complete
+              // This ensures getTasks() returns fresh data reflecting the restart status
+              projectStore.invalidateTasksCache(project.id);
             }
 
             // Start the task execution
@@ -1121,7 +1160,7 @@ export function registerTaskExecutionHandlers(
               // No spec file - need to run spec_runner.py to create the spec
               const taskDescription = task.description || task.title;
               console.warn(`[Recovery] Starting spec creation for: ${task.specId}`);
-              agentManager.startSpecCreation(task.specId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery);
+              agentManager.startSpecCreation(taskId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery);
             } else {
               // Spec exists - run task execution
               console.warn(`[Recovery] Starting task execution for: ${task.specId}`);

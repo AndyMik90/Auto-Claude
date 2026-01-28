@@ -35,6 +35,11 @@ vi.mock('electron', () => ({
   BrowserWindow: vi.fn()
 }));
 
+// Mock config path validator to allow test temp directories
+vi.mock('../../main/utils/config-path-validator', () => ({
+  isValidConfigDir: vi.fn().mockReturnValue(true),
+}));
+
 // Mock ClaudeProfileManager
 const mockProfileManager = {
   generateProfileId: vi.fn((name: string) => `profile-${name.toLowerCase().replace(/\s+/g, '-')}`),
@@ -147,6 +152,7 @@ describe('Claude Profile IPC Integration', () => {
 
     // Import and call the registration function
     const { registerTerminalHandlers } = await import('../../main/ipc-handlers/terminal-handlers');
+    // biome-ignore lint/suspicious/noExplicitAny: Test mock types don't match production types
     registerTerminalHandlers(mockTerminalManager as any, () => mockBrowserWindow as any);
   });
 
@@ -166,7 +172,7 @@ describe('Claude Profile IPC Integration', () => {
         name: 'New Account'
       });
 
-      const result = await handleProfileSave!(null, newProfile) as IPCResult<ClaudeProfile>;
+      const result = await handleProfileSave?.(null, newProfile) as IPCResult<ClaudeProfile>;
 
       expect(result.success).toBe(true);
       expect(mockProfileManager.generateProfileId).toHaveBeenCalledWith('New Account');
@@ -185,7 +191,7 @@ describe('Claude Profile IPC Integration', () => {
         name: 'Existing Account'
       });
 
-      const result = await handleProfileSave!(null, existingProfile) as IPCResult<ClaudeProfile>;
+      const result = await handleProfileSave?.(null, existingProfile) as IPCResult<ClaudeProfile>;
 
       expect(result.success).toBe(true);
       expect(mockProfileManager.generateProfileId).not.toHaveBeenCalled();
@@ -201,8 +207,9 @@ describe('Claude Profile IPC Integration', () => {
         configDir: path.join(TEST_DIR, 'new-profile-config')
       });
 
-      await handleProfileSave!(null, profile);
+      await handleProfileSave?.(null, profile);
 
+      // biome-ignore lint/style/noNonNullAssertion: Test file - configDir is set in createTestProfile
       expect(existsSync(profile.configDir!)).toBe(true);
     });
 
@@ -215,8 +222,9 @@ describe('Claude Profile IPC Integration', () => {
         configDir: path.join(TEST_DIR, 'should-not-exist')
       });
 
-      await handleProfileSave!(null, profile);
+      await handleProfileSave?.(null, profile);
 
+      // biome-ignore lint/style/noNonNullAssertion: Test file - configDir is set in createTestProfile
       expect(existsSync(profile.configDir!)).toBe(false);
     });
 
@@ -229,183 +237,25 @@ describe('Claude Profile IPC Integration', () => {
       });
 
       const profile = createTestProfile();
-      const result = await handleProfileSave!(null, profile) as IPCResult;
+      const result = await handleProfileSave?.(null, profile) as IPCResult;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database error');
     });
   });
 
-  describe('CLAUDE_PROFILE_INITIALIZE', () => {
-    beforeEach(() => {
-      // Reset terminal manager mock
-      mockTerminalManager.create.mockResolvedValue({ success: true });
-      mockTerminalManager.write.mockReturnValue(undefined);
-    });
-
-    it('should create terminal and run claude setup-token for non-default profile', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile({
-        id: 'test-profile',
-        name: 'Test Profile',
-        isDefault: false,
-        configDir: path.join(TEST_DIR, 'test-config')
-      });
-
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
-
-      expect(result.success).toBe(true);
-      expect(mockProfileManager.getProfile).toHaveBeenCalledWith('test-profile');
-      expect(mockTerminalManager.create).toHaveBeenCalled();
-
-      const createCall = mockTerminalManager.create.mock.calls[0][0] as TerminalCreateOptions;
-      expect(createCall.id).toMatch(/^claude-login-test-profile-/);
-    });
-
-    it('should write claude setup-token command with CLAUDE_CONFIG_DIR for non-default profile', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile({
-        id: 'test-profile',
-        name: 'Test Profile',
-        isDefault: false,
-        configDir: path.join(TEST_DIR, 'test-config')
-      });
-
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      await handleProfileInit!(null, 'test-profile');
-
-      expect(mockTerminalManager.write).toHaveBeenCalled();
-
-      const writeCall = mockTerminalManager.write.mock.calls[0];
-      const command = writeCall[1] as string;
-
-      expect(command).toContain('CLAUDE_CONFIG_DIR');
-      expect(command).toContain('setup-token');
-    });
-
-    it('should write simple claude setup-token command for default profile', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile({
-        id: 'default',
-        name: 'Default',
-        isDefault: true
-      });
-
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      await handleProfileInit!(null, 'default');
-
-      expect(mockTerminalManager.write).toHaveBeenCalled();
-
-      const writeCall = mockTerminalManager.write.mock.calls[0];
-      const command = writeCall[1] as string;
-
-      expect(command).not.toContain('CLAUDE_CONFIG_DIR');
-      expect(command).toContain('setup-token');
-    });
-
-    it('should send TERMINAL_AUTH_CREATED event after creating terminal', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile({
-        id: 'test-profile',
-        name: 'Test Profile'
-      });
-
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      await handleProfileInit!(null, 'test-profile');
-
-      expect(mockBrowserWindow.webContents.send).toHaveBeenCalledWith(
-        'terminal:authCreated',
-        expect.objectContaining({
-          profileId: 'test-profile',
-          profileName: 'Test Profile',
-          terminalId: expect.stringMatching(/^claude-login-test-profile-/)
-        })
-      );
-    });
-
-    it('should return error if profile not found', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      mockProfileManager.getProfile.mockReturnValue(null);
-
-      const result = await handleProfileInit!(null, 'nonexistent') as IPCResult;
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Profile not found');
-      expect(mockTerminalManager.create).not.toHaveBeenCalled();
-    });
-
-    it('should return error if terminal creation fails', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile();
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      mockTerminalManager.create.mockResolvedValueOnce({
-        success: false,
-        error: 'Max terminals reached'
-      });
-
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Max terminals reached');
-      expect(mockTerminalManager.write).not.toHaveBeenCalled();
-    });
-
-    it('should create config directory for non-default profile before terminal creation', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      const profile = createTestProfile({
-        isDefault: false,
-        configDir: path.join(TEST_DIR, 'init-config')
-      });
-
-      mockProfileManager.getProfile.mockReturnValue(profile);
-
-      await handleProfileInit!(null, 'test-profile');
-
-      expect(existsSync(profile.configDir!)).toBe(true);
-    });
-
-    it('should handle initialization errors gracefully', async () => {
-      const handleProfileInit = handlers.get('claude:profileInitialize');
-      expect(handleProfileInit).toBeDefined();
-
-      mockProfileManager.getProfile.mockImplementationOnce(() => {
-        throw new Error('Internal error');
-      });
-
-      const result = await handleProfileInit!(null, 'test-profile') as IPCResult;
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Internal error');
-    });
-  });
+  // Note: CLAUDE_PROFILE_INITIALIZE tests were removed.
+  // The handler was deprecated as part of the migration from setup-token to the
+  // new /login OAuth flow. Profile initialization now happens automatically
+  // during the /login flow in claude-code-handlers.ts.
 
   describe('IPC handler registration', () => {
     it('should register CLAUDE_PROFILE_SAVE handler', () => {
       expect(handlers.has('claude:profileSave')).toBe(true);
     });
 
-    it('should register CLAUDE_PROFILE_INITIALIZE handler', () => {
-      expect(handlers.has('claude:profileInitialize')).toBe(true);
-    });
+    // Note: CLAUDE_PROFILE_INITIALIZE handler was removed as part of the
+    // OAuth /login flow migration. Profile initialization now happens
+    // automatically during the /login flow in claude-code-handlers.ts
   });
 });

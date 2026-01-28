@@ -5,7 +5,7 @@
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
 import type { ExecutionPhase as ExecutionPhaseType, CompletablePhase } from '../constants/phase-protocol';
 
-export type TaskStatus = 'backlog' | 'in_progress' | 'ai_review' | 'human_review' | 'pr_created' | 'done';
+export type TaskStatus = 'backlog' | 'queue' | 'in_progress' | 'ai_review' | 'human_review' | 'done' | 'pr_created' | 'error';
 
 // Maps task status columns to ordered task IDs for kanban board reordering
 export type TaskOrderState = Record<TaskStatus, string[]>;
@@ -442,10 +442,10 @@ export interface WorktreeListItem {
   path: string;
   branch: string;
   baseBranch: string;
-  commitCount: number;
-  filesChanged: number;
-  additions: number;
-  deletions: number;
+  commitCount?: number;
+  filesChanged?: number;
+  additions?: number;
+  deletions?: number;
 }
 
 /**

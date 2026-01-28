@@ -163,5 +163,16 @@
     "downloadError": "Failed to download update",
     "claudeCodeChangelog": "View Claude Code Changelog",
     "claudeCodeChangelogAriaLabel": "View Claude Code Changelog (opens in new window)"
+  },
+  "versionWarning": {
+    "title": "Action Required",
+    "subtitle": "Version 2.7.5 Update",
+    "description": "Due to authentication changes in this version, you need to re-authenticate your Claude profile.",
+    "instructions": "To re-authenticate:",
+    "step1": "Go to Settings",
+    "step2": "Navigate to App Settings > Integrations",
+    "step3": "Click \"Re-authenticate\" on your profile",
+    "gotIt": "Got It",
+    "goToSettings": "Go to Settings"
   }
 }
