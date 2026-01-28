@@ -42,8 +42,11 @@ export function useTerminalEvents({
     const cleanup = window.electronAPI.onTerminalExit((id, exitCode) => {
       if (id === terminalId) {
         // #region agent log
+        const fs = await import('fs');
+        const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
         const isRecreating = isRecreatingRef?.current ?? false;
-        fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'TERMINAL_EXIT received', data: { terminalId, exitCode, isRecreating, willSkip: isRecreating }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
+        const line = JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'TERMINAL_EXIT received', data: { terminalId, exitCode, isRecreating, willSkip: isRecreating }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }) + '\n';
+        fs.appendFileSync(logPath, line);
         // #endregion
         // During deliberate recreation (e.g., worktree switching), skip the normal
         // exit handling to prevent setting status to 'exited' and scheduling removal.
