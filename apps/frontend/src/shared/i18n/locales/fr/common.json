@@ -136,6 +136,9 @@
     "terminalWorktreeNotFound": "Worktree terminal introuvable : {{name}}",
     "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}"
   },
+  "worktrees": {
+    "deleteSuccess": "Worktree '{{branch}}' supprimé avec succès"
+  },
   "notification": {
     "accountSwitched": "Compte changé",
     "swapFrom": "Passage de",

@@ -46,6 +46,7 @@ import {
 } from './ui/alert-dialog';
 import { useProjectStore } from '../stores/project-store';
 import { useTaskStore } from '../stores/task-store';
+import { useToast } from '../hooks/use-toast';
 import type { WorktreeListItem, WorktreeMergeResult, TerminalWorktreeConfig, WorktreeStatus, Task, WorktreeCreatePROptions, WorktreeCreatePRResult } from '../../shared/types';
 import { CreatePRDialog } from './task-detail/task-review/CreatePRDialog';
 
@@ -59,6 +60,7 @@ interface WorktreesProps {
 
 export function Worktrees({ projectId }: WorktreesProps) {
   const { t } = useTranslation(['common', 'dialogs']);
+  const { toast } = useToast();
   const projects = useProjectStore((state) => state.projects);
   const selectedProject = projects.find((p) => p.id === projectId);
   const tasks = useTaskStore((state) => state.tasks);
@@ -263,6 +265,10 @@ export function Worktrees({ projectId }: WorktreesProps) {
         // Refresh worktrees after successful delete
         await loadWorktrees();
         setShowDeleteConfirm(false);
+        toast({
+          title: t('common:actions.success'),
+          description: t('common:worktrees.deleteSuccess', { branch: worktreeToDelete.branch || worktreeToDelete.specName }),
+        });
         setWorktreeToDelete(null);
       } else {
         setError(result.error || 'Failed to delete worktree');
