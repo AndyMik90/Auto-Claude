@@ -1,18 +1,29 @@
 {
-    "title": "Ideation",
+    "title": "Idéation & Planification",
+    "subtitle": "Collaborez avec l'IA pour concevoir de nouvelles fonctionnalités",
     "empty": {
-        "title": "No Ideas Yet",
-        "description": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience."
+        "title": "Aucune session d'idéation",
+        "description": "Commencez par décrire une idée ou un problème pour générer des propositions techniques.",
+        "action": "Nouvelle Idée"
     },
-    "settings": {
-        "enabledTypes": "Enabled Ideation Types",
-        "types": {
-            "code_improvements": "Code Improvements",
-            "ui_ux_improvements": "UI/UX Improvements",
-            "documentation_gaps": "Documentation",
-            "security_hardening": "Security",
-            "performance_optimizations": "Performance",
-            "code_quality": "Code Quality"
-        }
+    "sessions": {
+        "recent": "Sessions récentes",
+        "createNew": "Nouvelle session"
+    },
+    "stages": {
+        "brainstorm": "Brainstorming",
+        "spec": "Spécification",
+        "plan": "Planification",
+        "review": "Révision"
+    },
+    "actions": {
+        "generate": "Générer des idées",
+        "refine": "Affiner",
+        "export": "Exporter vers Roadmap",
+        "delete": "Supprimer la session"
+    },
+    "chat": {
+        "placeholder": "Décrivez votre idée ici...",
+        "suggestion": "Ex: Je veux ajouter un système d'authentification par JWT..."
     }
 }

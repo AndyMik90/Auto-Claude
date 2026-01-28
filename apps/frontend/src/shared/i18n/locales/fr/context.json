@@ -1,11 +1,40 @@
 {
-    "title": "Project Structure",
-    "subtitle": "AI-discovered knowledge about your codebase",
+    "title": "Structure du Projet",
+    "subtitle": "Connaissance découverte par l'IA sur votre code",
     "empty": {
-        "title": "No Project Index Found",
-        "description": "Click the Refresh button to analyze your project structure and create an index."
+        "title": "Aucun index de projet trouvé",
+        "description": "Indexez votre projet pour permettre à l'agent de comprendre la structure et les relations dans votre code.",
+        "action": "Indexer le projet"
     },
-    "actions": {
-        "refresh": "Refresh"
+    "indexing": {
+        "status": "Indexation en cours...",
+        "files": "Fichiers traités",
+        "entities": "Entités découvertes",
+        "relationships": "Relations établies"
+    },
+    "tabs": {
+        "overview": "Vue d'ensemble",
+        "graphs": "Graphe de dépendances",
+        "entities": "Entités",
+        "files": "Explorateur de fichiers"
+    },
+    "stats": {
+        "files": "Fichiers",
+        "classes": "Classes",
+        "functions": "Fonctions",
+        "components": "Composants",
+        "total": "Total des entités"
+    },
+    "search": {
+        "placeholder": "Rechercher dans la structure du projet...",
+        "noResults": "Aucune entité trouvée."
+    },
+    "entityType": {
+        "class": "Classe",
+        "function": "Fonction",
+        "interface": "Interface",
+        "component": "Composant",
+        "variable": "Variable",
+        "file": "Fichier"
     }
 }

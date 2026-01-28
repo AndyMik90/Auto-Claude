@@ -1,18 +1,27 @@
 {
-    "title": "Roadmap",
+    "title": "Feuille de Route du Projet",
+    "subtitle": "Suivez la progression des fonctionnalités majeures",
     "empty": {
-        "title": "No Roadmap Yet",
-        "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan."
+        "title": "Roadmap vide",
+        "description": "Ajoutez des fonctionnalités depuis la section Idéation ou manuellement.",
+        "action": "Ajouter une fonctionnalité"
     },
-    "actions": {
-        "generate": "Generate",
-        "refresh": "Refresh",
-        "generateFull": "Generate Full Roadmap",
-        "stop": "Stop"
+    "status": {
+        "todo": "À faire",
+        "in_progress": "En cours",
+        "completed": "Terminé",
+        "blocked": "Bloqué"
     },
-    "tabs": {
-        "kanban": "Kanban",
-        "list": "List",
-        "phases": "Phases"
+    "priority": {
+        "low": "Basse",
+        "medium": "Moyenne",
+        "high": "Haute",
+        "critical": "Critique"
+    },
+    "phases": {
+        "design": "Conception",
+        "development": "Développement",
+        "testing": "Tests",
+        "deployment": "Déploiement"
     }
 }

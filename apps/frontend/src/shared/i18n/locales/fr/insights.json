@@ -1,52 +1,21 @@
 {
-    "title": "Insights",
-    "subtitle": "Ask questions about your codebase",
-    "newChat": "New Chat",
-    "placeholder": "Ask about your codebase...",
-    "empty": {
-        "title": "Start a Conversation",
-        "description": "Ask questions about your codebase, get suggestions for improvements, or discuss features you'd like to implement."
+    "title": "Analyses & Insights",
+    "subtitle": "Observations intelligentes sur l'activité de votre projet",
+    "categories": {
+        "productivity": "Productivité",
+        "velocity": "Vélocité",
+        "quality": "Qualité du code",
+        "collaboration": "Collaboration"
     },
-    "suggestions": {
-        "architecture": "What is the architecture of this project?",
-        "improvements": "Suggest improvements for code quality",
-        "features": "What features could I add next?",
-        "security": "Are there any security concerns?"
+    "metrics": {
+        "tasksPerDay": "Tâches par jour",
+        "avgDuration": "Durée moyenne",
+        "commitFreq": "Fréquence des commits",
+        "activeTime": "Temps actif"
     },
-    "roles": {
-        "user": "You",
-        "assistant": "Assistant"
-    },
-    "status": {
-        "thinking": "Thinking...",
-        "streaming": "Streaming..."
-    },
-    "suggestedTask": {
-        "title": "Suggested Task",
-        "create": "Create Task",
-        "creating": "Creating...",
-        "created": "Task Created"
-    },
-    "tools": {
-        "usedCount": "{{count}} tool used",
-        "usedCount_other": "{{count}} tools used",
-        "read": "Reading file",
-        "glob": "Searching files",
-        "grep": "Searching code"
-    },
-    "history": {
-        "title": "Chat History",
-        "empty": "No conversations yet",
-        "deleteTitle": "Delete conversation?",
-        "deleteDescription": "This will permanently delete this conversation and all its messages. This action cannot be undone.",
-        "today": "Today",
-        "yesterday": "Yesterday",
-        "daysAgo": "{{count}} days ago",
-        "messagesCount": "1 message",
-        "messagesCount_plural": "{{count}} messages"
-    },
-    "accessibility": {
-        "hideSidebar": "Hide sidebar",
-        "showSidebar": "Show sidebar"
+    "periods": {
+        "week": "7 derniers jours",
+        "month": "30 derniers jours",
+        "allTime": "Tout le temps"
     }
 }
