@@ -439,7 +439,7 @@ export class ProjectStore {
         // Tasks with JSON errors go to human_review with errors reason
         // PRIORITY: Check XState first for active tasks (prevents status flip-flop during refresh)
         // XState is the source of truth for running tasks - only fall back to plan file for idle tasks
-        const xstateStatus = getXStateTaskStatus(dir.name);
+        const xstateStatus = getXStateTaskStatus(dir.name, projectId);
         const { status: finalStatus, reviewReason: finalReviewReason } = hasJsonError
           ? { status: 'human_review' as TaskStatus, reviewReason: 'errors' as ReviewReason }
           : xstateStatus ?? this.determineTaskStatusAndReason(plan, specPath, metadata);

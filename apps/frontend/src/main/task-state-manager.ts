@@ -26,6 +26,7 @@ type TaskContext = {
 };
 
 export class TaskStateManager {
+  // Use composite key "projectId:taskId" to prevent collisions across projects
   private readonly actors = new Map<string, TaskMachineActor>();
   private readonly taskContext = new Map<string, TaskContext>();
   private readonly lastLegacy = new Map<string, LegacyStatus>();
@@ -33,12 +34,24 @@ export class TaskStateManager {
   constructor(private readonly getMainWindow: () => BrowserWindow | null) {}
 
   /**
+   * Generate a composite key for map lookups.
+   * Uses "projectId:taskId" format to prevent collisions when multiple projects have same spec IDs.
+   */
+  private getActorKey(taskId: string, projectId?: string): string {
+    return projectId ? `${projectId}:${taskId}` : taskId;
+  }
+
+  /**
    * Get the current status from XState actor for a task.
    * Returns null if no actor exists (task not being tracked).
    * This should be used during refresh to preserve running state.
+   *
+   * @param taskId - The task's spec ID (e.g., "001-feature")
+   * @param projectId - The project ID to scope the lookup (prevents cross-project collisions)
    */
-  getCurrentStatus(taskId: string): { status: TaskStatus; reviewReason?: ReviewReason } | null {
-    const actor = this.actors.get(taskId);
+  getCurrentStatus(taskId: string, projectId?: string): { status: TaskStatus; reviewReason?: ReviewReason } | null {
+    const key = this.getActorKey(taskId, projectId);
+    const actor = this.actors.get(key);
     if (!actor) {
       return null;
     }
@@ -49,23 +62,25 @@ export class TaskStateManager {
   /**
    * Check if a task has an active XState actor (is being tracked).
    */
-  hasActiveActor(taskId: string): boolean {
-    return this.actors.has(taskId);
+  hasActiveActor(taskId: string, projectId?: string): boolean {
+    const key = this.getActorKey(taskId, projectId);
+    return this.actors.has(key);
   }
 
   /**
    * Cleans up resources for a specific task.
    * Call this when a task is deleted or no longer needs tracking.
    */
-  cleanupTask(taskId: string): void {
-    const actor = this.actors.get(taskId);
+  cleanupTask(taskId: string, projectId?: string): void {
+    const key = this.getActorKey(taskId, projectId);
+    const actor = this.actors.get(key);
     if (actor) {
       actor.stop();
-      this.actors.delete(taskId);
+      this.actors.delete(key);
     }
-    this.taskContext.delete(taskId);
-    this.lastLegacy.delete(taskId);
-    logger.info(`[TaskStateManager] Cleaned up task: ${taskId}`);
+    this.taskContext.delete(key);
+    this.lastLegacy.delete(key);
+    logger.info(`[TaskStateManager] Cleaned up task: ${key}`);
   }
 
   /**
@@ -83,10 +98,11 @@ export class TaskStateManager {
   }
 
   handleExecutionProgress(task: Task, project: Project, progress: ExecutionProgress): void {
-    this.taskContext.set(task.id, { task, project });
+    const key = this.getActorKey(task.id, project.id);
+    this.taskContext.set(key, { task, project });
     this.logExecutionProgress(task.id, progress, project.id);
 
-    const actor = this.getActor(task);
+    const actor = this.getActor(task, project);
     const currentState = actor.getSnapshot().value;
     const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
 
@@ -206,7 +222,8 @@ export class TaskStateManager {
     hasCompletedSubtasks?: boolean,
     isQAApproved?: boolean
   ): void {
-    this.taskContext.set(task.id, { task, project });
+    const key = this.getActorKey(task.id, project.id);
+    this.taskContext.set(key, { task, project });
     const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
     // Default hasCompletedSubtasks to checking if any subtask is completed
     const completedSubtasksFlag = hasCompletedSubtasks ?? task.subtasks?.some((s) => s.status === 'completed') ?? false;
@@ -221,7 +238,7 @@ export class TaskStateManager {
       requireReviewBeforeCoding
     });
 
-    const actor = this.getActor(task);
+    const actor = this.getActor(task, project);
     actor.send({
       type: 'PROCESS_EXITED',
       exitCode,
@@ -234,13 +251,15 @@ export class TaskStateManager {
   }
 
   handleUserStopped(task: Task, project: Project): void {
-    this.taskContext.set(task.id, { task, project });
-    this.getActor(task).send({ type: 'USER_STOPPED' });
+    const key = this.getActorKey(task.id, project.id);
+    this.taskContext.set(key, { task, project });
+    this.getActor(task, project).send({ type: 'USER_STOPPED' });
   }
 
   handleUserResumed(task: Task, project: Project): void {
-    this.taskContext.set(task.id, { task, project });
-    this.getActor(task).send({ type: 'USER_RESUMED' });
+    const key = this.getActorKey(task.id, project.id);
+    this.taskContext.set(key, { task, project });
+    this.getActor(task, project).send({ type: 'USER_RESUMED' });
   }
 
   handleManualStatus(
@@ -249,37 +268,41 @@ export class TaskStateManager {
     status: 'backlog' | 'human_review' | 'done',
     reviewReason?: ReviewReason
   ): void {
-    this.taskContext.set(task.id, { task, project });
-    this.getActor(task).send({ type: 'MANUAL_SET_STATUS', status, reviewReason });
+    const key = this.getActorKey(task.id, project.id);
+    this.taskContext.set(key, { task, project });
+    this.getActor(task, project).send({ type: 'MANUAL_SET_STATUS', status, reviewReason });
   }
 
-  private getActor(task: Task): TaskMachineActor {
-    let actor = this.actors.get(task.id);
+  private getActor(task: Task, project: Project): TaskMachineActor {
+    const key = this.getActorKey(task.id, project.id);
+    let actor = this.actors.get(key);
     if (!actor) {
-      actor = createActor(taskMachine, { id: task.id });
+      actor = createActor(taskMachine, { id: key });
       actor.subscribe((snapshot) => {
         // XState v5: 'changed' is only present when state has actually changed
         // For subscriptions, we receive updates on every transition attempt, so check if status changed
-        this.handleSnapshot(task.id, snapshot);
+        this.handleSnapshot(key, snapshot);
       });
       actor.start();
-      this.actors.set(task.id, actor);
+      this.actors.set(key, actor);
     }
     return actor;
   }
 
-  private handleSnapshot(taskId: string, snapshot: TaskMachineSnapshot): void {
+  private handleSnapshot(actorKey: string, snapshot: TaskMachineSnapshot): void {
     const legacy = this.mapSnapshotToLegacy(snapshot);
     if (!legacy) return;
 
-    const previous = this.lastLegacy.get(taskId);
+    const previous = this.lastLegacy.get(actorKey);
     if (previous && previous.status === legacy.status && previous.reviewReason === legacy.reviewReason) {
       return;
     }
 
-    this.lastLegacy.set(taskId, legacy);
-    const context = this.taskContext.get(taskId);
+    this.lastLegacy.set(actorKey, legacy);
+    const context = this.taskContext.get(actorKey);
     const projectId = context?.project.id;
+    // Extract the actual taskId from context for IPC emission (renderer expects spec ID, not composite key)
+    const taskId = context?.task.id ?? actorKey;
 
     if (!previous || previous.status !== legacy.status) {
       if (context) {
@@ -419,12 +442,18 @@ export function getTaskStateManager(getMainWindow: () => BrowserWindow | null): 
  * Get current XState status for a task without needing getMainWindow.
  * Returns null if TaskStateManager is not initialized or task has no active actor.
  * This is safe to call from project-store during refresh.
+ *
+ * @param taskId - The task's spec ID (e.g., "001-feature")
+ * @param projectId - The project ID to scope the lookup (prevents cross-project collisions)
  */
-export function getXStateTaskStatus(taskId: string): { status: TaskStatus; reviewReason?: ReviewReason } | null {
+export function getXStateTaskStatus(
+  taskId: string,
+  projectId?: string
+): { status: TaskStatus; reviewReason?: ReviewReason } | null {
   if (!taskStateManager) {
     return null;
   }
-  return taskStateManager.getCurrentStatus(taskId);
+  return taskStateManager.getCurrentStatus(taskId, projectId);
 }
 
 /**
