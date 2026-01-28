@@ -86,7 +86,8 @@ export function usePtyProcess({
   // This allows genuine early exits from the new PTY to be processed
   // while still ignoring late exits from the old PTY
   // We verify the output is from the new PTY by checking newPtyCreatedAtRef
-  const handleFirstOutput = useCallback(() => {
+  // Returns true if output was processed, false if ignored (e.g., too early)
+  const handleFirstOutput = useCallback((): boolean => {
     if (isRecreatingRef?.current && recreationGuardTimerRef.current && newPtyCreatedAtRef.current) {
       // Only clear guard if this output is from the new PTY (created after recreation started)
       // Add a small delay to ensure we're not getting output from the old PTY's buffer
@@ -99,10 +100,13 @@ export function usePtyProcess({
         }
         hasReceivedFirstOutputRef.current = true;
         onFirstOutput?.();
+        return true; // Output was processed
       } else {
         debugLog(`[usePtyProcess] Ignoring early output (${timeSinceCreation}ms) - likely from old PTY buffer`);
+        return false; // Output was ignored, allow next output to trigger handleFirstOutput
       }
     }
+    return false; // Not in recreation state, output not processed
   }, [terminalId, isRecreatingRef, clearRecreationGuardTimer, onFirstOutput]);
 
   /**

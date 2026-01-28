@@ -227,8 +227,12 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
     const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
       if (terminalId === id && !hasCalledFirstOutputRef.current && isRecreatingRef.current) {
-        hasCalledFirstOutputRef.current = true;
-        handleFirstOutput();
+        // Only set flag if output was actually processed (not ignored due to early arrival)
+        // This prevents the flag from being set prematurely when output arrives within 50ms
+        const wasProcessed = handleFirstOutput();
+        if (wasProcessed) {
+          hasCalledFirstOutputRef.current = true;
+        }
       }
     });
 
