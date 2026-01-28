@@ -10,6 +10,8 @@ const MAX_RECREATION_RETRIES = 30;
 const RECREATION_RETRY_DELAY = 100;
 // Keep isRecreatingRef true briefly after PTY creation so late TERMINAL_EXIT from the
 // old (killed) PTY is ignored when attaching a worktree (race: exit arrives after handleSuccess).
+// This duration must be longer than the terminal removal delay (currently 2000ms in `useTerminalEvents.ts`)
+// to prevent the terminal from being removed due to a late exit event from the old PTY.
 const RECREATION_GUARD_MS = 2500;
 
 interface UsePtyProcessOptions {
