@@ -81,6 +81,8 @@ export interface FullOAuthCredentials extends PlatformCredentials {
   refreshToken: string | null;
   expiresAt: number | null;  // Unix timestamp in ms when access token expires
   scopes: string[] | null;
+  subscriptionType: string | null;  // e.g., "max" for Claude Max subscription
+  rateLimitTier: string | null;     // e.g., "default_claude_max_20x"
 }
 
 /**
@@ -258,6 +260,8 @@ function extractFullCredentials(data: {
     refreshToken?: string;
     expiresAt?: number;
     scopes?: string[];
+    subscriptionType?: string;
+    rateLimitTier?: string;
   };
   email?: string
 }): {
@@ -266,6 +270,8 @@ function extractFullCredentials(data: {
   refreshToken: string | null;
   expiresAt: number | null;
   scopes: string[] | null;
+  subscriptionType: string | null;
+  rateLimitTier: string | null;
 } {
   // Extract OAuth token from nested structure
   const token = data?.claudeAiOauth?.accessToken || null;
@@ -282,7 +288,11 @@ function extractFullCredentials(data: {
   // Extract scopes (array of strings)
   const scopes = data?.claudeAiOauth?.scopes || null;
 
-  return { token, email, refreshToken, expiresAt, scopes };
+  // Extract subscription info (determines "Max" vs "API" display in Claude Code)
+  const subscriptionType = data?.claudeAiOauth?.subscriptionType || null;
+  const rateLimitTier = data?.claudeAiOauth?.rateLimitTier || null;
+
+  return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
 }
 
 /**
@@ -508,7 +518,7 @@ function getFullCredentialsFromFile(
     if (isDebug) {
       console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
     }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'Invalid credentials path' };
   }
 
   // Check if credentials file exists
@@ -516,7 +526,7 @@ function getFullCredentialsFromFile(
     if (isDebug) {
       console.warn(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
     }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
   }
 
   try {
@@ -528,21 +538,21 @@ function getFullCredentialsFromFile(
       data = JSON.parse(content);
     } catch {
       console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
     }
 
     // Validate JSON structure
     if (!validateCredentialData(data)) {
       console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
     }
 
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+    const { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier } = extractFullCredentials(data);
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
       console.warn(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
-      return { token: null, email, refreshToken, expiresAt, scopes };
+      return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
@@ -551,14 +561,16 @@ function getFullCredentialsFromFile(
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
+        tokenFingerprint: getTokenFingerprint(token),
+        subscriptionType,
+        rateLimitTier
       });
     }
-    return { token, email, refreshToken, expiresAt, scopes };
+    return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Failed to read credentials: ${errorMessage}` };
   }
 }
 
@@ -1142,7 +1154,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
   }
 
   if (!securityPath) {
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'macOS security command not found' };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'macOS security command not found' };
   }
 
   try {
@@ -1155,7 +1167,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
     );
 
     // Parse and validate using shared helper
-    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+    const { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier } = parseCredentialJson(
       credentialsJson,
       `macOS:Full:${serviceName}`,
       extractFullCredentials
@@ -1164,7 +1176,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
       console.warn('[CredentialUtils:macOS:Full] Invalid token format for service:', serviceName);
-      return { token: null, email, refreshToken, expiresAt, scopes };
+      return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
@@ -1173,15 +1185,17 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
+        tokenFingerprint: getTokenFingerprint(token),
+        subscriptionType,
+        rateLimitTier
       });
     }
-    return { token, email, refreshToken, expiresAt, scopes };
+    return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn('[CredentialUtils:macOS:Full] Keychain access failed for service:', serviceName, errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Keychain access failed: ${errorMessage}` };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Keychain access failed: ${errorMessage}` };
   }
 }
 
@@ -1198,7 +1212,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
     if (isDebug) {
       console.warn('[CredentialUtils:Linux:SecretService:Full] secret-tool not found');
     }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'secret-tool not found' };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'secret-tool not found' };
   }
 
   try {
@@ -1211,7 +1225,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
     );
 
     // Parse and validate using shared helper
-    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+    const { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier } = parseCredentialJson(
       credentialsJson,
       `Linux:SecretService:Full:${attribute}`,
       extractFullCredentials
@@ -1219,7 +1233,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
 
     if (token && !isValidTokenFormat(token)) {
       console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid token format for attribute:', attribute);
-      return { token: null, email, refreshToken, expiresAt, scopes };
+      return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
@@ -1229,15 +1243,17 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
+        tokenFingerprint: getTokenFingerprint(token),
+        subscriptionType,
+        rateLimitTier
       });
     }
-    return { token, email, refreshToken, expiresAt, scopes };
+    return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn('[CredentialUtils:Linux:SecretService:Full] Secret Service access failed:', errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Secret Service access failed: ${errorMessage}` };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Secret Service access failed: ${errorMessage}` };
   }
 }
 
@@ -1281,7 +1297,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
 
   // Defense-in-depth: Validate target name format before using in PowerShell
   if (!isValidTargetName(targetName)) {
-    const invalidResult = { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credential target name format' };
+    const invalidResult = { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'Invalid credential target name format' };
     if (isDebug) {
       console.warn('[CredentialUtils:Windows:Full] Invalid target name rejected:', { targetName });
     }
@@ -1291,7 +1307,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
   // Find PowerShell executable
   const psPath = findPowerShellPath();
   if (!psPath) {
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'PowerShell not found' };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'PowerShell not found' };
   }
 
   try {
@@ -1348,7 +1364,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
     const credentialsJson = result.trim() || null;
 
     // Parse and validate using shared helper
-    const { token, email, refreshToken, expiresAt, scopes } = parseCredentialJson(
+    const { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier } = parseCredentialJson(
       credentialsJson,
       `Windows:Full:${targetName}`,
       extractFullCredentials
@@ -1357,7 +1373,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
       console.warn('[CredentialUtils:Windows:Full] Invalid token format for target:', targetName);
-      return { token: null, email, refreshToken, expiresAt, scopes };
+      return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
@@ -1366,14 +1382,16 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
+        tokenFingerprint: getTokenFingerprint(token),
+        subscriptionType,
+        rateLimitTier
       });
     }
-    return { token, email, refreshToken, expiresAt, scopes };
+    return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.warn('[CredentialUtils:Windows:Full] Credential Manager access failed for target:', targetName, errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Credential Manager access failed: ${errorMessage}` };
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Credential Manager access failed: ${errorMessage}` };
   }
 }
 
@@ -1434,7 +1452,7 @@ export function getFullCredentialsFromKeychain(configDir?: string): FullOAuthCre
   }
 
   // Unknown platform - return empty
-  return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Unsupported platform: ${process.platform}` };
+  return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Unsupported platform: ${process.platform}` };
 }
 
 /**
@@ -1468,10 +1486,13 @@ function updateMacOSKeychainCredentials(
   }
 
   try {
-    // Read existing credentials to preserve email
+    // Read existing credentials to preserve email, subscriptionType, and rateLimitTier
     const existing = getFullCredentialsFromMacOSKeychain(configDir);
 
     // Build new credential JSON with all fields
+    // IMPORTANT: Preserve subscriptionType and rateLimitTier from existing credentials
+    // These fields determine "Max" vs "API" display in Claude Code and are NOT returned
+    // by the OAuth token refresh endpoint - they must be preserved from the original auth.
     const newCredentialData = {
       claudeAiOauth: {
         accessToken: credentials.accessToken,
@@ -1479,7 +1500,9 @@ function updateMacOSKeychainCredentials(
         expiresAt: credentials.expiresAt,
         scopes: credentials.scopes || existing.scopes || [],
         email: existing.email || undefined,
-        emailAddress: existing.email || undefined
+        emailAddress: existing.email || undefined,
+        subscriptionType: existing.subscriptionType || undefined,
+        rateLimitTier: existing.rateLimitTier || undefined
       },
       email: existing.email || undefined
     };
@@ -1568,10 +1591,11 @@ function updateLinuxSecretServiceCredentials(
   }
 
   try {
-    // Read existing credentials to preserve email
+    // Read existing credentials to preserve email, subscriptionType, and rateLimitTier
     const existing = getFullCredentialsFromLinuxSecretService(configDir);
 
     // Build new credential JSON with all fields
+    // IMPORTANT: Preserve subscriptionType and rateLimitTier from existing credentials
     const newCredentialData = {
       claudeAiOauth: {
         accessToken: credentials.accessToken,
@@ -1579,7 +1603,9 @@ function updateLinuxSecretServiceCredentials(
         expiresAt: credentials.expiresAt,
         scopes: credentials.scopes || existing.scopes || [],
         email: existing.email || undefined,
-        emailAddress: existing.email || undefined
+        emailAddress: existing.email || undefined,
+        subscriptionType: existing.subscriptionType || undefined,
+        rateLimitTier: existing.rateLimitTier || undefined
       },
       email: existing.email || undefined
     };
@@ -1666,10 +1692,11 @@ function updateLinuxFileCredentials(
   }
 
   try {
-    // Read existing credentials to preserve email and other fields
+    // Read existing credentials to preserve email, subscriptionType, and rateLimitTier
     const existing = getFullCredentialsFromLinuxFile(configDir);
 
     // Build new credential JSON with all fields
+    // IMPORTANT: Preserve subscriptionType and rateLimitTier from existing credentials
     const newCredentialData = {
       claudeAiOauth: {
         accessToken: credentials.accessToken,
@@ -1677,7 +1704,9 @@ function updateLinuxFileCredentials(
         expiresAt: credentials.expiresAt,
         scopes: credentials.scopes || existing.scopes || [],
         email: existing.email || undefined,
-        emailAddress: existing.email || undefined
+        emailAddress: existing.email || undefined,
+        subscriptionType: existing.subscriptionType || undefined,
+        rateLimitTier: existing.rateLimitTier || undefined
       },
       email: existing.email || undefined
     };
@@ -1735,10 +1764,11 @@ function updateWindowsCredentialManagerCredentials(
   }
 
   try {
-    // Read existing credentials to preserve email
+    // Read existing credentials to preserve email, subscriptionType, and rateLimitTier
     const existing = getFullCredentialsFromWindowsCredentialManager(configDir);
 
     // Build new credential JSON with all fields
+    // IMPORTANT: Preserve subscriptionType and rateLimitTier from existing credentials
     const newCredentialData = {
       claudeAiOauth: {
         accessToken: credentials.accessToken,
@@ -1746,7 +1776,9 @@ function updateWindowsCredentialManagerCredentials(
         expiresAt: credentials.expiresAt,
         scopes: credentials.scopes || existing.scopes || [],
         email: existing.email || undefined,
-        emailAddress: existing.email || undefined
+        emailAddress: existing.email || undefined,
+        subscriptionType: existing.subscriptionType || undefined,
+        rateLimitTier: existing.rateLimitTier || undefined
       },
       email: existing.email || undefined
     };
