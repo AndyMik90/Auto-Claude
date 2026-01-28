@@ -214,10 +214,8 @@ export async function restoreTerminal(
 
   if (!result.success) {
     // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'createTerminal failed', data: { sessionId: session.id, error: result.error }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-    fs.appendFileSync(logPath, line);
+    const errorLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'createTerminal failed', data: { sessionId: session.id, error: result.error }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+    fs.appendFileSync(logPath, errorLine);
     // #endregion
     return result;
   }
@@ -225,10 +223,8 @@ export async function restoreTerminal(
   const terminal = terminals.get(session.id);
   if (!terminal) {
     // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Terminal not found after creation', data: { sessionId: session.id, terminalIds: Array.from(terminals.keys()) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-    fs.appendFileSync(logPath, line);
+    const notFoundLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Terminal not found after creation', data: { sessionId: session.id, terminalIds: Array.from(terminals.keys()) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+    fs.appendFileSync(logPath, notFoundLine);
     // #endregion
     return { success: false, error: 'Terminal not found after creation' };
   }
@@ -296,8 +292,6 @@ export async function restoreTerminal(
     'hasContent:', returnBufferLen > 0);
 
   // #region agent log
-  const fs = require('fs');
-  const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
   const successLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Restore successful', data: { sessionId: session.id }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
   fs.appendFileSync(logPath, successLine);
   // #endregion
