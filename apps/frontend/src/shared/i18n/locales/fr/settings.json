@@ -1002,7 +1002,6 @@
     "errorIdExists": "Un serveur avec cet ID existe déjà",
     "errorCommandRequired": "La commande est requise pour les serveurs basés sur commande",
     "errorUrlRequired": "L'URL est requise pour les serveurs basés sur HTTP",
-    "testConnection": "Test",
     "testing": "Test en cours...",
     "authToken": "Jeton d'authentification",
     "authTokenPlaceholder": "Collez votre jeton API ou PAT ici",

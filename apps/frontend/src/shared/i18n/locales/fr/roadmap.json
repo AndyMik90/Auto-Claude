@@ -55,20 +55,6 @@
     "build": "Construire",
     "moreFeatures": "plus de fonctionnalités"
   },
-  "featureCard": {
-    "phase": "Phase : {{name}}",
-    "competitorInsight": "Cette fonctionnalité répond aux points de douleur des concurrents",
-    "task": "Tâche",
-    "build": "Construire",
-    "votesFromFeedback": "{{votes}} votes des commentaires des utilisateurs",
-    "externalSource": "Externe",
-    "cannySource": "Canny",
-    "importedFrom": "Importé de {{provider}}",
-    "source": {
-      "canny": "Canny",
-      "external": "Externe"
-    }
-  },
   "competitorAnalysis": {
     "enableAnalysisTitle": "Activer l'analyse des concurrents ?",
     "enableAnalysisDescription": "Enrichissez votre feuille de route avec des informations sur les produits concurrents",
@@ -158,7 +144,17 @@
     "build": "Construire",
     "competitorInsight": "Information Concurrent",
     "competitorInsightTooltip": "Cette fonctionnalité répond aux points de douleur des concurrents",
-    "impact": "impact"
+    "impact": "impact",
+    "phase": "Phase : {{name}}",
+    "task": "Tâche",
+    "votesFromFeedback": "{{votes}} votes des commentaires des utilisateurs",
+    "externalSource": "Externe",
+    "cannySource": "Canny",
+    "importedFrom": "Importé de {{provider}}",
+    "source": {
+      "canny": "Canny",
+      "external": "Externe"
+    }
   },
   "featureDetail": {
     "description": "Description",

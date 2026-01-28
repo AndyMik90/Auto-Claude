@@ -55,20 +55,6 @@
     "build": "Build",
     "moreFeatures": "more features"
   },
-  "featureCard": {
-    "phase": "Phase: {{name}}",
-    "competitorInsight": "This feature addresses competitor pain points",
-    "task": "Task",
-    "build": "Build",
-    "votesFromFeedback": "{{votes}} votes from user feedback",
-    "externalSource": "External",
-    "cannySource": "Canny",
-    "importedFrom": "Imported from {{provider}}",
-    "source": {
-      "canny": "Canny",
-      "external": "External"
-    }
-  },
   "competitorAnalysis": {
     "enableAnalysisTitle": "Enable Competitor Analysis?",
     "enableAnalysisDescription": "Enhance your roadmap with insights from competitor products",
@@ -158,7 +144,17 @@
     "build": "Build",
     "competitorInsight": "Competitor Insight",
     "competitorInsightTooltip": "This feature addresses competitor pain points",
-    "impact": "impact"
+    "impact": "impact",
+    "phase": "Phase: {{name}}",
+    "task": "Task",
+    "votesFromFeedback": "{{votes}} votes from user feedback",
+    "externalSource": "External",
+    "cannySource": "Canny",
+    "importedFrom": "Imported from {{provider}}",
+    "source": {
+      "canny": "Canny",
+      "external": "External"
+    }
   },
   "featureDetail": {
     "description": "Description",

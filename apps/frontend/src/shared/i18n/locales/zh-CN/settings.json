@@ -252,7 +252,9 @@
   },
   "projectSelector": {
     "selectProject": "选择项目...",
+    "selectPlaceholder": "选择项目...",
     "noProjectsYet": "暂无项目",
+    "noProjects": "暂无项目",
     "addProject": "添加项目..."
   },
   "devtools": {
@@ -750,11 +752,6 @@
       "copyFailed": "复制调试信息失败"
     }
   },
-  "projectSelector": {
-    "selectPlaceholder": "选择项目...",
-    "noProjects": "暂无项目",
-    "addProject": "添加项目..."
-  },
   "display": {
     "resetToDefault": "重置为默认 (100%)",
     "applyScale": "应用缩放更改",
@@ -1020,7 +1017,6 @@
     "toolsTitle": "可用工具",
     "textOnlyNoTools": "仅文本（无工具）",
     "agentsCount": "({{count}} 个代理)",
-    "testConnection": "测试连接",
     "test": "测试",
     "edit": "编辑",
     "delete": "删除",

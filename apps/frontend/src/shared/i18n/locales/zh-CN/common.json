@@ -221,8 +221,6 @@
       "switchBelow": "在下方切换到另一个账户以继续。",
       "addAccountToContinue": "添加另一个 Claude 账户以继续工作。",
       "upgradeToProButton": "升级到 Pro 以获得更高限制",
-      "upgradeTitle": "升级以获得更多使用量",
-      "upgradeDescription": "升级您的 Claude 订阅以获得更高的使用限制。",
       "upgradeButton": "升级订阅",
       "resetsLabel": "{{time}} 重置",
       "weeklyLimit": "每周限制 - 约一周后重置",

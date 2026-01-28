@@ -1002,7 +1002,6 @@
     "errorIdExists": "A server with this ID already exists",
     "errorCommandRequired": "Command is required for command-based servers",
     "errorUrlRequired": "URL is required for HTTP-based servers",
-    "testConnection": "Test",
     "testing": "Testing...",
     "authToken": "Authentication Token",
     "authTokenPlaceholder": "Paste your API token or PAT here",
