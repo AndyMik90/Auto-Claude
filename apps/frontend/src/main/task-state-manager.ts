@@ -89,15 +89,19 @@ export class TaskStateManager {
     const actor = this.getActor(task);
     const currentState = actor.getSnapshot().value;
     const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+
+    // IMPORTANT: Don't transition to awaitingPlanReview based on execution progress.
+    // Plan review should ONLY be triggered by PROCESS_EXITED when spec creation finishes.
+    // Execution progress phases can be misleading (e.g., "coding" phase during spec validation).
+
+    // Only handle state transitions for phases that don't involve plan review
     if (
       currentState === 'planning' &&
       progress.phase !== 'planning' &&
       progress.phase !== 'idle'
     ) {
-      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding });
-      if (requireReviewBeforeCoding) {
-        return;
-      }
+      // Don't trigger plan review here - let PROCESS_EXITED handle it
+      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
     }
     if (
       currentState === 'backlog' &&
@@ -105,10 +109,8 @@ export class TaskStateManager {
       progress.phase !== 'idle'
     ) {
       actor.send({ type: 'PLANNING_STARTED' });
-      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding });
-      if (requireReviewBeforeCoding) {
-        return;
-      }
+      // Don't trigger plan review here - let PROCESS_EXITED handle it
+      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
     }
     this.syncActorToPhase(actor, progress.phase, requireReviewBeforeCoding);
     const event = this.mapProgressToEvent(progress);
@@ -122,10 +124,6 @@ export class TaskStateManager {
     phase: ExecutionProgress['phase'],
     requireReviewBeforeCoding: boolean
   ): void {
-    if (requireReviewBeforeCoding) {
-      return;
-    }
-
     const snapshot = actor.getSnapshot();
     const state = typeof snapshot.value === 'string' ? snapshot.value : null;
     if (!state) {
@@ -136,12 +134,25 @@ export class TaskStateManager {
       return;
     }
 
+    // For tasks with requireReviewBeforeCoding, we need special handling:
+    // - If in awaitingPlanReview, only allow transition when QA phases are reached
+    //   (this means coding happened and we should sync to QA state)
+    // - For coding phase with requireReviewBeforeCoding, skip sync (stay in awaitingPlanReview)
+    const isQaPhase = phase === 'qa_review' || phase === 'qa_fixing' || phase === 'complete';
+    if (requireReviewBeforeCoding && !isQaPhase) {
+      return;
+    }
+
     const ensurePlanningComplete = () => {
       if (state === 'backlog') {
         actor.send({ type: 'PLANNING_STARTED' });
       }
       if (state === 'backlog' || state === 'planning') {
         actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
+      }
+      // If in awaitingPlanReview (from requireReviewBeforeCoding), send USER_RESUMED to transition to coding
+      if (state === 'awaitingPlanReview') {
+        actor.send({ type: 'USER_RESUMED' });
       }
     };
 
@@ -191,16 +202,22 @@ export class TaskStateManager {
     project: Project,
     exitCode: number,
     hasSubtasks: boolean,
-    allSubtasksDone: boolean
+    allSubtasksDone: boolean,
+    hasCompletedSubtasks?: boolean,
+    isQAApproved?: boolean
   ): void {
     this.taskContext.set(task.id, { task, project });
     const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+    // Default hasCompletedSubtasks to checking if any subtask is completed
+    const completedSubtasksFlag = hasCompletedSubtasks ?? task.subtasks?.some((s) => s.status === 'completed') ?? false;
 
     this.logProcessExit({
       taskId: task.id,
       exitCode,
       hasSubtasks,
       allSubtasksDone,
+      hasCompletedSubtasks: completedSubtasksFlag,
+      isQAApproved: isQAApproved ?? false,
       requireReviewBeforeCoding
     });
 
@@ -210,6 +227,8 @@ export class TaskStateManager {
       exitCode,
       hasSubtasks,
       allSubtasksDone,
+      hasCompletedSubtasks: completedSubtasksFlag,
+      isQAApproved: isQAApproved ?? false,
       requireReviewBeforeCoding
     });
   }
@@ -377,10 +396,12 @@ export class TaskStateManager {
     exitCode: number;
     hasSubtasks: boolean;
     allSubtasksDone: boolean;
+    hasCompletedSubtasks: boolean;
+    isQAApproved: boolean;
     requireReviewBeforeCoding: boolean;
   }): void {
     logger.info(
-      `[PROCESS_EXITED] taskId=${snapshot.taskId} code=${snapshot.exitCode} hasSubtasks=${snapshot.hasSubtasks} allSubtasksDone=${snapshot.allSubtasksDone} requireReviewBeforeCoding=${snapshot.requireReviewBeforeCoding}`
+      `[PROCESS_EXITED] taskId=${snapshot.taskId} code=${snapshot.exitCode} hasSubtasks=${snapshot.hasSubtasks} allSubtasksDone=${snapshot.allSubtasksDone} hasCompletedSubtasks=${snapshot.hasCompletedSubtasks} isQAApproved=${snapshot.isQAApproved} requireReviewBeforeCoding=${snapshot.requireReviewBeforeCoding}`
     );
   }
 }

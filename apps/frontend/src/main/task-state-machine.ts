@@ -11,6 +11,8 @@ export type ProcessExitSnapshot = {
   task: Task | undefined;
   hasSubtasks: boolean;
   allSubtasksDone: boolean;
+  hasCompletedSubtasks?: boolean;
+  isQAApproved?: boolean;
   requireReviewBeforeCoding: boolean;
 };
 
@@ -42,7 +44,7 @@ export class TaskStateMachine {
 
   logProcessExit(snapshot: ProcessExitSnapshot): void {
     logger.info(
-      `[PROCESS_EXITED] taskId=${snapshot.taskId} code=${snapshot.exitCode} hasSubtasks=${snapshot.hasSubtasks} allSubtasksDone=${snapshot.allSubtasksDone} requireReviewBeforeCoding=${snapshot.requireReviewBeforeCoding}`
+      `[PROCESS_EXITED] taskId=${snapshot.taskId} code=${snapshot.exitCode} hasSubtasks=${snapshot.hasSubtasks} allSubtasksDone=${snapshot.allSubtasksDone} hasCompletedSubtasks=${snapshot.hasCompletedSubtasks ?? false} isQAApproved=${snapshot.isQAApproved ?? false} requireReviewBeforeCoding=${snapshot.requireReviewBeforeCoding}`
     );
   }
 
@@ -68,13 +70,23 @@ export class TaskStateMachine {
       return { status: 'human_review', reviewReason: 'errors' };
     }
 
-    // Check subtasks first - if all done, it's completed regardless of requireReviewBeforeCoding
+    // QA approved (planStatus === "completed") - always completed
+    if (snapshot.isQAApproved) {
+      return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // All subtasks done - completed
     if (snapshot.hasSubtasks && snapshot.allSubtasksDone) {
       return { status: 'human_review', reviewReason: 'completed' };
     }
 
-    // Only use plan_review if requireReviewBeforeCoding AND no subtasks completed yet
-    if (snapshot.requireReviewBeforeCoding) {
+    // Some subtasks completed (coding has progressed) - completed
+    if (snapshot.hasCompletedSubtasks) {
+      return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // Only use plan_review if requireReviewBeforeCoding AND no coding has started
+    if (snapshot.requireReviewBeforeCoding && !snapshot.hasCompletedSubtasks) {
       return { status: 'human_review', reviewReason: 'plan_review' };
     }
 

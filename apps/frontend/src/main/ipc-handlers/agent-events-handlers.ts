@@ -251,9 +251,21 @@ export function registerAgenteventsHandlers(
           }
         };
 
-        const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-        const allSubtasksDone = hasSubtasks && task.subtasks.every((s) => s.status === "completed");
         const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+
+        // Use finalPlan (most up-to-date) for subtask data instead of potentially stale task.subtasks
+        // This ensures XState decisions are based on current plan state, not cached task object
+        const planData = finalPlan as ImplementationPlan | undefined;
+        const planStatusFromFile = planData?.planStatus;
+        const isQAApproved = planStatusFromFile === "completed";
+
+        // Extract subtasks from plan phases (the authoritative source)
+        const allPlanSubtasks = planData?.phases?.flatMap((p) => p.subtasks) ?? [];
+        const hasSubtasks = allPlanSubtasks.length > 0;
+        const allSubtasksDone = hasSubtasks && allPlanSubtasks.every((s) => s.status === "completed");
+        const hasCompletedSubtasks = allPlanSubtasks.some((s) => s.status === "completed");
+
+        console.warn(`[Task ${taskId}] Exit handler: planStatus=${planStatusFromFile}, isQAApproved=${isQAApproved}, hasSubtasks=${hasSubtasks}, allSubtasksDone=${allSubtasksDone}, hasCompletedSubtasks=${hasCompletedSubtasks}`);
 
         taskStateMachine.logProcessExit({
           taskId,
@@ -261,11 +273,14 @@ export function registerAgenteventsHandlers(
           task,
           hasSubtasks,
           allSubtasksDone,
+          hasCompletedSubtasks,
+          isQAApproved,
           requireReviewBeforeCoding,
         });
 
+        // hasCompletedSubtasks is now calculated from finalPlan above (line 266)
         const manager = getTaskStateManager(getMainWindow);
-        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone);
+        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone, hasCompletedSubtasks, isQAApproved);
 
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
@@ -281,16 +296,25 @@ export function registerAgenteventsHandlers(
           allSubtasksDone,
           requireReviewBeforeCoding,
         });
-        // Only use plan_review fallback when NO subtasks have been completed yet
-        // (i.e., spec creation just finished, coding hasn't started)
-        // If subtasks are completed, coding/QA is done so use 'completed' instead
-        const hasCompletedSubtasks = task.subtasks?.some((s) => s.status === "completed") ?? false;
+
+        // Determine the correct reviewReason based on plan state:
+        // 1. If QA approved (planStatus === "completed"), always use "completed"
+        // 2. If subtasks have been completed, use "completed" (coding/QA done)
+        // 3. If requireReviewBeforeCoding and no coding yet, use "plan_review"
         let decisionWithFallback: { status?: TaskStatus; reviewReason?: ReviewReason };
-        if (requireReviewBeforeCoding && !decision.status) {
-          // Spec creation finished - check if this is plan review or post-coding review
-          decisionWithFallback = hasCompletedSubtasks
-            ? { status: "human_review", reviewReason: "completed" }
-            : { status: "human_review", reviewReason: "plan_review" };
+
+        if (decision.status && decision.reviewReason) {
+          // State machine gave us a complete decision
+          decisionWithFallback = decision;
+        } else if (isQAApproved) {
+          // QA approved - always use "completed" reviewReason
+          decisionWithFallback = { status: "human_review", reviewReason: "completed" };
+        } else if (requireReviewBeforeCoding && !hasCompletedSubtasks) {
+          // Spec creation finished, no coding yet - plan review
+          decisionWithFallback = { status: "human_review", reviewReason: "plan_review" };
+        } else if (hasCompletedSubtasks) {
+          // Coding done (subtasks completed) - completed review
+          decisionWithFallback = { status: "human_review", reviewReason: "completed" };
         } else {
           decisionWithFallback = decision;
         }

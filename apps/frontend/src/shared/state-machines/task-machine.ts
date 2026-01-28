@@ -17,7 +17,9 @@ export type TaskMachineEvent =
       exitCode: number;
       hasSubtasks: boolean;
       allSubtasksDone: boolean;
+      hasCompletedSubtasks: boolean; // true if any subtask is completed (coding started)
       requireReviewBeforeCoding: boolean;
+      isQAApproved: boolean; // true if planStatus === "completed" from plan file
     }
   | {
       type: 'MANUAL_SET_STATUS';
@@ -96,8 +98,14 @@ export const taskMachine = createMachine(
     on: {
       PROCESS_EXITED: [
         { guard: 'processExitedFailed', target: '.error', actions: 'setReviewReasonErrors' },
-        { guard: 'processExitedPlanReview', target: '.awaitingPlanReview', actions: 'setReviewReasonPlan' },
+        // QA approved (planStatus === "completed") - always go to human_review with completed
+        { guard: 'processExitedQAApproved', target: '.human_review', actions: 'setReviewReasonCompleted' },
+        // All subtasks done - completed
         { guard: 'processExitedSuccessAllDone', target: '.human_review', actions: 'setReviewReasonCompleted' },
+        // Has some completed subtasks (coding done) - completed review
+        { guard: 'processExitedHasCompletedSubtasks', target: '.human_review', actions: 'setReviewReasonCompleted' },
+        // Plan review - only when requireReviewBeforeCoding AND no coding has started
+        { guard: 'processExitedPlanReview', target: '.awaitingPlanReview', actions: 'setReviewReasonPlan' },
         // Fallback: process exited successfully but subtasks not all done - go to human_review for inspection
         { guard: 'processExitedSuccess', target: '.human_review', actions: 'setReviewReasonStopped' }
       ],
@@ -114,10 +122,26 @@ export const taskMachine = createMachine(
         event.type === 'PLANNING_COMPLETE' && event.requireReviewBeforeCoding === true,
       processExitedFailed: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode !== 0,
-      processExitedPlanReview: ({ event }) =>
-        event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.requireReviewBeforeCoding === true,
+      // QA approved (planStatus === "completed" from plan file)
+      processExitedQAApproved: ({ event }) =>
+        event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.isQAApproved,
+      // All subtasks completed
       processExitedSuccessAllDone: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.hasSubtasks && event.allSubtasksDone,
+      // Has some completed subtasks (coding has progressed)
+      processExitedHasCompletedSubtasks: ({ event }) =>
+        event.type === 'PROCESS_EXITED' && event.exitCode === 0 && event.hasCompletedSubtasks,
+      // Plan review is only triggered when:
+      // - Process exited successfully
+      // - requireReviewBeforeCoding is true
+      // - No subtasks have been completed yet (coding hasn't started)
+      // - Not QA approved
+      processExitedPlanReview: ({ event }) =>
+        event.type === 'PROCESS_EXITED' &&
+        event.exitCode === 0 &&
+        event.requireReviewBeforeCoding === true &&
+        !event.hasCompletedSubtasks &&
+        !event.isQAApproved,
       processExitedSuccess: ({ event }) =>
         event.type === 'PROCESS_EXITED' && event.exitCode === 0,
       manualSetBacklog: ({ event }) => event.type === 'MANUAL_SET_STATUS' && event.status === 'backlog',
