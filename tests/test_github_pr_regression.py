@@ -22,7 +22,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 from core.git_provider import detect_git_provider
-from core.worktree import PullRequestResult, WorktreeInfo, WorktreeManager
+from worktree import PullRequestResult, WorktreeInfo, WorktreeManager
 
 
 class TestGitHubProviderDetection:
