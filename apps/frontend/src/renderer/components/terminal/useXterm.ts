@@ -5,6 +5,10 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
+import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
+import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
+import { debounce } from '../../lib/debounce';
+import { DEFAULT_TERMINAL_THEME } from '../../lib/terminal-theme';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
 interface NavigatorUAData {
@@ -23,6 +27,38 @@ interface UseXtermOptions {
   onDimensionsReady?: (cols: number, rows: number) => void;
 }
 
+/**
+ * Return type for the useXterm hook.
+ * Provides terminal control methods and state.
+ */
+export interface UseXtermReturn {
+  /** Ref to attach to the terminal container div */
+  terminalRef: React.RefObject<HTMLDivElement | null>;
+  /** Ref to the xterm.js Terminal instance */
+  xtermRef: React.MutableRefObject<XTerm | null>;
+  /** Ref to the FitAddon instance */
+  fitAddonRef: React.MutableRefObject<FitAddon | null>;
+  /**
+   * Fit the terminal content to the container dimensions.
+   * @returns boolean indicating whether fit was successful (had valid dimensions)
+   */
+  fit: () => boolean;
+  /** Write data to the terminal */
+  write: (data: string) => void;
+  /** Write a line to the terminal */
+  writeln: (data: string) => void;
+  /** Focus the terminal */
+  focus: () => void;
+  /** Dispose of the terminal and clean up resources */
+  dispose: () => void;
+  /** Current number of columns */
+  cols: number;
+  /** Current number of rows */
+  rows: number;
+  /** Whether dimensions have been measured and are ready */
+  dimensionsReady: boolean;
+}
+
 // Debounce helper function
 function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -32,7 +68,7 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T;
 }
 
-export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions) {
+export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsReady }: UseXtermOptions): UseXtermReturn {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -42,43 +78,29 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const dimensionsReadyCalledRef = useRef<boolean>(false);
   const [dimensions, setDimensions] = useState<{ cols: number; rows: number }>({ cols: 80, rows: 24 });
 
+  // Get font settings from store
+  // Note: We subscribe to the entire store here for initial terminal creation.
+  // The subscription effect below handles reactive updates for font changes.
+  const fontSettings = useTerminalFontSettingsStore();
+
   // Initialize xterm.js UI
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
     const xterm = new XTerm({
-      cursorBlink: true,
-      cursorStyle: 'block',
-      fontSize: 13,
-      fontFamily: 'var(--font-mono), "JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
-      lineHeight: 1.2,
-      letterSpacing: 0,
+      cursorBlink: fontSettings.cursorBlink,
+      cursorStyle: fontSettings.cursorStyle,
+      fontSize: fontSettings.fontSize,
+      fontWeight: fontSettings.fontWeight,
+      fontFamily: fontSettings.fontFamily.join(', '),
+      lineHeight: fontSettings.lineHeight,
+      letterSpacing: fontSettings.letterSpacing,
       theme: {
-        background: '#0B0B0F',
-        foreground: '#E8E6E3',
-        cursor: '#D6D876',
-        cursorAccent: '#0B0B0F',
-        selectionBackground: '#D6D87640',
-        selectionForeground: '#E8E6E3',
-        black: '#1A1A1F',
-        red: '#FF6B6B',
-        green: '#87D687',
-        yellow: '#D6D876',
-        blue: '#6BB3FF',
-        magenta: '#C792EA',
-        cyan: '#89DDFF',
-        white: '#E8E6E3',
-        brightBlack: '#4A4A50',
-        brightRed: '#FF8A8A',
-        brightGreen: '#A5E6A5',
-        brightYellow: '#E8E87A',
-        brightBlue: '#8AC4FF',
-        brightMagenta: '#DEB3FF',
-        brightCyan: '#A6E8FF',
-        brightWhite: '#FFFFFF',
+        ...DEFAULT_TERMINAL_THEME,
+        cursorAccent: fontSettings.cursorAccentColor,
       },
       allowProposedApi: true,
-      scrollback: 10000,
+      scrollback: fontSettings.scrollback,
     });
 
     const fitAddon = new FitAddon();
@@ -96,18 +118,9 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     xterm.open(terminalRef.current);
 
     // Platform detection for copy/paste shortcuts
-    // macOS uses system Cmd+V, no custom handler needed
-    const getPlatform = (): string => {
-      // Prefer navigator.userAgentData.platform (modern, non-deprecated)
-      if (navigator.userAgentData?.platform) {
-        return navigator.userAgentData.platform.toLowerCase();
-      }
-      // Fallback to navigator.platform (deprecated but widely supported)
-      return navigator.platform.toLowerCase();
-    };
-    const platform = getPlatform();
-    const isWindows = platform.includes('win');
-    const isLinux = platform.includes('linux');
+    // Use existing os-detection module instead of custom implementation
+    const isWindows = checkIsWindows();
+    const isLinux = checkIsLinux();
 
     // Helper function to handle copy to clipboard
     // Returns true if selection exists and copy was attempted, false if no selection
@@ -293,6 +306,56 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       // Cleanup handled by parent component
     };
   }, [terminalId, onCommandEnter, onResize, onDimensionsReady]);
+
+  /**
+   * Update terminal options dynamically when font settings change.
+   * This function is called both during initial setup and when settings are updated.
+   */
+  const updateTerminalOptions = useCallback((settings: typeof fontSettings) => {
+    const xterm = xtermRef.current;
+    if (!xterm) return;
+
+    // Update font-related options
+    xterm.options.cursorBlink = settings.cursorBlink;
+    xterm.options.cursorStyle = settings.cursorStyle;
+    xterm.options.fontSize = settings.fontSize;
+    xterm.options.fontFamily = settings.fontFamily.join(', ');
+    xterm.options.fontWeight = settings.fontWeight;
+    xterm.options.lineHeight = settings.lineHeight;
+    xterm.options.letterSpacing = settings.letterSpacing;
+    xterm.options.theme = {
+      ...xterm.options.theme,
+      cursorAccent: settings.cursorAccentColor,
+    };
+    xterm.options.scrollback = settings.scrollback;
+
+    // Refresh terminal to apply visual changes
+    xterm.refresh(0, xterm.rows - 1);
+  }, []);
+
+  // Subscribe to store changes - when terminalId changes, this effect re-runs,
+  // cleaning up the old subscription and creating a new one for the new xterm instance
+  useEffect(() => {
+    // Get latest settings from store
+    const latestSettings = useTerminalFontSettingsStore.getState();
+
+    // Update terminal options with latest settings
+    updateTerminalOptions(latestSettings);
+
+    // Subscribe to store changes to reactively update terminal when settings change
+    const unsubscribe = useTerminalFontSettingsStore.subscribe(
+      () => {
+        // Get latest settings from store
+        const latestSettings = useTerminalFontSettingsStore.getState();
+
+        // Update terminal options with latest settings
+        updateTerminalOptions(latestSettings);
+      }
+    );
+
+    // Cleanup subscription when terminalId changes or component unmounts
+    return unsubscribe;
+  }, [terminalId, updateTerminalOptions]);
 
   // Register xterm write callback with terminal-store for global output listener
   // This allows the global listener to write directly to xterm when terminal is visible
