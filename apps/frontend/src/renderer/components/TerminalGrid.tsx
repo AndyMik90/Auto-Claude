@@ -180,6 +180,15 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
               // Terminal is already in store, just stagger initialization
               await new Promise(resolve => setTimeout(resolve, TERMINAL_INIT_STAGGER_MS));
             }
+          } else {
+            // PTY creation failed - remove the terminal from store to prevent non-functional terminals
+            // from appearing in the UI or counting towards the terminal limit
+            console.warn(`[TerminalGrid] Failed to restore terminal ${sessionResult.id}, removing from store. Error: ${sessionResult.error || 'Unknown error'}`);
+            // Ensure terminal is destroyed in main process (may not exist if creation failed)
+            await window.electronAPI.destroyTerminal(sessionResult.id).catch(() => {
+              // Ignore errors - terminal may not exist in main process if creation failed
+            });
+            removeTerminal(sessionResult.id);
           }
         }
 
