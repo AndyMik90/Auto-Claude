@@ -17,9 +17,9 @@
 
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir, userInfo } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
 /**
@@ -1795,6 +1795,12 @@ function updateLinuxFileCredentials(
 
     const credentialsJson = JSON.stringify(newCredentialData, null, 2);
 
+    // Ensure directory exists (matching Windows behavior)
+    const dirPath = dirname(credentialsPath);
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, { recursive: true, mode: 0o700 });
+    }
+
     // Write to file with secure permissions (0600)
     writeFileSync(credentialsPath, credentialsJson, { mode: 0o600, encoding: 'utf-8' });
 
@@ -1989,9 +1995,8 @@ function updateWindowsFileCredentials(
     const credentialsJson = JSON.stringify(newCredentialData, null, 2);
 
     // Ensure directory exists
-    const dirPath = credentialsPath.substring(0, credentialsPath.lastIndexOf('\\') || credentialsPath.lastIndexOf('/'));
+    const dirPath = dirname(credentialsPath);
     if (!existsSync(dirPath)) {
-      const { mkdirSync } = require('fs');
       mkdirSync(dirPath, { recursive: true });
     }
 
