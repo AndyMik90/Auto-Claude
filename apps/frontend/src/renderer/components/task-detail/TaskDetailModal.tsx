@@ -391,10 +391,10 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                               variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
                               className="text-xs"
                             >
-                              {task.reviewReason === 'completed' ? 'Completed' :
-                               task.reviewReason === 'errors' ? 'Has Errors' :
-                               task.reviewReason === 'plan_review' ? 'Approve Plan' :
-                               task.reviewReason === 'stopped' ? 'Stopped' : 'QA Issues'}
+                              {task.reviewReason === 'completed' ? t('reviewReason.completed') :
+                               task.reviewReason === 'errors' ? t('reviewReason.hasErrors') :
+                               task.reviewReason === 'plan_review' ? t('reviewReason.approvePlan') :
+                               task.reviewReason === 'stopped' ? t('reviewReason.stopped') : t('reviewReason.qaIssues')}
                             </Badge>
                           )}
                         </>
