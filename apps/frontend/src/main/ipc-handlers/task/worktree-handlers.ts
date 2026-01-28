@@ -10,7 +10,7 @@ import { projectStore } from '../../project-store';
 import { getConfiguredPythonPath, PythonEnvManager, pythonEnvManager as pythonEnvManagerSingleton } from '../../python-env-manager';
 import { getEffectiveSourcePath } from '../../updater/path-resolver';
 import { getBestAvailableProfileEnv } from '../../rate-limit-detector';
-import { findTaskAndProject, forceDeleteWorktree } from './shared';
+import { findTaskAndProject, forceDeleteWorktree, forceDeleteWorktreeAsync } from './shared';
 import { parsePythonCommand } from '../../python-detector';
 import { getToolPath } from '../../cli-tool-manager';
 import { promisify } from 'util';
@@ -2719,8 +2719,8 @@ export function registerWorktreeHandlers(
           // Branch detection failed (corrupted git state) - continue anyway
         }
 
-        // Delete worktree using shared utility (handles git remove + fallback to force-delete)
-        const deleteResult = forceDeleteWorktree(worktreePath, project.path);
+        // Delete worktree using async shared utility (handles git remove + fallback to force-delete with Windows retry)
+        const deleteResult = await forceDeleteWorktreeAsync(worktreePath, project.path);
         if (!deleteResult.success) {
           return {
             success: false,
