@@ -1473,8 +1473,8 @@ class WorktreeManager:
                     "mr",
                     "view",
                     info.branch,
-                    "--json",
-                    "webUrl",
+                    "--output",
+                    "json",
                 ],
                 cwd=info.path,
                 capture_output=True,
@@ -1485,10 +1485,10 @@ class WorktreeManager:
                 env=get_isolated_git_env(),
             )
             if result.returncode == 0 and result.stdout.strip():
-                # Parse JSON output to extract webUrl
+                # Parse JSON output to extract web_url (glab uses snake_case)
                 try:
                     data = json.loads(result.stdout)
-                    return data.get("webUrl")
+                    return data.get("web_url")
                 except json.JSONDecodeError:
                     # If JSON parsing fails, return None
                     pass
