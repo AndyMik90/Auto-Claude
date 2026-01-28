@@ -25,6 +25,8 @@ _pydantic_models_path = (
 sys.path.insert(0, str(_pydantic_models_path))
 
 from pydantic_models import (
+    AICommentTriage,
+    DeepAnalysisFinding,
     # Follow-up review models
     FindingResolution,
     FollowupFinding,
@@ -32,13 +34,11 @@ from pydantic_models import (
     # Orchestrator review models
     OrchestratorFinding,
     OrchestratorReviewResponse,
+    QualityFinding,
     # Initial review models
     QuickScanResult,
     SecurityFinding,
-    QualityFinding,
-    DeepAnalysisFinding,
     StructuralIssue,
-    AICommentTriage,
 )
 
 
