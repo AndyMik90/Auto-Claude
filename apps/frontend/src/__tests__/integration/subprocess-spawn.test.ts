@@ -406,8 +406,10 @@ describe('Subprocess Spawn Integration', () => {
       mockProcess.emit('exit', 0);
       await promise2;
 
-      // Tasks should be removed from tracking after exit
-      expect(manager.getRunningTasks()).toHaveLength(0);
+      // Tasks should be removed from tracking after exit (waitFor accounts for async exit handling)
+      await vi.waitFor(() => {
+        expect(manager.getRunningTasks()).toHaveLength(0);
+      }, { timeout: 5000 });
     }, 15000);
 
     it('should use configured Python path', async () => {
