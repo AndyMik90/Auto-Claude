@@ -318,6 +318,9 @@ Examples:
             if not review_state.is_approved():
                 debug_error("spec_runner", "Spec not approved - cannot start build")
                 print()
+                if not args.interactive:
+                    print_status("Spec requires human review. Build not started.", "warning")
+                    sys.exit(0)
                 print_status("Build cannot start: spec not approved.", "error")
                 print()
                 print(f"  {muted('To approve the spec, run:')}")

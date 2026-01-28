@@ -290,6 +290,8 @@ export interface AppSettings {
   seenVersionWarnings?: string[];
   // Sidebar collapsed state (icons only when true)
   sidebarCollapsed?: boolean;
+  // Use xstate task machine for status transitions
+  useXstateTaskMachine?: boolean;
 }
 
 // Auto-Claude Source Environment Configuration (for auto-claude repo .env)

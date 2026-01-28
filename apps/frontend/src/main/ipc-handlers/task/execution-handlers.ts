@@ -17,7 +17,9 @@ import {
 } from './plan-file-utils';
 import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
-import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
+import { getIsolatedGitEnv } from '../../utils/git-isolation';
+import { TaskStateMachine } from '../../task-state-machine';
+import { getTaskStateManager } from '../../task-state-manager';
 
 /**
  * Atomic file write to prevent TOCTOU race conditions.
@@ -53,6 +55,13 @@ function safeReadFileSync(filePath: string): string | null {
       console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
     }
     return null;
+  }
+}
+
+function logTaskStatusChange(taskId: string, status: TaskStatus, reviewReason?: string | null): void {
+  if (process.env.DEBUG === 'true') {
+    const reason = reviewReason || 'none';
+    console.log(`[TASK_STATUS_CHANGE] taskId=${taskId} status=${status} reviewReason=${reason}`);
   }
 }
 
@@ -106,6 +115,7 @@ export function registerTaskExecutionHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  const taskStateMachine = new TaskStateMachine();
   /**
    * Start a task
    */
@@ -178,6 +188,15 @@ export function registerTaskExecutionHandlers(
       }
 
       console.warn('[TASK_START] Found task:', task.specId, 'status:', task.status, 'subtasks:', task.subtasks.length);
+
+      const shouldResume =
+        task.status === 'human_review' &&
+        task.reviewReason !== 'completed';
+
+      if (shouldResume || task.status === 'error') {
+        const taskStateManager = getTaskStateManager(getMainWindow);
+        taskStateManager.handleUserResumed(task, project);
+      }
 
       // Start file watcher for this task
       const specsBaseDir = getSpecsDir(project.autoBuildPath);
@@ -256,11 +275,8 @@ export function registerTaskExecutionHandlers(
       // Notify status change IMMEDIATELY (don't wait for file write)
       // This provides instant UI feedback while file persistence happens in background
       const ipcSentAt = Date.now();
-      mainWindow.webContents.send(
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        'in_progress'
-      );
+      logTaskStatusChange(taskId, 'in_progress');
+      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
 
       const DEBUG = process.env.DEBUG === 'true';
       if (DEBUG) {
@@ -298,51 +314,14 @@ export function registerTaskExecutionHandlers(
    * Stop a task
    */
   ipcMain.on(IPC_CHANNELS.TASK_STOP, (_, taskId: string) => {
-    const DEBUG = process.env.DEBUG === 'true';
-
     agentManager.killTask(taskId);
     fileWatcher.unwatch(taskId);
 
-    // Notify status change IMMEDIATELY for instant UI feedback
-    const ipcSentAt = Date.now();
-    const mainWindow = getMainWindow();
-    if (mainWindow) {
-      mainWindow.webContents.send(
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        'backlog'
-      );
-    }
-
-    if (DEBUG) {
-      console.log(`[TASK_STOP] IPC sent immediately for task ${taskId}, deferring file persistence`);
-    }
-
-    // Find task and project to update the plan file (async, non-blocking)
     const { task, project } = findTaskAndProject(taskId);
-
     if (task && project) {
-      // Persist status to implementation_plan.json to prevent status flip-flop on refresh
-      // Uses shared utility for consistency with agent-events-handlers.ts
-      // NOTE: This is now async and non-blocking for better UI responsiveness
-      const planPath = getPlanPath(project, task);
-      setImmediate(async () => {
-        const persistStart = Date.now();
-        try {
-          const persisted = await persistPlanStatus(planPath, 'backlog', project.id);
-          if (persisted) {
-            console.warn('[TASK_STOP] Updated plan status to backlog');
-          }
-          if (DEBUG) {
-            const delay = persistStart - ipcSentAt;
-            const duration = Date.now() - persistStart;
-            console.log(`[TASK_STOP] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
-          }
-        } catch (err) {
-          console.error('[TASK_STOP] Failed to persist plan status:', err);
-        }
-      });
-      // Note: File not found is expected for tasks without a plan file (persistPlanStatus handles ENOENT)
+      const manager = getTaskStateManager(getMainWindow);
+      manager.handleUserStopped(task, project);
+      return;
     }
   });
 
@@ -384,8 +363,7 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             qaReportPath,
-            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`,
-            'utf-8'
+            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA report:', error);
@@ -395,11 +373,8 @@ export function registerTaskExecutionHandlers(
         // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            'done'
-          );
+          logTaskStatusChange(taskId, 'done');
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, 'done');
         }
 
         // CRITICAL: Persist 'done' status to implementation_plan.json
@@ -522,8 +497,7 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             fixRequestPath,
-            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`,
-            'utf-8'
+            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA fix request:', error);
@@ -539,11 +513,8 @@ export function registerTaskExecutionHandlers(
         // Notify UI immediately for instant feedback
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            'in_progress'
-          );
+          logTaskStatusChange(taskId, 'in_progress');
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
         }
 
         // CRITICAL: Persist 'in_progress' status to implementation_plan.json
@@ -599,13 +570,21 @@ export function registerTaskExecutionHandlers(
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {
               // Get the branch name before removing the worktree
-              // Use shared utility to validate detected branch matches expected pattern
-              // This prevents deleting wrong branch when worktree is corrupted/orphaned
-              const { branch, usingFallback: usingFallbackBranch } = detectWorktreeBranch(
-                worktreePath,
-                task.specId,
-                { timeout: 30000, logPrefix: '[TASK_UPDATE_STATUS]' }
-              );
+              let branch = '';
+              let usingFallbackBranch = false;
+              try {
+                branch = execFileSync(getToolPath('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+                  cwd: worktreePath,
+                  encoding: 'utf-8',
+                  timeout: 30000,
+                  env: getIsolatedGitEnv()
+                }).trim();
+              } catch (branchError) {
+                // If we can't get branch name, use the default pattern
+                branch = `auto-claude/${task.specId}`;
+                usingFallbackBranch = true;
+                console.warn(`[TASK_UPDATE_STATUS] Could not get branch name, using fallback pattern: ${branch}`, branchError);
+              }
 
               // Remove the worktree
               execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
@@ -631,10 +610,7 @@ export function registerTaskExecutionHandlers(
                   // More concerning - fallback pattern didn't match actual branch
                   console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
                 } else {
-                  console.warn(
-                    `[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`,
-                    branchDeleteError
-                  );
+                  console.warn(`[TASK_UPDATE_STATUS] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`);
                 }
               }
 
@@ -814,11 +790,8 @@ export function registerTaskExecutionHandlers(
 
           // Notify renderer about status change
           if (mainWindow) {
-            mainWindow.webContents.send(
-              IPC_CHANNELS.TASK_STATUS_CHANGE,
-              taskId,
-              'in_progress'
-            );
+            logTaskStatusChange(taskId, 'in_progress');
+            taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
           }
         }
 
@@ -1188,11 +1161,8 @@ export function registerTaskExecutionHandlers(
         // Notify renderer of status change
         const mainWindow = getMainWindow();
         if (mainWindow) {
-          mainWindow.webContents.send(
-            IPC_CHANNELS.TASK_STATUS_CHANGE,
-            taskId,
-            newStatus
-          );
+          logTaskStatusChange(taskId, newStatus);
+          taskStateMachine.emitStatusChange(getMainWindow, taskId, newStatus);
         }
 
         return {

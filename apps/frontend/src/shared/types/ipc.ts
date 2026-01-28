@@ -29,6 +29,7 @@ import type { ScreenshotSource } from './screenshot';
 import type {
   Task,
   TaskStatus,
+  ReviewReason,
   TaskStartOptions,
   ImplementationPlan,
   ExecutionProgress,
@@ -195,7 +196,7 @@ export interface ElectronAPI {
   onTaskProgress: (callback: (taskId: string, plan: ImplementationPlan) => void) => () => void;
   onTaskError: (callback: (taskId: string, error: string) => void) => () => void;
   onTaskLog: (callback: (taskId: string, log: string) => void) => () => void;
-  onTaskStatusChange: (callback: (taskId: string, status: TaskStatus) => void) => () => void;
+  onTaskStatusChange: (callback: (taskId: string, status: TaskStatus, reviewReason?: ReviewReason) => void) => () => void;
   onTaskExecutionProgress: (callback: (taskId: string, progress: ExecutionProgress) => void) => () => void;
 
   // Terminal operations
