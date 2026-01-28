@@ -1,0 +1,18 @@
+{
+    "title": "Ideation",
+    "empty": {
+        "title": "No Ideas Yet",
+        "description": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience."
+    },
+    "settings": {
+        "enabledTypes": "Enabled Ideation Types",
+        "types": {
+            "code_improvements": "Code Improvements",
+            "ui_ux_improvements": "UI/UX Improvements",
+            "documentation_gaps": "Documentation",
+            "security_hardening": "Security",
+            "performance_optimizations": "Performance",
+            "code_quality": "Code Quality"
+        }
+    }
+}

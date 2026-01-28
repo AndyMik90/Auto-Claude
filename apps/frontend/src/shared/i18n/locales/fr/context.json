@@ -1,0 +1,11 @@
+{
+    "title": "Project Structure",
+    "subtitle": "AI-discovered knowledge about your codebase",
+    "empty": {
+        "title": "No Project Index Found",
+        "description": "Click the Refresh button to analyze your project structure and create an index."
+    },
+    "actions": {
+        "refresh": "Refresh"
+    }
+}

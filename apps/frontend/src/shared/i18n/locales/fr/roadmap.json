@@ -1,0 +1,18 @@
+{
+    "title": "Roadmap",
+    "empty": {
+        "title": "No Roadmap Yet",
+        "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan."
+    },
+    "actions": {
+        "generate": "Generate",
+        "refresh": "Refresh",
+        "generateFull": "Generate Full Roadmap",
+        "stop": "Stop"
+    },
+    "tabs": {
+        "kanban": "Kanban",
+        "list": "List",
+        "phases": "Phases"
+    }
+}

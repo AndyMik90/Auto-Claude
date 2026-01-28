@@ -32,6 +32,12 @@ import frGitlab from './locales/fr/gitlab.json';
 import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
+import frInsights from './locales/fr/insights.json';
+import frRoadmap from './locales/fr/roadmap.json';
+import frIdeation from './locales/fr/ideation.json';
+import frContext from './locales/fr/context.json';
+import frChangelog from './locales/fr/changelog.json';
+import frWorktrees from './locales/fr/worktrees.json';
 
 // Import Russian translation resources
 import ruCommon from './locales/ru/common.json';
@@ -86,12 +92,12 @@ export const resources = {
     taskReview: frTaskReview,
     terminal: frTerminal,
     errors: frErrors,
-    insights: enInsights, // Fallback to EN if FR missing
-    roadmap: enRoadmap,
-    ideation: enIdeation,
-    context: enContext,
-    changelog: enChangelog,
-    worktrees: enWorktrees
+    insights: frInsights,
+    roadmap: frRoadmap,
+    ideation: frIdeation,
+    context: frContext,
+    changelog: frChangelog,
+    worktrees: frWorktrees
   },
   ru: {
     common: ruCommon,
