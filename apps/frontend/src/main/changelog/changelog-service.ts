@@ -69,8 +69,6 @@ export class ChangelogService extends EventEmitter {
     // Check process.env first
     if (
       process.env.DEBUG === 'true' ||
-      process.env.DEBUG === '1' ||
-      process.env.DEBUG === 'true' ||
       process.env.DEBUG === '1'
     ) {
       this.debugEnabled = true;
@@ -121,11 +119,21 @@ export class ChangelogService extends EventEmitter {
       return this.autoBuildSourcePath;
     }
 
+    const appPathSegment: string[] = [];
+    // Add app path if app is ready (WSL2 compatibility)
+    try {
+      if (app && app.getAppPath) {
+        appPathSegment.push(path.resolve(app.getAppPath(), '..', 'backend'));
+      }
+    } catch (e) {
+      // App not ready yet, continue without app path
+    }
+
     const possiblePaths = [
       // Apps structure: from out/main -> apps/backend
       path.resolve(__dirname, '..', '..', '..', 'backend'),
-      path.resolve(app.getAppPath(), '..', 'backend'),
-      path.resolve(process.cwd(), 'apps', 'backend')
+      ...appPathSegment,
+      path.resolve(process.cwd(), 'apps', 'backend'),
     ];
 
     for (const p of possiblePaths) {
@@ -522,5 +530,43 @@ export class ChangelogService extends EventEmitter {
   }
 }
 
-// Export singleton instance
-export const changelogService = new ChangelogService();
+// Lazy-initialized singleton instance (WSL2 compatible)
+let _changelogService: ChangelogService | null = null;
+
+function getChangelogServiceInstance(): ChangelogService {
+  if (!_changelogService) {
+    _changelogService = new ChangelogService();
+  }
+  return _changelogService;
+}
+
+// Export a Proxy that lazily initializes the ChangelogService singleton
+// This is necessary for WSL2 compatibility where app.whenReady() timing differs
+// The Proxy implements all necessary traps for full EventEmitter compatibility
+export const changelogService = new Proxy({} as ChangelogService, {
+  get(_target, prop, receiver) {
+    const instance = getChangelogServiceInstance();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  set(_target, prop, value, receiver) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.set(instance, prop, value, receiver);
+  },
+  has(_target, prop) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.has(instance, prop);
+  },
+  ownKeys() {
+    const instance = getChangelogServiceInstance();
+    return Reflect.ownKeys(instance);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    const instance = getChangelogServiceInstance();
+    return Reflect.getOwnPropertyDescriptor(instance, prop);
+  },
+  getPrototypeOf() {
+    const instance = getChangelogServiceInstance();
+    return Reflect.getPrototypeOf(instance);
+  }
+});

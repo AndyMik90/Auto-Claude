@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { existsSync, readFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { app } from 'electron';
+import { joinPaths } from './platform';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -67,15 +68,25 @@ export class TitleGenerator extends EventEmitter {
       return this.autoBuildSourcePath;
     }
 
+    const appPathSegment: string[] = [];
+    // Add app path if app is ready (WSL2 compatibility)
+    try {
+      if (app && app.getAppPath) {
+        appPathSegment.push(joinPaths(app.getAppPath(), '..', 'backend'));
+      }
+    } catch (e) {
+      // App not ready yet, continue without app path
+    }
+
     const possiblePaths = [
       // Apps structure: from out/main -> apps/backend
-      path.resolve(__dirname, '..', '..', '..', 'backend'),
-      path.resolve(app.getAppPath(), '..', 'backend'),
-      path.resolve(process.cwd(), 'apps', 'backend')
+      joinPaths(__dirname, '..', '..', '..', 'backend'),
+      ...appPathSegment,
+      joinPaths(process.cwd(), 'apps', 'backend'),
     ];
 
     for (const p of possiblePaths) {
-      if (existsSync(p) && existsSync(path.join(p, 'runners', 'spec_runner.py'))) {
+      if (existsSync(p) && existsSync(joinPaths(p, 'runners', 'spec_runner.py'))) {
         return p;
       }
     }
@@ -89,7 +100,7 @@ export class TitleGenerator extends EventEmitter {
     const autoBuildSource = this.getAutoBuildSourcePath();
     if (!autoBuildSource) return {};
 
-    const envPath = path.join(autoBuildSource, '.env');
+    const envPath = joinPaths(autoBuildSource, '.env');
     if (!existsSync(envPath)) return {};
 
     try {
@@ -348,5 +359,43 @@ asyncio.run(generate_title())
   }
 }
 
-// Export singleton instance
-export const titleGenerator = new TitleGenerator();
+// Lazy-initialized singleton instance (WSL2 compatible)
+let _titleGenerator: TitleGenerator | null = null;
+
+function getTitleGeneratorInstance(): TitleGenerator {
+  if (!_titleGenerator) {
+    _titleGenerator = new TitleGenerator();
+  }
+  return _titleGenerator;
+}
+
+// Export a Proxy that lazily initializes the TitleGenerator singleton
+// This is necessary for WSL2 compatibility where app.whenReady() timing differs
+// The Proxy implements all necessary traps for full EventEmitter compatibility
+export const titleGenerator = new Proxy({} as TitleGenerator, {
+  get(_target, prop, receiver) {
+    const instance = getTitleGeneratorInstance();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  set(_target, prop, value, receiver) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.set(instance, prop, value, receiver);
+  },
+  has(_target, prop) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.has(instance, prop);
+  },
+  ownKeys() {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.ownKeys(instance);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.getOwnPropertyDescriptor(instance, prop);
+  },
+  getPrototypeOf() {
+    const instance = getTitleGeneratorInstance();
+    return Reflect.getPrototypeOf(instance);
+  }
+});

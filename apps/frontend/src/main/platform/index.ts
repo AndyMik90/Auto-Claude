@@ -13,7 +13,7 @@
 
 import * as os from 'os';
 import * as path from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import { OS, ShellType, PathConfig, ShellConfig, BinaryDirectories } from './types';
 
@@ -61,6 +61,50 @@ export function isLinux(): boolean {
  */
 export function isUnix(): boolean {
   return !isWindows();
+}
+
+/**
+ * Check if running in development mode (not packaged)
+ *
+ * Note: Requires the 'app' module from Electron to be ready.
+ * Use lazy evaluation when calling from module-level code.
+ */
+export function isDev(): boolean {
+  try {
+    const { app } = require('electron');
+    return !app.isPackaged;
+  } catch {
+    // If app is not ready, check NODE_ENV
+    return process.env.NODE_ENV !== 'production';
+  }
+}
+
+/**
+ * Check if running in WSL2 environment
+ *
+ * Detects Windows Subsystem for Linux 2 by checking:
+ * 1. WSL_DISTRO_NAME environment variable (most reliable, set by WSL2 automatically)
+ * 2. /proc/version for 'microsoft' signature (WSL2 kernel identifier)
+ */
+export function isWSL2(): boolean {
+  // Check WSL_DISTRO_NAME environment variable (most reliable)
+  if (process.env.WSL_DISTRO_NAME) {
+    return true;
+  }
+
+  // Check /proc/version for WSL2 kernel signature (Linux only)
+  if (isLinux()) {
+    try {
+      const versionInfo = existsSync('/proc/version')
+        ? readFileSync('/proc/version', 'utf8').toLowerCase()
+        : '';
+      return versionInfo.includes('microsoft');
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 /**

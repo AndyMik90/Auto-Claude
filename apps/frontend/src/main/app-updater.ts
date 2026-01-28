@@ -17,10 +17,9 @@
  * - APP_UPDATE_ERROR: Error during update process
  */
 
-import { autoUpdater } from 'electron-updater';
-import type { UpdateInfo } from 'electron-updater';
 import { app, net } from 'electron';
 import type { BrowserWindow } from 'electron';
+import type { AppUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 import { compareVersions } from './updater/version-manager';
@@ -31,10 +30,6 @@ const GITHUB_REPO = 'Auto-Claude';
 
 // Debug mode - DEBUG_UPDATER=true or development mode
 const DEBUG_UPDATER = process.env.DEBUG_UPDATER === 'true' || process.env.NODE_ENV === 'development';
-
-// Configure electron-updater
-autoUpdater.autoDownload = true;  // Automatically download updates when available
-autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
 
 // Update channels: 'latest' for stable, 'beta' for pre-release
 type UpdateChannel = 'latest' | 'beta';
@@ -88,29 +83,34 @@ function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | 
  * - 'beta': Receive pre-release/beta versions
  *
  * @param channel - The update channel to use
+ * @param updater - Optional updater instance (for testing). If omitted, initializes module-scoped autoUpdater.
  */
-export function setUpdateChannel(channel: UpdateChannel): void {
-  autoUpdater.channel = channel;
+export function setUpdateChannel(channel: UpdateChannel, updater?: AppUpdater): void {
+  // If no updater provided, ensure module-scoped autoUpdater is initialized
+  if (!updater && !autoUpdater) {
+    const updaterModule = require('electron-updater');
+    autoUpdater = updaterModule.autoUpdater;
+  }
+
+  const updaterInstance = updater || autoUpdater;
+  if (!updaterInstance) {
+    throw new Error('[app-updater] autoUpdater not initialized');
+  }
+
+  updaterInstance.channel = channel;
   // Clear any downloaded update info when channel changes to prevent showing
   // an Install button for an update from a different channel
   downloadedUpdateInfo = null;
   console.warn(`[app-updater] Update channel set to: ${channel}`);
 }
 
-// Enable more verbose logging in debug mode
-if (DEBUG_UPDATER) {
-  autoUpdater.logger = {
-    info: (msg: string) => console.warn('[app-updater:debug]', msg),
-    warn: (msg: string) => console.warn('[app-updater:debug]', msg),
-    error: (msg: string) => console.error('[app-updater:debug]', msg),
-    debug: (msg: string) => console.warn('[app-updater:debug]', msg)
-  };
-}
-
 let mainWindow: BrowserWindow | null = null;
 
 // Track downloaded update state so it persists across Settings page navigations
 let downloadedUpdateInfo: AppUpdateInfo | null = null;
+
+// Lazy-loaded autoUpdater instance (WSL2 compatibility)
+let autoUpdater: AppUpdater | null = null;
 
 /**
  * Initialize the app updater system
@@ -122,11 +122,36 @@ let downloadedUpdateInfo: AppUpdateInfo | null = null;
  * @param betaUpdates - Whether to receive beta/pre-release updates
  */
 export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false): void {
+  // Lazy-load electron-updater to avoid initialization before app is ready (WSL2 compatibility)
+  if (!autoUpdater) {
+    const updaterModule = require('electron-updater');
+    autoUpdater = updaterModule.autoUpdater;
+  }
+
+  // TypeScript guard: autoUpdater is guaranteed to be non-null after initialization above
+  if (!autoUpdater) {
+    throw new Error('[app-updater] Failed to initialize autoUpdater');
+  }
+
+  // Configure electron-updater
+  autoUpdater.autoDownload = true;  // Automatically download updates when available
+  autoUpdater.autoInstallOnAppQuit = true;  // Automatically install on app quit
+
+  // Enable more verbose logging in debug mode
+  if (DEBUG_UPDATER) {
+    autoUpdater.logger = {
+      info: (msg: string) => console.warn('[app-updater:debug]', msg),
+      warn: (msg: string) => console.warn('[app-updater:debug]', msg),
+      error: (msg: string) => console.error('[app-updater:debug]', msg),
+      debug: (msg: string) => console.warn('[app-updater:debug]', msg)
+    };
+  }
+
   mainWindow = window;
 
   // Set update channel based on user preference
   const channel = betaUpdates ? 'beta' : 'latest';
-  setUpdateChannel(channel);
+  setUpdateChannel(channel, autoUpdater);
 
   // Log updater configuration
   console.warn('[app-updater] ========================================');
@@ -143,7 +168,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   // ============================================
 
   // Update available - new version found
-  autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
     console.warn('[app-updater] Update available:', info.version);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_AVAILABLE, {
@@ -155,7 +180,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Update downloaded - ready to install
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', (info: UpdateDownloadedEvent) => {
     console.warn('[app-updater] Update downloaded:', info.version);
     // Store downloaded update info so it persists across Settings page navigations
     downloadedUpdateInfo = {
@@ -170,7 +195,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Download progress
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
     console.warn(`[app-updater] Download progress: ${progress.percent.toFixed(2)}%`);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_PROGRESS, {
@@ -183,7 +208,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // Error handling
-  autoUpdater.on('error', (error) => {
+  autoUpdater.on('error', (error: Error) => {
     console.error('[app-updater] Update error:', error);
     if (mainWindow) {
       mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_ERROR, {
@@ -194,7 +219,7 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
   });
 
   // No update available
-  autoUpdater.on('update-not-available', (info) => {
+  autoUpdater.on('update-not-available', (info: UpdateInfo) => {
     console.warn('[app-updater] No updates available - you are on the latest version');
     console.warn('[app-updater]   Current version:', info.version);
     if (DEBUG_UPDATER) {
@@ -217,7 +242,11 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   setTimeout(() => {
     console.warn('[app-updater] Performing initial update check');
-    autoUpdater.checkForUpdates().catch((error) => {
+    if (!autoUpdater) {
+      console.error('[app-updater] autoUpdater not initialized for initial check');
+      return;
+    }
+    autoUpdater.checkForUpdates().catch((error: Error) => {
       console.error('[app-updater] ❌ Initial update check failed:', error.message);
       if (DEBUG_UPDATER) {
         console.error('[app-updater:debug] Full error:', error);
@@ -231,7 +260,11 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
 
   periodicCheckIntervalId = setInterval(() => {
     console.warn('[app-updater] Performing periodic update check');
-    autoUpdater.checkForUpdates().catch((error) => {
+    if (!autoUpdater) {
+      console.error('[app-updater] autoUpdater not initialized for periodic check');
+      return;
+    }
+    autoUpdater.checkForUpdates().catch((error: Error) => {
       console.error('[app-updater] ❌ Periodic update check failed:', error.message);
       if (DEBUG_UPDATER) {
         console.error('[app-updater:debug] Full error:', error);
@@ -247,6 +280,10 @@ export function initializeAppUpdater(window: BrowserWindow, betaUpdates = false)
  * Called from IPC handler when user requests manual check
  */
 export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
+  if (!autoUpdater) {
+    console.error('[app-updater] autoUpdater not initialized');
+    return null;
+  }
   try {
     console.warn('[app-updater] Manual update check requested');
     const result = await autoUpdater.checkForUpdates();
@@ -284,6 +321,10 @@ export async function checkForUpdates(): Promise<AppUpdateInfo | null> {
  * Called from IPC handler when user requests manual download
  */
 export async function downloadUpdate(): Promise<void> {
+  if (!autoUpdater) {
+    console.error('[app-updater] autoUpdater not initialized');
+    throw new Error('autoUpdater not initialized');
+  }
   try {
     console.warn('[app-updater] Manual update download requested');
     await autoUpdater.downloadUpdate();
@@ -298,15 +339,20 @@ export async function downloadUpdate(): Promise<void> {
  * Called from IPC handler when user confirms installation
  */
 export function quitAndInstall(): void {
+  if (!autoUpdater) {
+    console.error('[app-updater] autoUpdater not initialized');
+    return;
+  }
   console.warn('[app-updater] Quitting and installing update');
   autoUpdater.quitAndInstall(false, true);
 }
 
 /**
  * Get current app version
+ * WSL2 compatibility: Use app.getVersion() instead of autoUpdater since autoUpdater is lazy-loaded
  */
 export function getCurrentVersion(): string {
-  return autoUpdater.currentVersion.version;
+  return app.getVersion();
 }
 
 /**
@@ -333,7 +379,9 @@ const GITHUB_API_TIMEOUT = 10000;
  * Returns the latest non-prerelease version
  */
 async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
-  const fetchPromise = new Promise<AppUpdateInfo | null>((resolve) => {
+  return new Promise<AppUpdateInfo | null>((resolve) => {
+    let settled = false;
+
     const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
     console.warn('[app-updater] Fetching releases from:', url);
 
@@ -363,7 +411,10 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
         } else if (statusCode === 404) {
           console.error('[app-updater] Repository or releases not found');
         }
-        resolve(null);
+        if (!settled) {
+          settled = true;
+          resolve(null);
+        }
         return;
       }
 
@@ -372,12 +423,15 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
       });
 
       response.on('end', () => {
+        if (settled) return;
+
         try {
           const parsed = JSON.parse(data);
 
           // Validate response is an array
           if (!Array.isArray(parsed)) {
             console.error('[app-updater] Unexpected response format - expected array, got:', typeof parsed);
+            settled = true;
             resolve(null);
             return;
           }
@@ -396,6 +450,7 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
 
           if (!latestStable) {
             console.warn('[app-updater] No stable release found');
+            settled = true;
             resolve(null);
             return;
           }
@@ -406,6 +461,7 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
           const safeVersion = String(version).replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
           console.warn('[app-updater] Found latest stable release:', safeVersion);
 
+          settled = true;
           resolve({
             version,
             releaseNotes: latestStable.body,
@@ -415,30 +471,33 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
           // Sanitize error message for logging (prevent log injection from malformed JSON)
           const safeError = e instanceof Error ? e.message : 'Unknown parse error';
           console.error('[app-updater] Failed to parse releases JSON:', safeError);
+          settled = true;
           resolve(null);
         }
       });
     });
 
     request.on('error', (error) => {
+      if (settled) return;
       // Sanitize error message for logging (use only the message property)
       const safeErrorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('[app-updater] Failed to fetch releases:', safeErrorMessage);
+      settled = true;
       resolve(null);
     });
 
     request.end();
-  });
 
-  // Add timeout to prevent hanging indefinitely
-  const timeoutPromise = new Promise<AppUpdateInfo | null>((resolve) => {
+    // Set up timeout that aborts the request to prevent resource leak
     setTimeout(() => {
-      console.error(`[app-updater] GitHub API request timed out after ${GITHUB_API_TIMEOUT}ms`);
-      resolve(null);
+      if (!settled) {
+        settled = true;
+        console.error(`[app-updater] GitHub API request timed out after ${GITHUB_API_TIMEOUT}ms`);
+        request.abort();
+        resolve(null);
+      }
     }, GITHUB_API_TIMEOUT);
   });
-
-  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 /**
@@ -483,6 +542,10 @@ export async function setUpdateChannelWithDowngradeCheck(
   channel: UpdateChannel,
   triggerDowngradeCheck = false
 ): Promise<AppUpdateInfo | null> {
+  if (!autoUpdater) {
+    console.error('[app-updater] autoUpdater not initialized');
+    return null;
+  }
   autoUpdater.channel = channel;
   // Clear any downloaded update info when channel changes to prevent showing
   // an Install button for an update from a different channel
@@ -509,6 +572,10 @@ export async function setUpdateChannelWithDowngradeCheck(
  * Uses electron-updater with allowDowngrade enabled to download older stable versions
  */
 export async function downloadStableVersion(): Promise<void> {
+  if (!autoUpdater) {
+    console.error('[app-updater] autoUpdater not initialized');
+    throw new Error('autoUpdater not initialized');
+  }
   // Switch to stable channel
   autoUpdater.channel = 'latest';
   // Enable downgrade to allow downloading older versions (e.g., stable when on beta)
