@@ -376,6 +376,193 @@ function parseCredentialJson<T extends PlatformCredentials>(
 }
 
 // =============================================================================
+// File-Based Credential Helpers (Shared for Linux and Windows)
+// =============================================================================
+
+/**
+ * Shared implementation for reading credentials from a JSON file.
+ * Used by both Linux and Windows file-based credential storage.
+ *
+ * @param credentialsPath - Path to the credentials file
+ * @param cacheKey - Cache key for storing results
+ * @param logPrefix - Prefix for log messages (e.g., "Linux", "Windows:File")
+ * @param forceRefresh - Whether to bypass cache
+ * @returns Platform credentials with token and email
+ */
+function getCredentialsFromFile(
+  credentialsPath: string,
+  cacheKey: string,
+  logPrefix: string,
+  forceRefresh = false
+): PlatformCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+  const now = Date.now();
+
+  // Return cached credentials if available and fresh
+  const cached = credentialCache.get(cacheKey);
+  if (!forceRefresh && cached) {
+    const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
+    if ((now - cached.timestamp) < ttl) {
+      if (isDebug) {
+        const cacheAge = now - cached.timestamp;
+        console.warn(`[CredentialUtils:${logPrefix}:CACHE] Returning cached credentials:`, {
+          credentialsPath,
+          hasToken: !!cached.credentials.token,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
+          cacheAge: Math.round(cacheAge / 1000) + 's'
+        });
+      }
+      return cached.credentials;
+    }
+  }
+
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
+    }
+    const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
+    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+    return invalidResult;
+  }
+
+  // Check if credentials file exists
+  if (!existsSync(credentialsPath)) {
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
+    }
+    const notFoundResult = { token: null, email: null };
+    credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
+    return notFoundResult;
+  }
+
+  try {
+    const content = readFileSync(credentialsPath, 'utf-8');
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+      const errorResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
+      return errorResult;
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
+      const invalidResult = { token: null, email: null };
+      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
+      return invalidResult;
+    }
+
+    const { token, email } = extractCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
+      const result = { token: null, email };
+      credentialCache.set(cacheKey, { credentials: result, timestamp: now });
+      return result;
+    }
+
+    const credentials = { token, email };
+    credentialCache.set(cacheKey, { credentials, timestamp: now });
+
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Retrieved credentials from file:`, credentialsPath, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        tokenFingerprint: getTokenFingerprint(token),
+        forceRefresh
+      });
+    }
+    return credentials;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
+    const errorResult = { token: null, email: null, error: `Failed to read credentials: ${errorMessage}` };
+    credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
+    return errorResult;
+  }
+}
+
+/**
+ * Shared implementation for reading full credentials from a JSON file.
+ * Used by both Linux and Windows file-based credential storage.
+ *
+ * @param credentialsPath - Path to the credentials file
+ * @param logPrefix - Prefix for log messages (e.g., "Linux:Full", "Windows:File:Full")
+ * @returns Full OAuth credentials including refresh token
+ */
+function getFullCredentialsFromFile(
+  credentialsPath: string,
+  logPrefix: string
+): FullOAuthCredentials {
+  const isDebug = process.env.DEBUG === 'true';
+
+  // Defense-in-depth: Validate credentials path is within expected boundaries
+  if (!isValidCredentialsPath(credentialsPath)) {
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
+  }
+
+  // Check if credentials file exists
+  if (!existsSync(credentialsPath)) {
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
+    }
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+  }
+
+  try {
+    const content = readFileSync(credentialsPath, 'utf-8');
+
+    // Parse JSON
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    // Validate JSON structure
+    if (!validateCredentialData(data)) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
+      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
+    }
+
+    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
+
+    // Validate token format if present
+    if (token && !isValidTokenFormat(token)) {
+      console.warn(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
+      return { token: null, email, refreshToken, expiresAt, scopes };
+    }
+
+    if (isDebug) {
+      console.warn(`[CredentialUtils:${logPrefix}] Retrieved full credentials from file:`, credentialsPath, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        hasRefreshToken: !!refreshToken,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        tokenFingerprint: getTokenFingerprint(token)
+      });
+    }
+    return { token, email, refreshToken, expiresAt, scopes };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
+    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
+  }
+}
+
+// =============================================================================
 // macOS Keychain Implementation
 // =============================================================================
 
@@ -643,98 +830,7 @@ function getLinuxCredentialsPath(configDir?: string): string {
 function getCredentialsFromLinuxFile(configDir?: string, forceRefresh = false): PlatformCredentials {
   const credentialsPath = getLinuxCredentialsPath(configDir);
   const cacheKey = `linux:${credentialsPath}`;
-  const isDebug = process.env.DEBUG === 'true';
-  const now = Date.now();
-
-  // Return cached credentials if available and fresh
-  const cached = credentialCache.get(cacheKey);
-  if (!forceRefresh && cached) {
-    const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
-    if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
-        const cacheAge = now - cached.timestamp;
-        console.warn('[CredentialUtils:Linux:CACHE] Returning cached credentials:', {
-          credentialsPath,
-          hasToken: !!cached.credentials.token,
-          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
-          cacheAge: Math.round(cacheAge / 1000) + 's'
-        });
-      }
-      return cached.credentials;
-    }
-  }
-
-  // Defense-in-depth: Validate credentials path is within expected boundaries
-  if (!isValidCredentialsPath(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux] Invalid credentials path rejected:', { credentialsPath });
-    }
-    const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
-    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-    return invalidResult;
-  }
-
-  // Check if credentials file exists
-  if (!existsSync(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux] Credentials file not found:', credentialsPath);
-    }
-    const notFoundResult = { token: null, email: null };
-    credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-    return notFoundResult;
-  }
-
-  try {
-    const content = readFileSync(credentialsPath, 'utf-8');
-
-    // Parse JSON
-    let data: unknown;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      console.warn('[CredentialUtils:Linux] Failed to parse credentials JSON:', credentialsPath);
-      const errorResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-      return errorResult;
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Linux] Invalid credentials data structure:', credentialsPath);
-      const invalidResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-      return invalidResult;
-    }
-
-    const { token, email } = extractCredentials(data);
-
-    // Validate token format if present
-    if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Linux] Invalid token format in:', credentialsPath);
-      const result = { token: null, email };
-      credentialCache.set(cacheKey, { credentials: result, timestamp: now });
-      return result;
-    }
-
-    const credentials = { token, email };
-    credentialCache.set(cacheKey, { credentials, timestamp: now });
-
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux] Retrieved credentials from file:', credentialsPath, {
-        hasToken: !!token,
-        hasEmail: !!email,
-        tokenFingerprint: getTokenFingerprint(token),
-        forceRefresh
-      });
-    }
-    return credentials;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Linux] Failed to read credentials file:', credentialsPath, errorMessage);
-    const errorResult = { token: null, email: null, error: `Failed to read credentials: ${errorMessage}` };
-    credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-    return errorResult;
-  }
+  return getCredentialsFromFile(credentialsPath, cacheKey, 'Linux', forceRefresh);
 }
 
 // =============================================================================
@@ -921,98 +1017,7 @@ function getWindowsCredentialsPath(configDir?: string): string {
 function getCredentialsFromWindowsFile(configDir?: string, forceRefresh = false): PlatformCredentials {
   const credentialsPath = getWindowsCredentialsPath(configDir);
   const cacheKey = `windows-file:${credentialsPath}`;
-  const isDebug = process.env.DEBUG === 'true';
-  const now = Date.now();
-
-  // Return cached credentials if available and fresh
-  const cached = credentialCache.get(cacheKey);
-  if (!forceRefresh && cached) {
-    const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
-    if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
-        const cacheAge = now - cached.timestamp;
-        console.warn('[CredentialUtils:Windows:File:CACHE] Returning cached credentials:', {
-          credentialsPath,
-          hasToken: !!cached.credentials.token,
-          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
-          cacheAge: Math.round(cacheAge / 1000) + 's'
-        });
-      }
-      return cached.credentials;
-    }
-  }
-
-  // Defense-in-depth: Validate credentials path is within expected boundaries
-  if (!isValidCredentialsPath(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File] Invalid credentials path rejected:', { credentialsPath });
-    }
-    const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
-    credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-    return invalidResult;
-  }
-
-  // Check if credentials file exists
-  if (!existsSync(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File] Credentials file not found:', credentialsPath);
-    }
-    const notFoundResult = { token: null, email: null };
-    credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
-    return notFoundResult;
-  }
-
-  try {
-    const content = readFileSync(credentialsPath, 'utf-8');
-
-    // Parse JSON
-    let data: unknown;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      console.warn('[CredentialUtils:Windows:File] Failed to parse credentials JSON:', credentialsPath);
-      const errorResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-      return errorResult;
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Windows:File] Invalid credentials data structure:', credentialsPath);
-      const invalidResult = { token: null, email: null };
-      credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
-      return invalidResult;
-    }
-
-    const { token, email } = extractCredentials(data);
-
-    // Validate token format if present
-    if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Windows:File] Invalid token format in:', credentialsPath);
-      const result = { token: null, email };
-      credentialCache.set(cacheKey, { credentials: result, timestamp: now });
-      return result;
-    }
-
-    const credentials = { token, email };
-    credentialCache.set(cacheKey, { credentials, timestamp: now });
-
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File] Retrieved credentials from file:', credentialsPath, {
-        hasToken: !!token,
-        hasEmail: !!email,
-        tokenFingerprint: getTokenFingerprint(token),
-        forceRefresh
-      });
-    }
-    return credentials;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Windows:File] Failed to read credentials file:', credentialsPath, errorMessage);
-    const errorResult = { token: null, email: null, error: `Failed to read credentials: ${errorMessage}` };
-    credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
-    return errorResult;
-  }
+  return getCredentialsFromFile(credentialsPath, cacheKey, 'Windows:File', forceRefresh);
 }
 
 /**
@@ -1264,65 +1269,7 @@ function getFullCredentialsFromLinux(configDir?: string): FullOAuthCredentials {
  */
 function getFullCredentialsFromLinuxFile(configDir?: string): FullOAuthCredentials {
   const credentialsPath = getLinuxCredentialsPath(configDir);
-  const isDebug = process.env.DEBUG === 'true';
-
-  // Defense-in-depth: Validate credentials path is within expected boundaries
-  if (!isValidCredentialsPath(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Full] Invalid credentials path rejected:', { credentialsPath });
-    }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
-  }
-
-  // Check if credentials file exists
-  if (!existsSync(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Full] Credentials file not found:', credentialsPath);
-    }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-  }
-
-  try {
-    const content = readFileSync(credentialsPath, 'utf-8');
-
-    // Parse JSON
-    let data: unknown;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      console.warn('[CredentialUtils:Linux:Full] Failed to parse credentials JSON:', credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Linux:Full] Invalid credentials data structure:', credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
-
-    // Validate token format if present
-    if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Linux:Full] Invalid token format in:', credentialsPath);
-      return { token: null, email, refreshToken, expiresAt, scopes };
-    }
-
-    if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Full] Retrieved full credentials from file:', credentialsPath, {
-        hasToken: !!token,
-        hasEmail: !!email,
-        hasRefreshToken: !!refreshToken,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
-      });
-    }
-    return { token, email, refreshToken, expiresAt, scopes };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Linux:Full] Failed to read credentials file:', credentialsPath, errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
-  }
+  return getFullCredentialsFromFile(credentialsPath, 'Linux:Full');
 }
 
 /**
@@ -1436,65 +1383,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
  */
 function getFullCredentialsFromWindowsFile(configDir?: string): FullOAuthCredentials {
   const credentialsPath = getWindowsCredentialsPath(configDir);
-  const isDebug = process.env.DEBUG === 'true';
-
-  // Defense-in-depth: Validate credentials path is within expected boundaries
-  if (!isValidCredentialsPath(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File:Full] Invalid credentials path rejected:', { credentialsPath });
-    }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: 'Invalid credentials path' };
-  }
-
-  // Check if credentials file exists
-  if (!existsSync(credentialsPath)) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File:Full] Credentials file not found:', credentialsPath);
-    }
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-  }
-
-  try {
-    const content = readFileSync(credentialsPath, 'utf-8');
-
-    // Parse JSON
-    let data: unknown;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      console.warn('[CredentialUtils:Windows:File:Full] Failed to parse credentials JSON:', credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    // Validate JSON structure
-    if (!validateCredentialData(data)) {
-      console.warn('[CredentialUtils:Windows:File:Full] Invalid credentials data structure:', credentialsPath);
-      return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null };
-    }
-
-    const { token, email, refreshToken, expiresAt, scopes } = extractFullCredentials(data);
-
-    // Validate token format if present
-    if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Windows:File:Full] Invalid token format in:', credentialsPath);
-      return { token: null, email, refreshToken, expiresAt, scopes };
-    }
-
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:File:Full] Retrieved full credentials from file:', credentialsPath, {
-        hasToken: !!token,
-        hasEmail: !!email,
-        hasRefreshToken: !!refreshToken,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        tokenFingerprint: getTokenFingerprint(token)
-      });
-    }
-    return { token, email, refreshToken, expiresAt, scopes };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Windows:File:Full] Failed to read credentials file:', credentialsPath, errorMessage);
-    return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, error: `Failed to read credentials: ${errorMessage}` };
-  }
+  return getFullCredentialsFromFile(credentialsPath, 'Windows:File:Full');
 }
 
 /**
@@ -2047,7 +1936,9 @@ function updateWindowsCredentials(
     if (credManagerResult.success) {
       // Also update the file for consistency (Claude CLI reads from file)
       const fileResult = updateWindowsFileCredentials(configDir, credentials);
-      if (!fileResult.success && isDebug) {
+      if (!fileResult.success) {
+        // Always log this warning - file update failure causes split-brain where
+        // Auto Claude has new credentials but Claude CLI reads stale ones from file
         console.warn('[CredentialUtils:Windows:Update] Credential Manager succeeded but file update failed:', fileResult.error);
       }
       return credManagerResult;
