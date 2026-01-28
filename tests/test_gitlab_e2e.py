@@ -26,6 +26,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 # Add apps/backend directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
@@ -158,9 +160,17 @@ def _check_provider_detection() -> bool:
         ("GitHub Enterprise", "https://github.company.com/user/repo.git", "github"),
         ("GitLab Cloud HTTPS", "https://gitlab.com/user/repo.git", "gitlab"),
         ("GitLab Cloud SSH", "git@gitlab.com:user/repo.git", "gitlab"),
-        ("Self-hosted GitLab HTTPS", "https://gitlab.company.com/user/repo.git", "gitlab"),
+        (
+            "Self-hosted GitLab HTTPS",
+            "https://gitlab.company.com/user/repo.git",
+            "gitlab",
+        ),
         ("Self-hosted GitLab SSH", "git@gitlab.company.com:user/repo.git", "gitlab"),
-        ("Self-hosted GitLab Subdomain", "https://gitlab.example.org/user/repo.git", "gitlab"),
+        (
+            "Self-hosted GitLab Subdomain",
+            "https://gitlab.example.org/user/repo.git",
+            "gitlab",
+        ),
     ]
 
     all_passed = True
@@ -178,7 +188,9 @@ def _check_provider_detection() -> bool:
             if detected == expected_provider:
                 print_result(True, f"{name}: Detected '{detected}' for {remote_url}")
             else:
-                print_result(False, f"{name}: Expected '{expected_provider}', got '{detected}'")
+                print_result(
+                    False, f"{name}: Expected '{expected_provider}', got '{detected}'"
+                )
                 all_passed = False
 
     return all_passed
@@ -194,12 +206,21 @@ def _check_method_signatures() -> bool:
         # Check push_and_create_pr signature
         sig = inspect.signature(WorktreeManager.push_and_create_pr)
         params = list(sig.parameters.keys())
-        expected_params = ["self", "spec_name", "target_branch", "title", "draft", "force_push"]
+        expected_params = [
+            "self",
+            "spec_name",
+            "target_branch",
+            "title",
+            "draft",
+            "force_push",
+        ]
 
         if all(p in params for p in expected_params):
             print_result(True, f"push_and_create_pr has correct parameters: {params}")
         else:
-            print_result(False, f"Missing parameters. Expected {expected_params}, got {params}")
+            print_result(
+                False, f"Missing parameters. Expected {expected_params}, got {params}"
+            )
             return False
 
         # Verify create_merge_request method exists
@@ -211,9 +232,13 @@ def _check_method_signatures() -> bool:
 
         # Verify create_pull_request method still exists (GitHub regression check)
         if hasattr(WorktreeManager, "create_pull_request"):
-            print_result(True, "create_pull_request method exists (no GitHub regression)")
+            print_result(
+                True, "create_pull_request method exists (no GitHub regression)"
+            )
         else:
-            print_result(False, "create_pull_request method missing (GitHub regression!)")
+            print_result(
+                False, "create_pull_request method missing (GitHub regression!)"
+            )
             return False
 
         return True
@@ -237,14 +262,17 @@ def _check_error_message_missing_glab() -> bool:
         expected_error = "GitLab CLI (glab) not found. Install from https://gitlab.com/gitlab-org/cli"
 
         if result.returncode != 0 and expected_error in result.stderr:
-            print_result(True, f"Correct error message when glab missing")
+            print_result(True, "Correct error message when glab missing")
             return True
         elif result.returncode != 0 and "glab" in result.stderr.lower():
             # Partial match - error mentions glab
             print_result(True, f"Error message mentions glab: {result.stderr}")
             return True
         else:
-            print_result(False, f"Unexpected result: returncode={result.returncode}, stderr={result.stderr}")
+            print_result(
+                False,
+                f"Unexpected result: returncode={result.returncode}, stderr={result.stderr}",
+            )
             return False
 
     except Exception as e:
@@ -263,7 +291,9 @@ def _check_worktree_integration() -> bool:
             repo_path = Path(tmpdir) / "test-project"
 
             # Create test repo with GitLab remote
-            if not create_test_git_repo(repo_path, "https://gitlab.com/test-user/test-repo.git"):
+            if not create_test_git_repo(
+                repo_path, "https://gitlab.com/test-user/test-repo.git"
+            ):
                 print_result(False, "Could not create test repository")
                 return False
 
@@ -293,13 +323,21 @@ def _check_worktree_integration() -> bool:
 
 
 def test_glab_detection():
-    """Pytest: Verify glab CLI detection."""
+    """Pytest: Verify glab CLI detection works when glab is installed."""
+    from core.glab_executable import get_glab_executable
+
+    glab_path = get_glab_executable()
+    if not glab_path:
+        pytest.skip("glab CLI not installed - skipping glab detection test")
+
     assert _check_glab_detection(), "glab CLI detection failed"
 
 
 def test_provider_detection():
     """Pytest: Provider detection for various URL patterns."""
-    assert _check_provider_detection(), "Provider detection failed for one or more URL patterns"
+    assert _check_provider_detection(), (
+        "Provider detection failed for one or more URL patterns"
+    )
 
 
 def test_worktree_manager_method_signatures():
@@ -309,7 +347,9 @@ def test_worktree_manager_method_signatures():
 
 def test_error_message_missing_glab():
     """Pytest: Error message when glab is not installed."""
-    assert _check_error_message_missing_glab(), "Missing glab error message check failed"
+    assert _check_error_message_missing_glab(), (
+        "Missing glab error message check failed"
+    )
 
 
 def test_worktree_integration():
@@ -376,5 +416,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nUnexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
