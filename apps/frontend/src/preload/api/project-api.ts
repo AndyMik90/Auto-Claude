@@ -21,6 +21,15 @@ export interface TabState {
   tabOrder: string[];
 }
 
+// Kanban column preference (persisted in main process per project)
+export interface KanbanColumnPreference {
+  width: number;
+  isCollapsed: boolean;
+  isLocked: boolean;
+}
+
+export type KanbanPreferences = Record<string, KanbanColumnPreference>;
+
 export interface ProjectAPI {
   // Project Management
   addProject: (projectPath: string) => Promise<IPCResult<Project>>;
@@ -36,6 +45,10 @@ export interface ProjectAPI {
   // Tab State (persisted in main process for reliability)
   getTabState: () => Promise<IPCResult<TabState>>;
   saveTabState: (tabState: TabState) => Promise<IPCResult>;
+
+  // Kanban Preferences (persisted in main process per project)
+  getKanbanPreferences: (projectId: string) => Promise<IPCResult<KanbanPreferences | null>>;
+  saveKanbanPreferences: (projectId: string, preferences: KanbanPreferences) => Promise<IPCResult>;
 
   // Context Operations
   getProjectContext: (projectId: string) => Promise<IPCResult<unknown>>;
@@ -169,6 +182,13 @@ export const createProjectAPI = (): ProjectAPI => ({
 
   saveTabState: (tabState: TabState): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.TAB_STATE_SAVE, tabState),
+
+  // Kanban Preferences (persisted in main process per project)
+  getKanbanPreferences: (projectId: string): Promise<IPCResult<KanbanPreferences | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.KANBAN_PREFS_GET, projectId),
+
+  saveKanbanPreferences: (projectId: string, preferences: KanbanPreferences): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.KANBAN_PREFS_SAVE, projectId, preferences),
 
   // Context Operations
   getProjectContext: (projectId: string) =>
