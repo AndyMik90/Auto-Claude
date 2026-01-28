@@ -446,6 +446,8 @@ export interface WorktreeListItem {
   filesChanged: number;
   additions: number;
   deletions: number;
+  /** True if git commands failed on this worktree (corrupted/orphaned state) */
+  isOrphaned?: boolean;
 }
 
 /**
