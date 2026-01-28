@@ -430,7 +430,9 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const fit = useCallback(() => {
     if (fitAddonRef.current && xtermRef.current) {
       fitAddonRef.current.fit();
+      return true;
     }
+    return false;
   }, []);
 
   const write = useCallback((data: string) => {
