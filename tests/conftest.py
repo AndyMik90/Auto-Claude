@@ -1151,9 +1151,34 @@ def temp_project(temp_git_repo: Path):
 
 @pytest.fixture
 def temp_project_dir(tmp_path):
-    """Create a temporary project directory with proper git setup."""
+    """Create a temporary project directory with proper git setup.
+
+    IMPORTANT: This fixture properly isolates git operations by passing
+    a sanitized environment to subprocess.run calls, clearing git environment
+    variables that may be set by pre-commit hooks. Without this isolation,
+    git operations could affect the parent repository when tests run inside
+    a git worktree (e.g., during pre-commit validation).
+
+    See: https://git-scm.com/docs/git#_environment_variables
+    """
     project_dir = tmp_path / "test-project"
     project_dir.mkdir()
+
+    # Create a sanitized environment for git commands to prevent leaking
+    # into parent repos when running inside git worktrees (e.g., pre-commit)
+    git_env = os.environ.copy()
+    git_vars_to_clear = [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ]
+    for var in git_vars_to_clear:
+        git_env.pop(var, None)
+
+    # Set GIT_CEILING_DIRECTORIES to prevent git from discovering parent .git
+    git_env["GIT_CEILING_DIRECTORIES"] = str(tmp_path.parent)
 
     # Initialize git repo
     subprocess.run(
@@ -1161,18 +1186,21 @@ def temp_project_dir(tmp_path):
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@example.com"],
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
 
     # Disable GPG signing to prevent hangs in CI
@@ -1181,6 +1209,7 @@ def temp_project_dir(tmp_path):
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
 
     # Create initial commit
@@ -1191,12 +1220,14 @@ def temp_project_dir(tmp_path):
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
     subprocess.run(
         ["git", "commit", "-m", "Initial commit"],
         cwd=project_dir,
         capture_output=True,
         check=True,
+        env=git_env,
     )
 
     return project_dir
