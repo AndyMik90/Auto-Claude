@@ -61,7 +61,7 @@ if sys.platform == "win32":
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
-                pass
+                pass  # reconfigure not supported, try TextIOWrapper fallback
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
             if hasattr(_stream, "buffer"):
@@ -73,7 +73,7 @@ if sys.platform == "win32":
                 )
                 setattr(sys, _stream_name, _new_stream)
         except (AttributeError, io.UnsupportedOperation, OSError):
-            pass
+            pass  # TextIOWrapper fallback failed, continue with default encoding
     # Clean up temporary variables
     del _stream_name, _stream
     if "_new_stream" in dir():
