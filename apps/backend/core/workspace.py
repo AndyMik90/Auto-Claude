@@ -143,6 +143,78 @@ MODULE = "workspace"
 # - _get_recent_merges_context
 # - _merge_file_with_ai
 # - _heuristic_merge
+# - _update_task_status_after_merge
+
+
+def _update_task_status_after_merge(
+    project_dir: Path,
+    spec_name: str,
+) -> None:
+    """
+    Update task status to 'done' after successful merge.
+
+    This fixes issue #1294 where merged tasks disappear from the Kanban board
+    instead of moving to the 'Done' column. The backend merge completes
+    successfully but doesn't update the task status in implementation_plan.json,
+    causing the frontend Kanban board to not display the task correctly.
+
+    Uses the ImplementationPlan data model to ensure atomic writes and
+    proper timestamp updates.
+
+    Args:
+        project_dir: The project directory
+        spec_name: Name of the spec
+    """
+    from implementation_plan import ImplementationPlan
+
+    try:
+        # Find the spec directory (try both locations)
+        spec_dir = project_dir / ".auto-claude" / "specs" / spec_name
+        if not spec_dir.exists():
+            spec_dir = project_dir / "auto-claude" / "specs" / spec_name
+
+        if not spec_dir.exists():
+            debug_warning(
+                MODULE,
+                f"Spec directory not found for {spec_name}, cannot update task status",
+            )
+            return
+
+        plan_path = spec_dir / "implementation_plan.json"
+        if not plan_path.exists():
+            debug_warning(
+                MODULE,
+                f"Implementation plan not found at {plan_path}, cannot update task status",
+            )
+            return
+
+        # Load the plan using the data model
+        plan = ImplementationPlan.load(plan_path)
+
+        # Update status to 'done' if it's currently in a review state
+        if plan.status in ("human_review", "ai_review", "in_progress"):
+            original_status = plan.status
+            plan.status = "done"
+            plan.planStatus = "completed"
+
+            # Save with atomic write and automatic timestamp update
+            plan.save(plan_path)
+
+            debug_success(
+                MODULE,
+                f"Updated task status from '{original_status}' to 'done' for {spec_name}",
+            )
+        else:
+            debug(
+                MODULE,
+                f"Task status is '{plan.status}', not updating to 'done'",
+            )
+    except Exception as e:
+        # Don't fail the merge if status update fails
+        debug_warning(
+            MODULE,
+            f"Failed to update task status after merge: {e}",
+        )
 
 
 def merge_existing_build(
@@ -264,6 +336,10 @@ def merge_existing_build(
                     # User can delete with: python auto-claude/run.py --spec <name> --discard
                     # Or via UI "Delete Worktree" button
 
+                    # Update task status to 'done' so it appears in Kanban Done column
+                    # (fixes #1294 - merged tasks disappearing from Kanban)
+                    _update_task_status_after_merge(project_dir, spec_name)
+
                     return True
                 else:
                     # No conflicts needed AI resolution - do standard git merge
@@ -275,6 +351,9 @@ def merge_existing_build(
                         _print_merge_success(
                             no_commit, stats, spec_name=spec_name, keep_worktree=True
                         )
+                        # Update task status to 'done' so it appears in Kanban Done column
+                        # (fixes #1294 - merged tasks disappearing from Kanban)
+                        _update_task_status_after_merge(project_dir, spec_name)
                         return True
                     else:
                         # Standard git merge failed - report error and don't continue
@@ -334,6 +413,11 @@ def merge_existing_build(
             print()
             print("When satisfied, delete the worktree:")
             print(muted(f"  python auto-claude/run.py --spec {spec_name} --discard"))
+
+        # Update task status to 'done' so it appears in Kanban Done column
+        # (fixes #1294 - merged tasks disappearing from Kanban)
+        _update_task_status_after_merge(project_dir, spec_name)
+
         return True
     else:
         print()
