@@ -48,8 +48,9 @@ export function useTerminalEvents({
         // During deliberate recreation (e.g., worktree switching), skip the normal
         // exit handling to prevent setting status to 'exited' and scheduling removal.
         // The recreation flow will handle status transitions.
+        // Do NOT call onExit callback here - this is an expected exit from the old PTY
+        // that should be silently ignored. The new PTY will handle its own lifecycle.
         if (isRecreatingRef?.current) {
-          onExitRef.current?.(exitCode);
           return;
         }
 
