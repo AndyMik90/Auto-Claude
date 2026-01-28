@@ -772,7 +772,7 @@ export interface PersistStatusResult {
 export async function persistTaskStatus(
   taskId: string,
   status: TaskStatus,
-  options?: { forceCleanup?: boolean }
+  options?: { forceCleanup?: boolean; skipCleanup?: boolean }
 ): Promise<PersistStatusResult> {
   const store = useTaskStore.getState();
 
@@ -811,6 +811,14 @@ export async function persistTaskStatus(
  */
 export async function forceCompleteTask(taskId: string): Promise<PersistStatusResult> {
   return persistTaskStatus(taskId, 'done', { forceCleanup: true });
+}
+
+/**
+ * Complete a task without cleaning up its worktree/branch
+ * Used when user wants to mark task as done but keep the branch for manual work
+ */
+export async function skipCleanupCompleteTask(taskId: string): Promise<PersistStatusResult> {
+  return persistTaskStatus(taskId, 'done', { skipCleanup: true });
 }
 
 /**

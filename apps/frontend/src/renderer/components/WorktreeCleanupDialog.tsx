@@ -1,5 +1,5 @@
 import { useTranslation, Trans } from 'react-i18next';
-import { AlertCircle, CheckCircle2, FolderX, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FolderX, GitBranch, Loader2, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ interface WorktreeCleanupDialogProps {
   error?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  onSkipCleanup?: () => void;
 }
 
 /**
@@ -31,7 +32,8 @@ export function WorktreeCleanupDialog({
   isProcessing,
   error,
   onOpenChange,
-  onConfirm
+  onConfirm,
+  onSkipCleanup
 }: WorktreeCleanupDialogProps) {
   const { t } = useTranslation(['dialogs', 'common']);
 
@@ -80,6 +82,28 @@ export function WorktreeCleanupDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isProcessing}>{t('common:buttons.cancel')}</AlertDialogCancel>
+          {!error && onSkipCleanup && (
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                onSkipCleanup();
+              }}
+              disabled={isProcessing}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('dialogs:worktreeCleanup.completing')}
+                </>
+              ) : (
+                <>
+                  <GitBranch className="mr-2 h-4 w-4" />
+                  {t('dialogs:worktreeCleanup.skipCleanup')}
+                </>
+              )}
+            </AlertDialogAction>
+          )}
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();

@@ -569,6 +569,7 @@ export function registerTaskExecutionHandlers(
    * Update task status manually
    * Options:
    * - forceCleanup: When setting to 'done' with a worktree present, delete the worktree first
+   * - skipCleanup: When setting to 'done' with a worktree present, mark done without deleting worktree/branch
    */
   ipcMain.handle(
     IPC_CHANNELS.TASK_UPDATE_STATUS,
@@ -576,7 +577,7 @@ export function registerTaskExecutionHandlers(
       _,
       taskId: string,
       status: TaskStatus,
-      options?: { forceCleanup?: boolean }
+      options?: { forceCleanup?: boolean; skipCleanup?: boolean }
     ): Promise<IPCResult & { worktreeExists?: boolean; worktreePath?: string }> => {
       // Find task and project first (needed for worktree check)
       const { task, project } = findTaskAndProject(taskId);
@@ -594,7 +595,10 @@ export function registerTaskExecutionHandlers(
         const hasWorktree = worktreePath !== null;
 
         if (hasWorktree) {
-          if (options?.forceCleanup) {
+          if (options?.skipCleanup) {
+            // User chose to keep the worktree and branch — skip cleanup entirely
+            console.warn(`[TASK_UPDATE_STATUS] Skipping worktree cleanup for task ${taskId} — user chose to keep branch`);
+          } else if (options?.forceCleanup) {
             // User confirmed cleanup - delete worktree and branch
             console.warn(`[TASK_UPDATE_STATUS] Cleaning up worktree for task ${taskId} (user confirmed)`);
             try {

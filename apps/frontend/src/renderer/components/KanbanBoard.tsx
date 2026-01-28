@@ -29,7 +29,7 @@ import { SortableTaskCard } from './SortableTaskCard';
 import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
-import { persistTaskStatus, forceCompleteTask, archiveTasks, useTaskStore } from '../stores/task-store';
+import { persistTaskStatus, forceCompleteTask, skipCleanupCompleteTask, archiveTasks, useTaskStore } from '../stores/task-store';
 import { updateProjectSettings, useProjectStore } from '../stores/project-store';
 import { useKanbanSettingsStore, COLLAPSED_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH } from '../stores/kanban-settings-store';
 import { useToast } from '../hooks/use-toast';
@@ -946,6 +946,35 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   };
 
   /**
+   * Handle worktree skip cleanup confirmation - complete task without deleting worktree/branch
+   */
+  const handleWorktreeSkipCleanupConfirm = async () => {
+    if (!worktreeCleanupDialog.taskId) return;
+
+    setWorktreeCleanupDialog(prev => ({ ...prev, isProcessing: true, error: undefined }));
+
+    const result = await skipCleanupCompleteTask(worktreeCleanupDialog.taskId);
+
+    if (result.success) {
+      setWorktreeCleanupDialog({
+        open: false,
+        taskId: null,
+        taskTitle: '',
+        worktreePath: undefined,
+        isProcessing: false,
+        error: undefined
+      });
+    } else {
+      // Keep dialog open with error state for retry - show actual error if available
+      setWorktreeCleanupDialog(prev => ({
+        ...prev,
+        isProcessing: false,
+        error: result.error || t('dialogs:worktreeCleanup.errorDescription')
+      }));
+    }
+  };
+
+  /**
    * Move all backlog tasks to queue
    */
   const handleQueueAll = async () => {
@@ -1513,6 +1542,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
           }
         }}
         onConfirm={handleWorktreeCleanupConfirm}
+        onSkipCleanup={handleWorktreeSkipCleanupConfirm}
       />
 
       {/* Queue Settings Modal */}

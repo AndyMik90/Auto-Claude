@@ -69,7 +69,9 @@
     "completing": "Completing...",
     "retry": "Try Again",
     "errorTitle": "Cleanup Failed",
-    "errorDescription": "Failed to cleanup worktree. Please try again."
+    "errorDescription": "Failed to cleanup worktree. Please try again.",
+    "skipCleanup": "Mark Done (Keep Branch)",
+    "skipCleanupDescription": "Complete the task without deleting the worktree or branch."
   },
   "update": {
     "title": "Auto Claude",

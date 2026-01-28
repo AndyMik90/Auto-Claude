@@ -69,7 +69,9 @@
     "completing": "Finalisation...",
     "retry": "Réessayer",
     "errorTitle": "Échec du nettoyage",
-    "errorDescription": "Échec du nettoyage du worktree. Veuillez réessayer."
+    "errorDescription": "Échec du nettoyage du worktree. Veuillez réessayer.",
+    "skipCleanup": "Terminer (Garder la branche)",
+    "skipCleanupDescription": "Terminer la tâche sans supprimer le worktree ni la branche."
   },
   "update": {
     "title": "Auto Claude",
