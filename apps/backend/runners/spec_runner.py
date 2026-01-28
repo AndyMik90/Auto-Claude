@@ -113,6 +113,40 @@ from spec import SpecOrchestrator
 from ui import Icons, highlight, muted, print_section, print_status
 
 
+def _set_plan_review_status(spec_dir: Path) -> None:
+    """Set implementation_plan.json status to indicate plan needs human review.
+
+    This is called when spec creation completes in non-interactive mode but
+    the spec requires human review before coding can begin. By setting
+    status='human_review' and planStatus='review', the frontend can detect
+    that the task is awaiting plan approval.
+
+    Args:
+        spec_dir: Path to the spec directory containing implementation_plan.json
+    """
+    import json
+
+    plan_path = spec_dir / "implementation_plan.json"
+    if not plan_path.exists():
+        debug("spec_runner", "No implementation_plan.json found, skipping status update")
+        return
+
+    try:
+        with open(plan_path, encoding="utf-8") as f:
+            plan = json.load(f)
+
+        # Set status fields to indicate plan review is needed
+        plan["status"] = "human_review"
+        plan["planStatus"] = "review"
+
+        with open(plan_path, "w", encoding="utf-8") as f:
+            json.dump(plan, f, indent=2)
+
+        debug("spec_runner", "Updated plan status to human_review/review for frontend")
+    except Exception as e:
+        debug_error("spec_runner", f"Failed to update plan status: {e}")
+
+
 def main():
     """CLI entry point."""
     debug_section("spec_runner", "Spec Runner CLI")
@@ -326,6 +360,9 @@ Examples:
                 debug_error("spec_runner", "Spec not approved - cannot start build")
                 print()
                 if not args.interactive:
+                    # Update implementation_plan.json to signal frontend that plan needs review
+                    # This allows the UI to show "Needs Review" with plan_review reason
+                    _set_plan_review_status(orchestrator.spec_dir)
                     print_status("Spec requires human review. Build not started.", "warning")
                     sys.exit(0)
                 print_status("Build cannot start: spec not approved.", "error")
