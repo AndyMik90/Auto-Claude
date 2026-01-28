@@ -314,8 +314,8 @@ def _check_worktree_integration() -> bool:
                 return False
             print_result(True, f"Provider correctly detected: {provider}")
 
-            # Create WorktreeManager instance
-            manager = WorktreeManager(project_dir=repo_path, base_branch="main")
+            # Create WorktreeManager instance (verifies constructor doesn't raise)
+            _ = WorktreeManager(project_dir=repo_path, base_branch="main")
             print_result(True, "WorktreeManager instance created successfully")
 
             return True
