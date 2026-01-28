@@ -312,6 +312,7 @@ export function registerAgenteventsHandlers(
       taskProjectId
     );
 
+
     const phaseToStatus: Record<string, TaskStatus | null> = {
       idle: null,
       planning: "in_progress",
