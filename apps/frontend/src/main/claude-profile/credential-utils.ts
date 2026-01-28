@@ -1962,7 +1962,9 @@ function updateWindowsFileCredentials(
         expiresAt: credentials.expiresAt,
         scopes: credentials.scopes || existing.scopes || [],
         email: existing.email || undefined,
-        emailAddress: existing.email || undefined
+        emailAddress: existing.email || undefined,
+        subscriptionType: existing.subscriptionType || undefined,
+        rateLimitTier: existing.rateLimitTier || undefined
       },
       email: existing.email || undefined
     };
@@ -2023,9 +2025,10 @@ function updateWindowsCredentials(
       // Also update the file for consistency (Claude CLI reads from file)
       const fileResult = updateWindowsFileCredentials(configDir, credentials);
       if (!fileResult.success) {
-        // Always log this warning - file update failure causes split-brain where
-        // Auto Claude has new credentials but Claude CLI reads stale ones from file
+        // CRITICAL: File write failure means Claude CLI will read stale tokens.
+        // Return failure since the file is what Claude CLI actually uses on Windows.
         console.warn('[CredentialUtils:Windows:Update] Credential Manager succeeded but file update failed:', fileResult.error);
+        return { success: false, error: `Credential Manager updated but file write failed: ${fileResult.error}` };
       }
       return credManagerResult;
     }
