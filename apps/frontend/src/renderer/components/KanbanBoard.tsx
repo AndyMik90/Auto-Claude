@@ -824,12 +824,12 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     });
   }, []);
 
-  const selectAllTasks = useCallback((columnStatus?: TaskStatus) => {
+  const selectAllTasks = useCallback((columnStatus?: typeof TASK_STATUS_COLUMNS[number]) => {
     if (columnStatus) {
       // Select all in specific column
       const columnTasks = tasksByStatus[columnStatus] || [];
-      const columnIds = new Set(columnTasks.map(t => t.id));
-      setSelectedTaskIds(prev => new Set([...prev, ...columnIds]));
+      const columnIds = new Set(columnTasks.map((t: Task) => t.id));
+      setSelectedTaskIds(prev => new Set<string>([...prev, ...columnIds]));
     } else {
       // Select all across all columns
       const allIds = new Set(filteredTasks.map(t => t.id));
