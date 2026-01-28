@@ -110,6 +110,16 @@ vi.mock('../../main/rate-limit-detector', () => ({
   detectAuthFailure: vi.fn(() => ({ isAuthFailure: false }))
 }));
 
+// Mock task-state-manager to avoid Electron log initialization issues in CI
+vi.mock('../../main/task-state-manager', () => ({
+  getTaskStateManager: vi.fn(() => ({
+    handleExecutionProgress: vi.fn(),
+    handleProcessExit: vi.fn(),
+    getXStateTaskStatus: vi.fn(() => null)
+  })),
+  getXStateTaskStatus: vi.fn(() => null)
+}));
+
 // Auto-claude source path (for getAutoBuildSourcePath to find)
 let AUTO_CLAUDE_SOURCE: string;
 
