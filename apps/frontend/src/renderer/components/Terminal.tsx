@@ -231,6 +231,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
     const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
       if (terminalId === id && !hasCalledFirstOutputRef.current && isRecreatingRef.current) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Terminal.tsx:onTerminalOutput', message: 'TERMINAL_OUTPUT received during recreation', data: { terminalId: id, dataLength: data.length }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
+        // #endregion
         hasCalledFirstOutputRef.current = true;
         handleFirstOutput();
       }
