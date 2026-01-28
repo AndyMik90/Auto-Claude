@@ -6,10 +6,11 @@ Tests the WorktreeManager class methods for creating pull requests (GitHub)
 and merge requests (GitLab), including provider detection and CLI routing.
 """
 
-import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add apps/backend directory to path for imports
 _backend_dir = Path(__file__).parent.parent / "apps" / "backend"
@@ -20,66 +21,6 @@ from core.worktree import (
     PullRequestResult,
     WorktreeInfo,
 )
-
-
-@pytest.fixture
-def temp_project_dir(tmp_path):
-    """Create a temporary project directory."""
-    project_dir = tmp_path / "test-project"
-    project_dir.mkdir()
-
-    # Initialize git repo
-    subprocess.run(
-        ["git", "init"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Test User"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.email", "test@example.com"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-
-    # Create initial commit
-    readme = project_dir / "README.md"
-    readme.write_text("# Test Project\n")
-    subprocess.run(
-        ["git", "add", "README.md"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "commit", "-m", "Initial commit"],
-        cwd=project_dir,
-        capture_output=True,
-        check=True,
-    )
-
-    return project_dir
-
-
-@pytest.fixture
-def worktree_manager(temp_project_dir):
-    """Create a WorktreeManager instance."""
-    # Create .auto-claude directories
-    auto_claude_dir = temp_project_dir / ".auto-claude"
-    auto_claude_dir.mkdir(exist_ok=True)
-    (auto_claude_dir / "specs").mkdir(exist_ok=True)
-    (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
-
-    return WorktreeManager(
-        project_dir=temp_project_dir,
-        base_branch="main",
-    )
 
 
 class TestCreateMergeRequest:
