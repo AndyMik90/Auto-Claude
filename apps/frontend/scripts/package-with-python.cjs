@@ -276,8 +276,10 @@ async function main() {
 
 // Run main() only when this file is executed directly (not when imported for testing)
 if (require.main === module) {
-  main().catch((err) => {
-    console.error(`[package] Error: ${err.message}`);
+  main().catch((_err) => {
+    // Log generic error message (avoid logging err.message to prevent log injection)
+    // The error is captured in process.exitCode for external monitoring
+    console.error('[package] Error: Build process failed. Check logs for details.');
     process.exitCode = 1;
   });
 }

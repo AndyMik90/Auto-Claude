@@ -2,12 +2,12 @@
 Tests for Bot Detection Module
 ================================
 
-Tests the BotDetector class to ensure it correctly prevents infinite loops.
+Tests the GitHubBotDetector class to ensure it correctly prevents infinite loops.
 """
 
 import json
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -19,7 +19,7 @@ _github_dir = _backend_dir / "runners" / "github"
 if str(_github_dir) not in sys.path:
     sys.path.insert(0, str(_github_dir))
 
-from bot_detection import BotDetectionState, BotDetector
+from bot_detection import BotDetectionState, BotDetector as GitHubBotDetector
 
 
 @pytest.fixture
@@ -33,8 +33,8 @@ def temp_state_dir(tmp_path):
 @pytest.fixture
 def mock_bot_detector(temp_state_dir):
     """Create bot detector with mocked bot username."""
-    with patch.object(BotDetector, "_get_bot_username", return_value="test-bot"):
-        detector = BotDetector(
+    with patch.object(GitHubBotDetector, "_get_bot_username", return_value="test-bot"):
+        detector = GitHubBotDetector(
             state_dir=temp_state_dir,
             bot_token="fake-token",
             review_own_prs=False,
@@ -75,8 +75,8 @@ class TestBotDetectionState:
         assert loaded.last_review_times == {}
 
 
-class TestBotDetectorInit:
-    """Test BotDetector initialization."""
+class TestGitHubBotDetectorInit:
+    """Test GitHubBotDetector initialization."""
 
     def test_init_with_token(self, temp_state_dir):
         """Test initialization with bot token."""
@@ -86,7 +86,7 @@ class TestBotDetectorInit:
                 stdout=json.dumps({"login": "my-bot"}),
             )
 
-            detector = BotDetector(
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token="ghp_test123",
                 review_own_prs=False,
@@ -97,7 +97,7 @@ class TestBotDetectorInit:
 
     def test_init_without_token(self, temp_state_dir):
         """Test initialization without bot token."""
-        detector = BotDetector(
+        detector = GitHubBotDetector(
             state_dir=temp_state_dir,
             bot_token=None,
             review_own_prs=True,
@@ -161,7 +161,8 @@ class TestCoolingOff:
     def test_within_cooling_off(self, mock_bot_detector):
         """Test PR within cooling off period."""
         # Set last review to 30 seconds ago (within 1 minute cooling off)
-        half_min_ago = datetime.now() - timedelta(seconds=30)
+        import datetime as dt
+        half_min_ago = dt.datetime.now() - timedelta(seconds=30)
         mock_bot_detector.state.last_review_times["123"] = half_min_ago.isoformat()
 
         is_cooling, reason = mock_bot_detector.is_within_cooling_off(123)
@@ -172,7 +173,8 @@ class TestCoolingOff:
     def test_outside_cooling_off(self, mock_bot_detector):
         """Test PR outside cooling off period."""
         # Set last review to 2 minutes ago (outside 1 minute cooling off)
-        two_min_ago = datetime.now() - timedelta(minutes=2)
+        import datetime as dt
+        two_min_ago = dt.datetime.now() - timedelta(minutes=2)
         mock_bot_detector.state.last_review_times["123"] = two_min_ago.isoformat()
 
         is_cooling, reason = mock_bot_detector.is_within_cooling_off(123)
@@ -263,7 +265,8 @@ class TestShouldSkipReview:
     def test_skip_cooling_off(self, mock_bot_detector):
         """Test skipping during cooling off period."""
         # Set last review to 30 seconds ago (within 1 minute cooling off)
-        half_min_ago = datetime.now() - timedelta(seconds=30)
+        import datetime as dt
+        half_min_ago = dt.datetime.now() - timedelta(seconds=30)
         mock_bot_detector.state.last_review_times["123"] = half_min_ago.isoformat()
 
         pr_data = {"author": {"login": "alice"}}
@@ -310,8 +313,8 @@ class TestShouldSkipReview:
 
     def test_allow_review_own_prs(self, temp_state_dir):
         """Test allowing review when review_own_prs is True."""
-        with patch.object(BotDetector, "_get_bot_username", return_value="test-bot"):
-            detector = BotDetector(
+        with patch.object(GitHubBotDetector, "_get_bot_username", return_value="test-bot"):
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token="fake-token",
                 review_own_prs=True,  # Allow bot to review own PRs

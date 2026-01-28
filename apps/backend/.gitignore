@@ -64,3 +64,4 @@ tests/
 
 # Auto Claude data directory
 .auto-claude/
+/gitlab-integration-tests/

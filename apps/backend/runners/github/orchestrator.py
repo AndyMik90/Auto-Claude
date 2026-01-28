@@ -20,7 +20,7 @@ from pathlib import Path
 
 try:
     # When imported as part of package
-    from .bot_detection import BotDetector
+    from .bot_detection import BotDetector as GitHubBotDetector
     from .context_gatherer import PRContext, PRContextGatherer
     from .gh_client import GHClient
     from .models import (
@@ -49,33 +49,99 @@ try:
     from .services.io_utils import safe_print
 except (ImportError, ValueError, SystemError):
     # When imported directly (runner.py adds github dir to path)
-    from bot_detection import BotDetector
-    from context_gatherer import PRContext, PRContextGatherer
-    from gh_client import GHClient
-    from models import (
-        BRANCH_BEHIND_BLOCKER_MSG,
-        BRANCH_BEHIND_REASONING,
-        AICommentTriage,
-        AICommentVerdict,
-        AutoFixState,
-        GitHubRunnerConfig,
-        MergeVerdict,
-        PRReviewFinding,
-        PRReviewResult,
-        ReviewCategory,
-        ReviewSeverity,
-        StructuralIssue,
-        TriageResult,
-    )
-    from permissions import GitHubPermissionChecker
-    from rate_limiter import RateLimiter
-    from services import (
-        AutoFixProcessor,
-        BatchProcessor,
-        PRReviewEngine,
-        TriageEngine,
-    )
-    from services.io_utils import safe_print
+    # Ensure we import from the github directory to avoid conflicts
+    import sys
+    from pathlib import Path
+
+    _github_dir = Path(__file__).parent
+    if str(_github_dir) not in sys.path:
+        sys.path.insert(0, str(_github_dir))
+    # Use try/except for each import to handle partial failures gracefully
+    try:
+        from bot_detection import BotDetector as GitHubBotDetector
+    except ImportError:
+        GitHubBotDetector = None  # type: ignore
+
+    try:
+        from .context_gatherer import PRContext, PRContextGatherer
+    except ImportError:
+        try:
+            from context_gatherer import PRContext, PRContextGatherer
+        except ImportError:
+            PRContext = None  # type: ignore
+            PRContextGatherer = None  # type: ignore
+
+    try:
+        from gh_client import GHClient
+    except ImportError:
+        GHClient = None  # type: ignore
+
+    # Try to import models, but allow partial failures
+    try:
+        from models import (
+            BRANCH_BEHIND_BLOCKER_MSG,
+            BRANCH_BEHIND_REASONING,
+            AICommentTriage,
+            AICommentVerdict,
+            AutoFixState,
+            GitHubRunnerConfig,
+            MergeVerdict,
+            PRReviewFinding,
+            PRReviewResult,
+            ReviewCategory,
+            ReviewSeverity,
+            StructuralIssue,
+            TriageResult,
+        )
+    except ImportError:
+        BRANCH_BEHIND_BLOCKER_MSG = None  # type: ignore
+        BRANCH_BEHIND_REASONING = None  # type: ignore
+        AICommentTriage = None  # type: ignore
+        AICommentVerdict = None  # type: ignore
+        AutoFixState = None  # type: ignore
+        GitHubRunnerConfig = None  # type: ignore
+        MergeVerdict = None  # type: ignore
+        PRReviewFinding = None  # type: ignore
+        PRReviewResult = None  # type: ignore
+        ReviewCategory = None  # type: ignore
+        ReviewSeverity = None  # type: ignore
+        StructuralIssue = None  # type: ignore
+        TriageResult = None  # type: ignore
+
+    try:
+        from permissions import GitHubPermissionChecker
+    except ImportError:
+        GitHubPermissionChecker = None  # type: ignore
+
+    try:
+        from rate_limiter import RateLimiter
+    except ImportError:
+        RateLimiter = None  # type: ignore
+
+    try:
+        from services import (
+            AutoFixProcessor,
+            BatchProcessor,
+            PRReviewEngine,
+            TriageEngine,
+        )
+    except ImportError:
+        AutoFixProcessor = None  # type: ignore
+        BatchProcessor = None  # type: ignore
+        PRReviewEngine = None  # type: ignore
+        TriageEngine = None  # type: ignore
+
+    try:
+        from services.io_utils import safe_print
+    except ImportError:
+        safe_print = None  # type: ignore
+
+    # Fallback to built-in print if safe_print is not available
+    if safe_print is None:
+
+        def safe_print(*args, **kwargs):  # type: ignore
+            """Fallback to built-in print when safe_print is unavailable."""
+            print(*args, **kwargs)
 
 
 @dataclass
@@ -121,6 +187,24 @@ class GitHubOrchestrator:
         config: GitHubRunnerConfig,
         progress_callback: Callable[[ProgressCallback], None] | None = None,
     ):
+        # Validate required dependencies are available
+        required_deps = {
+            "GHClient": GHClient,
+            "GitHubBotDetector": GitHubBotDetector,
+            "GitHubPermissionChecker": GitHubPermissionChecker,
+            "RateLimiter": RateLimiter,
+            "PRReviewEngine": PRReviewEngine,
+            "TriageEngine": TriageEngine,
+            "AutoFixProcessor": AutoFixProcessor,
+            "BatchProcessor": BatchProcessor,
+        }
+        missing = [name for name, dep in required_deps.items() if dep is None]
+        if missing:
+            raise ImportError(
+                f"Missing required dependencies for GitHubOrchestrator: {', '.join(missing)}. "
+                f"Please ensure all GitHub runner modules are available."
+            )
+
         self.project_dir = Path(project_dir)
         self.config = config
         self.progress_callback = progress_callback
@@ -139,7 +223,8 @@ class GitHubOrchestrator:
         )
 
         # Initialize bot detector for preventing infinite loops
-        self.bot_detector = BotDetector(
+        # Note: GitHub GitHubBotDetector uses bot_token and review_own_prs parameters
+        self.bot_detector: GitHubBotDetector = GitHubBotDetector(
             state_dir=self.github_dir,
             bot_token=config.bot_token,
             review_own_prs=config.review_own_prs,

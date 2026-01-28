@@ -2,7 +2,7 @@
 Tests for Bot Detection Module
 ================================
 
-Tests the BotDetector class to ensure it correctly prevents infinite loops.
+Tests the GitHubBotDetector class to ensure it correctly prevents infinite loops.
 """
 
 import json
@@ -19,7 +19,8 @@ _github_dir = Path(__file__).parent
 if str(_github_dir) not in sys.path:
     sys.path.insert(0, str(_github_dir))
 
-from bot_detection import BotDetectionState, BotDetector
+from bot_detection import BotDetectionState
+from bot_detection import BotDetector as GitHubBotDetector
 
 
 @pytest.fixture
@@ -33,8 +34,8 @@ def temp_state_dir(tmp_path):
 @pytest.fixture
 def mock_bot_detector(temp_state_dir):
     """Create bot detector with mocked bot username."""
-    with patch.object(BotDetector, "_get_bot_username", return_value="test-bot"):
-        detector = BotDetector(
+    with patch.object(GitHubBotDetector, "_get_bot_username", return_value="test-bot"):
+        detector = GitHubBotDetector(
             state_dir=temp_state_dir,
             bot_token="fake-token",
             review_own_prs=False,
@@ -75,8 +76,8 @@ class TestBotDetectionState:
         assert loaded.last_review_times == {}
 
 
-class TestBotDetectorInit:
-    """Test BotDetector initialization."""
+class TestGitHubBotDetectorInit:
+    """Test GitHubBotDetector initialization."""
 
     def test_init_with_token(self, temp_state_dir):
         """Test initialization with bot token."""
@@ -86,7 +87,7 @@ class TestBotDetectorInit:
                 stdout=json.dumps({"login": "my-bot"}),
             )
 
-            detector = BotDetector(
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token="ghp_test123",
                 review_own_prs=False,
@@ -97,7 +98,7 @@ class TestBotDetectorInit:
 
     def test_init_without_token(self, temp_state_dir):
         """Test initialization without bot token."""
-        detector = BotDetector(
+        detector = GitHubBotDetector(
             state_dir=temp_state_dir,
             bot_token=None,
             review_own_prs=True,
@@ -313,8 +314,10 @@ class TestShouldSkipReview:
 
     def test_allow_review_own_prs(self, temp_state_dir):
         """Test allowing review when review_own_prs is True."""
-        with patch.object(BotDetector, "_get_bot_username", return_value="test-bot"):
-            detector = BotDetector(
+        with patch.object(
+            GitHubBotDetector, "_get_bot_username", return_value="test-bot"
+        ):
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token="fake-token",
                 review_own_prs=True,  # Allow bot to review own PRs
@@ -420,7 +423,7 @@ class TestGhExecutableDetection:
     def test_get_bot_username_with_gh_not_found(self, temp_state_dir):
         """Test _get_bot_username when gh CLI is not found."""
         with patch("bot_detection.get_gh_executable", return_value=None):
-            detector = BotDetector(
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token="fake-token",
                 review_own_prs=False,
@@ -439,7 +442,7 @@ class TestGhExecutableDetection:
                     stdout=json.dumps({"login": "test-bot-user"}),
                 )
 
-                detector = BotDetector(
+                detector = GitHubBotDetector(
                     state_dir=temp_state_dir,
                     bot_token="fake-token",
                     review_own_prs=False,
@@ -467,7 +470,7 @@ class TestGhExecutableDetection:
                     stdout=json.dumps({"login": "env-bot-user"}),
                 )
 
-                detector = BotDetector(
+                detector = GitHubBotDetector(
                     state_dir=temp_state_dir,
                     bot_token="fake-token",
                     review_own_prs=False,
@@ -492,7 +495,7 @@ class TestGhExecutableDetection:
                     stderr="Authentication failed",
                 )
 
-                detector = BotDetector(
+                detector = GitHubBotDetector(
                     state_dir=temp_state_dir,
                     bot_token="invalid-token",
                     review_own_prs=False,
@@ -508,7 +511,7 @@ class TestGhExecutableDetection:
             with patch(
                 "subprocess.run", side_effect=subprocess.TimeoutExpired("gh", 5)
             ):
-                detector = BotDetector(
+                detector = GitHubBotDetector(
                     state_dir=temp_state_dir,
                     bot_token="fake-token",
                     review_own_prs=False,
@@ -520,7 +523,7 @@ class TestGhExecutableDetection:
     def test_get_bot_username_without_token(self, temp_state_dir):
         """Test _get_bot_username when no bot token is provided."""
         with patch("subprocess.run") as mock_run:
-            detector = BotDetector(
+            detector = GitHubBotDetector(
                 state_dir=temp_state_dir,
                 bot_token=None,
                 review_own_prs=False,

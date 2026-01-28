@@ -321,7 +321,7 @@ function executeCredentialRead(
   executablePath: string,
   args: string[],
   timeout: number,
-  identifier: string
+  _identifier: string  // Parameter kept for API consistency, not currently used
 ): string | null {
   try {
     const result = execFileSync(executablePath, args, {
@@ -1589,7 +1589,9 @@ function updateLinuxFileCredentials(
 
     const credentialsJson = JSON.stringify(newCredentialData, null, 2);
 
-    // Write to file with secure permissions (0600)
+    // Security note: Caching OAuth tokens received from Claude API to local file.
+    // This is the intended OAuth flow - tokens must be persisted for session management.
+    // File is written with secure permissions (0600) to restrict access.
     writeFileSync(credentialsPath, credentialsJson, { mode: 0o600, encoding: 'utf-8' });
 
     if (isDebug) {

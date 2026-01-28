@@ -281,6 +281,7 @@ async def test_memory_save_flow():
                     )
                     print("[INFO] Exception captured to Sentry")
             except Exception:
+                # Sentry capture failed - ignore to avoid masking original error
                 pass
 
             return False
