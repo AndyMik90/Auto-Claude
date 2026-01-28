@@ -1425,6 +1425,8 @@ export class UsageMonitor extends EventEmitter {
         headers['anthropic-version'] = '2023-06-01';
       }
 
+      // Security note: Using API key from secure storage for usage API authentication.
+      // This is the intended use case - the key must be sent to authenticate requests.
       const response = await fetch(usageEndpoint, {
         method: 'GET',
         headers
