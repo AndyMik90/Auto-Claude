@@ -305,6 +305,28 @@ app.whenReady().then(() => {
     // Validate and migrate autoBuildPath - must contain runners/spec_runner.py
     // Uses EAFP pattern (try/catch with accessSync) instead of existsSync to avoid TOCTOU race conditions
     let validAutoBuildPath = settings.autoBuildPath;
+
+    // DEV MODE FIX: When running in development (not packaged), prefer the source backend
+    // over any stale path saved in settings (e.g., from a previously installed packaged app).
+    // This prevents confusing errors when `npm run dev` uses a venv without required dependencies.
+    if (!app.isPackaged) {
+      const sourceBackendPath = resolve(__dirname, '..', '..', '..', 'backend');
+      const sourceSpecRunnerPath = join(sourceBackendPath, 'runners', 'spec_runner.py');
+      let sourceBackendExists = false;
+      try {
+        accessSync(sourceSpecRunnerPath);
+        sourceBackendExists = true;
+      } catch {
+        // Source backend doesn't exist
+      }
+
+      if (sourceBackendExists && validAutoBuildPath !== sourceBackendPath) {
+        console.log('[main] Dev mode detected - preferring source backend over settings');
+        console.log('[main]   Settings path:', validAutoBuildPath);
+        console.log('[main]   Source path:', sourceBackendPath);
+        validAutoBuildPath = sourceBackendPath;
+      }
+    }
     if (validAutoBuildPath) {
       const specRunnerPath = join(validAutoBuildPath, 'runners', 'spec_runner.py');
       let specRunnerExists = false;
