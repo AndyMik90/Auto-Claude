@@ -1,0 +1,63 @@
+{
+    "label": "Agent Profile",
+    "phaseConfiguration": "Phase Configuration",
+    "clickToCustomize": "Click to customize",
+    "model": "Model",
+    "thinking": "Thinking",
+    "customConfiguration": "Custom Configuration",
+    "customDescription": "Manually set model and thinking level",
+    "selectModel": "Select model",
+    "selectThinkingLevel": "Select thinking level",
+    "presets": {
+        "auto": {
+            "name": "Auto (Optimized)",
+            "description": "Automatically selects the best model for each development phase."
+        },
+        "complex": {
+            "name": "Complex Thinking",
+            "description": "Uses the most powerful model with deep thinking for difficult tasks."
+        },
+        "balanced": {
+            "name": "Balanced Performance",
+            "description": "Standard balance of speed and intelligence for most tasks."
+        },
+        "quick": {
+            "name": "Quick Fix",
+            "description": "Optimized for speed and lower costs on simple changes."
+        }
+    },
+    "thinkingLevels": {
+        "low": {
+            "label": "Low",
+            "description": "Standard response, no extra thinking"
+        },
+        "medium": {
+            "label": "Medium",
+            "description": "Balanced thinking for better reasoning"
+        },
+        "high": {
+            "label": "High",
+            "description": "Maximum reasoning for complex problems"
+        }
+    },
+    "phases": {
+        "spec": {
+            "label": "Specification",
+            "description": "Defining the task requirements"
+        },
+        "planning": {
+            "label": "Planning",
+            "description": "Creating the implementation plan"
+        },
+        "coding": {
+            "label": "Coding",
+            "description": "Implementing the changes"
+        },
+        "qa": {
+            "label": "Review/QA",
+            "description": "Verifying the implementation"
+        }
+    },
+    "custom": "Custom",
+    "customLabel": "Custom"
+}

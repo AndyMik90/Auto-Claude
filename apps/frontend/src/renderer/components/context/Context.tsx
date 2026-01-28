@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FolderTree, Brain } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useContextStore } from '../../stores/context-store';
 import { useProjectContext, useRefreshIndex, useMemorySearch } from './hooks';
@@ -20,6 +21,7 @@ export function Context({ projectId }: ContextProps) {
     searchLoading
   } = useContextStore();
 
+  const { t } = useTranslation('context');
   const [activeTab, setActiveTab] = useState('index');
 
   // Custom hooks
@@ -34,11 +36,11 @@ export function Context({ projectId }: ContextProps) {
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="index" className="gap-2">
               <FolderTree className="h-4 w-4" />
-              Project Index
+              {t('tabs.index')}
             </TabsTrigger>
             <TabsTrigger value="memories" className="gap-2">
               <Brain className="h-4 w-4" />
-              Memories
+              {t('tabs.memories')}
             </TabsTrigger>
           </TabsList>
         </div>

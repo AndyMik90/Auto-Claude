@@ -1,0 +1,213 @@
+{
+    "title": "Аккаунты",
+    "description": "Управление аккаунтами Claude и API-эндпоинтами",
+    "tabs": {
+        "claudeCode": "Claude Code",
+        "customEndpoints": "Кастомные эндпоинты"
+    },
+    "claudeCode": {
+        "description": "Добавьте несколько подписок Claude для автоматического переключения при достижении лимитов.",
+        "noAccountsYet": "Аккаунты еще не настроены",
+        "default": "По умолчанию",
+        "active": "Активен",
+        "authenticated": "Авторизован",
+        "needsAuth": "Нужна авторизация",
+        "authenticate": "Авторизоваться",
+        "authenticating": "Авторизация...",
+        "setActive": "Сделать активным",
+        "manualTokenEntry": "Ручной ввод токена",
+        "runSetupToken": "Запустите claude и введите /login для авторизации",
+        "tokenPlaceholder": "sk-ant-oat01-...",
+        "emailPlaceholder": "Email (опционально, для отображения)",
+        "saveToken": "Сохранить токен",
+        "accountNamePlaceholder": "Имя аккаунта (например, Рабочий, Личный)"
+    },
+    "customEndpoints": {
+        "description": "Настройка кастомных Anthropic-совместимых эндпоинтов API",
+        "addButton": "Добавить профиль",
+        "activeBadge": "Активен",
+        "customModels": "Пользовательские модели: {{models}}",
+        "setActive": {
+            "label": "Сделать активным",
+            "loading": "Активация..."
+        },
+        "switchToOauth": {
+            "label": "Использовать Claude Code",
+            "loading": "Переключение..."
+        },
+        "tooltips": {
+            "edit": "Редактировать профиль",
+            "deleteActive": "Нельзя удалить активный профиль",
+            "deleteInactive": "Удалить профиль"
+        },
+        "empty": {
+            "title": "Нет кастомных эндпоинтов",
+            "description": "Настройте кастомные эндпоинты API для использования альтернативных провайдеров.",
+            "action": "Добавить профиль"
+        },
+        "dialog": {
+            "deleteTitle": "Удалить профиль",
+            "deleteDescription": "Вы уверены, что хотите удалить «{{name}}»? Это действие нельзя отменить.",
+            "cancel": "Отмена",
+            "delete": "Удалить",
+            "deleting": "Удаление..."
+        }
+    },
+    "autoSwitching": {
+        "title": "Автоматическое переключение аккаунтов",
+        "description": "Автоматически переключайтесь между аккаунтами, чтобы избежать прерываний. Настройте проактивный мониторинг для переключения до достижения лимитов.",
+        "enableAutoSwitching": "Включить автопереключение",
+        "masterSwitch": "Главный выключатель для всех функций автозамены",
+        "proactiveMonitoring": "Проактивный мониторинг",
+        "proactiveDescription": "Регулярно проверять использование и менять аккаунт до лимита",
+        "sessionThreshold": "Порог использования сессии",
+        "sessionThresholdDescription": "Переключать при достижении этого уровня (рекомендуется: 95%)",
+        "weeklyThreshold": "Порог использования за неделю",
+        "weeklyThresholdDescription": "Переключать при достижении этого уровня (рекомендуется: 99%)",
+        "reactiveRecovery": "Реактивное восстановление",
+        "reactiveDescription": "Автозамена при достижении неожиданного лимита"
+    },
+    "priority": {
+        "title": "Порядок приоритета аккаунтов",
+        "description": "Перетащите для изменения порядка. Система будет переключаться на следующий доступный аккаунт по порядку.",
+        "noAccounts": "Аккаунты не настроены. Добавьте аккаунты выше, чтобы установить приоритет.",
+        "noEmail": "Нет email",
+        "active": "Активен",
+        "inUse": "Используется",
+        "next": "Следующий",
+        "unlimited": "Безлимитный",
+        "unavailable": "Недоступен",
+        "typeOAuth": "OAuth",
+        "typeAPI": "API",
+        "payPerUse": "Оплата по мере использования",
+        "needsAuth": "Не авторизован",
+        "duplicateUsage": "Обнаружено дублирование использования",
+        "duplicateUsageHint": "У этого профиля использование идентично другому профилю, что говорит об авторизации в тот же аккаунт Anthropic. Переавторизуйтесь с другим аккаунтом.",
+        "needsReauth": "Нужна переавторизация",
+        "needsReauthHint": "Refresh-токен этого профиля недействителен. Нажмите для переавторизации.",
+        "sessionUsage": "Использование сессии (окно 5 часов)",
+        "weeklyUsage": "Использование за неделю (окно 7 дней)",
+        "oauthSection": "Аккаунты Claude (сначала)",
+        "apiSection": "Резервные эндпоинты (когда все аккаунты исчерпаны)",
+        "tipTitle": "Как работает приоритет",
+        "tipDescription": "Аккаунты Claude включены в вашу подписку и будут использоваться в первую очередь. API-эндпоинты оплачиваются за каждый запрос и используются как резервные, когда все аккаунты Claude достигают своих лимитов.",
+        "status": {
+            "healthy": "Здоров",
+            "moderate": "Средне",
+            "highUsage": "Высокое использование",
+            "nearLimit": "Близко к лимиту",
+            "rateLimited": "Превышен лимит"
+        }
+    },
+    "apiProfiles": {
+        "title": "Профили API",
+        "description": "Настройка кастомных Anthropic-совместимых эндпоинтов API",
+        "addButton": "Добавить профиль",
+        "presets": {
+            "anthropic": "Anthropic",
+            "openrouter": "OpenRouter",
+            "groq": "Groq",
+            "zaiGlobal": "z.AI (Global)",
+            "zaiChina": "z.AI (China)"
+        },
+        "fields": {
+            "name": "Имя",
+            "preset": "Пресет",
+            "baseUrl": "Базовый URL",
+            "apiKey": "Ключ API"
+        },
+        "placeholders": {
+            "name": "Мое кастомное API",
+            "preset": "Выберите пресет провайдера",
+            "baseUrl": "https://api.anthropic.com",
+            "apiKey": "sk-ant-..."
+        },
+        "hints": {
+            "preset": "Пресеты заполняют базовый URL; вам все равно нужно вставить ключ API.",
+            "baseUrl": "Пример: https://api.anthropic.com или http://localhost:8080"
+        },
+        "validation": {
+            "nameRequired": "Имя обязательно",
+            "baseUrlRequired": "Базовый URL обязателен",
+            "baseUrlInvalid": "Неверный формат URL (должен начинаться с http:// или https://)",
+            "apiKeyRequired": "Ключ API обязателен",
+            "apiKeyInvalid": "Неверный формат ключа API"
+        },
+        "actions": {
+            "save": "Сохранить профиль",
+            "saving": "Сохранение...",
+            "cancel": "Отмена",
+            "changeKey": "Изменить",
+            "cancelKeyChange": "Отмена"
+        },
+        "testConnection": {
+            "label": "Тестировать соединение",
+            "testing": "Тестирование...",
+            "success": "Соединение успешно",
+            "failure": "Ошибка соединения"
+        },
+        "models": {
+            "title": "Опционально: Сопоставление имен моделей",
+            "description": "Выберите модели вашего API-провайдера. Оставьте пустым для использования значений по умолчанию.",
+            "defaultLabel": "Модель по умолчанию (опц.)",
+            "haikuLabel": "Модель Haiku (опц.)",
+            "sonnetLabel": "Модель Sonnet (опц.)",
+            "opusLabel": "Модель Opus (опц.)",
+            "defaultPlaceholder": "напр., claude-sonnet-4-5-20250929",
+            "haikuPlaceholder": "напр., claude-haiku-4-5-20251001",
+            "sonnetPlaceholder": "напр., claude-sonnet-4-5-20250929",
+            "opusPlaceholder": "напр., claude-opus-4-5-20251101"
+        },
+        "dialog": {
+            "createTitle": "Добавить профиль API",
+            "editTitle": "Редактировать профиль",
+            "description": "Настройте кастомный эндпоинт API, совместимый с Anthropic.",
+            "deleteTitle": "Удалить профиль?",
+            "deleteDescription": "Вы уверены, что хотите удалить «{{name}}»? Это действие нельзя отменить.",
+            "cancel": "Отмена",
+            "delete": "Удалить",
+            "deleting": "Удаление..."
+        },
+        "toast": {
+            "create": {
+                "title": "Профиль создан",
+                "description": "«{{name}}» успешно добавлен."
+            },
+            "update": {
+                "title": "Профиль обновлен",
+                "description": "«{{name}}» успешно обновлен."
+            },
+            "delete": {
+                "title": "Профиль удален",
+                "description": "«{{name}}» был удален.",
+                "errorTitle": "Не удалось удалить профиль",
+                "errorFallback": "Произошла ошибка при удалении профиля."
+            },
+            "switch": {
+                "oauthTitle": "Переключено на OAuth",
+                "oauthDescription": "Теперь используется авторизация OAuth",
+                "profileTitle": "Профиль активирован",
+                "profileDescription": "Теперь используется {{name}}",
+                "errorTitle": "Не удалось сменить метод авторизации",
+                "errorFallback": "Произошла ошибка при смене метода авторизации."
+            }
+        }
+    },
+    "toast": {
+        "loadProfilesFailed": "Не удалось загрузить профили",
+        "addProfileFailed": "Не удалось добавить профиль",
+        "deleteProfileFailed": "Не удалось удалить профиль",
+        "renameProfileFailed": "Не удалось переименовать профиль",
+        "setActiveProfileFailed": "Не удалось активировать профиль",
+        "tokenSaved": "Токен сохранен",
+        "tokenSavedDescription": "Ваш токен был успешно сохранен.",
+        "tokenSaveFailed": "Не удалось сохранить токен",
+        "settingsUpdateFailed": "Не удалось обновить настройки",
+        "tryAgain": "Пожалуйста, попробуйте еще раз."
+    },
+    "alerts": {
+        "profileCreatedAuthFailed": "Профиль создан, но не удалось подготовить авторизацию: {{error}}",
+        "authPrepareFailed": "Не удалось подготовить авторизацию: {{error}}",
+        "authStartFailedMessage": "Не удалось запустить процесс авторизации. Попробуйте еще раз."
+    }
+}

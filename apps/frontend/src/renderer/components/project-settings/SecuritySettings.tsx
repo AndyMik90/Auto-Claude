@@ -47,7 +47,8 @@ export function SecuritySettings({
   expanded,
   onToggle
 }: SecuritySettingsProps) {
-  const { t } = useTranslation(['settings']);
+  const { t: tIntegrations } = useTranslation('integrations');
+  const { t: tCommon } = useTranslation('common');
 
   // Password visibility for multiple providers
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({
@@ -96,28 +97,28 @@ export function SecuritySettings({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium text-foreground">
-              OpenAI API Key {envConfig.openaiKeyIsGlobal ? '(Override)' : ''}
+              {tIntegrations('memory.openAI.apiKey')} {envConfig.openaiKeyIsGlobal ? tIntegrations('memory.openAI.override') : ''}
             </Label>
             {envConfig.openaiKeyIsGlobal && (
               <span className="flex items-center gap-1 text-xs text-info">
                 <Globe className="h-3 w-3" />
-                Using global key
+                {tIntegrations('memory.openAI.usingGlobal')}
               </span>
             )}
           </div>
           {envConfig.openaiKeyIsGlobal ? (
             <p className="text-xs text-muted-foreground">
-              Using key from App Settings. Enter a project-specific key below to override.
+              {tIntegrations('memory.openAI.globalDescription')}
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Required for OpenAI embeddings
+              {tIntegrations('memory.openAI.description')}
             </p>
           )}
           <div className="relative">
             <Input
               type={showApiKey['openai'] ? 'text' : 'password'}
-              placeholder={envConfig.openaiKeyIsGlobal ? 'Enter to override global key...' : 'sk-xxxxxxxx'}
+              placeholder={envConfig.openaiKeyIsGlobal ? tIntegrations('memory.openAI.placeholder') : 'sk-xxxxxxxx'}
               value={envConfig.openaiKeyIsGlobal ? '' : (envConfig.openaiApiKey || '')}
               onChange={(e) => updateEnvConfig({ openaiApiKey: e.target.value || undefined })}
               className="pr-10"
@@ -126,15 +127,15 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('openai')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showApiKey['openai'] ? 'Hide OpenAI API key' : 'Show OpenAI API key'}
+              aria-label={showApiKey['openai'] ? tCommon('accessibility.hidePassword') : tCommon('accessibility.showPassword')}
             >
               {showApiKey['openai'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {tCommon('getApiKeyFrom')}{' '}
             <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-              OpenAI
+              {tIntegrations('memory.openAI.linkText')}
             </a>
           </p>
         </div>
@@ -145,9 +146,9 @@ export function SecuritySettings({
     if (embeddingProvider === 'voyage') {
       return (
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">Voyage AI API Key</Label>
+          <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.voyage.apiKey')}</Label>
           <p className="text-xs text-muted-foreground">
-            Required for Voyage AI embeddings
+            {tIntegrations('memory.voyage.description')}
           </p>
           <div className="relative">
             <Input
@@ -167,19 +168,19 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('voyage')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showApiKey['voyage'] ? 'Hide Voyage AI API key' : 'Show Voyage AI API key'}
+              aria-label={showApiKey['voyage'] ? tCommon('accessibility.hidePassword') : tCommon('accessibility.showPassword')}
             >
               {showApiKey['voyage'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {tCommon('getApiKeyFrom')}{' '}
             <a href="https://dash.voyageai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-              Voyage AI
+              {tIntegrations('memory.voyage.linkText')}
             </a>
           </p>
           <div className="space-y-1 mt-3">
-            <Label className="text-xs text-muted-foreground">Embedding Model (optional)</Label>
+            <Label className="text-xs text-muted-foreground">{tIntegrations('memory.voyage.model')}</Label>
             <Input
               placeholder="voyage-3"
               value={envConfig.graphitiProviderConfig?.voyageEmbeddingModel || ''}
@@ -200,9 +201,9 @@ export function SecuritySettings({
     if (embeddingProvider === 'google') {
       return (
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">Google AI API Key</Label>
+          <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.google.apiKey')}</Label>
           <p className="text-xs text-muted-foreground">
-            Required for Google AI embeddings
+            {tIntegrations('memory.google.description')}
           </p>
           <div className="relative">
             <Input
@@ -222,15 +223,15 @@ export function SecuritySettings({
               type="button"
               onClick={() => toggleShowApiKey('google')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showApiKey['google'] ? 'Hide Google API key' : 'Show Google API key'}
+              aria-label={showApiKey['google'] ? tCommon('accessibility.hidePassword') : tCommon('accessibility.showPassword')}
             >
               {showApiKey['google'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get your key from{' '}
+            {tCommon('getApiKeyFrom')}{' '}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-              Google AI Studio
+              {tIntegrations('memory.google.linkText')}
             </a>
           </p>
         </div>
@@ -241,9 +242,9 @@ export function SecuritySettings({
     if (embeddingProvider === 'azure_openai') {
       return (
         <div className="space-y-3 p-3 rounded-md bg-muted/50">
-          <Label className="text-sm font-medium text-foreground">Azure OpenAI Configuration</Label>
+          <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.azure.title')}</Label>
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">API Key</Label>
+            <Label className="text-xs text-muted-foreground">{tIntegrations('memory.azure.apiKey')}</Label>
             <div className="relative">
               <Input
                 type={showApiKey['azure'] ? 'text' : 'password'}
@@ -262,14 +263,14 @@ export function SecuritySettings({
                 type="button"
                 onClick={() => toggleShowApiKey('azure')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showApiKey['azure'] ? 'Hide Azure OpenAI API key' : 'Show Azure OpenAI API key'}
+                aria-label={showApiKey['azure'] ? tCommon('accessibility.hidePassword') : tCommon('accessibility.showPassword')}
               >
                 {showApiKey['azure'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Base URL</Label>
+            <Label className="text-xs text-muted-foreground">{tIntegrations('memory.azure.baseUrl')}</Label>
             <Input
               placeholder="https://your-resource.openai.azure.com"
               value={envConfig.graphitiProviderConfig?.azureOpenaiBaseUrl || ''}
@@ -283,7 +284,7 @@ export function SecuritySettings({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Embedding Deployment Name</Label>
+            <Label className="text-xs text-muted-foreground">{tIntegrations('memory.azure.deployment')}</Label>
             <Input
               placeholder="text-embedding-ada-002"
               value={envConfig.graphitiProviderConfig?.azureOpenaiEmbeddingDeployment || ''}
@@ -305,7 +306,7 @@ export function SecuritySettings({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Base URL</Label>
+            <Label className="text-xs text-muted-foreground">{tIntegrations('memory.ollama.baseUrl')}</Label>
             <Input
               placeholder="http://localhost:11434"
               value={envConfig.graphitiProviderConfig?.ollamaBaseUrl || 'http://localhost:11434'}
@@ -320,7 +321,7 @@ export function SecuritySettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">Select Embedding Model</Label>
+            <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.ollama.selectModel')}</Label>
             <OllamaModelSelector
               selectedModel={envConfig.graphitiProviderConfig?.ollamaEmbeddingModel || ''}
               baseUrl={envConfig.graphitiProviderConfig?.ollamaBaseUrl}
@@ -342,12 +343,12 @@ export function SecuritySettings({
       >
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4" />
-          {t('integrations.memory.title')}
+          {tIntegrations('memory.title')}
           <span className={`px-2 py-0.5 text-xs rounded-full ${envConfig.graphitiEnabled
-              ? 'bg-success/10 text-success'
-              : 'bg-muted text-muted-foreground'
+            ? 'bg-success/10 text-success'
+            : 'bg-muted text-muted-foreground'
             }`}>
-            {envConfig.graphitiEnabled ? t('integrations.memory.enabled') : t('integrations.memory.disabled')}
+            {envConfig.graphitiEnabled ? tIntegrations('memory.enabled') : tIntegrations('memory.disabled')}
           </span>
         </div>
         {expanded ? (
@@ -361,9 +362,9 @@ export function SecuritySettings({
         <div className="space-y-4 pl-6 pt-2">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-normal text-foreground">{t('integrations.memory.enableMemory')}</Label>
+              <Label className="font-normal text-foreground">{tIntegrations('memory.enableMemory')}</Label>
               <p className="text-xs text-muted-foreground">
-                {t('integrations.memory.enableMemoryDescription')}
+                {tIntegrations('memory.enableMemoryDescription')}
               </p>
             </div>
             <Switch
@@ -378,7 +379,7 @@ export function SecuritySettings({
           {!envConfig.graphitiEnabled && (
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">
-                {t('integrations.memory.fileBasedFallback')}
+                {tIntegrations('memory.fileBasedFallback')}
               </p>
             </div>
           )}
@@ -388,9 +389,9 @@ export function SecuritySettings({
               {/* Graphiti MCP Server Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="font-normal text-foreground">{t('integrations.memory.agentMemoryAccess')}</Label>
+                  <Label className="font-normal text-foreground">{tIntegrations('memory.agentMemoryAccess')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    {t('integrations.memory.agentMemoryAccessDescription')}
+                    {tIntegrations('memory.agentMemoryAccessDescription')}
                   </p>
                 </div>
                 <Switch
@@ -403,9 +404,9 @@ export function SecuritySettings({
 
               {settings.graphitiMcpEnabled && (
                 <div className="space-y-2 ml-6">
-                  <Label className="text-sm font-medium text-foreground">{t('integrations.memory.graphitiMcpUrl')}</Label>
+                  <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.graphitiMcpUrl')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    {t('integrations.memory.graphitiMcpUrlDescription')}
+                    {tIntegrations('memory.graphitiMcpUrlDescription')}
                   </p>
                   <Input
                     placeholder="http://localhost:8000/mcp/"
@@ -419,9 +420,9 @@ export function SecuritySettings({
 
               {/* Embedding Provider Selection */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.embeddingProvider')}</Label>
+                <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.embeddingProvider')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  {t('integrations.memory.embeddingProviderDescription')}
+                  {tIntegrations('memory.embeddingProviderDescription')}
                 </p>
                 <Select
                   value={embeddingProvider}
@@ -435,14 +436,14 @@ export function SecuritySettings({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t('integrations.memory.selectProvider')} />
+                    <SelectValue placeholder={tIntegrations('memory.selectProvider')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ollama">{t('integrations.memory.providers.ollama')}</SelectItem>
-                    <SelectItem value="openai">{t('integrations.memory.providers.openai')}</SelectItem>
-                    <SelectItem value="voyage">{t('integrations.memory.providers.voyage')}</SelectItem>
-                    <SelectItem value="google">{t('integrations.memory.providers.google')}</SelectItem>
-                    <SelectItem value="azure_openai">{t('integrations.memory.providers.azure')}</SelectItem>
+                    <SelectItem value="ollama">{tIntegrations('memory.providers.ollama')}</SelectItem>
+                    <SelectItem value="openai">{tIntegrations('memory.providers.openai')}</SelectItem>
+                    <SelectItem value="voyage">{tIntegrations('memory.providers.voyage')}</SelectItem>
+                    <SelectItem value="google">{tIntegrations('memory.providers.google')}</SelectItem>
+                    <SelectItem value="azure_openai">{tIntegrations('memory.providers.azure')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -454,9 +455,9 @@ export function SecuritySettings({
 
               {/* Database Settings */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.databaseName')}</Label>
+                <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.databaseName')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  {t('integrations.memory.databaseNameDescription')}
+                  {tIntegrations('memory.databaseNameDescription')}
                 </p>
                 <Input
                   placeholder="auto_claude_memory"
@@ -466,9 +467,9 @@ export function SecuritySettings({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.databasePath')}</Label>
+                <Label className="text-sm font-medium text-foreground">{tIntegrations('memory.databasePath')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  {t('integrations.memory.databasePathDescription')}
+                  {tIntegrations('memory.databasePathDescription')}
                 </p>
                 <Input
                   placeholder="~/.auto-claude/memories"

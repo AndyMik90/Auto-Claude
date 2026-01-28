@@ -1,31 +1,129 @@
 {
-    "title": "Roadmap",
+    "title": "Feuille de route",
     "empty": {
-        "title": "Pas encore de Roadmap",
-        "description": "Générez une feuille de route alimentée par l'IA qui comprend le public cible de votre projet et crée un plan de fonctionnalités stratégiques."
+        "title": "Pas encore de feuille de route",
+        "description": "Générez une feuille de route alimentée par l'IA qui comprend le public cible de votre projet et crée un plan de fonctionnalités stratégique."
     },
     "actions": {
         "generate": "Générer",
-        "refresh": "Rafraîchir",
-        "generateFull": "Générer la Roadmap complète",
-        "stop": "Arrêter"
+        "refresh": "Actualiser",
+        "generateFull": "Générer la feuille de route complète",
+        "stop": "Arrêter",
+        "addFeature": "Ajouter une fonctionnalité",
+        "addFeatureTooltip": "Ajouter une nouvelle fonctionnalité à la feuille de route",
+        "regenerateTooltip": "Régénérer la feuille de route",
+        "deleteTitle": "Supprimer la fonctionnalité ?",
+        "deleteConfirmation": "Cela supprimera définitivement « {{title}} » de votre feuille de route."
     },
     "tabs": {
         "kanban": "Kanban",
-        "list": "Liste",
-        "phases": "Phases"
+        "list": "Toutes les fonctionnalités",
+        "phases": "Phases",
+        "priorities": "Par priorité"
+    },
+    "header": {
+        "competitorAnalysis": "Analyse de la concurrence",
+        "clickToView": "Cliquez pour voir l'analyse détaillée",
+        "analysisSummary": "Analyse de {{competitors}} concurrents avec {{painPoints}} points de douleur identifiés",
+        "target": "Cible :",
+        "morePersonas": "+{{count}} autres personas",
+        "secondaryPersonas": "Personas secondaires :",
+        "stats": {
+            "features": "fonctionnalités",
+            "phases": "phases"
+        },
+        "progress": "Progression",
+        "milestones": "Jalons",
+        "featuresCount": "Fonctionnalités ({{count}})",
+        "moreFeatures": "+{{count}} autres fonctionnalités"
+    },
+    "priorities": {
+        "must": "Indispensable (Must Have)",
+        "should": "Important (Should Have)",
+        "could": "Souhaitable (Could Have)",
+        "wont": "Plus tard (Won't Have)",
+        "low": "Bas",
+        "medium": "Moyen",
+        "high": "Haut"
+    },
+    "feature": {
+        "impact": "impact {{level}}",
+        "insight": "Aperçu",
+        "convertToSpec": "Convertir en Spec",
+        "goToTask": "Aller à la tâche",
+        "delete": "Supprimer",
+        "build": "Construire",
+        "viewTask": "Voir la tâche",
+        "competitorInsight": "Aperçu de la concurrence",
+        "competitorInsightDescription": "Cette fonctionnalité répond aux points de douleur des concurrents",
+        "description": "Description",
+        "rationale": "Justification",
+        "complexity": "Complexité",
+        "complexity_low": "Complexité Basse",
+        "complexity_medium": "Complexité Moyenne",
+        "complexity_high": "Complexité Haute",
+        "dependencies": "Dépendances",
+        "userStories": "Histoires utilisateur",
+        "acceptanceCriteria": "Critères d'acceptation",
+        "addressesCompetitorPainPoints": "Répond aux points de douleur des concurrents",
+        "severity": "sévérité {{level}}",
+        "convertToTask": "Convertir en tâche Auto-Build",
+        "votesCount": "{{count}} votes des retours utilisateurs",
+        "externalSource": "Externe",
+        "importedFrom": "Importé depuis {{provider}}"
+    },
+    "status": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "under_review": "En révision",
+        "planned": "Planifié",
+        "in_progress": "En cours",
+        "done": "Terminé",
+        "completed": "Complété"
     },
     "competitorAnalysis": {
         "title": "Activer l'analyse de la concurrence ?",
-        "description": "Améliorez votre feuille de route grâce aux informations sur les produits concurrents",
+        "description": "Améliorez votre feuille de route avec des aperçus des produits concurrents",
         "whatItDoesTitle": "Ce que fait l'analyse de la concurrence :",
         "identifies": "Identifie 3 à 5 concurrents principaux en fonction du type de votre projet",
-        "searches": "Recherche sur les magasins d'applications, les forums et les réseaux sociaux les avis des utilisateurs et leurs points de douleur",
-        "suggests": "Suggère des fonctionnalités qui comblent les lacunes des produits concurrents",
-        "privacyTitle": "Des recherches sur le Web seront effectuées",
-        "privacyText": "Cette fonctionnalité effectuera des recherches sur le Web pour recueillir des informations sur les concurrents. Le nom et le type de votre projet seront utilisés dans les requêtes de recherche. Aucun code ni donnée sensible ne sont partagés.",
-        "optionalText": "Vous pouvez générer une feuille de route sans analyse de la concurrence si vous préférez. La feuille de route sera toujours basée sur la structure de votre projet et les meilleures pratiques.",
+        "searches": "Recherche dans les magasins d'applications, les forums et les réseaux sociaux les commentaires et les points de douleur des utilisateurs",
+        "suggests": "Suggère des fonctionnalités qui répondent aux lacunes des produits concurrents",
+        "privacyTitle": "Des recherches web seront effectuées",
+        "privacyText": "Cette fonctionnalité effectuera des recherches web pour recueillir des informations sur les concurrents. Le nom et le type de votre projet seront utilisés dans les requêtes de recherche. Aucun code ni donnée sensible ne sont partagés.",
+        "optionalText": "Vous pouvez générer une feuille de route sans analyse de la concurrence si vous préférer. La feuille de route sera toujours basée sur la structure de votre projet et les meilleures pratiques.",
         "skipAction": "Non, ignorer l'analyse",
         "enableAction": "Oui, activer l'analyse"
+    },
+    "kanban": {
+        "dropHere": "Déposer ici",
+        "noFeatures": "Aucune fonctionnalité",
+        "dragHere": "Faites glisser les fonctionnalités ici"
+    },
+    "existingAnalysis": {
+        "title": "Options d'analyse de la concurrence",
+        "description": "Ce projet a une analyse de la concurrence existante du {{date}}",
+        "useExisting": "Utiliser l'analyse existante",
+        "recommended": "Recommandé",
+        "useExistingDescription": "Réutilisez les aperçus de la concurrence que vous avez déjà. Plus rapide et pas de recherches web supplémentaires.",
+        "runNew": "Lancer une nouvelle analyse",
+        "runNewDescription": "Effectuez de nouvelles recherches web pour obtenir des informations mises à jour sur les concurrents. Prend plus de temps.",
+        "skip": "Ignorer l'analyse de la concurrence",
+        "skipDescription": "Générez une feuille de route sans aucun aperçu de la concurrence.",
+        "cancel": "Annuler",
+        "recently": "récemment"
+    },
+    "viewResults": {
+        "title": "Résultats de l'analyse de la concurrence",
+        "description": "Analyse de {{count}} concurrents pour identifier les lacunes du marché et les opportunités",
+        "visit": "Visiter",
+        "painPoints": "Points de douleur identifiés ({{count}})",
+        "noPainPoints": "Aucun point de douleur identifié",
+        "source": "Source",
+        "frequency": "Fréquence",
+        "opportunity": "Opportunité",
+        "insightsSummary": "Résumé des aperçus du marché",
+        "topPainPoints": "Principaux points de douleur",
+        "differentiatorOpportunities": "Opportunités de différenciation",
+        "marketTrends": "Tendances du marché"
     }
 }

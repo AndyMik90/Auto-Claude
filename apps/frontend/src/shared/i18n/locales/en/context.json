@@ -1,6 +1,27 @@
 {
     "title": "Project Structure",
     "subtitle": "AI-discovered knowledge about your codebase",
+    "tabs": {
+        "index": "Project Index",
+        "memories": "Memories"
+    },
+    "index": {
+        "overview": "Overview",
+        "services": "Services",
+        "infrastructure": "Infrastructure",
+        "conventions": "Conventions",
+        "service_count": "{{count}} service",
+        "service_count_plural": "{{count}} services",
+        "dockerCompose": "Docker Compose",
+        "cicd": "CI/CD",
+        "deployment": "Deployment",
+        "dockerServices": "Docker Services",
+        "pythonLinting": "Python Linting",
+        "jsLinting": "JS Linting",
+        "formatting": "Formatting",
+        "gitHooks": "Git Hooks",
+        "typescript": "TypeScript"
+    },
     "empty": {
         "title": "No Project Index Found",
         "description": "Click the Refresh button to analyze your project structure and create an index."

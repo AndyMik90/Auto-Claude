@@ -91,7 +91,7 @@ function ToolDetectionDisplay({ info, isLoading, t }: ToolDetectionDisplayProps)
  * General settings component for agent configuration and paths
  */
 export function GeneralSettings({ settings, onSettingsChange, section }: GeneralSettingsProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation(['settings', 'agentProfile']);
   const [toolsInfo, setToolsInfo] = useState<{
     python: ToolDetectionResult;
     git: ToolDetectionResult;
@@ -182,10 +182,10 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                   <div key={feature} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium text-foreground">
-                        {FEATURE_LABELS[feature].label}
+                        {t(`general.features.${feature}.label`)}
                       </Label>
                       <span className="text-xs text-muted-foreground">
-                        {FEATURE_LABELS[feature].description}
+                        {t(`general.features.${feature}.description`)}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 max-w-md">
@@ -227,7 +227,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                           <SelectContent>
                             {THINKING_LEVELS.map((level) => (
                               <SelectItem key={level.value} value={level.value}>
-                                {level.label}
+                                {t(`agentProfile:thinkingLevels.${level.value}.label` as any)}
                               </SelectItem>
                             ))}
                           </SelectContent>

@@ -119,6 +119,7 @@
   },
   "time": {
     "justNow": "Just now",
+    "secondsAgo": "{{count}}s ago",
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
     "daysAgo": "{{count}}d ago"
@@ -667,5 +668,11 @@
   "messages": {
     "selectProject": "Select a project to view details",
     "pressEnterToSend": "Press Enter to send"
+  },
+  "status": {
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "connected": "Connected",
+    "notConnected": "Not Connected"
   }
 }

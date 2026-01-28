@@ -1,4 +1,5 @@
 import { Radio, Import, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
@@ -29,15 +30,16 @@ export function LinearIntegration({
   isCheckingLinear,
   onOpenLinearImport
 }: LinearIntegrationProps) {
+  const { t } = useTranslation('integrations');
   if (!envConfig) return null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label className="font-normal text-foreground">Enable Linear Sync</Label>
+          <Label className="font-normal text-foreground">{t('linear.syncLabel')}</Label>
           <p className="text-xs text-muted-foreground">
-            Create and update Linear issues automatically
+            {t('linear.syncDescription')}
           </p>
         </div>
         <Switch
@@ -49,22 +51,22 @@ export function LinearIntegration({
       {envConfig.linearEnabled && (
         <>
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">API Key</Label>
+            <Label className="text-sm font-medium text-foreground">{t('linear.apiKey')}</Label>
             <p className="text-xs text-muted-foreground">
-              Get your API key from{' '}
+              {t('linear.apiKeyDescription')}{' '}
               <a
                 href="https://linear.app/settings/api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-info hover:underline"
               >
-                Linear Settings
+                {t('linear.apiKeyLink')}
               </a>
             </p>
             <div className="relative">
               <Input
                 type={showLinearKey ? 'text' : 'password'}
-                placeholder="lin_api_xxxxxxxx"
+                placeholder={t('linear.apiKeyPlaceholder')}
                 value={envConfig.linearApiKey || ''}
                 onChange={(e) => updateEnvConfig({ linearApiKey: e.target.value })}
                 className="pr-10"
@@ -119,20 +121,21 @@ interface ConnectionStatusProps {
 }
 
 function ConnectionStatus({ isChecking, connectionStatus }: ConnectionStatusProps) {
+  const { t } = useTranslation('integrations');
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground">Connection Status</p>
+          <p className="text-sm font-medium text-foreground">{t('linear.connectionStatus')}</p>
           <p className="text-xs text-muted-foreground">
-            {isChecking ? 'Checking...' :
+            {isChecking ? t('linear.checking') :
               connectionStatus?.connected
-                ? `Connected${connectionStatus.teamName ? ` to ${connectionStatus.teamName}` : ''}`
-                : connectionStatus?.error || 'Not connected'}
+                ? t('linear.status.connectedTo', { teamName: connectionStatus.teamName || '' })
+                : connectionStatus?.error || t('linear.status.notConnected')}
           </p>
           {connectionStatus?.connected && connectionStatus.issueCount !== undefined && (
             <p className="text-xs text-muted-foreground mt-1">
-              {connectionStatus.issueCount}+ tasks available to import
+              {t('linear.status.tasksAvailable', { count: connectionStatus.issueCount })}
             </p>
           )}
         </div>
@@ -153,14 +156,15 @@ interface ImportTasksPromptProps {
 }
 
 function ImportTasksPrompt({ onOpenLinearImport }: ImportTasksPromptProps) {
+  const { t } = useTranslation('integrations');
   return (
     <div className="rounded-lg border border-info/30 bg-info/5 p-3">
       <div className="flex items-start gap-3">
         <Import className="h-5 w-5 text-info mt-0.5" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Import Existing Tasks</p>
+          <p className="text-sm font-medium text-foreground">{t('linear.importExisting')}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Select which Linear issues to import into AutoBuild as tasks.
+            {t('linear.importExistingDescription')}
           </p>
           <Button
             size="sm"
@@ -169,7 +173,7 @@ function ImportTasksPrompt({ onOpenLinearImport }: ImportTasksPromptProps) {
             onClick={onOpenLinearImport}
           >
             <Import className="h-4 w-4 mr-2" />
-            Import Tasks from Linear
+            {t('linear.importButton')}
           </Button>
         </div>
       </div>
@@ -183,15 +187,16 @@ interface RealtimeSyncToggleProps {
 }
 
 function RealtimeSyncToggle({ enabled, onToggle }: RealtimeSyncToggleProps) {
+  const { t } = useTranslation('integrations');
   return (
     <div className="flex items-center justify-between">
       <div className="space-y-0.5">
         <div className="flex items-center gap-2">
           <Radio className="h-4 w-4 text-info" />
-          <Label className="font-normal text-foreground">Real-time Sync</Label>
+          <Label className="font-normal text-foreground">{t('linear.realtimeSync')}</Label>
         </div>
         <p className="text-xs text-muted-foreground pl-6">
-          Automatically import new tasks created in Linear
+          {t('linear.realtimeSyncDescription')}
         </p>
       </div>
       <Switch checked={enabled} onCheckedChange={onToggle} />
@@ -200,11 +205,11 @@ function RealtimeSyncToggle({ enabled, onToggle }: RealtimeSyncToggleProps) {
 }
 
 function RealtimeSyncWarning() {
+  const { t } = useTranslation('integrations');
   return (
     <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 ml-6">
       <p className="text-xs text-warning">
-        When enabled, new Linear issues will be automatically imported into AutoBuild.
-        Make sure to configure your team/project filters below to control which issues are imported.
+        {t('linear.realtimeWarning')}
       </p>
     </div>
   );
@@ -218,20 +223,21 @@ interface TeamProjectIdsProps {
 }
 
 function TeamProjectIds({ teamId, projectId, onTeamIdChange, onProjectIdChange }: TeamProjectIdsProps) {
+  const { t } = useTranslation('integrations');
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground">Team ID (Optional)</Label>
+        <Label className="text-sm font-medium text-foreground">{t('linear.teamId')}</Label>
         <Input
-          placeholder="Auto-detected"
+          placeholder={t('linear.autoDetected')}
           value={teamId}
           onChange={(e) => onTeamIdChange(e.target.value)}
         />
       </div>
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground">Project ID (Optional)</Label>
+        <Label className="text-sm font-medium text-foreground">{t('linear.projectId')}</Label>
         <Input
-          placeholder="Auto-created"
+          placeholder={t('linear.autoCreated')}
           value={projectId}
           onChange={(e) => onProjectIdChange(e.target.value)}
         />

@@ -29,7 +29,8 @@
     },
     "tools": {
         "usedCount": "Использован {{count}} инструмент",
-        "usedCount_plural": "Использовано {{count}} инструментов",
+        "usedCount_few": "Использовано {{count}} инструмента",
+        "usedCount_many": "Использовано {{count}} инструментов",
         "read": "Чтение файла",
         "glob": "Поиск файлов",
         "grep": "Поиск в коде"
@@ -46,7 +47,8 @@
         "today": "Сегодня",
         "yesterday": "Вчера",
         "daysAgo": "{{count}} дн. назад",
-        "messagesCount": "1 сообщение",
-        "messagesCount_plural": "{{count}} сообщений"
+        "messagesCount": "{{count}} сообщение",
+        "messagesCount_few": "{{count}} сообщения",
+        "messagesCount_many": "{{count}} сообщений"
     }
 }

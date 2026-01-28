@@ -1,0 +1,213 @@
+{
+    "title": "Comptes",
+    "description": "Gérer les comptes Claude et les points de terminaison d'API",
+    "tabs": {
+        "claudeCode": "Claude Code",
+        "customEndpoints": "Points de terminaison personnalisés"
+    },
+    "claudeCode": {
+        "description": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux lorsque vous atteignez les limites de débit.",
+        "noAccountsYet": "Aucun compte configuré pour l'instant",
+        "default": "Par défaut",
+        "active": "Actif",
+        "authenticated": "Authentifié",
+        "needsAuth": "Authentification requise",
+        "authenticate": "S'authentifier",
+        "authenticating": "Authentification...",
+        "setActive": "Définir comme actif",
+        "manualTokenEntry": "Saisie manuelle du jeton",
+        "runSetupToken": "Lancez claude et tapez /login pour vous authentifier",
+        "tokenPlaceholder": "sk-ant-oat01-...",
+        "emailPlaceholder": "E-mail (facultatif, pour l'affichage)",
+        "saveToken": "Enregistrer le jeton",
+        "accountNamePlaceholder": "Nom du compte (ex: Travail, Personnel)"
+    },
+    "customEndpoints": {
+        "description": "Configurer des points de terminaison d'API personnalisés compatibles Anthropic",
+        "addButton": "Ajouter un profil",
+        "activeBadge": "Actif",
+        "customModels": "Modèles personnalisés : {{models}}",
+        "setActive": {
+            "label": "Définir comme actif",
+            "loading": "Réglage..."
+        },
+        "switchToOauth": {
+            "label": "Utiliser Claude Code",
+            "loading": "Commutation..."
+        },
+        "tooltips": {
+            "edit": "Modifier le profil",
+            "deleteActive": "Impossible de supprimer le profil actif",
+            "deleteInactive": "Supprimer le profil"
+        },
+        "empty": {
+            "title": "Aucun point de terminaison personnalisé",
+            "description": "Configurez des points de terminaison d'API personnalisés pour utiliser des fournisseurs alternatifs.",
+            "action": "Ajouter un profil"
+        },
+        "dialog": {
+            "deleteTitle": "Supprimer le profil",
+            "deleteDescription": "Êtes-vous sûr de vouloir supprimer « {{name}} » ? Cette action est irréversible.",
+            "cancel": "Annuler",
+            "delete": "Supprimer",
+            "deleting": "Suppression..."
+        }
+    },
+    "autoSwitching": {
+        "title": "Bascule automatique de compte",
+        "description": "Basculez automatiquement entre les comptes pour éviter les interruptions. Configurez la surveillance proactive pour basculer avant d'atteindre les limites.",
+        "enableAutoSwitching": "Activer la bascule automatique",
+        "masterSwitch": "Interrupteur principal pour toutes les fonctionnalités d'auto-échange",
+        "proactiveMonitoring": "Surveillance proactive",
+        "proactiveDescription": "Vérifier l'utilisation régulièrement et échanger avant d'atteindre les limites",
+        "sessionThreshold": "Seuil d'utilisation de session",
+        "sessionThresholdDescription": "Basculez lorsque l'utilisation de la session atteint ce niveau (recommandé : 95 %)",
+        "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
+        "weeklyThresholdDescription": "Basculez lorsque l'utilisation hebdomadaire atteint ce niveau (recommandé : 99 %)",
+        "reactiveRecovery": "Récupération réactive",
+        "reactiveDescription": "Auto-échange lorsqu'une limite de débit inattendue est atteinte"
+    },
+    "priority": {
+        "title": "Ordre de priorité des comptes",
+        "description": "Faites glisser pour réorganiser. Le système passera au compte disponible suivant dans l'ordre.",
+        "noAccounts": "Aucun compte configuré. Ajoutez des comptes ci-dessus pour définir la priorité.",
+        "noEmail": "Pas d'e-mail",
+        "active": "Actif",
+        "inUse": "En cours d'utilisation",
+        "next": "Suivant",
+        "unlimited": "Illimité",
+        "unavailable": "Indisponible",
+        "typeOAuth": "OAuth",
+        "typeAPI": "API",
+        "payPerUse": "Paiement à l'utilisation",
+        "needsAuth": "Non authentifié",
+        "duplicateUsage": "Utilisation en double détectée",
+        "duplicateUsageHint": "Ce profil a une utilisation identique à un autre profil, suggérant qu'ils pourraient être authentifiés sur le même compte Anthropic. Ré-authentifiez-vous avec un compte différent pour corriger.",
+        "needsReauth": "Ré-authentification requise",
+        "needsReauthHint": "Le jeton de rafraîchissement de ce profil est invalide. Cliquez pour vous ré-authentifier.",
+        "sessionUsage": "Utilisation de session (fenêtre de 5 heures)",
+        "weeklyUsage": "Utilisation hebdomadaire (fenêtre de 7 jours)",
+        "oauthSection": "Comptes Claude (cycle en premier)",
+        "apiSection": "Points de terminaison de secours (lorsque tous les comptes sont épuisés)",
+        "tipTitle": "Comment fonctionne la priorité",
+        "tipDescription": "Les comptes Claude sont inclus dans votre abonnement et seront parcourus en premier. Les points de terminaison d'API facturent par requête et sont utilisés comme secours lorsque tous les comptes Claude atteignent leurs limites.",
+        "status": {
+            "healthy": "Sain",
+            "moderate": "Modéré",
+            "highUsage": "Utilisation élevée",
+            "nearLimit": "Proche de la limite",
+            "rateLimited": "Limite de débit atteinte"
+        }
+    },
+    "apiProfiles": {
+        "title": "Profils d'API",
+        "description": "Configurer des points de terminaison d'API personnalisés compatibles Anthropic",
+        "addButton": "Ajouter un profil",
+        "presets": {
+            "anthropic": "Anthropic",
+            "openrouter": "OpenRouter",
+            "groq": "Groq",
+            "zaiGlobal": "z.AI (Global)",
+            "zaiChina": "z.AI (Chine)"
+        },
+        "fields": {
+            "name": "Nom",
+            "preset": "Préréglage",
+            "baseUrl": "URL de base",
+            "apiKey": "Clé API"
+        },
+        "placeholders": {
+            "name": "Mon API personnalisée",
+            "preset": "Choisissez un préréglage de fournisseur",
+            "baseUrl": "https://api.anthropic.com",
+            "apiKey": "sk-ant-..."
+        },
+        "hints": {
+            "preset": "Les préréglages remplissent l'URL de base ; vous devez toujours coller votre clé API.",
+            "baseUrl": "Exemple : https://api.anthropic.com ou http://localhost:8080"
+        },
+        "validation": {
+            "nameRequired": "Le nom est obligatoire",
+            "baseUrlRequired": "L'URL de base est obligatoire",
+            "baseUrlInvalid": "Format d'URL invalide (doit être http:// ou https://)",
+            "apiKeyRequired": "La clé API est obligatoire",
+            "apiKeyInvalid": "Format de clé API invalide"
+        },
+        "actions": {
+            "save": "Enregistrer le profil",
+            "saving": "Enregistrement...",
+            "cancel": "Annuler",
+            "changeKey": "Modifier",
+            "cancelKeyChange": "Annuler"
+        },
+        "testConnection": {
+            "label": "Tester la connexion",
+            "testing": "Test...",
+            "success": "Connexion réussie",
+            "failure": "Échec de la connexion"
+        },
+        "models": {
+            "title": "Optionnel : Mappages de noms de modèles",
+            "description": "Sélectionnez les modèles de votre fournisseur d'API. Laissez vide pour utiliser les valeurs par défaut.",
+            "defaultLabel": "Modèle par défaut (optionnel)",
+            "haikuLabel": "Modèle Haiku (optionnel)",
+            "sonnetLabel": "Modèle Sonnet (optionnel)",
+            "opusLabel": "Modèle Opus (optionnel)",
+            "defaultPlaceholder": "ex: claude-sonnet-4-5-20250929",
+            "haikuPlaceholder": "ex: claude-haiku-4-5-20251001",
+            "sonnetPlaceholder": "ex: claude-sonnet-4-5-20250929",
+            "opusPlaceholder": "ex: claude-opus-4-5-20251101"
+        },
+        "dialog": {
+            "createTitle": "Ajouter un profil d'API",
+            "editTitle": "Modifier le profil",
+            "description": "Configurez un point de terminaison d'API personnalisé compatible Anthropic pour vos builds.",
+            "deleteTitle": "Supprimer le profil ?",
+            "deleteDescription": "Êtes-vous sûr de vouloir supprimer « {{name}} » ? Cette action est irréversible.",
+            "cancel": "Annuler",
+            "delete": "Supprimer",
+            "deleting": "Suppression..."
+        },
+        "toast": {
+            "create": {
+                "title": "Profil créé",
+                "description": "« {{name}} » a été ajouté avec succès."
+            },
+            "update": {
+                "title": "Profil mis à jour",
+                "description": "« {{name}} » a été mis à jour avec succès."
+            },
+            "delete": {
+                "title": "Profil supprimé",
+                "description": "« {{name}} » a été supprimé.",
+                "errorTitle": "Échec de la suppression du profil",
+                "errorFallback": "Une erreur s'est produite lors de la suppression du profil."
+            },
+            "switch": {
+                "oauthTitle": "Passé à OAuth",
+                "oauthDescription": "Utilise désormais l'authentification OAuth",
+                "profileTitle": "Profil activé",
+                "profileDescription": "Utilise désormais {{name}}",
+                "errorTitle": "Échec du changement d'authentification",
+                "errorFallback": "Une erreur s'est produite lors du changement de méthode d'authentification."
+            }
+        }
+    },
+    "toast": {
+        "loadProfilesFailed": "Échec du chargement des profils",
+        "addProfileFailed": "Échec de l'ajout du profil",
+        "deleteProfileFailed": "Échec de la suppression du profil",
+        "renameProfileFailed": "Échec du renommage du profil",
+        "setActiveProfileFailed": "Échec de l'activation du profil",
+        "tokenSaved": "Jeton enregistré",
+        "tokenSavedDescription": "Votre jeton a été enregistré avec succès.",
+        "tokenSaveFailed": "Échec de l'enregistrement du jeton",
+        "settingsUpdateFailed": "Échec de la mise à jour des paramètres",
+        "tryAgain": "Veuillez réessayer."
+    },
+    "alerts": {
+        "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
+        "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
+        "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
+    }
+}

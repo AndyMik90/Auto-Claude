@@ -1,0 +1,139 @@
+{
+    "title": "Aperçu du serveur MCP",
+    "titleWithProject": "Aperçu du serveur MCP pour {{projectName}}",
+    "description": "Configurez les serveurs MCP disponibles pour les agents dans ce projet",
+    "descriptionNoProject": "Sélectionnez un projet pour configurer les serveurs MCP",
+    "serversEnabled": "{{count}} serveurs activés",
+    "configuration": "Configuration du serveur MCP",
+    "configurationHint": "La désactivation des serveurs réduit l'utilisation du contexte et le temps de démarrage",
+    "noProjectSelected": "Aucun projet sélectionné",
+    "noProjectSelectedDescription": "Sélectionnez un projet dans la liste déroulante pour afficher et configurer les serveurs MCP.",
+    "projectNotInitialized": "Projet non initialisé",
+    "projectNotInitializedDescription": "Initialisez Auto Claude pour ce projet pour configurer les serveurs MCP.",
+    "browserAutomation": "Automatisation du navigateur (agents QA uniquement)",
+    "alwaysEnabled": "toujours activé",
+    "addServer": "Ajouter un serveur",
+    "addMcpTo": "Ajouter un serveur MCP à {{agent}}",
+    "addMcpDescription": "Sélectionnez un serveur MCP à ajouter à cet agent",
+    "allMcpsAdded": "Tous les serveurs MCP disponibles sont déjà ajoutés",
+    "added": "Ajouté",
+    "remove": "Supprimer",
+    "removed": "Supprimé",
+    "restore": "Restaurer",
+    "noMcpServers": "Aucun serveur MCP configuré",
+    "addCustomServer": "Ajouter un serveur personnalisé",
+    "noCustomServers": "Aucun serveur MCP personnalisé configuré",
+    "servers": {
+        "context7": {
+            "name": "Context7",
+            "description": "Recherche de documentation pour les bibliothèques et frameworks"
+        },
+        "graphiti": {
+            "name": "Graphiti Memory",
+            "description": "Graphe de connaissances pour le contexte inter-sessions",
+            "notConfigured": "Non configuré. Activez la mémoire dans les paramètres du projet."
+        },
+        "linear": {
+            "name": "Linear",
+            "description": "Gestion de projet via l'API Linear",
+            "notConfigured": "Non configuré. Activez Linear dans les paramètres du projet."
+        },
+        "electron": {
+            "name": "Electron MCP",
+            "description": "Automatisation d'applications de bureau via Chrome DevTools Protocol"
+        },
+        "puppeteer": {
+            "name": "Puppeteer MCP",
+            "description": "Automatisation de navigateur web pour les frontaux web"
+        },
+        "autoClaude": {
+            "name": "Auto-Claude Tools",
+            "description": "Suivi de progression, contexte de session, enregistrement des découvertes et problèmes"
+        }
+    },
+    "agents": {
+        "categories": {
+            "spec": "Création de spécification",
+            "build": "Build",
+            "qa": "QA",
+            "utility": "Utilitaire",
+            "ideation": "Idéation"
+        },
+        "spec_gatherer": {
+            "label": "Collecteur de spécifications",
+            "description": "Collecte les besoins initiaux de l'utilisateur"
+        },
+        "spec_researcher": {
+            "label": "Chercheur de spécifications",
+            "description": "Valide les intégrations externes et les API"
+        },
+        "spec_writer": {
+            "label": "Rédacteur de spécifications",
+            "description": "Crée le document spec.md"
+        },
+        "spec_critic": {
+            "label": "Critique de spécifications",
+            "description": "Auto-critique utilisant une analyse approfondie"
+        },
+        "spec_discovery": {
+            "label": "Découverte de spécifications",
+            "description": "Découverte et analyse initiale du projet"
+        },
+        "spec_context": {
+            "label": "Contexte de spécifications",
+            "description": "Construit le contexte à partir de la base de code existante"
+        },
+        "spec_validation": {
+            "label": "Validation de spécifications",
+            "description": "Valide l'exhaustivité et la qualité des spécifications"
+        },
+        "planner": {
+            "label": "Planificateur",
+            "description": "Crée un plan d'implémentation avec des sous-tâches"
+        },
+        "coder": {
+            "label": "Codeur",
+            "description": "Implémente les sous-tâches individuelles"
+        },
+        "qa_reviewer": {
+            "label": "Réviseur QA",
+            "description": "Valide les critères d'acceptation"
+        },
+        "qa_fixer": {
+            "label": "Correcteur QA",
+            "description": "Corrige les problèmes signalés par la QA"
+        },
+        "pr_reviewer": {
+            "label": "Réviseur de PR",
+            "description": "Examine les pull requests GitHub"
+        },
+        "commit_message": {
+            "label": "Message de commit",
+            "description": "Génère des messages de commit"
+        },
+        "merge_resolver": {
+            "label": "Résolveur de fusion",
+            "description": "Résout les conflits de fusion"
+        },
+        "insights": {
+            "label": "Aperçus",
+            "description": "Extrait des aperçus du code"
+        },
+        "analysis": {
+            "label": "Analyse",
+            "description": "Analyse de la base de code avec recherche de contexte"
+        },
+        "batch_analysis": {
+            "label": "Analyse par lots",
+            "description": "Traitement par lots de problèmes ou d'éléments"
+        },
+        "ideation": {
+            "label": "Idéation",
+            "description": "Génère des idées de fonctionnalités"
+        },
+        "roadmap_discovery": {
+            "label": "Découverte de feuille de route",
+            "description": "Découvre des éléments de feuille de route"
+        }
+    }
+}

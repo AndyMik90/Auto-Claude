@@ -90,7 +90,7 @@ export function ProjectIndexTab({
             {/* Project Overview */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Overview</CardTitle>
+                <CardTitle className="text-base">{t('index.overview')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -99,8 +99,7 @@ export function ProjectIndexTab({
                   </Badge>
                   {Object.keys(projectIndex.services).length > 0 && (
                     <Badge variant="secondary">
-                      {Object.keys(projectIndex.services).length} service
-                      {Object.keys(projectIndex.services).length !== 1 ? 's' : ''}
+                      {t('index.service_count', { count: Object.keys(projectIndex.services).length })}
                     </Badge>
                   )}
                 </div>
@@ -114,7 +113,7 @@ export function ProjectIndexTab({
             {Object.keys(projectIndex.services).length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Services
+                  {t('index.services')}
                 </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {Object.entries(projectIndex.services).map(([name, service]) => (
@@ -128,24 +127,24 @@ export function ProjectIndexTab({
             {Object.keys(projectIndex.infrastructure).length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Infrastructure
+                  {t('index.infrastructure')}
                 </h3>
                 <Card>
                   <CardContent className="pt-6">
                     <div className="grid gap-4 sm:grid-cols-2">
                       {projectIndex.infrastructure.docker_compose && (
-                        <InfoItem label="Docker Compose" value={projectIndex.infrastructure.docker_compose} />
+                        <InfoItem label={t('index.dockerCompose')} value={projectIndex.infrastructure.docker_compose} />
                       )}
                       {projectIndex.infrastructure.ci && (
-                        <InfoItem label="CI/CD" value={projectIndex.infrastructure.ci} />
+                        <InfoItem label={t('index.cicd')} value={projectIndex.infrastructure.ci} />
                       )}
                       {projectIndex.infrastructure.deployment && (
-                        <InfoItem label="Deployment" value={projectIndex.infrastructure.deployment} />
+                        <InfoItem label={t('index.deployment')} value={projectIndex.infrastructure.deployment} />
                       )}
                       {projectIndex.infrastructure.docker_services &&
                         projectIndex.infrastructure.docker_services.length > 0 && (
                           <div className="sm:col-span-2">
-                            <span className="text-xs text-muted-foreground">Docker Services</span>
+                            <span className="text-xs text-muted-foreground">{t('index.dockerServices')}</span>
                             <div className="flex flex-wrap gap-1 mt-1">
                               {projectIndex.infrastructure.docker_services.map((svc) => (
                                 <Badge key={svc} variant="secondary" className="text-xs">
@@ -165,25 +164,25 @@ export function ProjectIndexTab({
             {Object.keys(projectIndex.conventions).length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Conventions
+                  {t('index.conventions')}
                 </h3>
                 <Card>
                   <CardContent className="pt-6">
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {projectIndex.conventions.python_linting && (
-                        <InfoItem label="Python Linting" value={projectIndex.conventions.python_linting} />
+                        <InfoItem label={t('index.pythonLinting')} value={projectIndex.conventions.python_linting} />
                       )}
                       {projectIndex.conventions.js_linting && (
-                        <InfoItem label="JS Linting" value={projectIndex.conventions.js_linting} />
+                        <InfoItem label={t('index.jsLinting')} value={projectIndex.conventions.js_linting} />
                       )}
                       {projectIndex.conventions.formatting && (
-                        <InfoItem label="Formatting" value={projectIndex.conventions.formatting} />
+                        <InfoItem label={t('index.formatting')} value={projectIndex.conventions.formatting} />
                       )}
                       {projectIndex.conventions.git_hooks && (
-                        <InfoItem label="Git Hooks" value={projectIndex.conventions.git_hooks} />
+                        <InfoItem label={t('index.gitHooks')} value={projectIndex.conventions.git_hooks} />
                       )}
                       {projectIndex.conventions.typescript && (
-                        <InfoItem label="TypeScript" value="Enabled" />
+                        <InfoItem label={t('index.typescript')} value={t('common:status.enabled')} />
                       )}
                     </div>
                   </CardContent>

@@ -28,7 +28,7 @@ function GitLabIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="gitlab-icon-title">
       <title id="gitlab-icon-title">GitLab</title>
-      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
     </svg>
   );
 }
@@ -104,6 +104,7 @@ const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
  */
 export function AppSettingsDialog({ open, onOpenChange, initialSection, initialProjectSection, onRerunWizard }: AppSettingsDialogProps) {
   const { t } = useTranslation('settings');
+  const { t: tInt } = useTranslation('integrations');
   const { settings, setSettings, isSaving, error, saveSettings, revertTheme, commitTheme } = useSettings();
   const [version, setVersion] = useState<string>('');
 
@@ -156,7 +157,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
 
     // If on project section with a project selected, save project settings too
     if (activeTopLevel === 'project' && selectedProject && projectSettingsHook) {
-      await projectSettingsHook.handleSave(() => {});
+      await projectSettingsHook.handleSave(() => { });
       // Check for project errors
       if (projectSettingsHook.error || projectSettingsHook.envError) {
         setProjectError(projectSettingsHook.error || projectSettingsHook.envError);
@@ -345,8 +346,12 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                           >
                             <Icon className="h-5 w-5 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                              <div className="font-medium text-sm">{t(`projectSections.${item.id}.title`)}</div>
-                              <div className="text-xs text-muted-foreground truncate">{t(`projectSections.${item.id}.description`)}</div>
+                              <div className="font-medium text-sm">
+                                {item.id === 'general' ? t(`projectSections.${item.id}.title`) : tInt(`${item.id}.title`)}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {item.id === 'general' ? t(`projectSections.${item.id}.description`) : tInt(`${item.id}.syncDescription` || `${item.id}.description`)}
+                              </div>
                             </div>
                           </button>
                         );

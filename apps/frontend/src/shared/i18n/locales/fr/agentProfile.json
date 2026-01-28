@@ -1,0 +1,63 @@
+{
+    "label": "Profil de l'agent",
+    "phaseConfiguration": "Configuration des phases",
+    "clickToCustomize": "Cliquez pour personnaliser",
+    "model": "Modèle",
+    "thinking": "Réflexion",
+    "customConfiguration": "Configuration personnalisée",
+    "customDescription": "Définir manuellement le modèle et le niveau de réflexion",
+    "selectModel": "Sélectionner le modèle",
+    "selectThinkingLevel": "Sélectionner le niveau de réflexion",
+    "presets": {
+        "auto": {
+            "name": "Auto (Optimisé)",
+            "description": "Sélectionne automatiquement le meilleur modèle pour chaque phase de développement."
+        },
+        "complex": {
+            "name": "Réflexion complexe",
+            "description": "Utilise le modèle le plus puissant avec une réflexion profonde pour les tâches difficiles."
+        },
+        "balanced": {
+            "name": "Performance équilibrée",
+            "description": "Équilibre standard entre vitesse et intelligence pour la plupart des tâches."
+        },
+        "quick": {
+            "name": "Correction rapide",
+            "description": "Optimisé pour la vitesse et des coûts moindres sur les changements simples."
+        }
+    },
+    "thinkingLevels": {
+        "low": {
+            "label": "Bas",
+            "description": "Réponse standard, pas de réflexion supplémentaire"
+        },
+        "medium": {
+            "label": "Moyen",
+            "description": "Réflexion équilibrée pour un meilleur raisonnement"
+        },
+        "high": {
+            "label": "Haut",
+            "description": "Raisonnement maximal pour les problèmes complexes"
+        }
+    },
+    "phases": {
+        "spec": {
+            "label": "Spécification",
+            "description": "Définition des exigences de la tâche"
+        },
+        "planning": {
+            "label": "Planification",
+            "description": "Création du plan d'implémentation"
+        },
+        "coding": {
+            "label": "Codage",
+            "description": "Implémentation des modifications"
+        },
+        "qa": {
+            "label": "Révision/QA",
+            "description": "Vérification de l'implémentation"
+        }
+    },
+    "custom": "Personnalisé",
+    "customLabel": "Personnalisé"
+}

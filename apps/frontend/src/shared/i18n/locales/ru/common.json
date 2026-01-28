@@ -119,6 +119,7 @@
   },
   "time": {
     "justNow": "Только что",
+    "secondsAgo": "{{count}} сек. назад",
     "minutesAgo": "{{count}} мин. назад",
     "hoursAgo": "{{count}} ч. назад",
     "daysAgo": "{{count}} дн. назад"
@@ -667,5 +668,11 @@
   "messages": {
     "selectProject": "Выберите проект для просмотра деталей",
     "pressEnterToSend": "Нажмите Enter для отправки"
+  },
+  "status": {
+    "enabled": "Включено",
+    "disabled": "Отключено",
+    "connected": "Подключено",
+    "notConnected": "Не подключено"
   }
 }

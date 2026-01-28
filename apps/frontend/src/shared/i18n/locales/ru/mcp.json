@@ -1,0 +1,139 @@
+{
+    "title": "Обзор MCP-серверов",
+    "titleWithProject": "Обзор MCP-серверов для {{projectName}}",
+    "description": "Настройка MCP-серверов, доступных для агентов в этом проекте",
+    "descriptionNoProject": "Выберите проект для настройки MCP-серверов",
+    "serversEnabled": "Включено серверов: {{count}}",
+    "configuration": "Конфигурация MCP-серверов",
+    "configurationHint": "Отключение серверов уменьшает использование контекста и время запуска",
+    "noProjectSelected": "Проект не выбран",
+    "noProjectSelectedDescription": "Выберите проект из списка, чтобы просмотреть и настроить MCP-серверы.",
+    "projectNotInitialized": "Проект не инициализирован",
+    "projectNotInitializedDescription": "Инициализируйте Auto Claude для этого проекта, чтобы настроить MCP-серверы.",
+    "browserAutomation": "Автоматизация браузера (только для QA-агентов)",
+    "alwaysEnabled": "всегда включен",
+    "addServer": "Добавить сервер",
+    "addMcpTo": "Добавить MCP-сервер для {{agent}}",
+    "addMcpDescription": "Выберите MCP-сервер для добавления этому агенту",
+    "allMcpsAdded": "Все доступные MCP-серверы уже добавлены",
+    "added": "Добавлено",
+    "remove": "Удалить",
+    "removed": "Удалено",
+    "restore": "Восстановить",
+    "noMcpServers": "MCP-серверы не настроены",
+    "addCustomServer": "Добавить свой сервер",
+    "noCustomServers": "Пользовательские MCP-серверы не настроены",
+    "servers": {
+        "context7": {
+            "name": "Context7",
+            "description": "Поиск документации по библиотекам и фреймворкам"
+        },
+        "graphiti": {
+            "name": "Graphiti Memory",
+            "description": "Граф знаний для межсессионного контекста",
+            "notConfigured": "Не настроено. Включите память в настройках проекта."
+        },
+        "linear": {
+            "name": "Linear",
+            "description": "Управление проектами через Linear API",
+            "notConfigured": "Не настроено. Включите Linear в настройках проекта."
+        },
+        "electron": {
+            "name": "Electron MCP",
+            "description": "Автоматизация десктопных приложений через Chrome DevTools Protocol"
+        },
+        "puppeteer": {
+            "name": "Puppeteer MCP",
+            "description": "Автоматизация браузера для веб-фронтендов"
+        },
+        "autoClaude": {
+            "name": "Auto-Claude Tools",
+            "description": "Отслеживание прогресса, контекст сессии, запись находок и проблем"
+        }
+    },
+    "agents": {
+        "categories": {
+            "spec": "Создание спецификации",
+            "build": "Сборка",
+            "qa": "Тестирование (QA)",
+            "utility": "Утилиты",
+            "ideation": "Генерация идей"
+        },
+        "spec_gatherer": {
+            "label": "Сборщик спецификаций",
+            "description": "Собирает начальные требования от пользователя"
+        },
+        "spec_researcher": {
+            "label": "Исследователь спецификаций",
+            "description": "Проверяет внешние интеграции и API"
+        },
+        "spec_writer": {
+            "label": "Составитель спецификаций",
+            "description": "Создает документ spec.md"
+        },
+        "spec_critic": {
+            "label": "Критик спецификаций",
+            "description": "Самопроверка с использованием глубокого анализа"
+        },
+        "spec_discovery": {
+            "label": "Дискавери спецификаций",
+            "description": "Первоначальное исследование проекта и анализ"
+        },
+        "spec_context": {
+            "label": "Контекст спецификаций",
+            "description": "Выстраивает контекст на основе существующего кода"
+        },
+        "spec_validation": {
+            "label": "Валидация спецификаций",
+            "description": "Проверяет полноту и качество спецификации"
+        },
+        "planner": {
+            "label": "Планировщик",
+            "description": "Создает план реализации с подзадачами"
+        },
+        "coder": {
+            "label": "Кодер",
+            "description": "Реализует отдельные подзадачи"
+        },
+        "qa_reviewer": {
+            "label": "QA-ревьюер",
+            "description": "Проверяет критерии приемки"
+        },
+        "qa_fixer": {
+            "label": "QA-фиксер",
+            "description": "Исправляет ошибки, обнаруженные QA"
+        },
+        "pr_reviewer": {
+            "label": "Ревьюер PR",
+            "description": "Проверяет pull request в GitHub"
+        },
+        "commit_message": {
+            "label": "Генератор коммитов",
+            "description": "Создает сообщения к коммитам"
+        },
+        "merge_resolver": {
+            "label": "Резолвер мерджей",
+            "description": "Разрешает конфликты слияния"
+        },
+        "insights": {
+            "label": "Инсайты",
+            "description": "Извлекает знания из кода"
+        },
+        "analysis": {
+            "label": "Анализ",
+            "description": "Анализ кодовой базы с поиском по контексту"
+        },
+        "batch_analysis": {
+            "label": "Пакетный анализ",
+            "description": "Пакетная обработка задач или элементов"
+        },
+        "ideation": {
+            "label": "Идеи",
+            "description": "Генерирует идеи для новых функций"
+        },
+        "roadmap_discovery": {
+            "label": "Дорожная карта",
+            "description": "Находит элементы для дорожной карты"
+        }
+    }
+}

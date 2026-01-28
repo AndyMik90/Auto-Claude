@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Clock,
   GitPullRequest,
@@ -58,26 +59,27 @@ function parsePRReviewContent(content: string): ParsedPRReview | null {
 }
 
 function VerdictBadge({ verdict }: { verdict: string }) {
+  const { t } = useTranslation('memories');
   switch (verdict) {
     case 'approve':
       return (
         <Badge className="bg-green-500/10 text-green-400 border-green-500/30 gap-1">
           <CheckCircle className="h-3 w-3" />
-          Approved
+          {t('pr.approved')}
         </Badge>
       );
     case 'request_changes':
       return (
         <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1">
           <XCircle className="h-3 w-3" />
-          Changes Requested
+          {t('pr.changesRequested')}
         </Badge>
       );
     case 'comment':
       return (
         <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 gap-1">
           <MessageSquare className="h-3 w-3" />
-          Commented
+          {t('pr.commented')}
         </Badge>
       );
     default:
@@ -107,6 +109,7 @@ function SeverityBadge({ severity, count }: { severity: string; count: number })
 }
 
 export function PRReviewCard({ memory }: PRReviewCardProps) {
+  const { t } = useTranslation('memories');
   const [expanded, setExpanded] = useState(false);
   const parsed = useMemo(() => parsePRReviewContent(memory.content), [memory.content]);
 
@@ -117,7 +120,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
         <CardContent className="pt-4">
           <div className="flex items-center gap-2">
             <GitPullRequest className="h-4 w-4 text-cyan-400" />
-            <Badge variant="outline">PR Review</Badge>
+            <Badge variant="outline">{t('types.pr_review')}</Badge>
             <span className="text-xs text-muted-foreground">{formatDate(memory.timestamp)}</span>
           </div>
           <pre className="mt-3 text-xs text-muted-foreground whitespace-pre-wrap font-mono">
@@ -130,7 +133,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
 
   const { finding_counts } = parsed.summary || { finding_counts: { critical: 0, high: 0, medium: 0, low: 0 } };
   const totalFindings = (finding_counts?.critical || 0) + (finding_counts?.high || 0) +
-                       (finding_counts?.medium || 0) + (finding_counts?.low || 0);
+    (finding_counts?.medium || 0) + (finding_counts?.low || 0);
   const hasGotchas = parsed.gotchas && parsed.gotchas.length > 0;
   const hasPatterns = parsed.patterns && parsed.patterns.length > 0;
   const hasFindings = parsed.keyFindings && parsed.keyFindings.length > 0;
@@ -156,7 +159,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
                 </span>
                 {parsed.isFollowup && (
                   <Badge variant="secondary" className="text-xs">
-                    Follow-up
+                    {t('pr.followUp')}
                   </Badge>
                 )}
               </div>
@@ -166,7 +169,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
                 <VerdictBadge verdict={parsed.verdict} />
                 {totalFindings > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    {totalFindings} finding{totalFindings !== 1 ? 's' : ''}
+                    {totalFindings} {t('pr.findings', { count: totalFindings })}
                   </span>
                 )}
               </div>
@@ -200,12 +203,12 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               {expanded ? (
                 <>
                   <ChevronUp className="h-4 w-4" />
-                  Collapse
+                  {t('card.collapse')}
                 </>
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  Details
+                  {t('card.details')}
                 </>
               )}
             </Button>
@@ -220,7 +223,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Bug className="h-4 w-4 text-orange-400" />
-                  <span className="text-sm font-medium text-foreground">Key Findings</span>
+                  <span className="text-sm font-medium text-foreground">{t('pr.keyFindings')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.keyFindings.length}
                   </Badge>
@@ -230,12 +233,11 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
                     <div key={idx} className="text-sm">
                       <div className="flex items-center gap-2">
                         <Badge
-                          className={`text-xs ${
-                            finding.severity === 'critical' ? 'bg-red-600/20 text-red-400' :
-                            finding.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                            finding.severity === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-blue-500/20 text-blue-400'
-                          }`}
+                          className={`text-xs ${finding.severity === 'critical' ? 'bg-red-600/20 text-red-400' :
+                              finding.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                finding.severity === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                            }`}
                         >
                           {finding.severity}
                         </Badge>
@@ -250,7 +252,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
                   ))}
                   {parsed.keyFindings.length > 5 && (
                     <p className="text-xs text-muted-foreground">
-                      +{parsed.keyFindings.length - 5} more findings
+                      {t('pr.moreFindings', { count: parsed.keyFindings.length - 5 })}
                     </p>
                   )}
                 </div>
@@ -262,7 +264,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm font-medium text-foreground">Gotchas Discovered</span>
+                  <span className="text-sm font-medium text-foreground">{t('pr.gotchasTitle')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.gotchas.length}
                   </Badge>
@@ -282,7 +284,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm font-medium text-foreground">Patterns Identified</span>
+                  <span className="text-sm font-medium text-foreground">{t('pr.patternsTitle')}</span>
                   <Badge variant="secondary" className="text-xs px-1.5 py-0">
                     {parsed.patterns.length}
                   </Badge>
@@ -307,7 +309,7 @@ export function PRReviewCard({ memory }: PRReviewCardProps) {
                   onClick={() => window.open(`https://github.com/${parsed.repo}/pull/${parsed.prNumber}`, '_blank')}
                 >
                   <ExternalLink className="h-3 w-3" />
-                  View PR on GitHub
+                  {t('pr.viewOnGithub')}
                 </Button>
               </div>
             )}

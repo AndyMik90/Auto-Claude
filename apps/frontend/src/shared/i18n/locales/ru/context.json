@@ -1,30 +1,33 @@
 {
     "title": "Структура проекта",
     "subtitle": "Знания о вашей кодовой базе, обнаруженные ассистентом",
+    "tabs": {
+        "index": "Индекс проекта",
+        "memories": "Память"
+    },
+    "index": {
+        "overview": "Обзор",
+        "services": "Сервисы",
+        "infrastructure": "Инфраструктура",
+        "conventions": "Соглашения",
+        "service_count": "{{count}} сервис",
+        "service_count_few": "{{count}} сервиса",
+        "service_count_many": "{{count}} сервисов",
+        "dockerCompose": "Docker Compose",
+        "cicd": "CI/CD",
+        "deployment": "Развертывание",
+        "dockerServices": "Сервисы Docker",
+        "pythonLinting": "Линтинг Python",
+        "jsLinting": "Линтинг JS",
+        "formatting": "Форматирование",
+        "gitHooks": "Git-хуки",
+        "typescript": "TypeScript"
+    },
     "empty": {
         "title": "Индекс проекта не найден",
         "description": "Нажмите кнопку «Обновить», чтобы проанализировать структуру проекта и создать индекс."
     },
     "actions": {
         "refresh": "Обновить"
-    },
-    "memories": {
-        "status": "Статус графовой памяти",
-        "connected": "Подключено",
-        "database": "База данных",
-        "path": "Путь",
-        "searchTitle": "Поиск в памяти",
-        "searchPlaceholder": "Поиск паттернов, инсайтов, особенностей...",
-        "browserTitle": "Браузер памяти",
-        "notAvailable": "Недоступно",
-        "total": "Всего",
-        "prReviews": "Обзоры PR",
-        "sessions": "Сессии",
-        "codebase": "Кодовая база",
-        "patterns": "Паттерны",
-        "gotchas": "Особенности",
-        "noMemories": "Записей в памяти пока нет. Записи создаются в ходе сессий AI-агента и обзоров PR.",
-        "noMatches": "Нет записей, соответствующих выбранному фильтру.",
-        "showAll": "Показать все записи"
     }
 }

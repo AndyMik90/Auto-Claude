@@ -8,12 +8,78 @@
         "generate": "Generate",
         "refresh": "Refresh",
         "generateFull": "Generate Full Roadmap",
-        "stop": "Stop"
+        "stop": "Stop",
+        "addFeature": "Add Feature",
+        "addFeatureTooltip": "Add a new feature to the roadmap",
+        "regenerateTooltip": "Regenerate Roadmap",
+        "deleteTitle": "Delete Feature?",
+        "deleteConfirmation": "This will permanently remove \"{{title}}\" from your roadmap."
     },
     "tabs": {
         "kanban": "Kanban",
-        "list": "List",
-        "phases": "Phases"
+        "list": "All Features",
+        "phases": "Phases",
+        "priorities": "By Priority"
+    },
+    "header": {
+        "competitorAnalysis": "Competitor Analysis",
+        "clickToView": "Click to view detailed analysis",
+        "analysisSummary": "Analyzed {{competitors}} competitors with {{painPoints}} pain points identified",
+        "target": "Target:",
+        "morePersonas": "+{{count}} more personas",
+        "secondaryPersonas": "Secondary Personas:",
+        "stats": {
+            "features": "features",
+            "phases": "phases"
+        },
+        "progress": "Progress",
+        "milestones": "Milestones",
+        "featuresCount": "Features ({{count}})",
+        "moreFeatures": "+{{count}} more features"
+    },
+    "priorities": {
+        "must": "Must Have",
+        "should": "Should Have",
+        "could": "Could Have",
+        "wont": "Won't Have",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+    },
+    "feature": {
+        "impact": "{{level}} impact",
+        "insight": "Insight",
+        "convertToSpec": "Convert to Spec",
+        "goToTask": "Go to Task",
+        "delete": "Delete",
+        "build": "Build",
+        "viewTask": "View Task",
+        "competitorInsight": "Competitor Insight",
+        "competitorInsightDescription": "This feature addresses competitor pain points",
+        "description": "Description",
+        "rationale": "Rationale",
+        "complexity": "Complexity",
+        "complexity_low": "Low Complexity",
+        "complexity_medium": "Medium Complexity",
+        "complexity_high": "High Complexity",
+        "dependencies": "Dependencies",
+        "userStories": "User Stories",
+        "acceptanceCriteria": "Acceptance Criteria",
+        "addressesCompetitorPainPoints": "Addresses Competitor Pain Points",
+        "severity": "{{level}} severity",
+        "convertToTask": "Convert to Auto-Build Task",
+        "votesCount": "{{count}} votes from user feedback",
+        "externalSource": "External",
+        "importedFrom": "Imported from {{provider}}"
+    },
+    "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "under_review": "Under Review",
+        "planned": "Planned",
+        "in_progress": "In Progress",
+        "done": "Done",
+        "completed": "Completed"
     },
     "competitorAnalysis": {
         "title": "Enable Competitor Analysis?",
@@ -27,5 +93,37 @@
         "optionalText": "You can generate a roadmap without competitor analysis if you prefer. The roadmap will still be based on your project structure and best practices.",
         "skipAction": "No, Skip Analysis",
         "enableAction": "Yes, Enable Analysis"
+    },
+    "kanban": {
+        "dropHere": "Drop here",
+        "noFeatures": "No features",
+        "dragHere": "Drag features here"
+    },
+    "existingAnalysis": {
+        "title": "Competitor Analysis Options",
+        "description": "This project has an existing competitor analysis from {{date}}",
+        "useExisting": "Use existing analysis",
+        "recommended": "Recommended",
+        "useExistingDescription": "Reuse the competitor insights you already have. Faster and no additional web searches.",
+        "runNew": "Run new analysis",
+        "runNewDescription": "Perform fresh web searches to get updated competitor information. Takes longer.",
+        "skip": "Skip competitor analysis",
+        "skipDescription": "Generate roadmap without any competitor insights.",
+        "cancel": "Cancel",
+        "recently": "recently"
+    },
+    "viewResults": {
+        "title": "Competitor Analysis Results",
+        "description": "Analyzed {{count}} competitors to identify market gaps and opportunities",
+        "visit": "Visit",
+        "painPoints": "Identified Pain Points ({{count}})",
+        "noPainPoints": "No pain points identified",
+        "source": "Source",
+        "frequency": "Frequency",
+        "opportunity": "Opportunity",
+        "insightsSummary": "Market Insights Summary",
+        "topPainPoints": "Top Pain Points",
+        "differentiatorOpportunities": "Differentiator Opportunities",
+        "marketTrends": "Market Trends"
     }
 }

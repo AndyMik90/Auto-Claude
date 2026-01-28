@@ -1,40 +1,32 @@
 {
     "title": "Structure du Projet",
-    "subtitle": "Connaissance découverte par l'IA sur votre code",
+    "subtitle": "Connaissance de votre code découverte par l'IA",
+    "tabs": {
+        "index": "Index du Projet",
+        "memories": "Mémoire"
+    },
+    "index": {
+        "overview": "Vue d'ensemble",
+        "services": "Services",
+        "infrastructure": "Infrastructure",
+        "conventions": "Conventions",
+        "service_count": "{{count}} service",
+        "service_count_plural": "{{count}} services",
+        "dockerCompose": "Docker Compose",
+        "cicd": "CI/CD",
+        "deployment": "Déploiement",
+        "dockerServices": "Services Docker",
+        "pythonLinting": "Linting Python",
+        "jsLinting": "Linting JS",
+        "formatting": "Formatage",
+        "gitHooks": "Hooks Git",
+        "typescript": "TypeScript"
+    },
     "empty": {
         "title": "Aucun index de projet trouvé",
-        "description": "Indexez votre projet pour permettre à l'agent de comprendre la structure et les relations dans votre code.",
-        "action": "Indexer le projet"
+        "description": "Cliquez sur le bouton Actualiser pour analyser la structure de votre projet et créer un index."
     },
-    "indexing": {
-        "status": "Indexation en cours...",
-        "files": "Fichiers traités",
-        "entities": "Entités découvertes",
-        "relationships": "Relations établies"
-    },
-    "tabs": {
-        "overview": "Vue d'ensemble",
-        "graphs": "Graphe de dépendances",
-        "entities": "Entités",
-        "files": "Explorateur de fichiers"
-    },
-    "stats": {
-        "files": "Fichiers",
-        "classes": "Classes",
-        "functions": "Fonctions",
-        "components": "Composants",
-        "total": "Total des entités"
-    },
-    "search": {
-        "placeholder": "Rechercher dans la structure du projet...",
-        "noResults": "Aucune entité trouvée."
-    },
-    "entityType": {
-        "class": "Classe",
-        "function": "Fonction",
-        "interface": "Interface",
-        "component": "Composant",
-        "variable": "Variable",
-        "file": "Fichier"
+    "actions": {
+        "refresh": "Actualiser"
     }
 }

@@ -1,25 +1,3 @@
-/**
- * AddFeatureDialog - Dialog for adding new features to the roadmap
- *
- * Allows users to create new roadmap features with title, description,
- * priority, phase, complexity, and impact fields.
- * Follows the same dialog pattern as TaskEditDialog for consistency.
- *
- * Features:
- * - Form validation (title and description required)
- * - Selectable classification fields (priority, phase, complexity, impact)
- * - Adds feature to roadmap store and persists to file
- *
- * @example
- * ```tsx
- * <AddFeatureDialog
- *   phases={roadmap.phases}
- *   open={isAddDialogOpen}
- *   onOpenChange={setIsAddDialogOpen}
- *   onFeatureAdded={(featureId) => console.log('Feature added:', featureId)}
- * />
- * ```
- */
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
@@ -49,8 +27,7 @@ import {
 import type {
   RoadmapPhase,
   RoadmapFeaturePriority,
-  RoadmapFeatureStatus,
-  FeatureSource
+  RoadmapFeatureStatus
 } from '../../shared/types';
 
 /**
@@ -91,6 +68,7 @@ export function AddFeatureDialog({
   defaultPhaseId
 }: AddFeatureDialogProps) {
   const { t } = useTranslation('dialogs');
+  const { t: tRoadmap } = useTranslation('roadmap');
 
   // Form state
   const [title, setTitle] = useState('');
@@ -282,9 +260,9 @@ export function AddFeatureDialog({
                   <SelectValue placeholder={t('addFeature.selectPriority')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(ROADMAP_PRIORITY_LABELS).map(([value, label]) => (
+                  {Object.entries(ROADMAP_PRIORITY_LABELS).map(([value]) => (
                     <SelectItem key={value} value={value}>
-                      {label}
+                      {tRoadmap(`priorities.${value}`, { defaultValue: value })}
                     </SelectItem>
                   ))}
                 </SelectContent>

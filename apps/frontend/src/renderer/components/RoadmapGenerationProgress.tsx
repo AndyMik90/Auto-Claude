@@ -9,10 +9,6 @@ import type { RoadmapGenerationStatus } from '../../shared/types/roadmap';
 
 /**
  * Formats elapsed time in seconds into a human-readable string.
- * Examples: "0:05", "1:23", "12:05", "1:00:05"
- *
- * @param seconds - The elapsed time in seconds
- * @returns Formatted time string (MM:SS or H:MM:SS for >= 1 hour)
  */
 function formatElapsedTime(seconds: number): string {
   if (seconds < 0) return '0:00';
@@ -28,57 +24,21 @@ function formatElapsedTime(seconds: number): string {
 }
 
 /**
- * Formats a timestamp into a human-readable relative time string.
- * Examples: "just now", "5s ago", "2m ago", "1h ago"
- *
- * @param timestamp - The Date object or timestamp to format
- * @returns Formatted relative time string
- */
-function formatTimeAgo(timestamp: Date | string | undefined): string {
-  if (!timestamp) return '';
-
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSecs = Math.floor(diffMs / 1000);
-
-  if (diffSecs < 5) return 'just now';
-  if (diffSecs < 60) return `${diffSecs}s ago`;
-
-  const diffMins = Math.floor(diffSecs / 60);
-  if (diffMins < 60) return `${diffMins}m ago`;
-
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-}
-
-/**
  * Hook to detect user's reduced motion preference.
- * Listens for changes to the prefers-reduced-motion media query.
  */
 function useReducedMotion(): boolean {
   const [reducedMotion, setReducedMotion] = useState(() => {
-    // Check if window is available (for SSR safety)
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   });
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
     const handleChange = (event: MediaQueryListEvent) => {
       setReducedMotion(event.matches);
     };
-
-    // Add listener for changes
     mediaQuery.addEventListener('change', handleChange);
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange);
-    };
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   return reducedMotion;
@@ -90,10 +50,8 @@ interface RoadmapGenerationProgressProps {
   onStop?: () => void | Promise<void>;
 }
 
-// Type for generation phases (excluding idle)
 type GenerationPhase = Exclude<RoadmapGenerationStatus['phase'], 'idle'>;
 
-// Phase display configuration (colors and icons only - labels are translated)
 const PHASE_CONFIG: Record<
   GenerationPhase,
   {
@@ -141,18 +99,12 @@ const PHASE_CONFIG: Record<
   },
 };
 
-// Phases shown in the step indicator (excluding complete and error)
 const STEP_PHASES: { key: GenerationPhase; labelKey: string }[] = [
   { key: 'analyzing', labelKey: 'roadmapProgress.steps.analyze' },
   { key: 'discovering', labelKey: 'roadmapProgress.steps.discover' },
   { key: 'generating', labelKey: 'roadmapProgress.steps.generate' },
 ];
 
-/**
- * Internal component for heartbeat animation indicator.
- * Shows a subtle pulsing animation to indicate the process is alive.
- * Respects user's reduced motion preference.
- */
 function HeartbeatIndicator({
   isActive,
   reducedMotion,
@@ -168,21 +120,20 @@ function HeartbeatIndicator({
 }) {
   if (!isActive) return null;
 
-  // Heartbeat animation: subtle scale pulse to show process is alive
   const heartbeatAnimation = reducedMotion
     ? { scale: 1, opacity: 1 }
     : {
-        scale: [1, 1.05, 1],
-        opacity: [0.7, 1, 0.7],
-      };
+      scale: [1, 1.05, 1],
+      opacity: [0.7, 1, 0.7],
+    };
 
   const heartbeatTransition = reducedMotion
     ? { duration: 0 }
     : {
-        duration: 2,
-        repeat: Infinity,
-        ease: 'easeInOut' as const,
-      };
+      duration: 2,
+      repeat: Infinity,
+      ease: 'easeInOut' as const,
+    };
 
   return (
     <Tooltip>
@@ -201,9 +152,6 @@ function HeartbeatIndicator({
   );
 }
 
-/**
- * Internal component for showing phase steps indicator
- */
 function PhaseStepsIndicator({
   currentPhase,
   reducedMotion,
@@ -227,7 +175,6 @@ function PhaseStepsIndicator({
     return 'pending';
   };
 
-  // Animation values that respect reduced motion preference
   const getStepAnimation = (state: string) => {
     if (state !== 'active') return { opacity: 1 };
     return reducedMotion ? { opacity: 1 } : { opacity: [1, 0.6, 1] };
@@ -289,11 +236,6 @@ function PhaseStepsIndicator({
   );
 }
 
-/**
- * Animated progress component for roadmap generation.
- * Displays the current generation phase with animated transitions,
- * progress visualization, and step indicators.
- */
 export function RoadmapGenerationProgress({
   generationStatus,
   className,
@@ -306,9 +248,27 @@ export function RoadmapGenerationProgress({
   const [elapsedTime, setElapsedTime] = useState(0);
   const [lastActivityDisplay, setLastActivityDisplay] = useState('');
 
-  /**
-   * Calculate elapsed time from startedAt timestamp
-   */
+  const formatTimeAgo = useCallback((timestamp: Date | string | undefined) => {
+    if (!timestamp) return '';
+
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+
+    if (diffSecs < 5) return t('time.justNow');
+    if (diffSecs < 60) return t('time.secondsAgo', { count: diffSecs });
+
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return t('time.minutesAgo', { count: diffMins });
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return t('time.hoursAgo', { count: diffHours });
+
+    const diffDays = Math.floor(diffHours / 24);
+    return t('time.daysAgo', { count: diffDays });
+  }, [t]);
+
   const calculateElapsedTime = useCallback(() => {
     if (!startedAt) return 0;
     const startDate = startedAt instanceof Date ? startedAt : new Date(startedAt);
@@ -316,39 +276,26 @@ export function RoadmapGenerationProgress({
     return Math.floor((now.getTime() - startDate.getTime()) / 1000);
   }, [startedAt]);
 
-  /**
-   * Update elapsed time every second while generation is active
-   */
   useEffect(() => {
-    // Only track time for active phases (not idle, complete, or error)
     const isActivePhase = phase !== 'idle' && phase !== 'complete' && phase !== 'error';
 
     if (!isActivePhase || !startedAt) {
-      // Reset elapsed time when not active or no start time
       if (phase === 'idle') {
         setElapsedTime(0);
       }
       return;
     }
 
-    // Calculate initial elapsed time
     setElapsedTime(calculateElapsedTime());
 
-    // Set up interval to update every second
     const intervalId = setInterval(() => {
       setElapsedTime(calculateElapsedTime());
     }, 1000);
 
-    return () => {
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(intervalId);
   }, [phase, startedAt, calculateElapsedTime]);
 
-  /**
-   * Update last activity display periodically for relative time
-   */
   useEffect(() => {
-    // Only track last activity for active phases
     const isActivePhase = phase !== 'idle' && phase !== 'complete' && phase !== 'error';
 
     if (!isActivePhase || !lastActivityAt) {
@@ -356,22 +303,15 @@ export function RoadmapGenerationProgress({
       return;
     }
 
-    // Calculate initial display
     setLastActivityDisplay(formatTimeAgo(lastActivityAt));
 
-    // Update every 5 seconds to keep relative time current
     const intervalId = setInterval(() => {
       setLastActivityDisplay(formatTimeAgo(lastActivityAt));
     }, 5000);
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [phase, lastActivityAt]);
+    return () => clearInterval(intervalId);
+  }, [phase, lastActivityAt, formatTimeAgo]);
 
-  /**
-   * Handle stop button click with error handling and double-click prevention
-   */
   const handleStopClick = async () => {
     if (!onStop || isStopping) return;
 
@@ -385,7 +325,6 @@ export function RoadmapGenerationProgress({
     }
   };
 
-  // Don't render anything for idle phase
   if (phase === 'idle') {
     return null;
   }
@@ -394,36 +333,35 @@ export function RoadmapGenerationProgress({
   const Icon = config.icon;
   const isActivePhase = phase !== 'complete' && phase !== 'error';
 
-  // Animation values that respect reduced motion preference
   const pulseAnimation = reducedMotion
     ? {}
     : {
-        scale: [1, 1.1, 1],
-        opacity: [1, 0.8, 1],
-      };
+      scale: [1, 1.1, 1],
+      opacity: [1, 0.8, 1],
+    };
 
   const pulseTransition = reducedMotion
     ? { duration: 0 }
     : {
-        duration: 1.5,
-        repeat: isActivePhase ? Infinity : 0,
-        ease: 'easeInOut' as const,
-      };
+      duration: 1.5,
+      repeat: isActivePhase ? Infinity : 0,
+      ease: 'easeInOut' as const,
+    };
 
   const dotAnimation = reducedMotion
     ? { scale: 1, opacity: 1 }
     : {
-        scale: [1, 1.5, 1],
-        opacity: [1, 0.5, 1],
-      };
+      scale: [1, 1.5, 1],
+      opacity: [1, 0.5, 1],
+    };
 
   const dotTransition = reducedMotion
     ? { duration: 0 }
     : {
-        duration: 1,
-        repeat: Infinity,
-        ease: 'easeInOut' as const,
-      };
+      duration: 1,
+      repeat: Infinity,
+      ease: 'easeInOut' as const,
+    };
 
   const indeterminateAnimation = reducedMotion
     ? { x: '150%' }
@@ -432,14 +370,13 @@ export function RoadmapGenerationProgress({
   const indeterminateTransition = reducedMotion
     ? { duration: 0 }
     : {
-        duration: 1.5,
-        repeat: Infinity,
-        ease: 'easeInOut' as const,
-      };
+      duration: 1.5,
+      repeat: Infinity,
+      ease: 'easeInOut' as const,
+    };
 
   return (
     <div className={cn('space-y-4 p-6 rounded-xl bg-card border', className)}>
-      {/* Header with Stop button */}
       {isActivePhase && onStop && (
         <div className="flex justify-end mb-2">
           <Tooltip>
@@ -459,9 +396,7 @@ export function RoadmapGenerationProgress({
         </div>
       )}
 
-      {/* Main phase display */}
       <div className="flex flex-col items-center text-center space-y-3">
-        {/* Animated icon with pulsing animation for active phase */}
         <div className="relative">
           <motion.div
             className={cn('p-4 rounded-full', config.bgColor)}
@@ -470,7 +405,6 @@ export function RoadmapGenerationProgress({
           >
             <Icon className={cn('h-8 w-8', config.color.replace('bg-', 'text-'))} />
           </motion.div>
-          {/* Pulsing activity indicator dot for active phase */}
           {isActivePhase && (
             <motion.div
               className={cn('absolute top-0 right-0 h-3 w-3 rounded-full', config.color)}
@@ -480,7 +414,6 @@ export function RoadmapGenerationProgress({
           )}
         </div>
 
-        {/* Phase label and description */}
         <AnimatePresence mode="wait">
           <motion.div
             key={phase}
@@ -499,20 +432,17 @@ export function RoadmapGenerationProgress({
         </AnimatePresence>
       </div>
 
-      {/* Progress bar */}
       {isActivePhase && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{t('roadmapProgress.progress')}</span>
-              {/* Elapsed time display */}
               {startedAt && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title={t('roadmapProgress.elapsedTime')}>
                   <Clock className="h-3 w-3" />
                   <span className="tabular-nums">{formatElapsedTime(elapsedTime)}</span>
                 </div>
               )}
-              {/* Last activity display */}
               {lastActivityDisplay && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -527,7 +457,6 @@ export function RoadmapGenerationProgress({
               )}
             </div>
             <div className="flex items-center gap-3">
-              {/* Heartbeat indicator to show process is alive */}
               <HeartbeatIndicator
                 isActive={isActivePhase}
                 reducedMotion={reducedMotion}
@@ -540,7 +469,6 @@ export function RoadmapGenerationProgress({
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full bg-border">
             {progress > 0 ? (
-              // Determinate progress bar
               <motion.div
                 className={cn('h-full rounded-full', config.color)}
                 initial={{ width: 0 }}
@@ -548,7 +476,6 @@ export function RoadmapGenerationProgress({
                 transition={{ duration: 0.5, ease: 'easeOut' }}
               />
             ) : (
-              // Indeterminate progress bar when progress is 0
               <motion.div
                 className={cn('absolute h-full w-1/3 rounded-full', config.color)}
                 animate={indeterminateAnimation}
@@ -559,10 +486,8 @@ export function RoadmapGenerationProgress({
         </div>
       )}
 
-      {/* Phase steps indicator */}
       <PhaseStepsIndicator currentPhase={phase} reducedMotion={reducedMotion} t={t} />
 
-      {/* Error display - shows whenever error is present, regardless of phase */}
       <AnimatePresence mode="wait">
         {error && (
           <motion.div

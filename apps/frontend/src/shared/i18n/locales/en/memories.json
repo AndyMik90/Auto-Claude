@@ -1,0 +1,78 @@
+{
+    "title": "Memories",
+    "status": {
+        "title": "Graph Memory Status",
+        "connected": "Connected",
+        "notAvailable": "Not Available",
+        "database": "Database",
+        "path": "Path",
+        "total": "Total",
+        "notConfigured": "Graphiti memory is not configured",
+        "enableHint": "To enable graph memory, set GRAPHITI_ENABLED=true in project settings."
+    },
+    "search": {
+        "title": "Search Memories",
+        "placeholder": "Search for patterns, insights, gotchas...",
+        "resultsFound": "{{count}} result found",
+        "resultsFound_plural": "{{count}} results found",
+        "score": "Score"
+    },
+    "browser": {
+        "title": "Memory Browser",
+        "stats": "{{filtered}} of {{total}} memories",
+        "noMemories": "No memories recorded yet. Memories are created during AI agent sessions and PR reviews.",
+        "noMatch": "No memories match the selected filter.",
+        "showAll": "Show all memories"
+    },
+    "types": {
+        "session_insight": "Session Insight",
+        "codebase_discovery": "Codebase Discovery",
+        "codebase_map": "Codebase Map",
+        "pattern": "Pattern",
+        "gotcha": "Gotcha",
+        "task_outcome": "Task Outcome",
+        "qa_result": "QA Result",
+        "historical_context": "Historical Context",
+        "pr_review": "PR Review",
+        "pr_finding": "PR Finding",
+        "pr_pattern": "PR Pattern",
+        "pr_gotcha": "PR Gotcha"
+    },
+    "categories": {
+        "all": "All",
+        "pr": "PR Reviews",
+        "sessions": "Sessions",
+        "codebase": "Codebase",
+        "patterns": "Patterns",
+        "gotchas": "Gotchas"
+    },
+    "card": {
+        "session": "Session #{{number}}",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "details": "Details",
+        "whatWorked": "What Worked",
+        "whatFailed": "What Failed",
+        "approach": "Approach",
+        "recommendations": "Recommendations",
+        "patterns": "Patterns",
+        "gotchas": "Gotchas",
+        "changedFiles": "Changed Files",
+        "fileInsights": "File Insights",
+        "subtasksCompleted": "Subtasks Completed"
+    },
+    "pr": {
+        "approved": "Approved",
+        "changesRequested": "Changes Requested",
+        "commented": "Commented",
+        "findings": "finding",
+        "findings_plural": "findings",
+        "followUp": "Follow-up",
+        "keyFindings": "Key Findings",
+        "gotchasTitle": "Gotchas Discovered",
+        "patternsTitle": "Patterns Identified",
+        "moreFindings": "+{{count}} more finding",
+        "moreFindings_plural": "+{{count}} more findings",
+        "viewOnGithub": "View PR on GitHub"
+    }
+}

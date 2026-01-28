@@ -226,7 +226,33 @@
     "autoClaudePathDescription": "Chemin relatif vers le répertoire auto-claude dans les projets",
     "autoClaudePathPlaceholder": "auto-claude (par défaut)",
     "autoNameTerminals": "Nommer automatiquement les terminaux",
-    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité"
+    "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité",
+    "features": {
+      "insights": {
+        "label": "Chat Insights",
+        "description": "Posez des questions sur votre base de code"
+      },
+      "ideation": {
+        "label": "Idéation",
+        "description": "Générez des idées de fonctionnalités et des améliorations"
+      },
+      "roadmap": {
+        "label": "Roadmap",
+        "description": "Créez des roadmaps stratégiques de fonctionnalités"
+      },
+      "githubIssues": {
+        "label": "GitHub Issues",
+        "description": "Tri et étiquetage automatisés des problèmes"
+      },
+      "githubPrs": {
+        "label": "Revue de PR GitHub",
+        "description": "Revues de pull requests alimentées par l'IA"
+      },
+      "utility": {
+        "label": "Utilitaires",
+        "description": "Messages de commit et résolution de conflits de fusion"
+      }
+    }
   },
   "theme": {
     "title": "Apparence",
@@ -318,86 +344,6 @@
     "rerunWizard": "Relancer l'assistant",
     "rerunWizardDescription": "Redémarrer l'assistant de configuration"
   },
-  "projectSections": {
-    "general": {
-      "title": "Général",
-      "description": "Auto-Build et configuration de l'agent",
-      "useClaudeMd": "Utiliser CLAUDE.md",
-      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
-    },
-    "claude": {
-      "title": "Auth Claude",
-      "description": "Authentification Claude"
-    },
-    "linear": {
-      "title": "Linear",
-      "description": "Intégration Linear",
-      "integrationTitle": "Intégration Linear",
-      "integrationDescription": "Se connecter à Linear pour le suivi des issues et l'import de tâches",
-      "syncDescription": "Synchroniser avec Linear pour le suivi des issues"
-    },
-    "github": {
-      "title": "GitHub",
-      "description": "Synchronisation issues GitHub",
-      "integrationTitle": "Intégration GitHub",
-      "integrationDescription": "Se connecter à GitHub pour le suivi des issues",
-      "syncDescription": "Synchroniser avec GitHub Issues"
-    },
-    "gitlab": {
-      "title": "GitLab",
-      "description": "Synchronisation issues GitLab",
-      "integrationTitle": "Intégration GitLab",
-      "integrationDescription": "Se connecter à GitLab pour le suivi des issues",
-      "syncDescription": "Synchroniser avec GitLab Issues"
-    },
-    "memory": {
-      "title": "Mémoire",
-      "description": "Backend mémoire Graphiti",
-      "integrationTitle": "Mémoire",
-      "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
-      "syncDescription": "Configurer la mémoire persistante"
-    }
-  },
-  "agentProfile": {
-    "label": "Profil d'agent",
-    "title": "Profil d'agent par défaut",
-    "sectionDescription": "Sélectionnez une configuration prédéfinie pour le modèle et le niveau de réflexion",
-    "profilesInfo": "Les profils d'agent fournissent des configurations prédéfinies pour le modèle Claude et le niveau de réflexion. Quand vous créez une nouvelle tâche, ces paramètres seront utilisés par défaut. Vous pouvez toujours les modifier dans l'assistant de création de tâche.",
-    "custom": "Personnalisé",
-    "customConfiguration": "Configuration personnalisée",
-    "customDescription": "Choisir le modèle et le niveau de réflexion",
-    "phaseConfiguration": "Configuration par phase",
-    "phaseConfigurationDescription": "Personnaliser le modèle et le niveau de réflexion pour chaque phase",
-    "clickToCustomize": "Cliquer pour personnaliser",
-    "model": "Modèle",
-    "thinking": "Réflexion",
-    "thinkingLevel": "Niveau de réflexion",
-    "selectModel": "Sélectionner un modèle",
-    "selectThinkingLevel": "Sélectionner un niveau de réflexion",
-    "perPhaseOptimization": "(optimisation par phase)",
-    "resetToDefaults": "Réinitialiser par défaut",
-    "resetToProfileDefaults": "Réinitialiser aux défauts de {{profile}}",
-    "customized": "Personnalisé",
-    "phaseConfigNote": "Ces paramètres seront utilisés par défaut lors de la création de nouvelles tâches avec ce profil. Vous pouvez les modifier par tâche dans l'assistant de création.",
-    "phases": {
-      "spec": {
-        "label": "Création de spec",
-        "description": "Découverte, exigences, collecte de contexte"
-      },
-      "planning": {
-        "label": "Planification",
-        "description": "Planification de l'implémentation et architecture"
-      },
-      "coding": {
-        "label": "Codage",
-        "description": "Implémentation du code"
-      },
-      "qa": {
-        "label": "Révision QA",
-        "description": "Assurance qualité et validation"
-      }
-    }
-  },
   "workspace": {
     "roles": {
       "backend": "Backend",
@@ -407,198 +353,6 @@
       "apiGateway": "Passerelle API",
       "worker": "Worker",
       "other": "Autre"
-    }
-  },
-  "integrations": {
-    "title": "Intégrations",
-    "description": "Gérer les comptes Claude et les clés API",
-    "claudeAccounts": "Comptes Claude",
-    "claudeAccountsDescription": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux quand vous atteignez les limites.",
-    "claudeAccountsWarning": "Lors de l'authentification, assurez-vous d'être connecté au bon compte Claude dans votre navigateur. Chaque profil doit utiliser un abonnement différent.",
-    "noAccountsYet": "Aucun compte configuré",
-    "default": "Par défaut",
-    "active": "Actif",
-    "authenticated": "Authentifié",
-    "needsAuth": "Auth requise",
-    "authenticate": "Authentifier",
-    "authenticating": "Authentification...",
-    "setActive": "Définir actif",
-    "manualTokenEntry": "Saisie manuelle du token",
-    "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
-    "tokenPlaceholder": "sk-ant-oat01-...",
-    "emailPlaceholder": "Email (optionnel, pour l'affichage)",
-    "saveToken": "Enregistrer le token",
-    "accountNamePlaceholder": "Nom du compte (ex: Travail, Personnel)",
-    "autoSwitching": "Basculement automatique de compte",
-    "autoSwitchingDescription": "Basculer automatiquement entre les comptes Claude pour éviter les interruptions. Configurez la surveillance proactive pour changer avant d'atteindre les limites.",
-    "enableAutoSwitching": "Activer le basculement automatique",
-    "masterSwitch": "Interrupteur principal pour toutes les fonctionnalités auto-swap",
-    "proactiveMonitoring": "Surveillance proactive",
-    "proactiveDescription": "Vérifier l'utilisation régulièrement et changer avant d'atteindre les limites",
-    "checkUsageEvery": "Vérifier l'utilisation toutes les",
-    "seconds15": "15 secondes",
-    "seconds30": "30 secondes (recommandé)",
-    "minute1": "1 minute",
-    "disabled": "Désactivé",
-    "sessionThreshold": "Seuil d'utilisation de session",
-    "sessionThresholdDescription": "Changer quand l'utilisation de session atteint ce niveau (recommandé: 95%)",
-    "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
-    "weeklyThresholdDescription": "Changer quand l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
-    "reactiveRecovery": "Récupération réactive",
-    "reactiveDescription": "Basculer automatiquement quand une limite inattendue est atteinte",
-    "apiKeys": "Clés API",
-    "apiKeysInfo": "Les clés définies ici sont utilisées par défaut. Les projets individuels peuvent les remplacer dans leurs paramètres.",
-    "openaiKey": "Clé API OpenAI",
-    "openaiKeyDescription": "Requise pour le backend mémoire Graphiti (embeddings)",
-    "toast": {
-      "authSuccess": "Profil authentifié",
-      "authSuccessWithEmail": "Connecté en tant que {{email}}",
-      "authSuccessGeneric": "Authentification terminée. Vous pouvez maintenant utiliser ce profil.",
-      "authStartFailed": "Échec de l'authentification",
-      "addProfileFailed": "Échec de l'ajout du profil",
-      "loadProfilesFailed": "Échec du chargement des profils",
-      "deleteProfileFailed": "Échec de la suppression du profil",
-      "renameProfileFailed": "Échec du renommage du profil",
-      "setActiveProfileFailed": "Échec de l'activation du profil",
-      "profileCreatedAuthFailed": "Profil créé - Authentification requise",
-      "profileCreatedAuthFailedDescription": "Le profil a été ajouté mais l'authentification n'a pas pu démarrer. Cliquez sur le bouton de connexion pour vous authentifier.",
-      "tokenSaved": "Token enregistré",
-      "tokenSavedDescription": "Votre token a été enregistré avec succès.",
-      "tokenSaveFailed": "Échec de l'enregistrement du token",
-      "settingsUpdateFailed": "Échec de la mise à jour des paramètres",
-      "tryAgain": "Veuillez réessayer.",
-      "terminalCreationFailed": "Échec de la création du terminal d'authentification",
-      "terminalCreationFailedDescription": "Impossible de démarrer le processus d'authentification. {{error}}",
-      "maxTerminalsReached": "Nombre maximum de terminaux atteint",
-      "maxTerminalsReachedDescription": "Veuillez fermer certains terminaux et réessayer. Vous pouvez avoir jusqu'à 12 terminaux ouverts.",
-      "terminalError": "Erreur de terminal",
-      "terminalErrorDescription": "Échec de la création du terminal : {{error}}",
-      "authProcessFailed": "Le processus d'authentification n'a pas pu démarrer",
-      "authProcessFailedDescription": "Le terminal d'authentification n'a pas pu être créé. Veuillez réessayer ou consulter les logs pour plus de détails."
-    },
-    "alerts": {
-      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification : {{error}}",
-      "authPrepareFailed": "Échec de la préparation de l'authentification : {{error}}",
-      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
-    }
-  },
-  "accounts": {
-    "title": "Comptes",
-    "description": "Gérer les comptes Claude et les endpoints API",
-    "tabs": {
-      "claudeCode": "Claude Code",
-      "customEndpoints": "Endpoints personnalisés"
-    },
-    "claudeCode": {
-      "description": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux lorsque vous atteignez les limites de taux.",
-      "noAccountsYet": "Aucun compte configuré",
-      "default": "Par défaut",
-      "active": "Actif",
-      "authenticated": "Authentifié",
-      "needsAuth": "Auth requise",
-      "authenticate": "Authentifier",
-      "authenticating": "Authentification...",
-      "setActive": "Définir actif",
-      "manualTokenEntry": "Saisie manuelle du token",
-      "runSetupToken": "Exécutez claude et tapez /login pour vous authentifier",
-      "tokenPlaceholder": "sk-ant-oat01-...",
-      "emailPlaceholder": "Email (optionnel, pour l'affichage)",
-      "saveToken": "Enregistrer le token",
-      "accountNamePlaceholder": "Nom du compte (ex: Travail, Personnel)"
-    },
-    "customEndpoints": {
-      "description": "Configurez des endpoints API compatibles Anthropic personnalisés",
-      "addButton": "Ajouter un profil",
-      "activeBadge": "Actif",
-      "customModels": "Modèles personnalisés: {{models}}",
-      "setActive": {
-        "label": "Définir actif",
-        "loading": "Configuration..."
-      },
-      "switchToOauth": {
-        "label": "Utiliser Claude Code",
-        "loading": "Basculement..."
-      },
-      "tooltips": {
-        "edit": "Modifier le profil",
-        "deleteActive": "Impossible de supprimer le profil actif",
-        "deleteInactive": "Supprimer le profil"
-      },
-      "empty": {
-        "title": "Aucun endpoint personnalisé",
-        "description": "Configurez des endpoints API compatibles Anthropic personnalisés pour utiliser des fournisseurs alternatifs.",
-        "action": "Ajouter un profil"
-      },
-      "dialog": {
-        "deleteTitle": "Supprimer le profil",
-        "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action est irréversible.",
-        "cancel": "Annuler",
-        "delete": "Supprimer",
-        "deleting": "Suppression..."
-      }
-    },
-    "autoSwitching": {
-      "title": "Basculement automatique de compte",
-      "description": "Basculez automatiquement entre les comptes pour éviter les interruptions. Configurez la surveillance proactive pour basculer avant d'atteindre les limites.",
-      "enableAutoSwitching": "Activer le basculement automatique",
-      "masterSwitch": "Interrupteur principal pour toutes les fonctionnalités d'auto-basculement",
-      "proactiveMonitoring": "Surveillance proactive",
-      "proactiveDescription": "Vérifier l'utilisation régulièrement et basculer avant d'atteindre les limites",
-      "sessionThreshold": "Seuil d'utilisation de session",
-      "sessionThresholdDescription": "Basculer lorsque l'utilisation de session atteint ce niveau (recommandé: 95%)",
-      "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
-      "weeklyThresholdDescription": "Basculer lorsque l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
-      "reactiveRecovery": "Récupération réactive",
-      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue"
-    },
-    "priority": {
-      "title": "Ordre de priorité des comptes",
-      "description": "Glissez pour réorganiser. Le système basculera vers le prochain compte disponible dans l'ordre.",
-      "noAccounts": "Aucun compte configuré. Ajoutez des comptes ci-dessus pour définir la priorité.",
-      "noEmail": "Pas d'email",
-      "active": "Actif",
-      "inUse": "En cours",
-      "next": "Suivant",
-      "unlimited": "Illimité",
-      "unavailable": "Indisponible",
-      "typeOAuth": "OAuth",
-      "typeAPI": "API",
-      "payPerUse": "Paiement à l'usage",
-      "needsAuth": "Non authentifié",
-      "duplicateUsage": "Doublon détecté",
-      "duplicateUsageHint": "Ce profil a une utilisation identique à un autre profil, suggérant qu'ils sont peut-être authentifiés sur le même compte Anthropic. Réauthentifiez-vous avec un autre compte pour corriger.",
-      "needsReauth": "Réauth requise",
-      "needsReauthHint": "Le token de rafraîchissement de ce profil est invalide. Cliquez pour vous réauthentifier.",
-      "sessionUsage": "Utilisation de session (fenêtre de 5 heures)",
-      "weeklyUsage": "Utilisation hebdomadaire (fenêtre de 7 jours)",
-      "oauthSection": "Comptes Claude (utilisés en premier)",
-      "apiSection": "Points de terminaison de secours (quand tous les comptes sont épuisés)",
-      "tipTitle": "Comment fonctionne la priorité",
-      "tipDescription": "Les comptes Claude sont inclus dans votre abonnement et seront utilisés en premier. Les endpoints API facturent par requête et sont utilisés comme solutions de secours lorsque tous les comptes Claude atteignent leurs limites.",
-      "status": {
-        "healthy": "Sain",
-        "moderate": "Modéré",
-        "highUsage": "Utilisation élevée",
-        "nearLimit": "Proche de la limite",
-        "rateLimited": "Limité"
-      }
-    },
-    "toast": {
-      "loadProfilesFailed": "Échec du chargement des profils",
-      "addProfileFailed": "Échec de l'ajout du profil",
-      "deleteProfileFailed": "Échec de la suppression du profil",
-      "renameProfileFailed": "Échec du renommage du profil",
-      "setActiveProfileFailed": "Échec de la définition du profil actif",
-      "tokenSaved": "Token enregistré",
-      "tokenSavedDescription": "Votre token a été enregistré avec succès.",
-      "tokenSaveFailed": "Échec de l'enregistrement du token",
-      "settingsUpdateFailed": "Échec de la mise à jour des paramètres",
-      "tryAgain": "Veuillez réessayer."
-    },
-    "alerts": {
-      "profileCreatedAuthFailed": "Profil créé mais échec de la préparation de l'authentification: {{error}}",
-      "authPrepareFailed": "Échec de la préparation de l'authentification: {{error}}",
-      "authStartFailedMessage": "Échec du démarrage de l'authentification. Veuillez réessayer."
     }
   },
   "debug": {
@@ -623,105 +377,6 @@
     "noProjectSelected": {
       "title": "Aucun projet sélectionné",
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
-    }
-  },
-  "mcp": {
-    "title": "Aperçu des serveurs MCP",
-    "titleWithProject": "Aperçu des serveurs MCP pour {{projectName}}",
-    "description": "Configurez quels serveurs MCP sont disponibles pour les agents dans ce projet",
-    "descriptionNoProject": "Sélectionnez un projet pour configurer les serveurs MCP",
-    "serversEnabled": "{{count}} serveurs activés",
-    "configuration": "Configuration des serveurs MCP",
-    "configurationHint": "Les serveurs désactivés réduisent l'utilisation du contexte et le temps de démarrage",
-    "noProjectSelected": "Aucun projet sélectionné",
-    "noProjectSelectedDescription": "Sélectionnez un projet dans le menu déroulant pour voir et configurer les serveurs MCP.",
-    "projectNotInitialized": "Projet non initialisé",
-    "projectNotInitializedDescription": "Initialisez Auto Claude pour ce projet pour configurer les serveurs MCP.",
-    "browserAutomation": "Automatisation du navigateur (agents QA uniquement)",
-    "alwaysEnabled": "toujours activé",
-    "addServer": "Ajouter un serveur",
-    "addMcpTo": "Ajouter un serveur MCP à {{agent}}",
-    "addMcpDescription": "Sélectionnez un serveur MCP à ajouter à cet agent",
-    "allMcpsAdded": "Tous les serveurs MCP disponibles sont déjà ajoutés",
-    "added": "ajouté",
-    "removed": "supprimé",
-    "remove": "Supprimer",
-    "restore": "Restaurer",
-    "noMcpServers": "Aucun serveur MCP",
-    "cannotRemove": "Impossible à supprimer (requis)",
-    "servers": {
-      "context7": {
-        "name": "Context7",
-        "description": "Recherche de documentation pour les bibliothèques"
-      },
-      "graphiti": {
-        "name": "Graphiti Memory",
-        "description": "Graphe de connaissances pour le contexte inter-sessions",
-        "notConfigured": "Nécessite la configuration mémoire (voir paramètres Mémoire)"
-      },
-      "linear": {
-        "name": "Linear",
-        "description": "Intégration gestion de projet",
-        "notConfigured": "Nécessite l'intégration Linear (voir paramètres Linear)"
-      },
-      "electron": {
-        "name": "Electron",
-        "description": "Automatisation d'applications desktop via Chrome DevTools"
-      },
-      "puppeteer": {
-        "name": "Puppeteer",
-        "description": "Automatisation du navigateur web pour les tests"
-      },
-      "autoClaude": {
-        "name": "Outils Auto-Claude",
-        "description": "Suivi de la progression du build"
-      }
-    },
-    "customServers": "Serveurs personnalisés",
-    "addCustomServer": "Ajouter un serveur personnalisé",
-    "editCustomServer": "Modifier le serveur personnalisé",
-    "customServerDescription": "Ajouter un serveur MCP basé sur une commande ou HTTP",
-    "serverType": "Type de serveur",
-    "typeCommand": "Commande (npx/npm)",
-    "typeHttp": "HTTP",
-    "serverName": "Nom",
-    "serverNamePlaceholder": "Mon serveur MCP",
-    "serverDescription": "Description",
-    "serverDescriptionPlaceholder": "Ce que fait ce serveur",
-    "command": "Commande",
-    "args": "Arguments",
-    "argsHint": "Arguments séparés par des espaces",
-    "url": "URL",
-    "headers": "En-têtes",
-    "headerName": "Nom de l'en-tête",
-    "headerValue": "Valeur de l'en-tête",
-    "noCustomServers": "Aucun serveur personnalisé configuré. Ajoutez-en un pour l'utiliser avec vos agents.",
-    "errorNameRequired": "Le nom du serveur est requis",
-    "errorIdExists": "Un serveur avec cet ID existe déjà",
-    "errorCommandRequired": "La commande est requise pour les serveurs basés sur commande",
-    "errorUrlRequired": "L'URL est requise pour les serveurs basés sur HTTP",
-    "testConnection": "Test",
-    "testing": "Test en cours...",
-    "authToken": "Jeton d'authentification",
-    "authTokenPlaceholder": "Collez votre jeton API ou PAT ici",
-    "authTokenHint": "Utilisé comme jeton Bearer dans l'en-tête Authorization",
-    "advancedHeaders": "En-têtes supplémentaires",
-    "status": {
-      "healthy": "Le serveur répond",
-      "unhealthy": "Le serveur ne répond pas",
-      "needsAuth": "Authentification requise",
-      "checking": "Vérification...",
-      "unknown": "Statut inconnu"
-    },
-    "hints": {
-      "github": "Ceci ressemble à un serveur MCP GitHub. Vous aurez besoin d'un Personal Access Token avec les scopes appropriés.",
-      "createGithubPat": "Créer un PAT GitHub",
-      "google": "Ceci ressemble à une API Google. Vous aurez besoin d'un jeton OAuth ou d'une clé API.",
-      "createGoogleToken": "Créer des identifiants Google",
-      "anthropic": "Ceci ressemble à une API Anthropic. Vous aurez besoin d'une clé API.",
-      "createAnthropicKey": "Créer une clé API Anthropic",
-      "openai": "Ceci ressemble à une API OpenAI. Vous aurez besoin d'une clé API.",
-      "createOpenaiKey": "Créer une clé API OpenAI"
     }
   },
   "terminalFonts": {

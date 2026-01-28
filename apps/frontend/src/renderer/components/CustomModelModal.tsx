@@ -29,7 +29,7 @@ interface CustomModelModalProps {
 }
 
 export function CustomModelModal({ currentConfig, onSave, onClose, open = true }: CustomModelModalProps) {
-  const { t } = useTranslation('dialogs');
+  const { t } = useTranslation('agentProfile');
   const [model, setModel] = useState<ModelType>(
     currentConfig?.model || 'sonnet'
   );
@@ -65,7 +65,7 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="model-select">{t('customModel.model')}</Label>
+            <Label htmlFor="model-select">{t('model')}</Label>
             <Select value={model} onValueChange={(v) => setModel(v as ModelType)}>
               <SelectTrigger id="model-select">
                 <SelectValue />
@@ -81,7 +81,7 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="thinking-select">{t('customModel.thinkingLevel')}</Label>
+            <Label htmlFor="thinking-select">{t('thinkingLevel')}</Label>
             <Select value={thinkingLevel} onValueChange={(v) => setThinkingLevel(v as ThinkingLevel)}>
               <SelectTrigger id="thinking-select">
                 <SelectValue />
@@ -90,9 +90,9 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
                 {THINKING_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{level.label}</span>
+                      <span className="font-medium">{t(`thinkingLevels.${level.value}.label`)}</span>
                       <span className="text-xs text-muted-foreground">
-                        {level.description}
+                        {t(`thinkingLevels.${level.value}.description`)}
                       </span>
                     </div>
                   </SelectItem>
@@ -104,10 +104,10 @@ export function CustomModelModal({ currentConfig, onSave, onClose, open = true }
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            {t('customModel.cancel')}
+            {t('cancel')}
           </Button>
           <Button onClick={handleSave}>
-            {t('customModel.apply')}
+            {t('apply')}
           </Button>
         </DialogFooter>
       </DialogContent>

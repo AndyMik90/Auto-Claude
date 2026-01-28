@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '../lib/utils';
@@ -12,7 +13,6 @@ import {
 import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp } from 'lucide-react';
 import {
   ROADMAP_PRIORITY_COLORS,
-  ROADMAP_PRIORITY_LABELS,
   ROADMAP_COMPLEXITY_COLORS,
   ROADMAP_IMPACT_COLORS
 } from '../../shared/constants';
@@ -33,6 +33,7 @@ export function SortableFeatureCard({
   onConvertToSpec,
   onGoToTask
 }: SortableFeatureCardProps) {
+  const { t } = useTranslation('roadmap');
   const {
     attributes,
     listeners,
@@ -83,7 +84,7 @@ export function SortableFeatureCard({
                 variant="outline"
                 className={cn('text-[10px] px-1.5 py-0', ROADMAP_PRIORITY_COLORS[feature.priority])}
               >
-                {ROADMAP_PRIORITY_LABELS[feature.priority]}
+                {t(`priorities.${feature.priority}`, { defaultValue: feature.priority })}
               </Badge>
               {phaseName && (
                 <Tooltip>
@@ -97,7 +98,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Phase: {phaseName}
+                    {t('header.phases')}: {phaseName}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -112,7 +113,7 @@ export function SortableFeatureCard({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    This feature addresses competitor pain points
+                    {t('feature.competitorInsightDescription')}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -131,7 +132,7 @@ export function SortableFeatureCard({
                 }}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                Task
+                {t('feature.goToTask')}
               </Button>
             ) : (
               feature.status !== 'done' &&
@@ -146,7 +147,7 @@ export function SortableFeatureCard({
                   }}
                 >
                   <Play className="h-3 w-3 mr-1" />
-                  Build
+                  {t('feature.build')}
                 </Button>
               )
             )}
@@ -164,13 +165,13 @@ export function SortableFeatureCard({
             variant="outline"
             className={cn('text-[10px] px-1.5 py-0', ROADMAP_COMPLEXITY_COLORS[feature.complexity])}
           >
-            {feature.complexity}
+            {t(`feature.complexity_${feature.complexity}`, { defaultValue: feature.complexity })}
           </Badge>
           <Badge
             variant="outline"
             className={cn('text-[10px] px-1.5 py-0', ROADMAP_IMPACT_COLORS[feature.impact])}
           >
-            {feature.impact}
+            {t('feature.impact', { level: t(`priorities.${feature.impact}`, { defaultValue: feature.impact }) })}
           </Badge>
           {/* Show vote count if from external source */}
           {feature.votes !== undefined && feature.votes > 0 && (
@@ -185,7 +186,7 @@ export function SortableFeatureCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {feature.votes} votes from user feedback
+                {t('feature.votesCount', { count: feature.votes, defaultValue: `${feature.votes} votes from user feedback` })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -197,11 +198,11 @@ export function SortableFeatureCard({
                   variant="outline"
                   className="text-[10px] px-1.5 py-0 text-orange-500 border-orange-500/30"
                 >
-                  {feature.source?.provider === 'canny' ? 'Canny' : 'External'}
+                  {feature.source?.provider === 'canny' ? 'Canny' : t('feature.externalSource', { defaultValue: 'External' })}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                Imported from {feature.source?.provider}
+                {t('feature.importedFrom', { provider: feature.source?.provider, defaultValue: `Imported from ${feature.source?.provider}` })}
               </TooltipContent>
             </Tooltip>
           )}
