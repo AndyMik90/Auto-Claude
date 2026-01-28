@@ -105,4 +105,79 @@ describe('taskMachine', () => {
     expect(snapshot.value).toBe('error');
     expect(snapshot.context.reviewReason).toBe('errors');
   });
+
+  it('returns to backlog when USER_STOPPED during planning', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'PLANNING_STARTED' });
+    expect(actor.getSnapshot().value).toBe('planning');
+
+    actor.send({ type: 'USER_STOPPED' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('backlog');
+    expect(snapshot.context.reviewReason).toBeUndefined();
+  });
+
+  it('returns to backlog when USER_STOPPED during coding', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'PLANNING_STARTED' });
+    actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
+    expect(actor.getSnapshot().value).toBe('coding');
+
+    actor.send({ type: 'USER_STOPPED' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('backlog');
+    expect(snapshot.context.reviewReason).toBeUndefined();
+  });
+
+  it('moves to coding when USER_RESUMED from awaitingPlanReview', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'PLANNING_STARTED' });
+    actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: true });
+    expect(actor.getSnapshot().value).toBe('awaitingPlanReview');
+
+    actor.send({ type: 'USER_RESUMED' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('coding');
+    expect(snapshot.context.reviewReason).toBeUndefined();
+  });
+
+  it('handles MANUAL_SET_STATUS to backlog', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'PLANNING_STARTED' });
+    actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
+    expect(actor.getSnapshot().value).toBe('coding');
+
+    actor.send({ type: 'MANUAL_SET_STATUS', status: 'backlog' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('backlog');
+    expect(snapshot.context.reviewReason).toBeUndefined();
+  });
+
+  it('handles MANUAL_SET_STATUS to human_review with reviewReason', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'MANUAL_SET_STATUS', status: 'human_review', reviewReason: 'completed' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('human_review');
+    expect(snapshot.context.reviewReason).toBe('completed');
+  });
+
+  it('handles MANUAL_SET_STATUS to done', () => {
+    actor = createActor(taskMachine).start();
+
+    actor.send({ type: 'MANUAL_SET_STATUS', status: 'done' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.value).toBe('done');
+    expect(snapshot.context.reviewReason).toBeUndefined();
+  });
 });
