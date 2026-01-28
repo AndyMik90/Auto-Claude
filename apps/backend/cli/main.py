@@ -33,8 +33,8 @@ from .utils import (
     DEFAULT_MODEL,
     find_spec,
     get_project_dir,
-    resolve_project_dir_for_spec,
     print_banner,
+    resolve_project_dir_for_spec,
     setup_environment,
 )
 from .workspace_commands import (
@@ -325,7 +325,9 @@ def _run_cli() -> None:
     if args.spec:
         resolved_project_dir = resolve_project_dir_for_spec(project_dir, args.spec)
         if resolved_project_dir != project_dir:
-            debug("run.py", f"Adjusted project directory for spec: {resolved_project_dir}")
+            debug(
+                "run.py", f"Adjusted project directory for spec: {resolved_project_dir}"
+            )
             project_dir = resolved_project_dir
     debug("run.py", f"Using project directory: {project_dir}")
 

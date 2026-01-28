@@ -33,6 +33,27 @@ export class TaskStateManager {
   constructor(private readonly getMainWindow: () => BrowserWindow | null) {}
 
   /**
+   * Get the current status from XState actor for a task.
+   * Returns null if no actor exists (task not being tracked).
+   * This should be used during refresh to preserve running state.
+   */
+  getCurrentStatus(taskId: string): { status: TaskStatus; reviewReason?: ReviewReason } | null {
+    const actor = this.actors.get(taskId);
+    if (!actor) {
+      return null;
+    }
+    const snapshot = actor.getSnapshot();
+    return this.mapSnapshotToLegacy(snapshot);
+  }
+
+  /**
+   * Check if a task has an active XState actor (is being tracked).
+   */
+  hasActiveActor(taskId: string): boolean {
+    return this.actors.has(taskId);
+  }
+
+  /**
    * Cleans up resources for a specific task.
    * Call this when a task is deleted or no longer needs tracking.
    */
@@ -371,6 +392,18 @@ export function getTaskStateManager(getMainWindow: () => BrowserWindow | null): 
     taskStateManager = new TaskStateManager(getMainWindow);
   }
   return taskStateManager;
+}
+
+/**
+ * Get current XState status for a task without needing getMainWindow.
+ * Returns null if TaskStateManager is not initialized or task has no active actor.
+ * This is safe to call from project-store during refresh.
+ */
+export function getXStateTaskStatus(taskId: string): { status: TaskStatus; reviewReason?: ReviewReason } | null {
+  if (!taskStateManager) {
+    return null;
+  }
+  return taskStateManager.getCurrentStatus(taskId);
 }
 
 /**

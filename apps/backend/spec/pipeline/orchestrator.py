@@ -640,6 +640,9 @@ class SpecOrchestrator:
 
         if not auto_approve and not interactive:
             print_status("Skipping interactive review (non-interactive mode)", "info")
+            # Set plan status to indicate human review is needed
+            # This allows the frontend to detect that the task is awaiting plan approval
+            self._set_plan_review_status()
             return True
 
         try:
@@ -663,6 +666,35 @@ class SpecOrchestrator:
             return False
 
         return True
+
+    def _set_plan_review_status(self) -> None:
+        """Set implementation_plan.json status to indicate plan needs human review.
+
+        This updates the plan file with status fields that the frontend uses to
+        detect when a task is awaiting plan approval in non-interactive mode.
+        """
+        plan_path = self.spec_dir / "implementation_plan.json"
+        if not plan_path.exists():
+            print_status(
+                "No implementation_plan.json found, skipping status update", "info"
+            )
+            return
+
+        try:
+            with open(plan_path, encoding="utf-8") as f:
+                plan = json.load(f)
+
+            plan["status"] = "human_review"
+            plan["planStatus"] = "review"
+
+            with open(plan_path, "w", encoding="utf-8") as f:
+                json.dump(plan, f, indent=2)
+
+            print_status(
+                "Plan status set to human_review (awaiting approval)", "success"
+            )
+        except Exception as e:
+            print_status(f"Failed to update plan status: {e}", "warning")
 
     # Backward compatibility methods for tests
     def _generate_spec_name(self, task_description: str) -> str:

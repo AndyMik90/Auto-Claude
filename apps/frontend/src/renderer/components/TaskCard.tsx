@@ -47,7 +47,10 @@ const CategoryIcon: Record<TaskCategory, typeof Zap> = {
   testing: FileCode
 };
 
-// Phases where stuck detection should be skipped (terminal states + initial planning)
+// Phases where stuck detection should be skipped
+// - Terminal states (complete, failed) - task is done
+// - Planning phase - process may still be spawning
+// Note: We DON'T skip coding phase - if process dies during coding, we want to detect it
 // Defined outside component to avoid recreation on every render
 const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning'] as const;
 
@@ -537,7 +540,8 @@ export const TaskCard = memo(function TaskCard({
         )}
 
         {/* Progress section - Phase-aware with animations */}
-        {(task.subtasks.length > 0 || hasActiveExecution || isRunning || isStuck) && (
+        {/* Show when: has subtasks, actively executing, running, stuck, or completed all phases */}
+        {(task.subtasks.length > 0 || hasActiveExecution || isRunning || isStuck || executionPhase === 'complete') && (
           <div className="mt-4">
             <PhaseProgressIndicator
               phase={executionPhase}

@@ -281,10 +281,19 @@ export function registerAgenteventsHandlers(
           allSubtasksDone,
           requireReviewBeforeCoding,
         });
-        const decisionWithFallback: { status?: TaskStatus; reviewReason?: ReviewReason } =
-          requireReviewBeforeCoding && !decision.status
-            ? { status: "human_review", reviewReason: "plan_review" }
-            : decision;
+        // Only use plan_review fallback when NO subtasks have been completed yet
+        // (i.e., spec creation just finished, coding hasn't started)
+        // If subtasks are completed, coding/QA is done so use 'completed' instead
+        const hasCompletedSubtasks = task.subtasks?.some((s) => s.status === "completed") ?? false;
+        let decisionWithFallback: { status?: TaskStatus; reviewReason?: ReviewReason };
+        if (requireReviewBeforeCoding && !decision.status) {
+          // Spec creation finished - check if this is plan review or post-coding review
+          decisionWithFallback = hasCompletedSubtasks
+            ? { status: "human_review", reviewReason: "completed" }
+            : { status: "human_review", reviewReason: "plan_review" };
+        } else {
+          decisionWithFallback = decision;
+        }
 
         if (code === 0) {
           const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";

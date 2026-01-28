@@ -409,7 +409,7 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                   </DialogPrimitive.Description>
                   {window.DEBUG && (
                     <div className="mt-1 text-[11px] text-muted-foreground font-mono">
-                      status={task.status} reviewReason={task.reviewReason ?? 'none'} phase={task.executionProgress?.phase ?? 'none'}
+                      status={task.status} reviewReason={task.reviewReason ?? 'none'} phase={task.executionProgress?.phase ?? 'none'} reviewRequired={task.metadata?.requireReviewBeforeCoding ? 'true' : 'false'}
                     </div>
                   )}
                 </div>

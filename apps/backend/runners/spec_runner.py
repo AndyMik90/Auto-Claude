@@ -128,7 +128,9 @@ def _set_plan_review_status(spec_dir: Path) -> None:
 
     plan_path = spec_dir / "implementation_plan.json"
     if not plan_path.exists():
-        debug("spec_runner", "No implementation_plan.json found, skipping status update")
+        debug(
+            "spec_runner", "No implementation_plan.json found, skipping status update"
+        )
         return
 
     try:
@@ -292,9 +294,12 @@ Examples:
     # we're in the actual backend source directory, not just a project named "auto-claude"
     # that happens to have a run.py file or directory at its root.
     run_py_path = project_dir / "run.py"
-    if (project_dir.name == "auto-claude" and
-        run_py_path.exists() and run_py_path.is_file() and
-        (project_dir / "core" / "client.py").exists()):
+    if (
+        project_dir.name == "auto-claude"
+        and run_py_path.exists()
+        and run_py_path.is_file()
+        and (project_dir / "core" / "client.py").exists()
+    ):
         # Running from within auto-claude/apps/backend/ source directory, go up 1 level
         project_dir = project_dir.parent
     elif not (project_dir / ".auto-claude").exists():
@@ -363,7 +368,9 @@ Examples:
                     # Update implementation_plan.json to signal frontend that plan needs review
                     # This allows the UI to show "Needs Review" with plan_review reason
                     _set_plan_review_status(orchestrator.spec_dir)
-                    print_status("Spec requires human review. Build not started.", "warning")
+                    print_status(
+                        "Spec requires human review. Build not started.", "warning"
+                    )
                     sys.exit(0)
                 print_status("Build cannot start: spec not approved.", "error")
                 print()

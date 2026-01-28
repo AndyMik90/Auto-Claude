@@ -68,12 +68,14 @@ export class TaskStateMachine {
       return { status: 'human_review', reviewReason: 'errors' };
     }
 
-    if (snapshot.requireReviewBeforeCoding) {
-      return { status: 'human_review', reviewReason: 'plan_review' };
-    }
-
+    // Check subtasks first - if all done, it's completed regardless of requireReviewBeforeCoding
     if (snapshot.hasSubtasks && snapshot.allSubtasksDone) {
       return { status: 'human_review', reviewReason: 'completed' };
+    }
+
+    // Only use plan_review if requireReviewBeforeCoding AND no subtasks completed yet
+    if (snapshot.requireReviewBeforeCoding) {
+      return { status: 'human_review', reviewReason: 'plan_review' };
     }
 
     // No review required and no completed subtasks -> keep current status

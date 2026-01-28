@@ -272,40 +272,24 @@ export function registerTaskExecutionHandlers(
         );
       }
 
-      // Notify status change IMMEDIATELY (don't wait for file write)
-      // This provides instant UI feedback while file persistence happens in background
-      const ipcSentAt = Date.now();
-      logTaskStatusChange(taskId, 'in_progress');
-      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
-
-      const DEBUG = process.env.DEBUG === 'true';
-      if (DEBUG) {
-        console.log(`[TASK_START] IPC sent immediately for task ${taskId}, deferring file persistence`);
+      // CRITICAL: Persist status to implementation_plan.json BEFORE notifying UI
+      // This prevents status flip-flop: if file watcher or refresh triggers before
+      // persistence completes, the old status (e.g., 'human_review') would be read
+      // and override the in-memory 'in_progress' status.
+      // The file write is fast (<10ms) so doing it synchronously is acceptable.
+      const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+      try {
+        const persisted = await persistPlanStatus(planPath, 'in_progress', project.id);
+        if (persisted) {
+          console.warn('[TASK_START] Updated plan status to: in_progress');
+        }
+      } catch (err) {
+        console.error('[TASK_START] Failed to persist plan status:', err);
       }
 
-      // CRITICAL: Persist status to implementation_plan.json to prevent status flip-flop
-      // When getTasks() is called (on refresh), it reads status from the plan file.
-      // Without persisting here, the old status (e.g., 'human_review') would override
-      // the in-memory 'in_progress' status, causing the task to flip back and forth.
-      // Uses shared utility for consistency with agent-events-handlers.ts
-      // NOTE: This is now async and non-blocking for better UI responsiveness
-      const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-      setImmediate(async () => {
-        const persistStart = Date.now();
-        try {
-          const persisted = await persistPlanStatus(planPath, 'in_progress', project.id);
-          if (persisted) {
-            console.warn('[TASK_START] Updated plan status to: in_progress');
-          }
-          if (DEBUG) {
-            const delay = persistStart - ipcSentAt;
-            const duration = Date.now() - persistStart;
-            console.log(`[TASK_START] File persistence: delayed ${delay}ms after IPC, completed in ${duration}ms`);
-          }
-        } catch (err) {
-          console.error('[TASK_START] Failed to persist plan status:', err);
-        }
-      });
+      // Now notify status change after file is persisted
+      logTaskStatusChange(taskId, 'in_progress');
+      taskStateMachine.emitStatusChange(getMainWindow, taskId, 'in_progress');
       // Note: Plan file may not exist yet for new tasks - that's fine (persistPlanStatus handles ENOENT)
     }
   );
