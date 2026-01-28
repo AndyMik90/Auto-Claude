@@ -99,10 +99,12 @@ class DiscoveryPhase:
         output_dir: Path,
         refresh: bool,
         agent_executor: "AgentExecutor",
+        language: str | None = None,
     ):
         self.output_dir = output_dir
         self.refresh = refresh
         self.agent_executor = agent_executor
+        self.language = language
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
 
@@ -167,6 +169,7 @@ Your task:
 3. IMMEDIATELY create {self.discovery_file} with your findings
 
 Do NOT ask questions. Make educated inferences and create the file.
+{f"IMPORTANT: You MUST generate all content (titles, descriptions, rationales, etc.) in {self.language}. Maintain technical terms in English where appropriate for clarity, but the explanations must be in {self.language}." if self.language else ""}
 """
 
     def _validate_discovery(self, attempt: int) -> RoadmapPhaseResult | None:
@@ -208,10 +211,12 @@ class FeaturesPhase:
         output_dir: Path,
         refresh: bool,
         agent_executor: "AgentExecutor",
+        language: str | None = None,
     ):
         self.output_dir = output_dir
         self.refresh = refresh
         self.agent_executor = agent_executor
+        self.language = language
         self.roadmap_file = output_dir / "roadmap.json"
         self.discovery_file = output_dir / "roadmap_discovery.json"
         self.project_index_file = output_dir / "project_index.json"
@@ -457,8 +462,10 @@ Based on the discovery data:
 2. Prioritize using MoSCoW framework
 3. Organize into phases
 4. Create milestones
-5. Map dependencies
+6. Map dependencies
 {"6. Do NOT generate features with the same IDs as preserved features listed above" if self._preserved_features else ""}
+
+{f"IMPORTANT: You MUST generate all content (titles, descriptions, rationales, etc.) in {self.language}. Maintain technical terms in English where appropriate for clarity, but the explanations must be in {self.language}." if self.language else ""}
 
 Output the complete roadmap to roadmap.json.
 """

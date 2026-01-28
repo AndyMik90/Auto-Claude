@@ -29,6 +29,7 @@ class IdeationConfigManager:
         thinking_level: str = "medium",
         refresh: bool = False,
         append: bool = False,
+        language: str | None = None,
     ):
         """Initialize configuration manager.
 
@@ -43,12 +44,14 @@ class IdeationConfigManager:
             thinking_level: Thinking level for extended reasoning
             refresh: Force regeneration of existing files
             append: Preserve existing ideas when merging
+            language: Language for ideation generation
         """
         self.project_dir = Path(project_dir)
         self.model = model
         self.thinking_level = thinking_level
         self.refresh = refresh
         self.append = append
+        self.language = language
         self.enabled_types = enabled_types or IDEATION_TYPES.copy()
         self.include_roadmap_context = include_roadmap_context
         self.include_kanban_context = include_kanban_context
@@ -64,6 +67,7 @@ class IdeationConfigManager:
             self.model,
             self.thinking_level,
             self.max_ideas_per_type,
+            language=self.language,
         )
         self.analyzer = ProjectAnalyzer(
             self.project_dir,

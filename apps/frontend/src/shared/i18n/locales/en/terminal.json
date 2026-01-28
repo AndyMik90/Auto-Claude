@@ -41,5 +41,24 @@
     "deleteTitle": "Delete Worktree?",
     "deleteDescription": "This will permanently delete the worktree and its branch. Any uncommitted changes will be lost.",
     "detached": "(detached)"
+  },
+  "grid": {
+    "title": "Agent Terminals",
+    "empty": {
+      "title": "Agent Terminals",
+      "description": "Spawn multiple terminals to run Claude agents in parallel. Use <0>Ctrl+T</0> to create a new terminal."
+    },
+    "actions": {
+      "newTerminal": "New Terminal",
+      "history": "History",
+      "invokeClaudeAll": "Invoke Claude All",
+      "files": "Files",
+      "restoreFrom": "Restore sessions from..."
+    },
+    "counts": {
+      "terminals": "{{count}} / 12 terminals",
+      "sessions": "{{count}} session",
+      "sessions_plural": "{{count}} sessions"
+    }
   }
 }

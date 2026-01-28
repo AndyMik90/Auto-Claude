@@ -32,6 +32,7 @@ class RoadmapOrchestrator:
         refresh: bool = False,
         enable_competitor_analysis: bool = False,
         refresh_competitor_analysis: bool = False,
+        language: str | None = None,
     ):
         self.project_dir = Path(project_dir)
         self.model = model
@@ -40,6 +41,7 @@ class RoadmapOrchestrator:
         self.refresh = refresh
         self.enable_competitor_analysis = enable_competitor_analysis
         self.refresh_competitor_analysis = refresh_competitor_analysis
+        self.language = language
 
         # Default output to project's .auto-claude directory (installed instance)
         # Note: auto-claude/ is source code, .auto-claude/ is the installed instance
@@ -75,10 +77,10 @@ class RoadmapOrchestrator:
             self.output_dir, self.refresh, self.script_executor
         )
         self.discovery_phase = DiscoveryPhase(
-            self.output_dir, self.refresh, self.agent_executor
+            self.output_dir, self.refresh, self.agent_executor, language=self.language
         )
         self.features_phase = FeaturesPhase(
-            self.output_dir, self.refresh, self.agent_executor
+            self.output_dir, self.refresh, self.agent_executor, language=self.language
         )
 
         debug_section("roadmap_orchestrator", "Roadmap Orchestrator Initialized")

@@ -1,0 +1,145 @@
+{
+    "title": "Changelog Generator",
+    "steps": {
+        "select": "Select",
+        "generate": "Generate",
+        "release": "Release",
+        "selectTasks": "Step 1: Select completed tasks to include",
+        "configure": "Step 2: Configure and generate changelog",
+        "archive": "Step 3: Release and archive tasks"
+    },
+    "actions": {
+        "refresh": "Refresh",
+        "selectAll": "Select All",
+        "clear": "Clear",
+        "loadCommits": "Load Commits",
+        "loading": "Loading...",
+        "back": "Back to Selection",
+        "generate": "Generate Changelog",
+        "generating": "Generating...",
+        "continue": "Continue",
+        "save": "Save Changelog",
+        "copy": "Copy to Clipboard",
+        "saved": "Saved!",
+        "copied": "Copied!",
+        "done": "Done"
+    },
+    "filters": {
+        "source": "Changelog Source",
+        "gitHistory": "Git History Options",
+        "historyType": "History Type",
+        "sinceVersion": "Since Version",
+        "recentCommits": "Recent Commits",
+        "sinceDate": "Since Date",
+        "tagRange": "Tag Range",
+        "numCommits": "Number of Commits",
+        "fromTag": "From Tag",
+        "toTag": "To Tag (optional)",
+        "lastVersion": "Last Version",
+        "sinceVersionDesc": "All commits since this version will be included",
+        "includeMerges": "Include merge commits",
+        "branchDiff": "Branch Comparison",
+        "baseBranch": "Base Branch",
+        "compareBranch": "Compare Branch",
+        "baseBranchDesc": "The branch you're merging into",
+        "compareBranchDesc": "The branch with your changes",
+        "diffError": "Branches must be different"
+    },
+    "empty": {
+        "noTasks": "No Completed Tasks",
+        "noTasksDescription": "Complete tasks in the Kanban board and mark them as \"Done\" to include them in your changelog.",
+        "noCommits": "No Commits Found",
+        "noCommitsDescription": "Configure the history options and click \"Load Commits\" to preview.",
+        "noCommitsDiffDescription": "Select both branches and click \"Load Commits\" to see the changes."
+    },
+    "selection": {
+        "tasksSelected": "{{selected}} of {{total}} tasks selected",
+        "commitsFound": "{{count}} commit found",
+        "commitsFound_plural": "{{count}} commits found",
+        "loadingCommits": "Loading commits...",
+        "including": "Including {{count}} {{label}}",
+        "including_plural": "Including {{count}} {{label}}s",
+        "labels": {
+            "task": "task",
+            "commit": "commit",
+            "item": "item"
+        }
+    },
+    "config": {
+        "releaseInfo": "Release Info",
+        "version": "Version",
+        "date": "Date",
+        "previous": "Previous: {{version}}",
+        "outputStyle": "Output Style",
+        "format": "Format",
+        "audience": "Audience",
+        "emojis": "Emojis",
+        "advanced": "Advanced Options",
+        "customInstructions": "Custom Instructions",
+        "customInstructionsPlaceholder": "Add any special instructions for the AI...",
+        "customInstructionsDesc": "Optional. Guide the AI on tone, specific details to include, etc."
+    },
+    "preview": {
+        "title": "Changelog Preview",
+        "dropImages": "Drop images to upload and insert",
+        "editHint": "You can edit the generated markdown below before saving."
+    },
+    "success": {
+        "title": "Changelog Generated & Saved!",
+        "description": "Your changelog has been saved to {{path}}.",
+        "nextSteps": "Next Steps",
+        "archiveTasks": "Archive Tasks",
+        "archiveTasksDesc": "Move the included tasks to the archive. They will no longer appear in the Kanban board.",
+        "gitHubRelease": "GitHub Release",
+        "gitHubReleaseDesc": "Create a release on GitHub with these notes.",
+        "gitHubReleaseNote": "Note: You can skip this if you've already created a release manually."
+    },
+    "sourceMode": {
+        "tasks": "Completed Tasks",
+        "tasksDesc": "Generate from completed spec tasks",
+        "git-history": "Git History",
+        "git-historyDesc": "Generate from recent commits or tag range",
+        "branch-diff": "Branch Comparison",
+        "branch-diffDesc": "Generate from commits between two branches"
+    },
+    "historyType": {
+        "recent": "Recent Commits",
+        "since-date": "Since Date",
+        "tag-range": "Tag Range",
+        "since-version": "Since Version"
+    },
+    "stages": {
+        "loading_specs": "Loading spec files...",
+        "loading_commits": "Loading commits...",
+        "generating": "Generating changelog...",
+        "formatting": "Formatting output...",
+        "complete": "Complete",
+        "error": "Error"
+    },
+    "formats": {
+        "keep-a-changelog": "Keep a Changelog",
+        "keep-a-changelogDesc": "Structured format with Added/Changed/Fixed/Removed sections",
+        "simple-list": "Simple List",
+        "simple-listDesc": "Clean bulleted list with categories",
+        "github-release": "GitHub Release",
+        "github-releaseDesc": "GitHub-style release notes"
+    },
+    "audiences": {
+        "technical": "Technical",
+        "technicalDesc": "Detailed technical changes for developers",
+        "user-facing": "User-Facing",
+        "user-facingDesc": "Clear, non-technical descriptions for end users",
+        "marketing": "Marketing",
+        "marketingDesc": "Value-focused copy emphasizing benefits"
+    },
+    "emojiLevels": {
+        "none": "None",
+        "noneDesc": "No emojis",
+        "little": "Headings Only",
+        "littleDesc": "Emojis on section headings only",
+        "medium": "Headings + Highlights",
+        "mediumDesc": "Emojis on headings and key items",
+        "high": "Everything",
+        "highDesc": "Emojis on headings and every line"
+    }
+}

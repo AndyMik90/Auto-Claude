@@ -70,7 +70,7 @@ interface AccountSettingsProps {
  * Unified account settings with tabs for Claude Code and Custom Endpoints
  */
 export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountSettingsProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation('accounts');
   const { t: tCommon } = useTranslation('common');
   const { toast } = useToast();
 
@@ -166,7 +166,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         name: profile.name,
         type: 'oauth',
         displayName: profile.name,
-        identifier: profile.email || t('accounts.priority.noEmail'),
+        identifier: profile.email || t('priority.noEmail'),
         isActive: profile.id === activeClaudeProfileId && !activeApiProfileId,
         isNext: false, // Will be computed by AccountPriorityList
         isAvailable: profile.isAuthenticated ?? false,
@@ -237,8 +237,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       console.warn('[AccountSettings] Failed to save priority order:', err);
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.settingsUpdateFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.settingsUpdateFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setIsSavingPriority(false);
@@ -286,16 +286,16 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       } else if (!result.success) {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.loadProfilesFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.loadProfilesFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       console.warn('[AccountSettings] Failed to load Claude profiles:', err);
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.loadProfilesFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.loadProfilesFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setIsLoadingProfiles(false);
@@ -334,16 +334,16 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         } else {
           toast({
             variant: 'destructive',
-            title: t('accounts.toast.authFailed'),
-            description: authResult.error || t('accounts.toast.tryAgain'),
+            title: t('toast.authFailed'),
+            description: authResult.error || t('toast.tryAgain'),
           });
         }
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.addProfileFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.addProfileFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setIsAddingProfile(false);
@@ -365,15 +365,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       } else {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.deleteProfileFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.deleteProfileFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.deleteProfileFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.deleteProfileFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setDeletingProfileId(null);
@@ -400,15 +400,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       } else {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.renameProfileFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.renameProfileFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.renameProfileFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.renameProfileFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setEditingProfileId(null);
@@ -431,15 +431,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       } else {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.setActiveProfileFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.setActiveProfileFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.setActiveProfileFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.setActiveProfileFailed'),
+        description: t('toast.tryAgain'),
       });
     }
   };
@@ -454,8 +454,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       if (!result.success || !result.data) {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.authFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.authFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
         setAuthenticatingProfileId(null);
         return;
@@ -471,8 +471,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       console.error('Failed to authenticate profile:', err);
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.authFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.authFailed'),
+        description: t('toast.tryAgain'),
       });
       setAuthenticatingProfileId(null);
     }
@@ -524,21 +524,21 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         setManualTokenEmail('');
         setShowManualToken(false);
         toast({
-          title: t('accounts.toast.tokenSaved'),
-          description: t('accounts.toast.tokenSavedDescription'),
+          title: t('toast.tokenSaved'),
+          description: t('toast.tokenSavedDescription'),
         });
       } else {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.tokenSaveFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.tokenSaveFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.tokenSaveFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.tokenSaveFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setSavingTokenProfileId(null);
@@ -641,15 +641,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       } else {
         toast({
           variant: 'destructive',
-          title: t('accounts.toast.settingsUpdateFailed'),
-          description: result.error || t('accounts.toast.tryAgain'),
+          title: t('toast.settingsUpdateFailed'),
+          description: result.error || t('toast.tryAgain'),
         });
       }
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('accounts.toast.settingsUpdateFailed'),
-        description: t('accounts.toast.tryAgain'),
+        title: t('toast.settingsUpdateFailed'),
+        description: t('toast.tryAgain'),
       });
     } finally {
       setIsLoadingAutoSwitch(false);
@@ -661,8 +661,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
 
   return (
     <SettingsSection
-      title={t('accounts.title')}
-      description={t('accounts.description')}
+      title={t('title')}
+      description={t('description')}
     >
       <div className="space-y-6">
         {/* Tabs for Claude Code vs Custom Endpoints */}
@@ -670,11 +670,11 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           <TabsList className="w-full justify-start">
             <TabsTrigger value="claude-code" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              {t('accounts.tabs.claudeCode')}
+              {t('tabs.claudeCode')}
             </TabsTrigger>
             <TabsTrigger value="custom-endpoints" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
-              {t('accounts.tabs.customEndpoints')}
+              {t('tabs.customEndpoints')}
             </TabsTrigger>
           </TabsList>
 
@@ -682,7 +682,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           <TabsContent value="claude-code">
             <div className="rounded-lg bg-muted/30 border border-border p-4">
               <p className="text-sm text-muted-foreground mb-4">
-                {t('accounts.claudeCode.description')}
+                {t('claudeCode.description')}
               </p>
 
               {/* Accounts list */}
@@ -692,7 +692,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                 </div>
               ) : claudeProfiles.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-4 text-center mb-4">
-                  <p className="text-sm text-muted-foreground">{t('accounts.claudeCode.noAccountsYet')}</p>
+                  <p className="text-sm text-muted-foreground">{t('claudeCode.noAccountsYet')}</p>
                 </div>
               ) : (
                 <div className="space-y-2 mb-4">
@@ -702,326 +702,322 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                     const needsReauth = usageData?.needsReauthentication ?? false;
 
                     return (
-                    <div
-                      key={profile.id}
-                      className={cn(
-                        "rounded-lg border transition-colors",
-                        needsReauth
-                          ? "border-destructive/50 bg-destructive/5"
-                          : profile.id === activeClaudeProfileId && !activeApiProfileId
-                            ? "border-primary bg-primary/5"
-                            : "border-border bg-background"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex items-center justify-between p-3",
-                        expandedTokenProfileId !== profile.id && "hover:bg-muted/50"
-                      )}>
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0",
-                            profile.id === activeClaudeProfileId && !activeApiProfileId
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
-                          )}>
-                            {(editingProfileId === profile.id ? editingProfileName : profile.name).charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            {editingProfileId === profile.id ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  value={editingProfileName}
-                                  onChange={(e) => setEditingProfileName(e.target.value)}
-                                  className="h-7 text-sm w-40"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleRenameProfile();
-                                    if (e.key === 'Escape') cancelEditingProfile();
-                                  }}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={handleRenameProfile}
-                                  className="h-7 w-7 text-success hover:text-success hover:bg-success/10"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={cancelEditingProfile}
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-medium text-foreground">{profile.name}</span>
-                                  {profile.isDefault && (
-                                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{t('accounts.claudeCode.default')}</span>
-                                  )}
-                                  {profile.id === activeClaudeProfileId && !activeApiProfileId && (
-                                    <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
-                                      <Star className="h-3 w-3" />
-                                      {t('accounts.claudeCode.active')}
-                                    </span>
-                                  )}
-                                  {needsReauth ? (
-                                    <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded flex items-center gap-1">
-                                      <AlertCircle className="h-3 w-3" />
-                                      {t('accounts.priority.needsReauth')}
-                                    </span>
-                                  ) : profile.isAuthenticated ? (
-                                    <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
-                                      <Check className="h-3 w-3" />
-                                      {t('accounts.claudeCode.authenticated')}
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs bg-warning/20 text-warning px-1.5 py-0.5 rounded">
-                                      {t('accounts.claudeCode.needsAuth')}
-                                    </span>
-                                  )}
-                                </div>
-                                {profile.email && (
-                                  <span className="text-xs text-muted-foreground">{profile.email}</span>
-                                )}
-                                {/* Usage bars - show if we have usage data */}
-                                {usageData && profile.isAuthenticated && !needsReauth && (
-                                  <div className="flex items-center gap-3 mt-1.5">
-                                    {/* Session usage */}
-                                    <div className="flex items-center gap-1.5">
-                                      <Clock className="h-3 w-3 text-muted-foreground" />
-                                      <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            (usageData.sessionPercent ?? 0) >= 95 ? 'bg-red-500' :
-                                            (usageData.sessionPercent ?? 0) >= 91 ? 'bg-orange-500' :
-                                            (usageData.sessionPercent ?? 0) >= 71 ? 'bg-yellow-500' :
-                                            'bg-green-500'
-                                          }`}
-                                          style={{ width: `${Math.min(usageData.sessionPercent ?? 0, 100)}%` }}
-                                        />
-                                      </div>
-                                      <span className={`text-[10px] tabular-nums w-7 ${
-                                        (usageData.sessionPercent ?? 0) >= 95 ? 'text-red-500' :
-                                        (usageData.sessionPercent ?? 0) >= 91 ? 'text-orange-500' :
-                                        (usageData.sessionPercent ?? 0) >= 71 ? 'text-yellow-500' :
-                                        'text-muted-foreground'
-                                      }`}>
-                                        {Math.round(usageData.sessionPercent ?? 0)}%
-                                      </span>
-                                    </div>
-                                    {/* Weekly usage */}
-                                    <div className="flex items-center gap-1.5">
-                                      <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                                      <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            (usageData.weeklyPercent ?? 0) >= 95 ? 'bg-red-500' :
-                                            (usageData.weeklyPercent ?? 0) >= 91 ? 'bg-orange-500' :
-                                            (usageData.weeklyPercent ?? 0) >= 71 ? 'bg-yellow-500' :
-                                            'bg-green-500'
-                                          }`}
-                                          style={{ width: `${Math.min(usageData.weeklyPercent ?? 0, 100)}%` }}
-                                        />
-                                      </div>
-                                      <span className={`text-[10px] tabular-nums w-7 ${
-                                        (usageData.weeklyPercent ?? 0) >= 95 ? 'text-red-500' :
-                                        (usageData.weeklyPercent ?? 0) >= 91 ? 'text-orange-500' :
-                                        (usageData.weeklyPercent ?? 0) >= 71 ? 'text-yellow-500' :
-                                        'text-muted-foreground'
-                                      }`}>
-                                        {Math.round(usageData.weeklyPercent ?? 0)}%
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {editingProfileId !== profile.id && (
-                          <div className="flex items-center gap-1">
-                            {!profile.isAuthenticated ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleAuthenticateProfile(profile.id)}
-                                disabled={authenticatingProfileId === profile.id}
-                                className="gap-1 h-7 text-xs"
-                              >
-                                {authenticatingProfileId === profile.id ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    {t('accounts.claudeCode.authenticating')}
-                                  </>
-                                ) : (
-                                  <>
-                                    <LogIn className="h-3 w-3" />
-                                    {t('accounts.claudeCode.authenticate')}
-                                  </>
-                                )}
-                              </Button>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
+                      <div
+                        key={profile.id}
+                        className={cn(
+                          "rounded-lg border transition-colors",
+                          needsReauth
+                            ? "border-destructive/50 bg-destructive/5"
+                            : profile.id === activeClaudeProfileId && !activeApiProfileId
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-background"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex items-center justify-between p-3",
+                          expandedTokenProfileId !== profile.id && "hover:bg-muted/50"
+                        )}>
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0",
+                              profile.id === activeClaudeProfileId && !activeApiProfileId
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              {(editingProfileId === profile.id ? editingProfileName : profile.name).charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              {editingProfileId === profile.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    value={editingProfileName}
+                                    onChange={(e) => setEditingProfileName(e.target.value)}
+                                    className="h-7 text-sm w-40"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRenameProfile();
+                                      if (e.key === 'Escape') cancelEditingProfile();
+                                    }}
+                                  />
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleAuthenticateProfile(profile.id)}
-                                    disabled={authenticatingProfileId === profile.id}
+                                    onClick={handleRenameProfile}
+                                    className="h-7 w-7 text-success hover:text-success hover:bg-success/10"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={cancelEditingProfile}
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                   >
-                                    {authenticatingProfileId === profile.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <RefreshCw className="h-3 w-3" />
-                                    )}
+                                    <X className="h-3 w-3" />
                                   </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>{tCommon('accessibility.reAuthenticateProfileAriaLabel')}</TooltipContent>
-                              </Tooltip>
-                            )}
-                            {(profile.id !== activeClaudeProfileId || activeApiProfileId) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSetActiveClaudeProfile(profile.id)}
-                                className="gap-1 h-7 text-xs"
-                              >
-                                <Check className="h-3 w-3" />
-                                {t('accounts.claudeCode.setActive')}
-                              </Button>
-                            )}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium text-foreground">{profile.name}</span>
+                                    {profile.isDefault && (
+                                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{t('claudeCode.default')}</span>
+                                    )}
+                                    {profile.id === activeClaudeProfileId && !activeApiProfileId && (
+                                      <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <Star className="h-3 w-3" />
+                                        {t('claudeCode.active')}
+                                      </span>
+                                    )}
+                                    {needsReauth ? (
+                                      <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {t('priority.needsReauth')}
+                                      </span>
+                                    ) : profile.isAuthenticated ? (
+                                      <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <Check className="h-3 w-3" />
+                                        {t('claudeCode.authenticated')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs bg-warning/20 text-warning px-1.5 py-0.5 rounded">
+                                        {t('claudeCode.needsAuth')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {profile.email && (
+                                    <span className="text-xs text-muted-foreground">{profile.email}</span>
+                                  )}
+                                  {/* Usage bars - show if we have usage data */}
+                                  {usageData && profile.isAuthenticated && !needsReauth && (
+                                    <div className="flex items-center gap-3 mt-1.5">
+                                      {/* Session usage */}
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                        <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full ${(usageData.sessionPercent ?? 0) >= 95 ? 'bg-red-500' :
+                                              (usageData.sessionPercent ?? 0) >= 91 ? 'bg-orange-500' :
+                                                (usageData.sessionPercent ?? 0) >= 71 ? 'bg-yellow-500' :
+                                                  'bg-green-500'
+                                              }`}
+                                            style={{ width: `${Math.min(usageData.sessionPercent ?? 0, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-[10px] tabular-nums w-7 ${(usageData.sessionPercent ?? 0) >= 95 ? 'text-red-500' :
+                                          (usageData.sessionPercent ?? 0) >= 91 ? 'text-orange-500' :
+                                            (usageData.sessionPercent ?? 0) >= 71 ? 'text-yellow-500' :
+                                              'text-muted-foreground'
+                                          }`}>
+                                          {Math.round(usageData.sessionPercent ?? 0)}%
+                                        </span>
+                                      </div>
+                                      {/* Weekly usage */}
+                                      <div className="flex items-center gap-1.5">
+                                        <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                                        <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full ${(usageData.weeklyPercent ?? 0) >= 95 ? 'bg-red-500' :
+                                              (usageData.weeklyPercent ?? 0) >= 91 ? 'bg-orange-500' :
+                                                (usageData.weeklyPercent ?? 0) >= 71 ? 'bg-yellow-500' :
+                                                  'bg-green-500'
+                                              }`}
+                                            style={{ width: `${Math.min(usageData.weeklyPercent ?? 0, 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-[10px] tabular-nums w-7 ${(usageData.weeklyPercent ?? 0) >= 95 ? 'text-red-500' :
+                                          (usageData.weeklyPercent ?? 0) >= 91 ? 'text-orange-500' :
+                                            (usageData.weeklyPercent ?? 0) >= 71 ? 'text-yellow-500' :
+                                              'text-muted-foreground'
+                                          }`}>
+                                          {Math.round(usageData.weeklyPercent ?? 0)}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {editingProfileId !== profile.id && (
+                            <div className="flex items-center gap-1">
+                              {!profile.isAuthenticated ? (
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => toggleTokenEntry(profile.id)}
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAuthenticateProfile(profile.id)}
+                                  disabled={authenticatingProfileId === profile.id}
+                                  className="gap-1 h-7 text-xs"
                                 >
-                                  {expandedTokenProfileId === profile.id ? (
-                                    <ChevronDown className="h-3 w-3" />
+                                  {authenticatingProfileId === profile.id ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      {t('claudeCode.authenticating')}
+                                    </>
                                   ) : (
-                                    <ChevronRight className="h-3 w-3" />
+                                    <>
+                                      <LogIn className="h-3 w-3" />
+                                      {t('claudeCode.authenticate')}
+                                    </>
                                   )}
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {expandedTokenProfileId === profile.id
-                                  ? tCommon('accessibility.hideTokenEntryAriaLabel')
-                                  : tCommon('accessibility.enterTokenManuallyAriaLabel')}
-                              </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleAuthenticateProfile(profile.id)}
+                                      disabled={authenticatingProfileId === profile.id}
+                                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    >
+                                      {authenticatingProfileId === profile.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{tCommon('accessibility.reAuthenticateProfileAriaLabel')}</TooltipContent>
+                                </Tooltip>
+                              )}
+                              {(profile.id !== activeClaudeProfileId || activeApiProfileId) && (
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => startEditingProfile(profile)}
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSetActiveClaudeProfile(profile.id)}
+                                  className="gap-1 h-7 text-xs"
                                 >
-                                  <Pencil className="h-3 w-3" />
+                                  <Check className="h-3 w-3" />
+                                  {t('claudeCode.setActive')}
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{tCommon('accessibility.renameProfileAriaLabel')}</TooltipContent>
-                            </Tooltip>
-                            {!profile.isDefault && (
+                              )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleDeleteClaudeProfile(profile.id)}
-                                    disabled={deletingProfileId === profile.id}
-                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => toggleTokenEntry(profile.id)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                   >
-                                    {deletingProfileId === profile.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    {expandedTokenProfileId === profile.id ? (
+                                      <ChevronDown className="h-3 w-3" />
                                     ) : (
-                                      <Trash2 className="h-3 w-3" />
+                                      <ChevronRight className="h-3 w-3" />
                                     )}
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{tCommon('accessibility.deleteProfileAriaLabel')}</TooltipContent>
+                                <TooltipContent>
+                                  {expandedTokenProfileId === profile.id
+                                    ? tCommon('accessibility.hideTokenEntryAriaLabel')
+                                    : tCommon('accessibility.enterTokenManuallyAriaLabel')}
+                                </TooltipContent>
                               </Tooltip>
-                            )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => startEditingProfile(profile)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{tCommon('accessibility.renameProfileAriaLabel')}</TooltipContent>
+                              </Tooltip>
+                              {!profile.isDefault && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteClaudeProfile(profile.id)}
+                                      disabled={deletingProfileId === profile.id}
+                                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      {deletingProfileId === profile.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{tCommon('accessibility.deleteProfileAriaLabel')}</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Expanded token entry section */}
+                        {expandedTokenProfileId === profile.id && (
+                          <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
+                            <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-muted-foreground">
+                                  {t('claudeCode.manualTokenEntry')}
+                                </Label>
+                                <span className="text-xs text-muted-foreground">
+                                  {t('claudeCode.runSetupToken')}
+                                </span>
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="relative">
+                                  <Input
+                                    type={showManualToken ? 'text' : 'password'}
+                                    placeholder={t('claudeCode.tokenPlaceholder')}
+                                    value={manualToken}
+                                    onChange={(e) => setManualToken(e.target.value)}
+                                    className="pr-10 font-mono text-xs h-8"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowManualToken(!showManualToken)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                  >
+                                    {showManualToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                  </button>
+                                </div>
+
+                                <Input
+                                  type="email"
+                                  placeholder={t('claudeCode.emailPlaceholder')}
+                                  value={manualTokenEmail}
+                                  onChange={(e) => setManualTokenEmail(e.target.value)}
+                                  className="text-xs h-8"
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleTokenEntry(profile.id)}
+                                  className="h-7 text-xs"
+                                >
+                                  {tCommon('buttons.cancel')}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveManualToken(profile.id)}
+                                  disabled={!manualToken.trim() || savingTokenProfileId === profile.id}
+                                  className="h-7 text-xs gap-1"
+                                >
+                                  {savingTokenProfileId === profile.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Check className="h-3 w-3" />
+                                  )}
+                                  {t('claudeCode.saveToken')}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {/* Expanded token entry section */}
-                      {expandedTokenProfileId === profile.id && (
-                        <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
-                          <div className="bg-muted/30 rounded-lg p-3 mt-3 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs font-medium text-muted-foreground">
-                                {t('accounts.claudeCode.manualTokenEntry')}
-                              </Label>
-                              <span className="text-xs text-muted-foreground">
-                                {t('accounts.claudeCode.runSetupToken')}
-                              </span>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="relative">
-                                <Input
-                                  type={showManualToken ? 'text' : 'password'}
-                                  placeholder={t('accounts.claudeCode.tokenPlaceholder')}
-                                  value={manualToken}
-                                  onChange={(e) => setManualToken(e.target.value)}
-                                  className="pr-10 font-mono text-xs h-8"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowManualToken(!showManualToken)}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                >
-                                  {showManualToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                </button>
-                              </div>
-
-                              <Input
-                                type="email"
-                                placeholder={t('accounts.claudeCode.emailPlaceholder')}
-                                value={manualTokenEmail}
-                                onChange={(e) => setManualTokenEmail(e.target.value)}
-                                className="text-xs h-8"
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleTokenEntry(profile.id)}
-                                className="h-7 text-xs"
-                              >
-                                {tCommon('buttons.cancel')}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveManualToken(profile.id)}
-                                disabled={!manualToken.trim() || savingTokenProfileId === profile.id}
-                                className="h-7 text-xs gap-1"
-                              >
-                                {savingTokenProfileId === profile.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Check className="h-3 w-3" />
-                                )}
-                                {t('accounts.claudeCode.saveToken')}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
+                    );
                   })}
                 </div>
               )}
@@ -1045,7 +1041,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
               {/* Add new account */}
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder={t('accounts.claudeCode.accountNamePlaceholder')}
+                  placeholder={t('claudeCode.accountNamePlaceholder')}
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
                   className="flex-1 h-8 text-sm"
@@ -1079,11 +1075,11 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
               {/* Header with Add button */}
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {t('accounts.customEndpoints.description')}
+                  {t('customEndpoints.description')}
                 </p>
                 <Button onClick={() => setIsAddDialogOpen(true)} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  {t('accounts.customEndpoints.addButton')}
+                  {t('customEndpoints.addButton')}
                 </Button>
               </div>
 
@@ -1091,13 +1087,13 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
               {apiProfiles.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed rounded-lg">
                   <Server className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h4 className="text-lg font-medium mb-2">{t('accounts.customEndpoints.empty.title')}</h4>
+                  <h4 className="text-lg font-medium mb-2">{t('customEndpoints.empty.title')}</h4>
                   <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
-                    {t('accounts.customEndpoints.empty.description')}
+                    {t('customEndpoints.empty.description')}
                   </p>
                   <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
-                    {t('accounts.customEndpoints.empty.action')}
+                    {t('customEndpoints.empty.action')}
                   </Button>
                 </div>
               )}
@@ -1114,8 +1110,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                         disabled={isSettingActiveApiProfile}
                       >
                         {isSettingActiveApiProfile
-                          ? t('accounts.customEndpoints.switchToOauth.loading')
-                          : t('accounts.customEndpoints.switchToOauth.label')}
+                          ? t('customEndpoints.switchToOauth.loading')
+                          : t('customEndpoints.switchToOauth.label')}
                       </Button>
                     </div>
                   )}
@@ -1137,7 +1133,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                             {isActive && (
                               <span className="flex items-center text-xs text-primary">
                                 <Check className="h-3 w-3 mr-1" />
-                                {t('accounts.customEndpoints.activeBadge')}
+                                {t('customEndpoints.activeBadge')}
                               </span>
                             )}
                           </div>
@@ -1161,7 +1157,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                           </div>
                           {profile.models && Object.keys(profile.models).length > 0 && (
                             <div className="mt-2 text-xs text-muted-foreground">
-                              {t('accounts.customEndpoints.customModels', {
+                              {t('customEndpoints.customModels', {
                                 models: Object.keys(profile.models).join(', ')
                               })}
                             </div>
@@ -1177,8 +1173,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                               disabled={isSettingActiveApiProfile}
                             >
                               {isSettingActiveApiProfile
-                                ? t('accounts.customEndpoints.setActive.loading')
-                                : t('accounts.customEndpoints.setActive.label')}
+                                ? t('customEndpoints.setActive.loading')
+                                : t('customEndpoints.setActive.label')}
                             </Button>
                           )}
                           <Tooltip>
@@ -1191,7 +1187,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('accounts.customEndpoints.tooltips.edit')}</TooltipContent>
+                            <TooltipContent>{t('customEndpoints.tooltips.edit')}</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1207,8 +1203,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                             </TooltipTrigger>
                             <TooltipContent>
                               {isActive
-                                ? t('accounts.customEndpoints.tooltips.deleteActive')
-                                : t('accounts.customEndpoints.tooltips.deleteInactive')}
+                                ? t('customEndpoints.tooltips.deleteActive')
+                                : t('customEndpoints.tooltips.deleteInactive')}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -1241,16 +1237,16 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t('accounts.customEndpoints.dialog.deleteTitle')}</AlertDialogTitle>
+                    <AlertDialogTitle>{t('customEndpoints.dialog.deleteTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t('accounts.customEndpoints.dialog.deleteDescription', {
+                      {t('customEndpoints.dialog.deleteDescription', {
                         name: deleteConfirmProfile?.name ?? ''
                       })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeletingApiProfile}>
-                      {t('accounts.customEndpoints.dialog.cancel')}
+                      {t('customEndpoints.dialog.cancel')}
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteApiProfile}
@@ -1258,8 +1254,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {isDeletingApiProfile
-                        ? t('accounts.customEndpoints.dialog.deleting')
-                        : t('accounts.customEndpoints.dialog.delete')}
+                        ? t('customEndpoints.dialog.deleting')
+                        : t('customEndpoints.dialog.delete')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1273,20 +1269,20 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           <div className="space-y-4 pt-6 border-t border-border">
             <div className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold text-foreground">{t('accounts.autoSwitching.title')}</h4>
+              <h4 className="text-sm font-semibold text-foreground">{t('autoSwitching.title')}</h4>
             </div>
 
             <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                {t('accounts.autoSwitching.description')}
+                {t('autoSwitching.description')}
               </p>
 
               {/* Master toggle */}
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium">{t('accounts.autoSwitching.enableAutoSwitching')}</Label>
+                  <Label className="text-sm font-medium">{t('autoSwitching.enableAutoSwitching')}</Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {t('accounts.autoSwitching.masterSwitch')}
+                    {t('autoSwitching.masterSwitch')}
                   </p>
                 </div>
                 <Switch
@@ -1304,10 +1300,10 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                       <div>
                         <Label className="text-sm font-medium flex items-center gap-2">
                           <Activity className="h-3.5 w-3.5" />
-                          {t('accounts.autoSwitching.proactiveMonitoring')}
+                          {t('autoSwitching.proactiveMonitoring')}
                         </Label>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {t('accounts.autoSwitching.proactiveDescription')}
+                          {t('autoSwitching.proactiveDescription')}
                         </p>
                       </div>
                       <Switch
@@ -1322,7 +1318,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                         {/* Session threshold */}
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="session-threshold" className="text-sm">{t('accounts.autoSwitching.sessionThreshold')}</Label>
+                            <Label htmlFor="session-threshold" className="text-sm">{t('autoSwitching.sessionThreshold')}</Label>
                             <span className="text-sm font-mono">{autoSwitchSettings?.sessionThreshold ?? 95}%</span>
                           </div>
                           <input
@@ -1338,14 +1334,14 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                             aria-describedby="session-threshold-description"
                           />
                           <p id="session-threshold-description" className="text-xs text-muted-foreground">
-                            {t('accounts.autoSwitching.sessionThresholdDescription')}
+                            {t('autoSwitching.sessionThresholdDescription')}
                           </p>
                         </div>
 
                         {/* Weekly threshold */}
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="weekly-threshold" className="text-sm">{t('accounts.autoSwitching.weeklyThreshold')}</Label>
+                            <Label htmlFor="weekly-threshold" className="text-sm">{t('autoSwitching.weeklyThreshold')}</Label>
                             <span className="text-sm font-mono">{autoSwitchSettings?.weeklyThreshold ?? 99}%</span>
                           </div>
                           <input
@@ -1361,7 +1357,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                             aria-describedby="weekly-threshold-description"
                           />
                           <p id="weekly-threshold-description" className="text-xs text-muted-foreground">
-                            {t('accounts.autoSwitching.weeklyThresholdDescription')}
+                            {t('autoSwitching.weeklyThresholdDescription')}
                           </p>
                         </div>
                       </>
@@ -1374,10 +1370,10 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                       <div>
                         <Label className="text-sm font-medium flex items-center gap-2">
                           <AlertCircle className="h-3.5 w-3.5" />
-                          {t('accounts.autoSwitching.reactiveRecovery')}
+                          {t('autoSwitching.reactiveRecovery')}
                         </Label>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {t('accounts.autoSwitching.reactiveDescription')}
+                          {t('autoSwitching.reactiveDescription')}
                         </p>
                       </div>
                       <Switch

@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle, ExternalLink, Play, TrendingUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -14,6 +15,7 @@ export function PhaseCard({
   onConvertToSpec,
   onGoToTask,
 }: PhaseCardProps) {
+  const { t } = useTranslation('roadmap');
   const completedCount = features.filter((f) => f.status === 'done').length;
   const progress = features.length > 0 ? (completedCount / features.length) * 100 : 0;
 
@@ -22,13 +24,12 @@ export function PhaseCard({
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              phase.status === 'completed'
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${phase.status === 'completed'
                 ? 'bg-success/10 text-success'
                 : phase.status === 'in_progress'
-                ? 'bg-primary/10 text-primary'
-                : 'bg-muted text-muted-foreground'
-            }`}
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-muted text-muted-foreground'
+              }`}
           >
             {phase.status === 'completed' ? (
               <CheckCircle2 className="h-4 w-4" />
@@ -42,16 +43,16 @@ export function PhaseCard({
           </div>
         </div>
         <Badge variant={phase.status === 'completed' ? 'default' : 'outline'}>
-          {phase.status}
+          {t(`status.${phase.status}`, { defaultValue: phase.status })}
         </Badge>
       </div>
 
       {/* Progress */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-muted-foreground">Progress</span>
+          <span className="text-muted-foreground">{t('header.progress')}</span>
           <span>
-            {completedCount}/{features.length} features
+            {completedCount}/{t('header.stats.features', { count: features.length })}
           </span>
         </div>
         <Progress value={progress} className="h-2" />
@@ -60,7 +61,7 @@ export function PhaseCard({
       {/* Milestones */}
       {phase.milestones.length > 0 && (
         <div className="mb-4">
-          <h4 className="text-sm font-medium mb-2">Milestones</h4>
+          <h4 className="text-sm font-medium mb-2">{t('header.milestones')}</h4>
           <div className="space-y-2">
             {phase.milestones.map((milestone) => (
               <div key={milestone.id} className="flex items-center gap-2 text-sm">
@@ -84,7 +85,7 @@ export function PhaseCard({
 
       {/* Features */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Features ({features.length})</h4>
+        <h4 className="text-sm font-medium mb-2">{t('header.featuresCount', { count: features.length })}</h4>
         <div className="grid gap-2">
           {features.slice(0, 5).map((feature) => (
             <div
@@ -97,7 +98,7 @@ export function PhaseCard({
                   variant="outline"
                   className={`text-xs ${ROADMAP_PRIORITY_COLORS[feature.priority]}`}
                 >
-                  {feature.priority}
+                  {t(`priorities.${feature.priority}`, { defaultValue: feature.priority })}
                 </Badge>
                 <span className="text-sm truncate">{feature.title}</span>
                 {feature.competitorInsightIds && feature.competitorInsightIds.length > 0 && (
@@ -117,7 +118,7 @@ export function PhaseCard({
                   }}
                 >
                   <ExternalLink className="h-3 w-3 mr-1" />
-                  View Task
+                  {t('feature.viewTask')}
                 </Button>
               ) : (
                 <Button
@@ -130,14 +131,14 @@ export function PhaseCard({
                   }}
                 >
                   <Play className="h-3 w-3 mr-1" />
-                  Build
+                  {t('feature.build')}
                 </Button>
               )}
             </div>
           ))}
           {features.length > 5 && (
             <div className="text-sm text-muted-foreground text-center py-1">
-              +{features.length - 5} more features
+              {t('header.moreFeatures', { count: features.length - 5 })}
             </div>
           )}
         </div>

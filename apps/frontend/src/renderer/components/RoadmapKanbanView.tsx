@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   DragOverlay,
@@ -15,8 +16,7 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { Plus, Inbox, Eye, Calendar, Play, Check } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
@@ -74,6 +74,7 @@ function DroppableStatusColumn({
   onGoToTask,
   isOver
 }: DroppableStatusColumnProps) {
+  const { t } = useTranslation('roadmap');
   const { setNodeRef } = useDroppable({
     id: column.id
   });
@@ -99,16 +100,16 @@ function DroppableStatusColumn({
               column.id === 'done'
                 ? 'bg-success/10 text-success'
                 : column.id === 'in_progress'
-                ? 'bg-primary/10 text-primary'
-                : column.id === 'planned'
-                ? 'bg-info/10 text-info'
-                : 'bg-muted text-muted-foreground'
+                  ? 'bg-primary/10 text-primary'
+                  : column.id === 'planned'
+                    ? 'bg-info/10 text-info'
+                    : 'bg-muted text-muted-foreground'
             )}
           >
             {getStatusIcon(column.icon)}
           </div>
           <h2 className="font-semibold text-sm text-foreground">
-            {column.label}
+            {t(`status.${column.id}`, { defaultValue: column.label })}
           </h2>
           <span className="column-count-badge">
             {features.length}
@@ -136,16 +137,18 @@ function DroppableStatusColumn({
                       <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mb-2">
                         <Plus className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-primary">Drop here</span>
+                      <span className="text-sm font-medium text-primary">
+                        {t('kanban.dropHere', { defaultValue: 'Drop here' })}
+                      </span>
                     </>
                   ) : (
                     <>
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
                       <span className="mt-2 text-sm font-medium text-muted-foreground/70">
-                        No features
+                        {t('kanban.noFeatures', { defaultValue: 'No features' })}
                       </span>
                       <span className="mt-0.5 text-xs text-muted-foreground/50">
-                        Drag features here
+                        {t('kanban.dragHere', { defaultValue: 'Drag features here' })}
                       </span>
                     </>
                   )}
@@ -177,6 +180,7 @@ export function RoadmapKanbanView({
   onGoToTask,
   onSave
 }: RoadmapKanbanViewProps) {
+  const { t } = useTranslation('roadmap');
   const [activeFeature, setActiveFeature] = useState<RoadmapFeature | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
@@ -185,7 +189,7 @@ export function RoadmapKanbanView({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8 // 8px movement required before drag starts
+        distance: 8
       }
     }),
     useSensor(KeyboardSensor, {
@@ -193,7 +197,6 @@ export function RoadmapKanbanView({
     })
   );
 
-  // Get features grouped by status
   const featuresByStatus = useMemo(() => {
     const grouped: Record<string, RoadmapFeature[]> = {};
     ROADMAP_STATUS_COLUMNS.forEach((column) => {
@@ -202,7 +205,6 @@ export function RoadmapKanbanView({
     return grouped;
   }, [roadmap.features]);
 
-  // Get all status IDs for detecting column drops
   const statusIds = useMemo(() => ROADMAP_STATUS_COLUMNS.map((c) => c.id), []);
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -223,13 +225,11 @@ export function RoadmapKanbanView({
 
     const overId = over.id as string;
 
-    // Check if over a status column
     if (statusIds.includes(overId)) {
       setOverColumnId(overId);
       return;
     }
 
-    // Check if over a feature - get its status
     const overFeature = roadmap.features.find((f) => f.id === overId);
     if (overFeature) {
       setOverColumnId(overFeature.status);
@@ -249,14 +249,11 @@ export function RoadmapKanbanView({
 
     if (!draggedFeature) return;
 
-    // Determine target status
     let targetStatus: RoadmapFeatureStatus;
 
     if (statusIds.includes(overId)) {
-      // Dropped directly on a status column
       targetStatus = overId as RoadmapFeatureStatus;
     } else {
-      // Dropped on a feature - get its status
       const overFeature = roadmap.features.find((f) => f.id === overId);
       if (!overFeature) return;
       targetStatus = overFeature.status;
@@ -265,25 +262,17 @@ export function RoadmapKanbanView({
     const sourceStatus = draggedFeature.status;
 
     if (sourceStatus !== targetStatus) {
-      // Moving to a different status
       updateFeatureStatus(activeFeatureId, targetStatus);
-
-      // Trigger save callback
       onSave?.();
     }
-    // Note: We don't support reordering within status columns for now
-    // Features are displayed in their natural order within each status
   };
 
-  // Get status label for a feature (for display in drag overlay)
   const getStatusLabelForFeature = (feature: RoadmapFeature) => {
-    const statusColumn = ROADMAP_STATUS_COLUMNS.find((c) => c.id === feature.status);
-    return statusColumn?.label || 'Unknown Status';
+    return t(`status.${feature.status}`, { defaultValue: feature.status });
   };
 
   return (
     <div className="flex h-full flex-col">
-      {/* Kanban columns */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -306,7 +295,6 @@ export function RoadmapKanbanView({
           ))}
         </div>
 
-        {/* Drag overlay - enhanced visual feedback */}
         <DragOverlay>
           {activeFeature ? (
             <div className="drag-overlay-card">

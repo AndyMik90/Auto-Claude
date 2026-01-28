@@ -1,0 +1,86 @@
+{
+    "label": "Agent Profile",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "title": "Default Agent Profile",
+    "sectionDescription": "Select a preset configuration for model and thinking level",
+    "profilesInfo": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults. You can always override them in the task creation wizard.",
+    "presets": {
+        "auto": {
+            "name": "Auto (Optimized)",
+            "description": "Uses Opus across all phases with optimized thinking levels"
+        },
+        "complex": {
+            "name": "Complex Tasks",
+            "description": "For intricate, multi-step implementations requiring deep analysis"
+        },
+        "balanced": {
+            "name": "Balanced",
+            "description": "Good balance of speed and quality for most tasks"
+        },
+        "quick": {
+            "name": "Quick Edits",
+            "description": "Fast iterations for simple changes and quick fixes"
+        }
+    },
+    "custom": "Custom",
+    "customConfiguration": "Custom Configuration",
+    "customDescription": "Choose model & thinking level",
+    "customModel": {
+        "title": "Custom Configuration",
+        "description": "Choose model & thinking level"
+    },
+    "phaseConfiguration": "Phase Configuration",
+    "phaseConfigurationDescription": "Customize model and thinking level for each phase",
+    "clickToCustomize": "Click to customize",
+    "model": "Model",
+    "thinking": "Thinking",
+    "thinkingLevel": "Thinking Level",
+    "selectModel": "Select model",
+    "selectThinkingLevel": "Select thinking level",
+    "perPhaseOptimization": "(per-phase optimization)",
+    "resetToDefaults": "Reset to defaults",
+    "resetToProfileDefaults": "Reset to {{profile}} defaults",
+    "customized": "Customized",
+    "phaseConfigNote": "These settings will be used as defaults when creating new tasks with this profile. You can override them per-task in the task creation wizard.",
+    "phases": {
+        "spec": {
+            "label": "Spec Creation",
+            "description": "Discovery, requirements, context gathering"
+        },
+        "planning": {
+            "label": "Planning",
+            "description": "Implementation planning and architecture"
+        },
+        "coding": {
+            "label": "Coding",
+            "description": "Actual code implementation"
+        },
+        "qa": {
+            "label": "QA Review",
+            "description": "Quality assurance and validation"
+        }
+    },
+    "thinkingLevels": {
+        "none": {
+            "label": "None",
+            "description": "No extended thinking"
+        },
+        "low": {
+            "label": "Low",
+            "description": "Brief consideration"
+        },
+        "medium": {
+            "label": "Medium",
+            "description": "Moderate analysis"
+        },
+        "high": {
+            "label": "High",
+            "description": "Deep thinking"
+        },
+        "ultrathink": {
+            "label": "Ultra Think",
+            "description": "Maximum reasoning depth"
+        }
+    }
+}

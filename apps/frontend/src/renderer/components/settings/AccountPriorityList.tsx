@@ -112,7 +112,7 @@ interface SortableAccountItemProps {
 }
 
 function SortableAccountItem({ account, index }: SortableAccountItemProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation('accounts');
   const {
     attributes,
     listeners,
@@ -178,19 +178,19 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
           </span>
           {/* Account type indicator */}
           <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
-            {account.type === 'oauth' ? t('accounts.priority.typeOAuth') : t('accounts.priority.typeAPI')}
+            {account.type === 'oauth' ? t('priority.typeOAuth') : t('priority.typeAPI')}
           </span>
           {/* Status badges - only ONE account should have "In Use" */}
           {account.isActive && (
             <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
               <Star className="h-2.5 w-2.5" />
-              {t('accounts.priority.inUse')}
+              {t('priority.inUse')}
             </span>
           )}
           {account.isNext && !account.isActive && (
             <span className="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded flex items-center gap-1">
               <Tag className="h-2.5 w-2.5" />
-              {t('accounts.priority.next')}
+              {t('priority.next')}
             </span>
           )}
         </div>
@@ -218,7 +218,7 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                {t('accounts.priority.sessionUsage')}
+                {t('priority.sessionUsage')}
               </TooltipContent>
             </Tooltip>
 
@@ -239,7 +239,7 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                {t('accounts.priority.weeklyUsage')}
+                {t('priority.weeklyUsage')}
               </TooltipContent>
             </Tooltip>
 
@@ -252,7 +252,7 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
               statusKey === 'nearLimit' && 'bg-red-500/10 text-red-600',
               statusKey === 'rateLimited' && 'bg-red-500/20 text-red-600 font-medium'
             )}>
-              {t(`accounts.priority.status.${statusKey}`)}
+              {t(`priority.status.${statusKey}`)}
             </span>
           </div>
         )}
@@ -262,7 +262,7 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
           <div className="flex items-center gap-1.5 mt-1.5">
             <AlertCircle className="h-3 w-3 text-destructive" />
             <span className="text-[10px] text-destructive">
-              {t('accounts.priority.needsAuth')}
+              {t('priority.needsAuth')}
             </span>
           </div>
         )}
@@ -274,12 +274,12 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
               <div className="flex items-center gap-1.5 mt-1.5 cursor-help">
                 <AlertCircle className="h-3 w-3 text-warning" />
                 <span className="text-[10px] text-warning">
-                  {t('accounts.priority.duplicateUsage')}
+                  {t('priority.duplicateUsage')}
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs max-w-[250px]">
-              {t('accounts.priority.duplicateUsageHint')}
+              {t('priority.duplicateUsageHint')}
             </TooltipContent>
           </Tooltip>
         )}
@@ -291,12 +291,12 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
               <div className="flex items-center gap-1.5 mt-1.5 cursor-help">
                 <AlertCircle className="h-3 w-3 text-destructive" />
                 <span className="text-[10px] text-destructive">
-                  {t('accounts.priority.needsReauth')}
+                  {t('priority.needsReauth')}
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs max-w-[250px]">
-              {t('accounts.priority.needsReauthHint')}
+              {t('priority.needsReauthHint')}
             </TooltipContent>
           </Tooltip>
         )}
@@ -307,7 +307,7 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[10px] bg-muted text-muted-foreground px-2 py-1 rounded flex items-center gap-1">
             <Infinity className="h-3 w-3" />
-            {t('accounts.priority.payPerUse')}
+            {t('priority.payPerUse')}
           </span>
         </div>
       )}
@@ -322,7 +322,7 @@ interface AccountPriorityListProps {
 }
 
 export function AccountPriorityList({ accounts, onReorder, isLoading }: AccountPriorityListProps) {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation('accounts');
   const [items, setItems] = useState<UnifiedAccount[]>(accounts);
 
   // Sync with external accounts prop
@@ -416,7 +416,7 @@ export function AccountPriorityList({ accounts, onReorder, isLoading }: AccountP
   if (items.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <p className="text-sm">{t('accounts.priority.noAccounts')}</p>
+        <p className="text-sm">{t('priority.noAccounts')}</p>
       </div>
     );
   }
@@ -426,10 +426,10 @@ export function AccountPriorityList({ accounts, onReorder, isLoading }: AccountP
       {/* Header */}
       <div>
         <h4 className="text-sm font-semibold text-foreground mb-1">
-          {t('accounts.priority.title')}
+          {t('priority.title')}
         </h4>
         <p className="text-xs text-muted-foreground">
-          {t('accounts.priority.description')}
+          {t('priority.description')}
         </p>
       </div>
 
@@ -466,8 +466,8 @@ export function AccountPriorityList({ accounts, onReorder, isLoading }: AccountP
         <div className="flex items-start gap-2">
           <Info className="h-4 w-4 text-info shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">{t('accounts.priority.tipTitle')}</p>
-            <p>{t('accounts.priority.tipDescription')}</p>
+            <p className="font-medium text-foreground">{t('priority.tipTitle')}</p>
+            <p>{t('priority.tipDescription')}</p>
           </div>
         </div>
       </div>

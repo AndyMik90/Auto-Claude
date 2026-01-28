@@ -1,0 +1,78 @@
+{
+    "title": "Mémoire",
+    "status": {
+        "title": "Statut de la mémoire de graphe",
+        "connected": "Connecté",
+        "notAvailable": "Indisponible",
+        "database": "Base de données",
+        "path": "Chemin",
+        "total": "Total",
+        "notConfigured": "La mémoire Graphiti n'est pas configurée",
+        "enableHint": "Pour activer la mémoire, réglez GRAPHITI_ENABLED=true dans les paramètres du projet."
+    },
+    "search": {
+        "title": "Rechercher dans la mémoire",
+        "placeholder": "Rechercher des patterns, insights, astuces...",
+        "resultsFound": "{{count}} résultat trouvé",
+        "resultsFound_plural": "{{count}} résultats trouvés",
+        "score": "Score"
+    },
+    "browser": {
+        "title": "Explorateur de mémoire",
+        "stats": "{{filtered}} sur {{total}} entrées",
+        "noMemories": "Aucune mémoire enregistrée. Les mémoires sont créées pendant les sessions des agents et les revues de PR.",
+        "noMatch": "Aucune mémoire ne correspond au filtre sélectionné.",
+        "showAll": "Tout afficher"
+    },
+    "types": {
+        "session_insight": "Insight de session",
+        "codebase_discovery": "Découverte de code",
+        "codebase_map": "Carte du code",
+        "pattern": "Pattern",
+        "gotcha": "Astuce/Piège",
+        "task_outcome": "Résultat de tâche",
+        "qa_result": "Résultat QA",
+        "historical_context": "Contexte historique",
+        "pr_review": "Revue de PR",
+        "pr_finding": "Observation PR",
+        "pr_pattern": "Pattern PR",
+        "pr_gotcha": "Astuce PR"
+    },
+    "categories": {
+        "all": "Tout",
+        "pr": "Revues PR",
+        "sessions": "Sessions",
+        "codebase": "Codebase",
+        "patterns": "Patterns",
+        "gotchas": "Astuces"
+    },
+    "card": {
+        "session": "Session #{{number}}",
+        "expand": "Développer",
+        "collapse": "Réduire",
+        "details": "Détails",
+        "whatWorked": "Ce qui a fonctionné",
+        "whatFailed": "Ce qui a échoué",
+        "approach": "Approche",
+        "recommendations": "Recommandations",
+        "patterns": "Patterns",
+        "gotchas": "Astuces/Pièges",
+        "changedFiles": "Fichiers modifiés",
+        "fileInsights": "Analyses de fichiers",
+        "subtasksCompleted": "Sous-tâches terminées"
+    },
+    "pr": {
+        "approved": "Approuvé",
+        "changesRequested": "Modifications requises",
+        "commented": "Commenté",
+        "findings": "observation",
+        "findings_plural": "observations",
+        "followUp": "Suivi",
+        "keyFindings": "Observations clés",
+        "gotchasTitle": "Astuces découvertes",
+        "patternsTitle": "Patterns identifiés",
+        "moreFindings": "+{{count}} autre observation",
+        "moreFindings_plural": "+{{count}} autres observations",
+        "viewOnGithub": "Voir sur GitHub"
+    }
+}

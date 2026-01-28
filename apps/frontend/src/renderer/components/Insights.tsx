@@ -88,7 +88,7 @@ interface InsightsProps {
 }
 
 export function Insights({ projectId }: InsightsProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'insights']);
   const session = useInsightsStore((state) => state.session);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
@@ -266,7 +266,7 @@ export function Insights({ projectId }: InsightsProps) {
               size="icon"
               className="h-8 w-8"
               onClick={() => setShowSidebar(!showSidebar)}
-              title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
+              title={showSidebar ? t('insights:accessibility.hideSidebar') : t('insights:accessibility.showSidebar')}
             >
               {showSidebar ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -278,9 +278,9 @@ export function Insights({ projectId }: InsightsProps) {
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-foreground">Insights</h2>
+              <h2 className="font-semibold text-foreground">{t('insights:title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Ask questions about your codebase
+                {t('insights:subtitle')}
               </p>
             </div>
           </div>
@@ -296,142 +296,141 @@ export function Insights({ projectId }: InsightsProps) {
               onClick={handleNewSession}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Chat
+              {t('insights:newChat')}
             </Button>
           </div>
         </div>
 
-      {/* Messages */}
-      <ScrollArea
-        className="flex-1 px-6 py-4"
-        onViewportRef={handleViewportRef}
-      >
-        {messages.length === 0 && !streamingContent ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <MessageSquare className="h-8 w-8 text-muted-foreground" />
+        {/* Messages */}
+        <ScrollArea
+          className="flex-1 px-6 py-4"
+          onViewportRef={handleViewportRef}
+        >
+          {messages.length === 0 && !streamingContent ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <MessageSquare className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 text-lg font-medium text-foreground">
+                {t('insights:empty.title')}
+              </h3>
+              <p className="max-w-md text-sm text-muted-foreground">
+                {t('insights:empty.description')}
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {[
+                  t('insights:suggestions.architecture'),
+                  t('insights:suggestions.improvements'),
+                  t('insights:suggestions.features'),
+                  t('insights:suggestions.security')
+                ].map((suggestion) => (
+                  <Button
+                    key={suggestion}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => {
+                      setInputValue(suggestion);
+                      textareaRef.current?.focus();
+                    }}
+                  >
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <h3 className="mb-2 text-lg font-medium text-foreground">
-              Start a Conversation
-            </h3>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {[
-                'What is the architecture of this project?',
-                'Suggest improvements for code quality',
-                'What features could I add next?',
-                'Are there any security concerns?'
-              ].map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => {
-                    setInputValue(suggestion);
-                    textareaRef.current?.focus();
-                  }}
-                >
-                  {suggestion}
-                </Button>
+          ) : (
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  markdownComponents={markdownComponents}
+                  onCreateTask={() => handleCreateTask(message)}
+                  isCreatingTask={creatingTask === message.id}
+                  taskCreated={taskCreated.has(message.id)}
+                />
               ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                markdownComponents={markdownComponents}
-                onCreateTask={() => handleCreateTask(message)}
-                isCreatingTask={creatingTask === message.id}
-                taskCreated={taskCreated.has(message.id)}
-              />
-            ))}
 
-            {/* Streaming message */}
-            {(streamingContent || currentTool) && (
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="mb-1 text-sm font-medium text-foreground">
-                    Assistant
+              {/* Streaming message */}
+              {(streamingContent || currentTool) && (
+                <div className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Bot className="h-4 w-4 text-primary" />
                   </div>
-                  {streamingContent && (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {streamingContent}
-                      </ReactMarkdown>
+                  <div className="flex-1">
+                    <div className="mb-1 text-sm font-medium text-foreground">
+                      {t('insights:roles.assistant')}
                     </div>
-                  )}
-                  {/* Tool usage indicator */}
-                  {currentTool && (
-                    <ToolIndicator name={currentTool.name} input={currentTool.input} />
-                  )}
+                    {streamingContent && (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                          {streamingContent}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    {/* Tool usage indicator */}
+                    {currentTool && (
+                      <ToolIndicator name={currentTool.name} input={currentTool.input} />
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Thinking indicator */}
-            {status.phase === 'thinking' && !streamingContent && !currentTool && (
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Bot className="h-4 w-4 text-primary" />
+              {/* Thinking indicator */}
+              {status.phase === 'thinking' && !streamingContent && !currentTool && (
+                <div className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Bot className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('insights:status.thinking')}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Thinking...
+              )}
+
+              {/* Error message */}
+              {status.phase === 'error' && status.error && (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {status.error}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Error message */}
-            {status.phase === 'error' && status.error && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {status.error}
-              </div>
-            )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </ScrollArea>
 
-            <div ref={messagesEndRef} />
+        {/* Input */}
+        <div className="flex-shrink-0 border-t border-border p-4">
+          <div className="flex gap-2">
+            <Textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('insights:placeholder')}
+              className="min-h-[80px] resize-none"
+              disabled={isLoading}
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+              className="self-end"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
-        )}
-      </ScrollArea>
-
-      {/* Input */}
-      <div className="flex-shrink-0 border-t border-border p-4">
-        <div className="flex gap-2">
-          <Textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your codebase..."
-            className="min-h-[80px] resize-none"
-            disabled={isLoading}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
-            className="self-end"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t('common:messages.pressEnterToSend')}
+          </p>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
-        </p>
-      </div>
       </div>
     </div>
   );
@@ -439,7 +438,7 @@ export function Insights({ projectId }: InsightsProps) {
 
 interface MessageBubbleProps {
   message: InsightsChatMessage;
-  markdownComponents: Components;
+  markdownComponents: Record<string, any>;
   onCreateTask: () => void;
   isCreatingTask: boolean;
   taskCreated: boolean;
@@ -452,6 +451,7 @@ function MessageBubble({
   isCreatingTask,
   taskCreated
 }: MessageBubbleProps) {
+  const { t } = useTranslation(['common', 'insights']);
   const isUser = message.role === 'user';
 
   return (
@@ -470,7 +470,7 @@ function MessageBubble({
       </div>
       <div className="flex-1 space-y-2">
         <div className="text-sm font-medium text-foreground">
-          {isUser ? 'You' : 'Assistant'}
+          {isUser ? t('insights:roles.user') : t('insights:roles.assistant')}
         </div>
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -490,7 +490,7 @@ function MessageBubble({
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
-                  Suggested Task
+                  {t('insights:suggestedTask.title')}
                 </span>
               </div>
               <h4 className="mb-2 font-medium text-foreground">
@@ -535,17 +535,17 @@ function MessageBubble({
                 {isCreatingTask ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t('insights:suggestedTask.creating')}
                   </>
                 ) : taskCreated ? (
                   <>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Task Created
+                    {t('insights:suggestedTask.created')}
                   </>
                 ) : (
                   <>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Task
+                    {t('insights:suggestedTask.create')}
                   </>
                 )}
               </Button>
@@ -567,6 +567,7 @@ interface ToolUsageHistoryProps {
 }
 
 function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
+  const { t } = useTranslation('insights');
   const [expanded, setExpanded] = useState(false);
 
   if (tools.length === 0) return null;
@@ -620,7 +621,7 @@ function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
             );
           })}
         </span>
-        <span>{tools.length} tool{tools.length !== 1 ? 's' : ''} used</span>
+        <span>{t('insights:tools.usedCount', { count: tools.length })}</span>
         <span className="text-[10px]">{expanded ? '▲' : '▼'}</span>
       </button>
 
@@ -634,7 +635,7 @@ function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
                 className="flex items-center gap-2 text-xs"
               >
                 <Icon className={cn('h-3 w-3 shrink-0', getToolColor(tool.name))} />
-                <span className="font-medium">{tool.name}</span>
+                <span className="font-medium">{t(`insights:tools.${tool.name.toLowerCase()}` as any) || tool.name}</span>
                 {tool.input && (
                   <span className="text-muted-foreground truncate max-w-[250px]">
                     {tool.input}
@@ -656,25 +657,26 @@ interface ToolIndicatorProps {
 }
 
 function ToolIndicator({ name, input }: ToolIndicatorProps) {
+  const { t } = useTranslation('insights');
   // Get friendly name and icon for each tool
   const getToolInfo = (toolName: string) => {
     switch (toolName) {
       case 'Read':
         return {
           icon: FileText,
-          label: 'Reading file',
+          label: t('insights:tools.read'),
           color: 'text-blue-500 bg-blue-500/10'
         };
       case 'Glob':
         return {
           icon: FolderSearch,
-          label: 'Searching files',
+          label: t('insights:tools.glob'),
           color: 'text-amber-500 bg-amber-500/10'
         };
       case 'Grep':
         return {
           icon: Search,
-          label: 'Searching code',
+          label: t('insights:tools.grep'),
           color: 'text-green-500 bg-green-500/10'
         };
       default:

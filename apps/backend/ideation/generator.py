@@ -59,6 +59,7 @@ class IdeationGenerator:
         model: str = "sonnet",  # Changed from "opus" (fix #433)
         thinking_level: str = "medium",
         max_ideas_per_type: int = 5,
+        language: str | None = None,
     ):
         self.project_dir = Path(project_dir)
         self.output_dir = Path(output_dir)
@@ -66,6 +67,7 @@ class IdeationGenerator:
         self.thinking_level = thinking_level
         self.thinking_budget = get_thinking_budget(thinking_level)
         self.max_ideas_per_type = max_ideas_per_type
+        self.language = language
         self.prompts_dir = Path(__file__).parent.parent / "prompts"
 
     async def run_agent(
@@ -86,6 +88,9 @@ class IdeationGenerator:
         prompt += f"\n\n---\n\n**Output Directory**: {self.output_dir}\n"
         prompt += f"**Project Directory**: {self.project_dir}\n"
         prompt += f"**Max Ideas**: {self.max_ideas_per_type}\n"
+        if self.language:
+            prompt += f"**Output Language**: {self.language}\n"
+            prompt += f"IMPORTANT: You MUST generate all content (titles, descriptions, rationales, etc.) in {self.language}. Maintain technical terms in English where appropriate for clarity, but the explanations must be in {self.language}.\n"
 
         if additional_context:
             prompt += f"\n{additional_context}\n"

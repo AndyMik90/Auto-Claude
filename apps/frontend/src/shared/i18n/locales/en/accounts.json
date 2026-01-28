@@ -1,0 +1,213 @@
+{
+    "title": "Accounts",
+    "description": "Manage Claude accounts and API endpoints",
+    "tabs": {
+        "claudeCode": "Claude Code",
+        "customEndpoints": "Custom Endpoints"
+    },
+    "claudeCode": {
+        "description": "Add multiple Claude subscriptions to automatically switch between them when you hit rate limits.",
+        "noAccountsYet": "No accounts configured yet",
+        "default": "Default",
+        "active": "Active",
+        "authenticated": "Authenticated",
+        "needsAuth": "Needs Auth",
+        "authenticate": "Authenticate",
+        "authenticating": "Authenticating...",
+        "setActive": "Set Active",
+        "manualTokenEntry": "Manual Token Entry",
+        "runSetupToken": "Run claude and type /login to authenticate",
+        "tokenPlaceholder": "sk-ant-oat01-...",
+        "emailPlaceholder": "Email (optional, for display)",
+        "saveToken": "Save Token",
+        "accountNamePlaceholder": "Account name (e.g., Work, Personal)"
+    },
+    "customEndpoints": {
+        "description": "Configure custom Anthropic-compatible API endpoints",
+        "addButton": "Add Profile",
+        "activeBadge": "Active",
+        "customModels": "Custom models: {{models}}",
+        "setActive": {
+            "label": "Set Active",
+            "loading": "Setting..."
+        },
+        "switchToOauth": {
+            "label": "Use Claude Code",
+            "loading": "Switching..."
+        },
+        "tooltips": {
+            "edit": "Edit profile",
+            "deleteActive": "Cannot delete active profile",
+            "deleteInactive": "Delete profile"
+        },
+        "empty": {
+            "title": "No Custom Endpoints",
+            "description": "Configure custom Anthropic-compatible API endpoints to use alternative providers.",
+            "action": "Add Profile"
+        },
+        "dialog": {
+            "deleteTitle": "Delete Profile",
+            "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+            "cancel": "Cancel",
+            "delete": "Delete",
+            "deleting": "Deleting..."
+        }
+    },
+    "autoSwitching": {
+        "title": "Automatic Account Switching",
+        "description": "Automatically switch between accounts to avoid interruptions. Configure proactive monitoring to switch before hitting limits.",
+        "enableAutoSwitching": "Enable automatic switching",
+        "masterSwitch": "Master switch for all auto-swap features",
+        "proactiveMonitoring": "Proactive Monitoring",
+        "proactiveDescription": "Check usage regularly and swap before hitting limits",
+        "sessionThreshold": "Session usage threshold",
+        "sessionThresholdDescription": "Switch when session usage reaches this level (recommended: 95%)",
+        "weeklyThreshold": "Weekly usage threshold",
+        "weeklyThresholdDescription": "Switch when weekly usage reaches this level (recommended: 99%)",
+        "reactiveRecovery": "Reactive Recovery",
+        "reactiveDescription": "Auto-swap when unexpected rate limit is hit"
+    },
+    "priority": {
+        "title": "Account Priority Order",
+        "description": "Drag to reorder. System will switch to the next available account in order.",
+        "noAccounts": "No accounts configured. Add accounts above to set priority.",
+        "noEmail": "No email",
+        "active": "Active",
+        "inUse": "In Use",
+        "next": "Next",
+        "unlimited": "Unlimited",
+        "unavailable": "Unavailable",
+        "typeOAuth": "OAuth",
+        "typeAPI": "API",
+        "payPerUse": "Pay-per-use",
+        "needsAuth": "Not authenticated",
+        "duplicateUsage": "Duplicate usage detected",
+        "duplicateUsageHint": "This profile has identical usage to another profile, suggesting they may be authenticated to the same Anthropic account. Re-authenticate with a different account to fix.",
+        "needsReauth": "Needs re-auth",
+        "needsReauthHint": "This profile's refresh token is invalid. Click to re-authenticate.",
+        "sessionUsage": "Session usage (5-hour window)",
+        "weeklyUsage": "Weekly usage (7-day window)",
+        "oauthSection": "Claude Accounts (cycle through first)",
+        "apiSection": "Fallback Endpoints (when all accounts exhausted)",
+        "tipTitle": "How priority works",
+        "tipDescription": "Claude accounts are included in your subscription and will be cycled through first. API endpoints charge per request and are used as fallbacks when all Claude accounts hit their limits.",
+        "status": {
+            "healthy": "Healthy",
+            "moderate": "Moderate",
+            "highUsage": "High usage",
+            "nearLimit": "Near limit",
+            "rateLimited": "Rate limited"
+        }
+    },
+    "apiProfiles": {
+        "title": "API Profiles",
+        "description": "Configure custom Anthropic-compatible API endpoints",
+        "addButton": "Add Profile",
+        "presets": {
+            "anthropic": "Anthropic",
+            "openrouter": "OpenRouter",
+            "groq": "Groq",
+            "zaiGlobal": "z.AI (Global)",
+            "zaiChina": "z.AI (China)"
+        },
+        "fields": {
+            "name": "Name",
+            "preset": "Preset",
+            "baseUrl": "Base URL",
+            "apiKey": "API Key"
+        },
+        "placeholders": {
+            "name": "My Custom API",
+            "preset": "Choose a provider preset",
+            "baseUrl": "https://api.anthropic.com",
+            "apiKey": "sk-ant-..."
+        },
+        "hints": {
+            "preset": "Presets fill the base URL; you still need to paste your API key.",
+            "baseUrl": "Example: https://api.anthropic.com or http://localhost:8080"
+        },
+        "validation": {
+            "nameRequired": "Name is required",
+            "baseUrlRequired": "Base URL is required",
+            "baseUrlInvalid": "Invalid URL format (must be http:// or https://)",
+            "apiKeyRequired": "API Key is required",
+            "apiKeyInvalid": "Invalid API Key format"
+        },
+        "actions": {
+            "save": "Save Profile",
+            "saving": "Saving...",
+            "cancel": "Cancel",
+            "changeKey": "Change",
+            "cancelKeyChange": "Cancel"
+        },
+        "testConnection": {
+            "label": "Test Connection",
+            "testing": "Testing...",
+            "success": "Connection Successful",
+            "failure": "Connection Failed"
+        },
+        "models": {
+            "title": "Optional: Model Name Mappings",
+            "description": "Select models from your API provider. Leave blank to use defaults.",
+            "defaultLabel": "Default Model (Optional)",
+            "haikuLabel": "Haiku Model (Optional)",
+            "sonnetLabel": "Sonnet Model (Optional)",
+            "opusLabel": "Opus Model (Optional)",
+            "defaultPlaceholder": "e.g., claude-sonnet-4-5-20250929",
+            "haikuPlaceholder": "e.g., claude-haiku-4-5-20251001",
+            "sonnetPlaceholder": "e.g., claude-sonnet-4-5-20250929",
+            "opusPlaceholder": "e.g., claude-opus-4-5-20251101"
+        },
+        "dialog": {
+            "createTitle": "Add API Profile",
+            "editTitle": "Edit Profile",
+            "description": "Configure a custom Anthropic-compatible API endpoint for your builds.",
+            "deleteTitle": "Delete Profile?",
+            "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+            "cancel": "Cancel",
+            "delete": "Delete",
+            "deleting": "Deleting..."
+        },
+        "toast": {
+            "create": {
+                "title": "Profile created",
+                "description": "\"{{name}}\" has been added successfully."
+            },
+            "update": {
+                "title": "Profile updated",
+                "description": "\"{{name}}\" has been updated successfully."
+            },
+            "delete": {
+                "title": "Profile deleted",
+                "description": "\"{{name}}\" has been removed.",
+                "errorTitle": "Failed to delete profile",
+                "errorFallback": "An error occurred while deleting the profile."
+            },
+            "switch": {
+                "oauthTitle": "Switched to OAuth",
+                "oauthDescription": "Now using OAuth authentication",
+                "profileTitle": "Profile activated",
+                "profileDescription": "Now using {{name}}",
+                "errorTitle": "Failed to switch authentication",
+                "errorFallback": "An error occurred while switching authentication method."
+            }
+        }
+    },
+    "toast": {
+        "loadProfilesFailed": "Failed to Load Profiles",
+        "addProfileFailed": "Failed to Add Profile",
+        "deleteProfileFailed": "Failed to Delete Profile",
+        "renameProfileFailed": "Failed to Rename Profile",
+        "setActiveProfileFailed": "Failed to Set Active Profile",
+        "tokenSaved": "Token Saved",
+        "tokenSavedDescription": "Your token has been saved successfully.",
+        "tokenSaveFailed": "Failed to Save Token",
+        "settingsUpdateFailed": "Failed to Update Settings",
+        "tryAgain": "Please try again."
+    },
+    "alerts": {
+        "profileCreatedAuthFailed": "Profile created but failed to prepare authentication: {{error}}",
+        "authPrepareFailed": "Failed to prepare authentication: {{error}}",
+        "authStartFailedMessage": "Failed to start authentication. Please try again."
+    }
+}

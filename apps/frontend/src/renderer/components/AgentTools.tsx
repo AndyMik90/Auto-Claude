@@ -366,9 +366,9 @@ interface AgentCardProps {
 function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServerStates, customServers, onAddMcp, onRemoveMcp }: AgentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const { t } = useTranslation(['settings']);
-  const category = CATEGORIES[config.category as keyof typeof CATEGORIES];
-  const CategoryIcon = category.icon;
+  const { t } = useTranslation(['mcp']);
+  const category = t(`agents.categories.${config.category}` as any);
+  const CategoryIcon = CATEGORIES[config.category as keyof typeof CATEGORIES].icon;
 
   // Build combined MCP server info including custom servers
   const allMcpServers = useMemo(() => {
@@ -438,7 +438,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-medium text-sm text-foreground">{config.label}</h3>
+            <h3 className="font-medium text-sm text-foreground">{t(`agents.${id}.label` as any)}</h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-secondary-foreground">
               {modelLabel}
             </span>
@@ -446,7 +446,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
               {thinkingLabel}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground truncate">{config.description}</p>
+          <p className="text-xs text-muted-foreground truncate">{t(`agents.${id}.description` as any)}</p>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
           <span className="text-xs">
@@ -476,7 +476,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                   className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
                 >
                   <Plus className="h-3 w-3" />
-                  {t('mcp.addServer')}
+                  {t('addServer')}
                 </button>
               )}
             </div>
@@ -497,7 +497,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                         <span className="font-medium">{serverInfo?.name || server}</span>
                         {isAdded && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                            {t('mcp.added')}
+                            {t('added')}
                           </span>
                         )}
                       </div>
@@ -506,7 +506,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onRemoveMcp(id, server); }}
                           className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
-                          title={t('mcp.remove')}
+                          title={t('remove')}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -527,14 +527,14 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                         <ServerIcon className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-medium">{serverInfo?.name || server}</span>
                         <span className="text-[10px] text-muted-foreground no-underline">
-                          ({t('mcp.removed')})
+                          ({t('removed')})
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onAddMcp(id, server); }}
                         className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-primary transition-all"
-                        title={t('mcp.restore')}
+                        title={t('restore')}
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
@@ -543,7 +543,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">{t('mcp.noMcpServers')}</p>
+              <p className="text-sm text-muted-foreground">{t('noMcpServers')}</p>
             )}
           </div>
 
@@ -574,8 +574,8 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('mcp.addMcpTo', { agent: config.label })}</DialogTitle>
-            <DialogDescription>{t('mcp.addMcpDescription')}</DialogDescription>
+            <DialogTitle>{t('addMcpTo', { agent: t(`agents.${id}.label` as any) })}</DialogTitle>
+            <DialogDescription>{t('addMcpDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-4">
             {availableMcps.length > 0 ? (
@@ -599,14 +599,14 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
               })
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                {t('mcp.allMcpsAdded')}
+                {t('allMcpsAdded')}
               </p>
             )}
             {/* Also show removed MCPs that can be restored */}
             {removedMcps.length > 0 && (
               <>
                 <div className="border-t border-border my-2 pt-2">
-                  <p className="text-xs text-muted-foreground mb-2">{t('mcp.restore')}:</p>
+                  <p className="text-xs text-muted-foreground mb-2">{t('restore')}:</p>
                 </div>
                 {removedMcps.map((mcpId) => {
                   const server = allMcpServers[mcpId];
@@ -636,7 +636,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
 }
 
 export function AgentTools() {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation(['mcp']);
   const settings = useSettingsStore((state) => state.settings);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -1022,22 +1022,21 @@ export function AgentTools() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold text-foreground">MCP Server Overview</h1>
-              {selectedProject && (
-                <span className="text-sm text-muted-foreground">
-                  for {selectedProject.name}
-                </span>
-              )}
+              <h1 className="text-xl font-semibold text-foreground">
+                {selectedProject
+                  ? t('titleWithProject', { projectName: selectedProject.name })
+                  : t('title')}
+              </h1>
             </div>
             <p className="text-sm text-muted-foreground">
               {selectedProject
-                ? t('settings:mcp.description')
-                : t('settings:mcp.descriptionNoProject')}
+                ? t('description')
+                : t('descriptionNoProject')}
             </p>
           </div>
           {envConfig && (
             <div className="text-right">
-              <span className="text-sm text-muted-foreground">{t('settings:mcp.serversEnabled', { count: enabledCount })}</span>
+              <span className="text-sm text-muted-foreground">{t('serversEnabled', { count: enabledCount })}</span>
             </div>
           )}
         </div>
@@ -1050,9 +1049,9 @@ export function AgentTools() {
           {!selectedProject && (
             <div className="rounded-lg border border-border bg-card p-6 text-center">
               <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <h2 className="text-sm font-medium text-foreground mb-1">{t('settings:mcp.noProjectSelected')}</h2>
+              <h2 className="text-sm font-medium text-foreground mb-1">{t('noProjectSelected')}</h2>
               <p className="text-sm text-muted-foreground">
-                {t('settings:mcp.noProjectSelectedDescription')}
+                {t('noProjectSelectedDescription')}
               </p>
             </div>
           )}
@@ -1061,9 +1060,9 @@ export function AgentTools() {
           {selectedProject && !selectedProject.autoBuildPath && (
             <div className="rounded-lg border border-border bg-card p-6 text-center">
               <Info className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <h2 className="text-sm font-medium text-foreground mb-1">{t('settings:mcp.projectNotInitialized')}</h2>
+              <h2 className="text-sm font-medium text-foreground mb-1">{t('projectNotInitialized')}</h2>
               <p className="text-sm text-muted-foreground">
-                {t('settings:mcp.projectNotInitializedDescription')}
+                {t('projectNotInitializedDescription')}
               </p>
             </div>
           )}
@@ -1072,9 +1071,9 @@ export function AgentTools() {
           {envConfig && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium text-foreground">{t('settings:mcp.configuration')}</h2>
+                <h2 className="text-sm font-medium text-foreground">{t('configuration')}</h2>
                 <span className="text-xs text-muted-foreground">
-                  {t('settings:mcp.configurationHint')}
+                  {t('configurationHint')}
                 </span>
               </div>
 
@@ -1084,8 +1083,8 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">{t('settings:mcp.servers.context7.name')}</span>
-                      <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.context7.description')}</p>
+                      <span className="text-sm font-medium">{t('servers.context7.name')}</span>
+                      <p className="text-xs text-muted-foreground">{t('servers.context7.description')}</p>
                     </div>
                   </div>
                   <Switch
@@ -1099,11 +1098,11 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <Brain className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">{t('settings:mcp.servers.graphiti.name')}</span>
+                      <span className="text-sm font-medium">{t('servers.graphiti.name')}</span>
                       <p className="text-xs text-muted-foreground">
                         {envConfig.graphitiProviderConfig
-                          ? t('settings:mcp.servers.graphiti.description')
-                          : t('settings:mcp.servers.graphiti.notConfigured')}
+                          ? t('servers.graphiti.description')
+                          : t('servers.graphiti.notConfigured')}
                       </p>
                     </div>
                   </div>
@@ -1119,11 +1118,11 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <ClipboardList className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">{t('settings:mcp.servers.linear.name')}</span>
+                      <span className="text-sm font-medium">{t('servers.linear.name')}</span>
                       <p className="text-xs text-muted-foreground">
                         {envConfig.linearEnabled
-                          ? t('settings:mcp.servers.linear.description')
-                          : t('settings:mcp.servers.linear.notConfigured')}
+                          ? t('servers.linear.description')
+                          : t('servers.linear.notConfigured')}
                       </p>
                     </div>
                   </div>
@@ -1139,7 +1138,7 @@ export function AgentTools() {
                   <div className="flex items-center gap-2 mb-3">
                     <Info className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                      {t('settings:mcp.browserAutomation')}
+                      {t('browserAutomation')}
                     </span>
                   </div>
 
@@ -1148,8 +1147,8 @@ export function AgentTools() {
                     <div className="flex items-center gap-3">
                       <Monitor className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm font-medium">{t('settings:mcp.servers.electron.name')}</span>
-                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.electron.description')}</p>
+                        <span className="text-sm font-medium">{t('servers.electron.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('servers.electron.description')}</p>
                       </div>
                     </div>
                     <Switch
@@ -1163,8 +1162,8 @@ export function AgentTools() {
                     <div className="flex items-center gap-3">
                       <Globe className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm font-medium">{t('settings:mcp.servers.puppeteer.name')}</span>
-                        <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.puppeteer.description')}</p>
+                        <span className="text-sm font-medium">{t('servers.puppeteer.name')}</span>
+                        <p className="text-xs text-muted-foreground">{t('servers.puppeteer.description')}</p>
                       </div>
                     </div>
                     <Switch
@@ -1179,8 +1178,8 @@ export function AgentTools() {
                   <div className="flex items-center gap-3">
                     <ListChecks className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-sm font-medium">{t('settings:mcp.servers.autoClaude.name')}</span>
-                      <p className="text-xs text-muted-foreground">{t('settings:mcp.servers.autoClaude.description')} ({t('settings:mcp.alwaysEnabled')})</p>
+                      <span className="text-sm font-medium">{t('servers.autoClaude.name')}</span>
+                      <p className="text-xs text-muted-foreground">{t('servers.autoClaude.description')} ({t('alwaysEnabled')})</p>
                     </div>
                   </div>
                   <Switch checked={true} disabled />
@@ -1192,7 +1191,7 @@ export function AgentTools() {
                     <div className="flex items-center gap-2">
                       <Terminal className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                        {t('settings:mcp.customServers')}
+                        {t('customServers')}
                       </span>
                     </div>
                     <button
@@ -1201,7 +1200,7 @@ export function AgentTools() {
                       className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
                     >
                       <Plus className="h-3 w-3" />
-                      {t('settings:mcp.addCustomServer')}
+                      {t('addCustomServer')}
                     </button>
                   </div>
 
@@ -1301,7 +1300,7 @@ export function AgentTools() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">
-                      {t('settings:mcp.noCustomServers')}
+                      {t('noCustomServers')}
                     </p>
                   )}
                 </div>
@@ -1332,7 +1331,7 @@ export function AgentTools() {
                   )}
                   <CategoryIcon className="h-4 w-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    {category.label}
+                    {t(`agents.categories.${categoryId}` as any)}
                   </h2>
                   <span className="text-xs text-muted-foreground">
                     ({agents.length} agents)

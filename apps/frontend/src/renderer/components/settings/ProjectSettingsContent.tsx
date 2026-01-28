@@ -88,8 +88,6 @@ function ProjectSettingsContentInner({
     setShowLinearKey,
     showOpenAIKey,
     setShowOpenAIKey,
-    showGitHubToken,
-    setShowGitHubToken,
     expandedSections: _expandedSections,
     toggleSection: _toggleSection,
     gitHubConnectionStatus,
@@ -136,8 +134,6 @@ function ProjectSettingsContentInner({
         setShowLinearKey={setShowLinearKey}
         showOpenAIKey={showOpenAIKey}
         setShowOpenAIKey={setShowOpenAIKey}
-        showGitHubToken={showGitHubToken}
-        setShowGitHubToken={setShowGitHubToken}
         gitHubConnectionStatus={gitHubConnectionStatus}
         isCheckingGitHub={isCheckingGitHub}
         showGitLabToken={showGitLabToken}

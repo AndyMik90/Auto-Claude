@@ -1,0 +1,18 @@
+{
+  "hero": {
+    "title": "Добро пожаловать в Auto Claude",
+    "subtitle": "Разрабатывайте ПО автономно с помощью агентов на базе ИИ"
+  },
+  "actions": {
+    "newProject": "Новый проект",
+    "openProject": "Открыть проект"
+  },
+  "recentProjects": {
+    "title": "Недавние проекты",
+    "empty": "Проектов пока нет",
+    "emptyDescription": "Создайте новый проект или откройте существующий, чтобы начать",
+    "openFolder": "Открыть папку",
+    "openProjectAriaLabel": "Открыть проект {{name}}",
+    "initialized": "Инициализирован"
+  }
+}

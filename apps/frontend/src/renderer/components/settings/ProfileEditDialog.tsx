@@ -48,7 +48,7 @@ interface ProfileEditDialogProps {
 }
 
 export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: ProfileEditDialogProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('accounts');
   const {
     saveProfile,
     updateProfile,
@@ -151,7 +151,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
     setPresetId(id);
     setBaseUrl(preset.baseUrl);
     if (!name.trim()) {
-      setName(t(preset.labelKey));
+      setName(t(preset.labelKey as any));
     }
   };
 
@@ -161,7 +161,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
     // Name validation
     if (!name.trim()) {
-      setNameError(t('settings:apiProfiles.validation.nameRequired'));
+      setNameError(t('apiProfiles.validation.nameRequired'));
       isValid = false;
     } else {
       setNameError(null);
@@ -169,10 +169,10 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
     // Base URL validation
     if (!baseUrl.trim()) {
-      setUrlError(t('settings:apiProfiles.validation.baseUrlRequired'));
+      setUrlError(t('apiProfiles.validation.baseUrlRequired'));
       isValid = false;
     } else if (!isValidUrl(baseUrl)) {
-      setUrlError(t('settings:apiProfiles.validation.baseUrlInvalid'));
+      setUrlError(t('apiProfiles.validation.baseUrlInvalid'));
       isValid = false;
     } else {
       setUrlError(null);
@@ -181,10 +181,10 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
     // API Key validation (only in create mode or when changing key in edit mode)
     if (!isEditMode || isChangingApiKey) {
       if (!apiKey.trim()) {
-        setKeyError(t('settings:apiProfiles.validation.apiKeyRequired'));
+        setKeyError(t('apiProfiles.validation.apiKeyRequired'));
         isValid = false;
       } else if (!isValidApiKey(apiKey)) {
-        setKeyError(t('settings:apiProfiles.validation.apiKeyInvalid'));
+        setKeyError(t('apiProfiles.validation.apiKeyInvalid'));
         isValid = false;
       } else {
         setKeyError(null);
@@ -205,7 +205,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
     // Basic validation before testing
     if (!baseUrl.trim()) {
-      setUrlError(t('settings:apiProfiles.validation.baseUrlRequired'));
+      setUrlError(t('apiProfiles.validation.baseUrlRequired'));
       return;
     }
     if (!apiKeyForTest.trim()) {
@@ -259,8 +259,8 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
       const success = await updateProfile(updatedProfile);
       if (success) {
         toast({
-          title: t('settings:apiProfiles.toast.update.title'),
-          description: t('settings:apiProfiles.toast.update.description', {
+          title: t('apiProfiles.toast.update.title'),
+          description: t('apiProfiles.toast.update.description', {
             name: name.trim()
           }),
         });
@@ -287,8 +287,8 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
       const success = await saveProfile(profileData);
       if (success) {
         toast({
-          title: t('settings:apiProfiles.toast.create.title'),
-          description: t('settings:apiProfiles.toast.create.description', {
+          title: t('apiProfiles.toast.create.title'),
+          description: t('apiProfiles.toast.create.description', {
             name: name.trim()
           }),
         });
@@ -307,11 +307,11 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
         <DialogHeader>
           <DialogTitle>
             {isEditMode
-              ? t('settings:apiProfiles.dialog.editTitle')
-              : t('settings:apiProfiles.dialog.createTitle')}
+              ? t('apiProfiles.dialog.editTitle')
+              : t('apiProfiles.dialog.createTitle')}
           </DialogTitle>
           <DialogDescription>
-            {t('settings:apiProfiles.dialog.description')}
+            {t('apiProfiles.dialog.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -320,11 +320,11 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
             {/* Name field (required) */}
             <div className={`space-y-2 ${isEditMode ? 'md:col-span-2' : ''}`}>
               <Label htmlFor="profile-name">
-                {t('settings:apiProfiles.fields.name')} <span className="text-destructive">*</span>
+                {t('apiProfiles.fields.name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="profile-name"
-                placeholder={t('settings:apiProfiles.placeholders.name')}
+                placeholder={t('apiProfiles.placeholders.name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={nameError ? 'border-destructive' : ''}
@@ -334,10 +334,10 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
             {!isEditMode && (
               <div className="space-y-2">
-                <Label htmlFor="profile-preset">{t('settings:apiProfiles.fields.preset')}</Label>
+                <Label htmlFor="profile-preset">{t('apiProfiles.fields.preset')}</Label>
                 <Select value={presetId} onValueChange={applyPreset}>
                   <SelectTrigger id="profile-preset">
-                    <SelectValue placeholder={t('settings:apiProfiles.placeholders.preset')} />
+                    <SelectValue placeholder={t('apiProfiles.placeholders.preset')} />
                   </SelectTrigger>
                   <SelectContent
                     onCloseAutoFocus={(event) => {
@@ -347,13 +347,13 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
                   >
                     {API_PROVIDER_PRESETS.map((preset) => (
                       <SelectItem key={preset.id} value={preset.id}>
-                        {t(preset.labelKey)}
+                        {t(preset.labelKey as any)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {t('settings:apiProfiles.hints.preset')}
+                  {t('apiProfiles.hints.preset')}
                 </p>
               </div>
             )}
@@ -363,11 +363,11 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
             {/* Base URL field (required) */}
             <div className="space-y-2">
               <Label htmlFor="profile-url">
-                {t('settings:apiProfiles.fields.baseUrl')} <span className="text-destructive">*</span>
+                {t('apiProfiles.fields.baseUrl')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="profile-url"
-                placeholder={t('settings:apiProfiles.placeholders.baseUrl')}
+                placeholder={t('apiProfiles.placeholders.baseUrl')}
                 value={baseUrl}
                 ref={baseUrlInputRef}
                 onChange={(e) => setBaseUrl(e.target.value)}
@@ -375,14 +375,14 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
               />
               {urlError && <p className="text-sm text-destructive">{urlError}</p>}
               <p className="text-xs text-muted-foreground">
-                {t('settings:apiProfiles.hints.baseUrl')}
+                {t('apiProfiles.hints.baseUrl')}
               </p>
             </div>
 
             {/* API Key field (required for create, masked in edit mode) */}
             <div className="space-y-2">
               <Label htmlFor="profile-key">
-                {t('settings:apiProfiles.fields.apiKey')} <span className="text-destructive">*</span>
+                {t('apiProfiles.fields.apiKey')} <span className="text-destructive">*</span>
               </Label>
               {isEditMode && !isChangingApiKey && profile ? (
                 // Edit mode: show masked API key
@@ -399,7 +399,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
                     size="sm"
                     onClick={() => setIsChangingApiKey(true)}
                   >
-                    {t('settings:apiProfiles.actions.changeKey')}
+                    {t('apiProfiles.actions.changeKey')}
                   </Button>
                 </div>
               ) : (
@@ -408,7 +408,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
                   <Input
                     id="profile-key"
                     type="password"
-                    placeholder={t('settings:apiProfiles.placeholders.apiKey')}
+                    placeholder={t('apiProfiles.placeholders.apiKey')}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     className={keyError ? 'border-destructive' : ''}
@@ -424,7 +424,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
                         setKeyError(null);
                       }}
                     >
-                      {t('settings:apiProfiles.actions.cancelKeyChange')}
+                      {t('apiProfiles.actions.cancelKeyChange')}
                     </Button>
                   )}
                 </>
@@ -444,40 +444,37 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
             {isTestingConnection ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('settings:apiProfiles.testConnection.testing')}
+                {t('apiProfiles.testConnection.testing')}
               </>
             ) : (
-              t('settings:apiProfiles.testConnection.label')
+              t('apiProfiles.testConnection.label')
             )}
           </Button>
 
           {/* Inline connection test result */}
           {showTestResult && testConnectionResult && (
-            <div className={`flex items-start gap-2 p-3 rounded-lg border ${
-              testConnectionResult.success
-                ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
-                : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-            }`}>
+            <div className={`flex items-start gap-2 p-3 rounded-lg border ${testConnectionResult.success
+              ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+              : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+              }`}>
               {testConnectionResult.success ? (
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${
-                  testConnectionResult.success
-                    ? 'text-green-800 dark:text-green-200'
-                    : 'text-red-800 dark:text-red-200'
-                }`}>
+                <p className={`text-sm font-medium ${testConnectionResult.success
+                  ? 'text-green-800 dark:text-green-200'
+                  : 'text-red-800 dark:text-red-200'
+                  }`}>
                   {testConnectionResult.success
-                    ? t('settings:apiProfiles.testConnection.success')
-                    : t('settings:apiProfiles.testConnection.failure')}
+                    ? t('apiProfiles.testConnection.success')
+                    : t('apiProfiles.testConnection.failure')}
                 </p>
-                <p className={`text-sm ${
-                  testConnectionResult.success
-                    ? 'text-green-700 dark:text-green-300'
-                    : 'text-red-700 dark:text-red-300'
-                }`}>
+                <p className={`text-sm ${testConnectionResult.success
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'
+                  }`}>
                   {testConnectionResult.message}
                 </p>
               </div>
@@ -486,20 +483,20 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
           {/* Optional model mappings */}
           <div className="space-y-3 pt-2 border-t">
-            <Label className="text-base">{t('settings:apiProfiles.models.title')}</Label>
+            <Label className="text-base">{t('apiProfiles.models.title')}</Label>
             <p className="text-xs text-muted-foreground">
-              {t('settings:apiProfiles.models.description')}
+              {t('apiProfiles.models.description')}
             </p>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="model-default" className="text-sm text-muted-foreground">
-                  {t('settings:apiProfiles.models.defaultLabel')}
+                  {t('apiProfiles.models.defaultLabel')}
                 </Label>
                 <ModelSearchableSelect
                   value={defaultModel}
                   onChange={setDefaultModel}
-                  placeholder={t('settings:apiProfiles.models.defaultPlaceholder')}
+                  placeholder={t('apiProfiles.models.defaultPlaceholder')}
                   baseUrl={baseUrl}
                   apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
                 />
@@ -507,12 +504,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
               <div className="space-y-2">
                 <Label htmlFor="model-haiku" className="text-sm text-muted-foreground">
-                  {t('settings:apiProfiles.models.haikuLabel')}
+                  {t('apiProfiles.models.haikuLabel')}
                 </Label>
                 <ModelSearchableSelect
                   value={haikuModel}
                   onChange={setHaikuModel}
-                  placeholder={t('settings:apiProfiles.models.haikuPlaceholder')}
+                  placeholder={t('apiProfiles.models.haikuPlaceholder')}
                   baseUrl={baseUrl}
                   apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
                 />
@@ -520,12 +517,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
               <div className="space-y-2">
                 <Label htmlFor="model-sonnet" className="text-sm text-muted-foreground">
-                  {t('settings:apiProfiles.models.sonnetLabel')}
+                  {t('apiProfiles.models.sonnetLabel')}
                 </Label>
                 <ModelSearchableSelect
                   value={sonnetModel}
                   onChange={setSonnetModel}
-                  placeholder={t('settings:apiProfiles.models.sonnetPlaceholder')}
+                  placeholder={t('apiProfiles.models.sonnetPlaceholder')}
                   baseUrl={baseUrl}
                   apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
                 />
@@ -533,12 +530,12 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
 
               <div className="space-y-2">
                 <Label htmlFor="model-opus" className="text-sm text-muted-foreground">
-                  {t('settings:apiProfiles.models.opusLabel')}
+                  {t('apiProfiles.models.opusLabel')}
                 </Label>
                 <ModelSearchableSelect
                   value={opusModel}
                   onChange={setOpusModel}
-                  placeholder={t('settings:apiProfiles.models.opusPlaceholder')}
+                  placeholder={t('apiProfiles.models.opusPlaceholder')}
                   baseUrl={baseUrl}
                   apiKey={isEditMode && !isChangingApiKey && profile ? profile.apiKey : apiKey}
                 />
@@ -561,7 +558,7 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
             onClick={() => onOpenChange(false)}
             disabled={profilesLoading}
           >
-            {t('settings:apiProfiles.actions.cancel')}
+            {t('apiProfiles.actions.cancel')}
           </Button>
           <Button
             type="button"
@@ -571,10 +568,10 @@ export function ProfileEditDialog({ open, onOpenChange, onSaved, profile }: Prof
             {profilesLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('settings:apiProfiles.actions.saving')}
+                {t('apiProfiles.actions.saving')}
               </>
             ) : (
-              t('settings:apiProfiles.actions.save')
+              t('apiProfiles.actions.save')
             )}
           </Button>
         </DialogFooter>

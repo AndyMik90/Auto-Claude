@@ -118,6 +118,7 @@
   },
   "time": {
     "justNow": "À l'instant",
+    "secondsAgo": "Il y a {{count}}s",
     "minutesAgo": "Il y a {{count}} min",
     "hoursAgo": "Il y a {{count}}h",
     "daysAgo": "Il y a {{count}}j"
@@ -662,5 +663,15 @@
     "progress": "Progression",
     "lastActivityPrefix": "dernière activité",
     "lastProgressUpdateTooltip": "Dernière mise à jour de progression reçue"
+  },
+  "messages": {
+    "selectProject": "Sélectionnez un projet pour voir les détails",
+    "pressEnterToSend": "Appuyez sur Entrée pour envoyer"
+  },
+  "status": {
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "connected": "Connecté",
+    "notConnected": "Non connecté"
   }
 }

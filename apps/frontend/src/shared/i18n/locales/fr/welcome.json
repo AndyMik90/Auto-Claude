@@ -1,17 +1,18 @@
 {
   "hero": {
     "title": "Bienvenue sur Auto Claude",
-    "subtitle": "Construisez des logiciels de manière autonome avec des agents IA"
+    "subtitle": "Créez des logiciels de manière autonome avec des agents IA"
   },
   "actions": {
-    "newProject": "Nouveau projet",
-    "openProject": "Ouvrir un projet"
+    "newProject": "Nouveau Projet",
+    "openProject": "Ouvrir un Projet"
   },
   "recentProjects": {
-    "title": "Projets récents",
-    "empty": "Aucun projet",
+    "title": "Projets Récents",
+    "empty": "Aucun projet pour l'instant",
     "emptyDescription": "Créez un nouveau projet ou ouvrez-en un existant pour commencer",
-    "openFolder": "Ouvrir le dossier",
-    "openProjectAriaLabel": "Ouvrir le projet {{name}}"
+    "openFolder": "Ouvrir le Dossier",
+    "openProjectAriaLabel": "Ouvrir le projet {{name}}",
+    "initialized": "Initialisé"
   }
 }

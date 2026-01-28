@@ -1,0 +1,81 @@
+{
+    "title": "Память",
+    "status": {
+        "title": "Статус графа памяти",
+        "connected": "Подключено",
+        "notAvailable": "Недоступно",
+        "database": "База данных",
+        "path": "Путь",
+        "total": "Всего",
+        "notConfigured": "Память Graphiti не настроена",
+        "enableHint": "Чтобы включить память, установите GRAPHITI_ENABLED=true в настройках проекта."
+    },
+    "search": {
+        "title": "Поиск по памяти",
+        "placeholder": "Поиск паттернов, инсайтов, нюансов...",
+        "resultsFound": "Найден {{count}} результат",
+        "resultsFound_few": "Найдено {{count}} результата",
+        "resultsFound_many": "Найдено {{count}} результатов",
+        "score": "Рейтинг"
+    },
+    "browser": {
+        "title": "Браузер памяти",
+        "stats": "{{filtered}} из {{total}} записей",
+        "noMemories": "Записей пока нет. Память пополняется во время сессий агентов и ревью PR.",
+        "noMatch": "Нет записей, соответствующих фильтру.",
+        "showAll": "Показать все"
+    },
+    "types": {
+        "session_insight": "Инсайт сессии",
+        "codebase_discovery": "Анализ кода",
+        "codebase_map": "Карта кода",
+        "pattern": "Паттерн",
+        "gotcha": "Нюанс",
+        "task_outcome": "Результат задачи",
+        "qa_result": "Результат QA",
+        "historical_context": "Контекст",
+        "pr_review": "Ревью PR",
+        "pr_finding": "Замечание PR",
+        "pr_pattern": "Паттерн PR",
+        "pr_gotcha": "Нюанс PR"
+    },
+    "categories": {
+        "all": "Все",
+        "pr": "Ревью PR",
+        "sessions": "Сессии",
+        "codebase": "Код",
+        "patterns": "Паттерны",
+        "gotchas": "Нюансы"
+    },
+    "card": {
+        "session": "Сессия #{{number}}",
+        "expand": "Развернуть",
+        "collapse": "Свернуть",
+        "details": "Подробнее",
+        "whatWorked": "Что получилось",
+        "whatFailed": "Что не получилось",
+        "approach": "Подход",
+        "recommendations": "Рекомендации",
+        "patterns": "Паттерны",
+        "gotchas": "Нюансы",
+        "changedFiles": "Измененные файлы",
+        "fileInsights": "Анализ файлов",
+        "subtasksCompleted": "Выполненные подзадачи"
+    },
+    "pr": {
+        "approved": "Одобрено",
+        "changesRequested": "Нужны правки",
+        "commented": "Комментарий",
+        "findings": "замечание",
+        "findings_few": "замечания",
+        "findings_many": "замечаний",
+        "followUp": "Повторное ревью",
+        "keyFindings": "Ключевые замечания",
+        "gotchasTitle": "Обнаруженные нюансы",
+        "patternsTitle": "Выявленные паттерны",
+        "moreFindings": "+{{count}} еще замечание",
+        "moreFindings_few": "+{{count}} еще замечания",
+        "moreFindings_many": "+{{count}} еще замечаний",
+        "viewOnGithub": "Открыть в GitHub"
+    }
+}

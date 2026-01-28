@@ -1,0 +1,69 @@
+{
+    "title": "Analyses & Insights",
+    "subtitle": "Observations intelligentes sur l'activité de votre projet",
+    "newChat": "Nouvelle Discussion",
+    "placeholder": "Posez une question sur votre code...",
+    "empty": {
+        "title": "Démarrer une Conversation",
+        "description": "Posez des questions sur votre base de code, obtenez des suggestions d'amélioration ou discutez des fonctionnalités que vous souhaitez implémenter."
+    },
+    "suggestions": {
+        "architecture": "Quelle est l'architecture de ce projet ?",
+        "improvements": "Suggérer des améliorations pour la qualité du code",
+        "features": "Quelles fonctionnalités pourrais-je ajouter ensuite ?",
+        "security": "Y a-t-il des préoccupations de sécurité ?"
+    },
+    "roles": {
+        "user": "Vous",
+        "assistant": "Assistant"
+    },
+    "status": {
+        "thinking": "Réflexion...",
+        "streaming": "Envoi..."
+    },
+    "suggestedTask": {
+        "title": "Tâche Suggérée",
+        "create": "Créer la Tâche",
+        "creating": "Création...",
+        "created": "Tâche Créée"
+    },
+    "tools": {
+        "usedCount": "{{count}} outil utilisé",
+        "usedCount_plural": "{{count}} outils utilisés",
+        "read": "Lecture du fichier",
+        "glob": "Recherche de fichiers",
+        "grep": "Recherche dans le code"
+    },
+    "history": {
+        "title": "Historique",
+        "empty": "Aucune conversation pour l'instant",
+        "deleteTitle": "Supprimer la conversation ?",
+        "deleteDescription": "Cela supprimera définitivement cette conversation et tous ses messages. Cette action est irréversible.",
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "daysAgo": "Il y a {{count}} jours",
+        "messagesCount": "1 message",
+        "messagesCount_plural": "{{count}} messages"
+    },
+    "accessibility": {
+        "hideSidebar": "Masquer la barre latérale",
+        "showSidebar": "Afficher la barre latérale"
+    },
+    "categories": {
+        "productivity": "Productivité",
+        "velocity": "Vélocité",
+        "quality": "Qualité du code",
+        "collaboration": "Collaboration"
+    },
+    "metrics": {
+        "tasksPerDay": "Tâches par jour",
+        "avgDuration": "Durée moyenne",
+        "commitFreq": "Fréquence des commits",
+        "activeTime": "Temps actif"
+    },
+    "periods": {
+        "week": "7 derniers jours",
+        "month": "30 derniers jours",
+        "allTime": "Tout le temps"
+    }
+}

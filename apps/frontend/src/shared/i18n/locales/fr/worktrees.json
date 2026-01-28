@@ -1,0 +1,21 @@
+{
+    "title": "Arbres de Travail Git",
+    "subtitle": "Gérez plusieurs branches simultanément avec les Worktrees",
+    "empty": {
+        "title": "Aucun Worktree actif",
+        "description": "Les worktrees vous permettent de travailler sur plusieurs branches sans changer le répertoire principal.",
+        "action": "Créer un Worktree"
+    },
+    "actions": {
+        "create": "Nouveau Worktree",
+        "remove": "Supprimer",
+        "prune": "Nettoyer les worktrees orphelins",
+        "open": "Ouvrir dans l'éditeur"
+    },
+    "labels": {
+        "path": "Chemin",
+        "branch": "Branche",
+        "status": "Statut",
+        "locked": "Verrouillé"
+    }
+}

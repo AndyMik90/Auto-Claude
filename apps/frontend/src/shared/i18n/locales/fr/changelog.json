@@ -1,0 +1,107 @@
+{
+    "title": "Génération du Changelog",
+    "description": "Générez un résumé professionnel de vos modifications récentes",
+    "steps": {
+        "select": "Sélectionner les changements",
+        "generate": "Générer le contenu",
+        "release": "Vérifier la version"
+    },
+    "actions": {
+        "refresh": "Actualiser",
+        "selectAll": "Tout sélectionner",
+        "clear": "Effacer",
+        "continue": "Continuer",
+        "back": "Retour",
+        "generating": "Génération en cours...",
+        "summarizing": "Résumé en cours...",
+        "createRelease": "Créer la version",
+        "copy": "Copier",
+        "save": "Enregistrer"
+    },
+    "filters": {
+        "title": "Configuration du Changelog",
+        "source": "Source des données",
+        "mode": "Mode de génération",
+        "format": "Format",
+        "audience": "Public cible",
+        "emoji": "Niveau d'Emoji",
+        "period": "Période",
+        "output": "Sortie",
+        "groupBy": "Grouper par",
+        "include": "Inclure",
+        "advanced": "Options avancées"
+    },
+    "sourceMode": {
+        "tasks": "Tâches Auto-Claude",
+        "git-history": "Historique Git direct",
+        "branch-diff": "Différence entre branches",
+        "merged-prs": "Pull Requests fusionnées"
+    },
+    "period": {
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "this-week": "Cette semaine",
+        "last-week": "La semaine dernière",
+        "this-month": "Ce mois-ci",
+        "last-30-days": "30 derniers jours",
+        "custom": "Personnalisé"
+    },
+    "format": {
+        "markdown": "Markdown",
+        "plain": "Texte brut",
+        "html": "HTML",
+        "json": "JSON"
+    },
+    "audience": {
+        "technical": "Technique (Développeurs)",
+        "business": "Commercial (Clients)",
+        "general": "Général"
+    },
+    "emoji": {
+        "none": "Aucun",
+        "low": "Minimal (Minimaliste)",
+        "medium": "Standard (Recommandé)",
+        "high": "Expressif (Ludique)"
+    },
+    "groupBy": {
+        "type": "Type de changement",
+        "task": "Tâche",
+        "scope": "Portée (Module)",
+        "none": "Liste plate"
+    },
+    "include": {
+        "authors": "Auteurs",
+        "links": "Liens de commit",
+        "stats": "Statistiques (Fichiers, lignes)",
+        "breaking": "Changements majeurs"
+    },
+    "taskItem": {
+        "status": {
+            "completed": "Terminé",
+            "in_progress": "En cours",
+            "failed": "Échoué"
+        },
+        "summary": "Résumé de la tâche",
+        "commits": "Commits",
+        "duration": "Durée"
+    },
+    "gitItem": {
+        "hash": "Hachage",
+        "author": "Auteur",
+        "date": "Date",
+        "filesChanged": "fichiers modifiés"
+    },
+    "status": {
+        "scanning": "Analyse de l'historique...",
+        "fetching": "Récupération des données...",
+        "noChanges": "Aucun changement trouvé pour la période sélectionnée.",
+        "selectPrompt": "Sélectionnez au moins un élément pour continuer.",
+        "error": "Une erreur est survenue lors de la génération."
+    },
+    "configLabels": {
+        "promptLabel": "Instructions personnalisées",
+        "promptPlaceholder": "Ex: Focus sur les changements de l'UI, ton professionnel...",
+        "versionLabel": "Nom de la version",
+        "versionPlaceholder": "Ex: v1.0.0"
+    }
+}

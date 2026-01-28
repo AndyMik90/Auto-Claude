@@ -25,8 +25,6 @@ interface SectionRouterProps {
   setShowLinearKey: React.Dispatch<React.SetStateAction<boolean>>;
   showOpenAIKey: boolean;
   setShowOpenAIKey: React.Dispatch<React.SetStateAction<boolean>>;
-  showGitHubToken: boolean;
-  setShowGitHubToken: React.Dispatch<React.SetStateAction<boolean>>;
   gitHubConnectionStatus: GitHubSyncStatus | null;
   isCheckingGitHub: boolean;
   showGitLabToken: boolean;
@@ -59,8 +57,6 @@ export function SectionRouter({
   setShowLinearKey,
   showOpenAIKey,
   setShowOpenAIKey,
-  showGitHubToken,
-  setShowGitHubToken,
   gitHubConnectionStatus,
   isCheckingGitHub,
   showGitLabToken,
@@ -73,13 +69,14 @@ export function SectionRouter({
   onOpenLinearImport
 }: SectionRouterProps) {
   const { t } = useTranslation('settings');
+  const { t: tInt } = useTranslation('integrations');
 
   switch (activeSection) {
     case 'general':
       return (
         <SettingsSection
-          title="General"
-          description={`Configure Auto-Build, agent model, and notifications for ${project.name}`}
+          title={t('projectSections.general.title')}
+          description={t('projectSections.general.description', { projectName: project.name })}
         >
           <GeneralSettings
             project={project}
@@ -96,13 +93,13 @@ export function SectionRouter({
     case 'linear':
       return (
         <SettingsSection
-          title={t('projectSections.linear.integrationTitle')}
-          description={t('projectSections.linear.integrationDescription')}
+          title={tInt('linear.title')}
+          description={tInt('linear.syncDescription')}
         >
           <InitializationGuard
             initialized={!!project.autoBuildPath}
-            title={t('projectSections.linear.integrationTitle')}
-            description={t('projectSections.linear.syncDescription')}
+            title={tInt('linear.title')}
+            description={tInt('linear.syncDescription')}
           >
             <LinearIntegration
               envConfig={envConfig}
@@ -120,19 +117,17 @@ export function SectionRouter({
     case 'github':
       return (
         <SettingsSection
-          title={t('projectSections.github.integrationTitle')}
-          description={t('projectSections.github.integrationDescription')}
+          title={tInt('github.title')}
+          description={tInt('github.syncDescription')}
         >
           <InitializationGuard
             initialized={!!project.autoBuildPath}
-            title={t('projectSections.github.integrationTitle')}
-            description={t('projectSections.github.syncDescription')}
+            title={tInt('github.title')}
+            description={tInt('github.syncDescription')}
           >
             <GitHubIntegration
               envConfig={envConfig}
               updateEnvConfig={updateEnvConfig}
-              showGitHubToken={showGitHubToken}
-              setShowGitHubToken={setShowGitHubToken}
               gitHubConnectionStatus={gitHubConnectionStatus}
               isCheckingGitHub={isCheckingGitHub}
               projectPath={project.path}
@@ -146,13 +141,13 @@ export function SectionRouter({
     case 'gitlab':
       return (
         <SettingsSection
-          title={t('projectSections.gitlab.integrationTitle')}
-          description={t('projectSections.gitlab.integrationDescription')}
+          title={tInt('gitlab.title')}
+          description={tInt('gitlab.syncDescription')}
         >
           <InitializationGuard
             initialized={!!project.autoBuildPath}
-            title={t('projectSections.gitlab.integrationTitle')}
-            description={t('projectSections.gitlab.syncDescription')}
+            title={tInt('gitlab.title')}
+            description={tInt('gitlab.syncDescription')}
           >
             <GitLabIntegration
               envConfig={envConfig}
@@ -172,13 +167,13 @@ export function SectionRouter({
     case 'memory':
       return (
         <SettingsSection
-          title={t('projectSections.memory.integrationTitle')}
-          description={t('projectSections.memory.integrationDescription')}
+          title={tInt('memory.title')}
+          description={tInt('memory.enableMemoryDescription')}
         >
           <InitializationGuard
             initialized={!!project.autoBuildPath}
-            title={t('projectSections.memory.integrationTitle')}
-            description={t('projectSections.memory.syncDescription')}
+            title={tInt('memory.title')}
+            description={tInt('memory.enableMemoryDescription')}
           >
             <SecuritySettings
               envConfig={envConfig}
@@ -188,7 +183,7 @@ export function SectionRouter({
               showOpenAIKey={showOpenAIKey}
               setShowOpenAIKey={setShowOpenAIKey}
               expanded={true}
-              onToggle={() => {}}
+              onToggle={() => { }}
             />
           </InitializationGuard>
         </SettingsSection>

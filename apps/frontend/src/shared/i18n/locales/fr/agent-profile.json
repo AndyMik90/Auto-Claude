@@ -1,0 +1,86 @@
+{
+    "label": "Profil de l'Agent",
+    "apply": "Appliquer",
+    "cancel": "Annuler",
+    "title": "Profil de l'agent par défaut",
+    "sectionDescription": "Sélectionnez une configuration prédéfinie pour le modèle et le niveau de réflexion",
+    "profilesInfo": "Les profils d'agent fournissent des configurations prédéfinies pour le modèle Claude et le niveau de réflexion. Lorsque vous créez une nouvelle tâche, ces paramètres seront utilisés par défaut. Vous pouvez toujours les modifier dans l'assistant de création de tâche.",
+    "presets": {
+        "auto": {
+            "name": "Auto (Optimisé)",
+            "description": "Utilise Opus sur toutes les phases avec des niveaux de réflexion optimisés"
+        },
+        "complex": {
+            "name": "Tâches Complexes",
+            "description": "Pour les implémentations complexes nécessitant une analyse approfondie"
+        },
+        "balanced": {
+            "name": "Équilibré",
+            "description": "Bon équilibre entre vitesse et qualité pour la plupart des tâches"
+        },
+        "quick": {
+            "name": "Modifs Rapides",
+            "description": "Itérations rapides pour des changements simples et des correctifs"
+        }
+    },
+    "custom": "Personnalisé",
+    "customConfiguration": "Configuration personnalisée",
+    "customDescription": "Choisir le modèle et le niveau de réflexion",
+    "customModel": {
+        "title": "Configuration personnalisée",
+        "description": "Choisir le modèle et le niveau de réflexion"
+    },
+    "phaseConfiguration": "Configuration des étapes",
+    "phaseConfigurationDescription": "Personnaliser le modèle et le niveau de réflexion pour chaque étape",
+    "clickToCustomize": "Cliquer pour personnaliser",
+    "model": "Modèle",
+    "thinking": "Réflexion",
+    "thinkingLevel": "Niveau de réflexion",
+    "selectModel": "Sélectionner le modèle",
+    "selectThinkingLevel": "Sélectionner le niveau de réflexion",
+    "perPhaseOptimization": "(optimisation par étape)",
+    "resetToDefaults": "Réinitialiser aux paramètres par défaut",
+    "resetToProfileDefaults": "Réinitialiser aux paramètres de {{profile}}",
+    "customized": "Personnalisé",
+    "phaseConfigNote": "Ces paramètres seront utilisés par défaut lors de la création de nouvelles tâches avec ce profil. Vous pouvez les modifier par tâche dans l'assistant de création.",
+    "phases": {
+        "spec": {
+            "label": "Création de Spec",
+            "description": "Découverte, exigences, collecte de contexte"
+        },
+        "planning": {
+            "label": "Planification",
+            "description": "Planification de l'implémentation et architecture"
+        },
+        "coding": {
+            "label": "Codage",
+            "description": "Implémentation réelle du code"
+        },
+        "qa": {
+            "label": "Revue QA",
+            "description": "Assurance qualité et validation"
+        }
+    },
+    "thinkingLevels": {
+        "none": {
+            "label": "Aucun",
+            "description": "Pas de réflexion étendue"
+        },
+        "low": {
+            "label": "Bas",
+            "description": "Brève considération"
+        },
+        "medium": {
+            "label": "Moyen",
+            "description": "Analyse modérée"
+        },
+        "high": {
+            "label": "Haut",
+            "description": "Réflexion approfondie"
+        },
+        "ultrathink": {
+            "label": "Ultra Think",
+            "description": "Profondeur de raisonnement maximale"
+        }
+    }
+}

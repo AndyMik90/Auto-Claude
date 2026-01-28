@@ -44,8 +44,6 @@ export interface UseProjectSettingsReturn {
   setShowLinearKey: React.Dispatch<React.SetStateAction<boolean>>;
   showOpenAIKey: boolean;
   setShowOpenAIKey: React.Dispatch<React.SetStateAction<boolean>>;
-  showGitHubToken: boolean;
-  setShowGitHubToken: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Collapsible sections
   expandedSections: Record<string, boolean>;
@@ -116,7 +114,6 @@ export function useProjectSettings(
   });
 
   // GitHub state
-  const [showGitHubToken, setShowGitHubToken] = useState(false);
   const [gitHubConnectionStatus, setGitHubConnectionStatus] = useState<GitHubSyncStatus | null>(null);
   const [isCheckingGitHub, setIsCheckingGitHub] = useState(false);
 
@@ -418,8 +415,6 @@ export function useProjectSettings(
     setShowLinearKey,
     showOpenAIKey,
     setShowOpenAIKey,
-    showGitHubToken,
-    setShowGitHubToken,
     expandedSections,
     toggleSection,
     gitHubConnectionStatus,

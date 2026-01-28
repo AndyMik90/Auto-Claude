@@ -1,0 +1,139 @@
+{
+    "title": "MCP Server Overview",
+    "titleWithProject": "MCP Server Overview for {{projectName}}",
+    "description": "Configure which MCP servers are available for agents in this project",
+    "descriptionNoProject": "Select a project to configure MCP servers",
+    "serversEnabled": "{{count}} servers enabled",
+    "configuration": "MCP Server Configuration",
+    "configurationHint": "Disabled servers reduce context usage and startup time",
+    "noProjectSelected": "No Project Selected",
+    "noProjectSelectedDescription": "Select a project from the dropdown to view and configure MCP servers.",
+    "projectNotInitialized": "Project Not Initialized",
+    "projectNotInitializedDescription": "Initialize Auto Claude for this project to configure MCP servers.",
+    "browserAutomation": "Browser Automation (QA agents only)",
+    "alwaysEnabled": "always enabled",
+    "addServer": "Add Server",
+    "addMcpTo": "Add MCP Server to {{agent}}",
+    "addMcpDescription": "Select an MCP server to add to this agent",
+    "allMcpsAdded": "All available MCP servers are already added",
+    "added": "Added",
+    "remove": "Remove",
+    "removed": "Removed",
+    "restore": "Restore",
+    "noMcpServers": "No MCP servers configured",
+    "addCustomServer": "Add Custom Server",
+    "noCustomServers": "No custom MCP servers configured",
+    "servers": {
+        "context7": {
+            "name": "Context7",
+            "description": "Documentation lookup for libraries and frameworks"
+        },
+        "graphiti": {
+            "name": "Graphiti Memory",
+            "description": "Knowledge graph for cross-session context",
+            "notConfigured": "Not configured. Enable Memory in Project Settings."
+        },
+        "linear": {
+            "name": "Linear",
+            "description": "Project management via Linear API",
+            "notConfigured": "Not configured. Enable Linear in Project Settings."
+        },
+        "electron": {
+            "name": "Electron MCP",
+            "description": "Desktop app automation via Chrome DevTools Protocol"
+        },
+        "puppeteer": {
+            "name": "Puppeteer MCP",
+            "description": "Web browser automation for web frontends"
+        },
+        "autoClaude": {
+            "name": "Auto-Claude Tools",
+            "description": "Build progress tracking, session context, discoveries & gotchas"
+        }
+    },
+    "agents": {
+        "categories": {
+            "spec": "Spec Creation",
+            "build": "Build",
+            "qa": "QA",
+            "utility": "Utility",
+            "ideation": "Ideation"
+        },
+        "spec_gatherer": {
+            "label": "Spec Gatherer",
+            "description": "Collects initial requirements from user"
+        },
+        "spec_researcher": {
+            "label": "Spec Researcher",
+            "description": "Validates external integrations and APIs"
+        },
+        "spec_writer": {
+            "label": "Spec Writer",
+            "description": "Creates the spec.md document"
+        },
+        "spec_critic": {
+            "label": "Spec Critic",
+            "description": "Self-critique using deep analysis"
+        },
+        "spec_discovery": {
+            "label": "Spec Discovery",
+            "description": "Initial project discovery and analysis"
+        },
+        "spec_context": {
+            "label": "Spec Context",
+            "description": "Builds context from existing codebase"
+        },
+        "spec_validation": {
+            "label": "Spec Validation",
+            "description": "Validates spec completeness and quality"
+        },
+        "planner": {
+            "label": "Planner",
+            "description": "Creates implementation plan with subtasks"
+        },
+        "coder": {
+            "label": "Coder",
+            "description": "Implements individual subtasks"
+        },
+        "qa_reviewer": {
+            "label": "QA Reviewer",
+            "description": "Validates acceptance criteria"
+        },
+        "qa_fixer": {
+            "label": "QA Fixer",
+            "description": "Fixes QA-reported issues"
+        },
+        "pr_reviewer": {
+            "label": "PR Reviewer",
+            "description": "Reviews GitHub pull requests"
+        },
+        "commit_message": {
+            "label": "Commit Message",
+            "description": "Generates commit messages"
+        },
+        "merge_resolver": {
+            "label": "Merge Resolver",
+            "description": "Resolves merge conflicts"
+        },
+        "insights": {
+            "label": "Insights",
+            "description": "Extracts code insights"
+        },
+        "analysis": {
+            "label": "Analysis",
+            "description": "Codebase analysis with context lookup"
+        },
+        "batch_analysis": {
+            "label": "Batch Analysis",
+            "description": "Batch processing of issues or items"
+        },
+        "ideation": {
+            "label": "Ideation",
+            "description": "Generates feature ideas"
+        },
+        "roadmap_discovery": {
+            "label": "Roadmap Discovery",
+            "description": "Discovers roadmap items"
+        }
+    }
+}
