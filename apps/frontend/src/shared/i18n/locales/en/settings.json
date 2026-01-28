@@ -226,18 +226,44 @@
     "autoClaudePathDescription": "Relative path to auto-claude directory in projects",
     "autoClaudePathPlaceholder": "auto-claude (default)",
     "autoNameTerminals": "Automatically name terminals",
-    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity"
+    "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity",
+    "features": {
+      "insights": {
+        "label": "Insights Chat",
+        "description": "Ask questions about your codebase"
+      },
+      "ideation": {
+        "label": "Ideation",
+        "description": "Generate feature ideas and improvements"
+      },
+      "roadmap": {
+        "label": "Roadmap",
+        "description": "Create strategic feature roadmaps"
+      },
+      "githubIssues": {
+        "label": "GitHub Issues",
+        "description": "Automated issue triage and labeling"
+      },
+      "githubPrs": {
+        "label": "GitHub PR Review",
+        "description": "AI-powered pull request reviews"
+      },
+      "utility": {
+        "label": "Utility",
+        "description": "Commit messages and merge conflict resolution"
+      }
+    }
   },
   "theme": {
     "title": "Appearance",
     "description": "Customize how Auto Claude looks",
     "mode": "Mode",
-    "modeDescription": "Choose between light and dark themes",
+    "modeDescription": "Choose between light, dark, or system preference",
     "light": "Light",
     "dark": "Dark",
     "system": "System",
     "colorTheme": "Color Theme",
-    "colorThemeDescription": "Choose your preferred color palette"
+    "colorThemeDescription": "Select a color palette for the interface"
   },
   "devtools": {
     "title": "Developer Tools",
@@ -321,9 +347,16 @@
   "projectSections": {
     "general": {
       "title": "General",
-      "description": "Auto-Build and agent config",
+      "description": "Configure Auto-Build, agent model, and notifications for {{projectName}}",
       "useClaudeMd": "Use CLAUDE.md",
-      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
+      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context",
+      "agentConfig": "Agent Configuration",
+      "notInitialized": "Not Initialized",
+      "notInitializedDescription": "Initialize Auto-Build to enable task creation and agent workflows.",
+      "initializeAutoBuild": "Initialize Auto-Build",
+      "initializing": "Initializing...",
+      "initialized": "Initialized",
+      "checkingStatus": "Checking status..."
     },
     "claude": {
       "title": "Claude Auth",
@@ -355,7 +388,53 @@
       "description": "Graphiti memory backend",
       "integrationTitle": "Memory",
       "integrationDescription": "Configure persistent cross-session memory for agents",
-      "syncDescription": "Configure persistent memory"
+      "syncDescription": "Configure persistent memory",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enableMemory": "Enable Memory",
+      "enableMemoryDescription": "Persistent cross-session memory using LadybugDB (embedded database)",
+      "fileBased": "Using file-based memory. Session insights are stored locally in JSON files. Enable Memory for persistent cross-session context with semantic search.",
+      "enableAgentAccess": "Enable Agent Memory Access",
+      "enableAgentAccessDescription": "Allow agents to search and add to the knowledge graph via MCP",
+      "graphitiMcpUrl": "Graphiti MCP Server URL",
+      "graphitiMcpUrlDescription": "URL of the Graphiti MCP server",
+      "embeddingProvider": "Embedding Provider",
+      "embeddingProviderDescription": "Provider for semantic search (optional - keyword search works without)",
+      "selectProvider": "Select embedding provider",
+      "ollamaLocal": "Ollama (Local - Free)",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azure": "Azure OpenAI",
+      "openaiApiKey": "OpenAI API Key",
+      "openaiApiKeyOverride": "OpenAI API Key (Override)",
+      "usingGlobalKey": "Using global key",
+      "usingGlobalKeyDesc": "Using key from App Settings. Enter a project-specific key below to override.",
+      "requiredForEmbeddings": "Required for OpenAI embeddings",
+      "enterToOverride": "Enter to override global key...",
+      "voyageApiKey": "Voyage AI API Key",
+      "voyageApiKeyDesc": "Required for Voyage AI embeddings",
+      "voyageModel": "Embedding Model",
+      "googleApiKey": "Google AI API Key",
+      "googleApiKeyDesc": "Required for Google AI embeddings",
+      "azureConfig": "Azure OpenAI Configuration",
+      "azureApiKey": "API Key",
+      "azureBaseUrl": "Base URL",
+      "azureDeployment": "Embedding Deployment Name",
+      "ollamaConfig": "Ollama Configuration",
+      "ollamaChecking": "Checking...",
+      "ollamaConnected": "Connected",
+      "ollamaNotRunning": "Not running",
+      "ollamaBaseUrl": "Base URL",
+      "ollamaModel": "Embedding Model",
+      "ollamaSelectModel": "Select embedding model",
+      "ollamaRecommended": "Recommended: qwen3-embedding:4b (balanced), :8b (quality), :0.6b (fast)",
+      "ollamaDim": "Embedding Dimension",
+      "ollamaDimDesc": "Required for Ollama embeddings (e.g., 768 for nomic-embed-text)",
+      "dbName": "Database Name",
+      "dbNameDesc": "Name for the memory database (stored in ~/.auto-claude/memories/)",
+      "dbPath": "Database Path (Optional)",
+      "dbPathDesc": "Custom storage location. Default: ~/.auto-claude/memories/"
     }
   },
   "agentProfile": {
@@ -412,6 +491,42 @@
   "integrations": {
     "title": "Integrations",
     "description": "Manage Claude accounts and API keys",
+    "linear": {
+      "title": "Linear Integration",
+      "syncLabel": "Enable Linear Sync",
+      "syncDescription": "Create and update Linear issues automatically"
+    },
+    "github": {
+      "title": "GitHub Integration",
+      "syncLabel": "Enable GitHub Issues",
+      "syncDescription": "Sync issues from GitHub and create tasks automatically"
+    },
+    "memory": {
+      "title": "Memory",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enableMemory": "Enable Memory",
+      "enableMemoryDescription": "Persistent cross-session memory using LadybugDB (embedded database)",
+      "fileBasedFallback": "Using file-based memory. Session insights are stored locally in JSON files. Enable Memory for persistent cross-session context with semantic search.",
+      "agentMemoryAccess": "Enable Agent Memory Access",
+      "agentMemoryAccessDescription": "Allow agents to search and add to the knowledge graph via MCP",
+      "graphitiMcpUrl": "Graphiti MCP Server URL",
+      "graphitiMcpUrlDescription": "URL of the Graphiti MCP server for agent memory access",
+      "embeddingProvider": "Embedding Provider",
+      "embeddingProviderDescription": "Provider for semantic search (optional - keyword search works without)",
+      "selectProvider": "Select embedding provider",
+      "providers": {
+        "ollama": "Ollama (Local - Free)",
+        "openai": "OpenAI",
+        "voyage": "Voyage AI",
+        "google": "Google AI",
+        "azure": "Azure OpenAI"
+      },
+      "databaseName": "Database Name",
+      "databaseNameDescription": "Stored in ~/.auto-claude/memories/",
+      "databasePath": "Database Path (Optional)",
+      "databasePathDescription": "Custom storage location. Default: ~/.auto-claude/memories/"
+    },
     "claudeAccounts": "Claude Accounts",
     "claudeAccountsDescription": "Add multiple Claude subscriptions to automatically switch between them when you hit rate limits.",
     "claudeAccountsWarning": "When authenticating, ensure you're logged into the correct Claude account in your browser. Each profile should use a different subscription.",

@@ -1,0 +1,18 @@
+{
+    "title": "Идеи",
+    "empty": {
+        "title": "Идей пока нет",
+        "description": "Генерируйте идеи новых функций с помощью ИИ на основе контекста вашего проекта, существующих паттернов и целевой аудитории."
+    },
+    "settings": {
+        "enabledTypes": "Включенные типы идей",
+        "types": {
+            "code_improvements": "Улучшение кода",
+            "ui_ux_improvements": "Улучшение UI/UX",
+            "documentation_gaps": "Документация",
+            "security_hardening": "Безопасность",
+            "performance_optimizations": "Производительность",
+            "code_quality": "Качество кода"
+        }
+    }
+}

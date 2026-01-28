@@ -1,0 +1,324 @@
+{
+  "refreshTasks": "Обновить задачи",
+  "status": {
+    "backlog": "Бэклог",
+    "queue": "Очередь",
+    "todo": "К выполнению",
+    "in_progress": "В процессе",
+    "review": "Проверка",
+    "prCreated": "PR создан",
+    "complete": "Завершено",
+    "archived": "В архиве"
+  },
+  "actions": {
+    "start": "Старт",
+    "stop": "Стоп",
+    "recover": "Восстановить",
+    "resume": "Продолжить",
+    "archive": "Архивировать",
+    "delete": "Удалить",
+    "view": "Подробнее",
+    "viewPR": "Смотреть PR",
+    "moveTo": "Переместить в",
+    "taskActions": "Действия с задачей",
+    "selectTask": "Выбрать задачу: {{title}}"
+  },
+  "labels": {
+    "running": "Выполняется",
+    "aiReview": "ИИ проверка",
+    "needsReview": "Нужна проверка",
+    "pending": "В ожидании",
+    "stuck": "Зависла",
+    "incomplete": "Не завершена",
+    "recovering": "Восстановление...",
+    "needsRecovery": "Требует восстановления",
+    "needsResume": "Требует возобновления"
+  },
+  "reviewReason": {
+    "completed": "Завершено",
+    "hasErrors": "Содержит ошибки",
+    "qaIssues": "Проблемы QA",
+    "approvePlan": "Одобрить план"
+  },
+  "tooltips": {
+    "archiveTask": "Архивировать задачу",
+    "archiveAllDone": "Архивировать все завершенные задачи",
+    "viewPR": "Открыть pull request в браузере"
+  },
+  "creation": {
+    "title": "Создать новую задачу",
+    "description": "Опишите, что вы хотите сделать",
+    "placeholder": "Опишите задачу..."
+  },
+  "empty": {
+    "title": "Задач пока нет",
+    "description": "Создайте свою первую задачу, чтобы начать"
+  },
+  "columns": {
+    "backlog": "Планирование",
+    "queue": "Очередь",
+    "in_progress": "В процессе",
+    "ai_review": "ИИ проверка",
+    "human_review": "Ваша проверка",
+    "done": "Готово",
+    "pr_created": "PR создан",
+    "error": "Ошибка"
+  },
+  "kanban": {
+    "emptyBacklog": "Нет запланированных задач",
+    "emptyBacklogHint": "Добавьте задачу, чтобы начать",
+    "emptyQueue": "Очередь пуста",
+    "emptyQueueHint": "Задачи будут ждать здесь при достижении лимита параллельных задач",
+    "emptyInProgress": "Ничего не выполняется",
+    "emptyInProgressHint": "Запустите задачу из Планирования",
+    "emptyAiReview": "Нет задач на проверке",
+    "emptyAiReviewHint": "ИИ проверит завершенные задачи",
+    "emptyHumanReview": "Нечего проверять",
+    "emptyHumanReviewHint": "Задачи, ожидающие вашего одобрения",
+    "emptyDone": "Нет завершенных задач",
+    "emptyDoneHint": "Одобренные задачи появятся здесь",
+    "emptyDefault": "Задач нет",
+    "dropHere": "Перетащите сюда",
+    "showArchived": "Показать архивные",
+    "addTaskAriaLabel": "Добавить задачу в бэклог",
+    "queueAllAriaLabel": "Переместить все задачи в очередь",
+    "closeTaskDetailsAriaLabel": "Закрыть детали задачи",
+    "editTask": "Редактировать задачу",
+    "cannotEditWhileRunning": "Нельзя редактировать выполняемую задачу",
+    "worktreeCleanupTitle": "Очистка рабочего дерева",
+    "worktreeCleanupStaged": "Эта задача была подготовлена и имеет рабочее дерево. Хотите его очистить?",
+    "worktreeCleanupNotStaged": "У этой задачи есть рабочее дерево с изменениями, которые не были слиты. Удалите рабочее дерево, чтобы отметить задачу как выполненную, или отмените, чтобы сначала проверить изменения.",
+    "keepWorktree": "Оставить рабочее дерево",
+    "deleteWorktree": "Удалить дерево и завершить",
+    "refreshTasks": "Обновить задачи",
+    "queueSettings": "Настройки очереди",
+    "orderSaveFailedTitle": "Порядок не сохранен",
+    "orderSaveFailedDescription": "Изменение порядка задач применено, но не сохранено. Оно будет сброшено при обновлении.",
+    "selectAll": "Выбрать все",
+    "deselectAll": "Снять выбор",
+    "selectedCount": "Выбрано: {{count}}",
+    "selectedCountOne": "Выбрана {{count}} задача",
+    "selectedCountOther": "Выбрано задач: {{count}}",
+    "createPRs": "Создать PR",
+    "clearSelection": "Очистить выбор",
+    "collapseColumn": "Свернуть колонку",
+    "expandColumn": "Развернуть колонку",
+    "resizeColumn": "Изменить размер",
+    "lockColumn": "Зафиксировать ширину",
+    "unlockColumn": "Разблокировать ширину",
+    "columnLocked": "Ширина колонки зафиксирована",
+    "expandAll": "Развернуть все колонки"
+  },
+  "queue": {
+    "limitReached": "Лимит параллельных задач достигнут ({{current}}/{{max}}). Задача перемещена в очередь.",
+    "movedToQueue": "Задача перемещена в очередь.",
+    "autoPromoted": "Задача автоматически переведена из очереди в процесс.",
+    "capacityAvailable": "Доступно слотов для работы: {{count}}.",
+    "queueAll": "Добавить все в очередь",
+    "queueAllSuccess": "Перемещено в очередь задач: {{count}}.",
+    "settings": {
+      "title": "Настройки очереди",
+      "description": "Укажите максимальное количество задач, которые могут выполняться одновременно",
+      "maxParallelLabel": "Макс. параллельных задач",
+      "minValueError": "Минимум 1",
+      "maxValueError": "Максимум 10",
+      "hint": "При достижении лимита новые задачи будут ждать в очереди",
+      "saved": "Настройки очереди сохранены",
+      "saveFailed": "Не удалось сохранить настройки",
+      "retry": "Пожалуйста, попробуйте еще раз"
+    }
+  },
+  "execution": {
+    "phases": {
+      "idle": "Ожидание",
+      "planning": "Планирование",
+      "coding": "Кодинг",
+      "reviewing": "Проверка",
+      "fixing": "Исправление",
+      "complete": "Завершено",
+      "failed": "Ошибка"
+    },
+    "labels": {
+      "interrupted": "Прервано",
+      "progress": "Прогресс",
+      "entry": "запись",
+      "entries": "записей"
+    },
+    "shortPhases": {
+      "plan": "План",
+      "code": "Код",
+      "qa": "QA"
+    }
+  },
+  "files": {
+    "title": "Файлы",
+    "tab": "Файлы",
+    "noSpecPath": "Спецификации недоступны",
+    "noFiles": "Файлы не найдены",
+    "loading": "Загрузка файлов...",
+    "loadingContent": "Загрузка контента...",
+    "errorLoading": "Не удалось загрузить файлы",
+    "errorLoadingContent": "Не удалось загрузить контент файла",
+    "retry": "Повторить",
+    "selectFile": "Выберите файл для просмотра",
+    "openInIDE": "Открыть в IDE"
+  },
+  "metadata": {
+    "severity": "важность",
+    "pullRequest": "Pull Request"
+  },
+  "images": {
+    "removeImageAriaLabel": "Удалить изображение {{filename}}",
+    "pasteHint": "Совет: Вставляйте скриншоты напрямую через {{shortcut}}."
+  },
+  "imagePreview": {
+    "close": "Закрыть превью",
+    "unavailable": "Изображение недоступно",
+    "description": "Превью {{filename}}",
+    "doubleClickHint": "Двойной клик для увеличения",
+    "lowResolution": "Превью низкого разрешения"
+  },
+  "notifications": {
+    "backgroundTaskTitle": "Задача продолжается в фоне",
+    "backgroundTaskDescription": "Задача всё еще выполняется. Вы можете открыть это окно позже для мониторинга."
+  },
+  "wizard": {
+    "createTitle": "Создать задачу",
+    "createDescription": "Опишите, что нужно сделать. ИИ проанализирует запрос и создаст спецификацию.",
+    "descriptionPlaceholder": "Опишите функцию, исправление или улучшение. Будьте максимально точны. Используйте @ для ссылок на файлы.",
+    "draftRestored": "Черновик восстановлен",
+    "startFresh": "Начать заново",
+    "hideFiles": "Скрыть файлы",
+    "browseFiles": "Обзор файлов",
+    "creating": "Создание...",
+    "createTask": "Создать задачу",
+    "worktreeNotice": {
+      "title": "Изолированное окружение",
+      "description": "Задача выполняется в отдельном рабочем дереве git. Ваша основная ветка в безопасности до слияния."
+    },
+    "gitOptions": {
+      "title": "Параметры Git (опционально)",
+      "baseBranchLabel": "Базовая ветка (опционально)",
+      "useProjectDefault": "По умолчанию для проекта",
+      "useProjectDefaultWithBranch": "По умолчанию ({{branch}})",
+      "searchBranches": "Поиск веток...",
+      "noBranchesFound": "Ветки не найдены",
+      "helpText": "Укажите ветку, от которой будет создано дерево. Оставьте пустым для ветки по умолчанию.",
+      "useWorktreeLabel": "Изолированное окружение (рекомендуется)",
+      "useWorktreeDescription": "Создает изменения в отдельном рабочем дереве для безопасной проверки. Отключите для кодинга прямо в проекте (быстрее, но рискованнее)."
+    },
+    "errors": {
+      "createFailed": "Не удалось создать задачу. Попробуйте снова."
+    }
+  },
+  "feedback": {
+    "dragDropHint": "Перетащите изображения или вставьте скриншоты",
+    "imageAdded": "Изображение добавлено",
+    "maxImagesError": "Максимум {{count}} изображений",
+    "invalidTypeError": "Неверный формат. Разрешены: {{types}}",
+    "removeImage": "Удалить изображение",
+    "processingError": "Ошибка обработки изображения"
+  },
+  "review": {
+    "mergeTooltip": "Сливает изменения из ветки задачи обратно в базу. ИИ разрешит конфликты. После этого можно будет удалить рабочее дерево."
+  },
+  "edit": {
+    "title": "Редактировать задачу",
+    "description": "Обновите детали задачи. Изменения будут сохранены в спецификацию.",
+    "saveChanges": "Сохранить изменения",
+    "errors": {
+      "updateFailed": "Не удалось обновить задачу. Попробуйте снова."
+    }
+  },
+  "form": {
+    "description": "Описание",
+    "descriptionPlaceholder": "Опишите задачу максимально подробно.",
+    "imageAddedSuccess": "Изображение добавлено!",
+    "taskTitle": "Название задачи",
+    "titlePlaceholder": "Оставьте пустым для автогенерации",
+    "titleHelpText": "Короткое название будет создано автоматически на основе описания.",
+    "classificationOptional": "Классификация (опционально)",
+    "requireReviewLabel": "Требовать проверку перед кодингом",
+    "requireReviewDescription": "Вы сможете проверить спецификацию и план реализации перед началом написания кода.",
+    "errors": {
+      "descriptionRequired": "Пожалуйста, введите описание",
+      "maxImagesReached": "Максимум 5 изображений",
+      "invalidImageType": "Разрешены: PNG, JPEG, GIF, WebP",
+      "processPasteFailed": "Не удалось вставить изображение",
+      "processDropFailed": "Не удалось перетащить изображение"
+    },
+    "classification": {
+      "category": "Категория",
+      "selectCategory": "Выберите категорию",
+      "priority": "Приоритет",
+      "selectPriority": "Выберите приоритет",
+      "complexity": "Сложность",
+      "selectComplexity": "Выберите сложность",
+      "impact": "Влияние",
+      "selectImpact": "Выберите влияние",
+      "helpText": "Эти метки помогают организовать задачи.",
+      "values": {
+        "category": {
+          "feature": "Функция",
+          "bug_fix": "Баг-фикс",
+          "refactoring": "Рефакторинг",
+          "documentation": "Доки",
+          "security": "Безопасность"
+        },
+        "priority": {
+          "low": "Низкий",
+          "medium": "Средний",
+          "high": "Высокий",
+          "urgent": "Срочно"
+        },
+        "complexity": {
+          "trivial": "Тривиально",
+          "small": "Легко",
+          "medium": "Средне",
+          "large": "Сложно",
+          "complex": "Очень сложно"
+        },
+        "impact": {
+          "low": "Низкое",
+          "medium": "Среднее",
+          "high": "Высокое",
+          "critical": "Критическое"
+        }
+      }
+    }
+  },
+  "subtasks": {
+    "untitled": "Подзадача без названия"
+  },
+  "bulkPR": {
+    "selectAllInColumn": "Выбрать все задачи в колонке",
+    "deselectAllInColumn": "Снять выбор со всех задач",
+    "selectionMode": "Режим выбора активен",
+    "exitSelectionMode": "Выйти из режима выбора",
+    "noTasksToSelect": "Нет доступных задач для выбора",
+    "confirmBulkAction": "Подтвердите действие для {{count}} задач",
+    "processingTasks": "Обработка выбранных задач..."
+  },
+  "screenshot": {
+    "title": "Сделать скриншот",
+    "description": "Выберите экран или окно для захвата",
+    "capture": "Снять",
+    "capturing": "Захват...",
+    "noSources": "Экраны или окна не найдены",
+    "errors": {
+      "getSources": "Не удалось получить список источников",
+      "fetchSources": "Не удалось загрузить источники",
+      "capture": "Не удалось снять скриншот",
+      "captureFailed": "Скриншот не удался"
+    },
+    "devMode": {
+      "title": "Скриншоты недоступны",
+      "description": "В режиме разработки захват экрана ограничен правами системы.",
+      "hint": "Используйте сторонние утилиты и вставляйте через {{shortcut}}."
+    }
+  },
+  "referenceImages": {
+    "title": "Изображения (опционально)",
+    "description": "Добавьте визуальные примеры, чтобы ИИ лучше понял задачу."
+  }
+}

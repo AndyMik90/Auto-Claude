@@ -1,0 +1,253 @@
+{
+  "wizard": {
+    "title": "Мастер настройки",
+    "description": "Настройте окружение Auto Claude за несколько простых шагов",
+    "helpText": "Этот мастер поможет вам подготовить рабочую среду. Вы сможете настроить авторизацию Claude, функции памяти и создать свою первую задачу."
+  },
+  "welcome": {
+    "title": "Добро пожаловать в Auto Claude",
+    "subtitle": "Создавайте программное обеспечение автономно с помощью агентов ИИ",
+    "getStarted": "Начать",
+    "skip": "Пропустить настройку",
+    "features": {
+      "aiPowered": {
+        "title": "Разработка на базе ИИ",
+        "description": "Генерируйте код и создавайте функции с помощью агентов Claude Code"
+      },
+      "specDriven": {
+        "title": "Рабочий процесс по спецификациям",
+        "description": "Определяйте задачи четкими спецификациями, а реализацию доверьте Auto Claude"
+      },
+      "memory": {
+        "title": "Память и Контекст",
+        "description": "Постоянная память между сессиями с помощью Graphiti"
+      },
+      "parallel": {
+        "title": "Параллельное выполнение",
+        "description": "Запускайте несколько агентов одновременно для ускорения циклов разработки"
+      }
+    }
+  },
+  "oauth": {
+    "title": "Авторизация Claude",
+    "description": "Подключите ваш аккаунт Claude для включения функций ИИ",
+    "configureTitle": "Настройка авторизации Claude",
+    "addAccountsDesc": "Добавьте аккаунты Claude для работы с ИИ",
+    "multiAccountInfo": "Добавьте несколько подписок Claude для автоматического переключения при достижении лимитов.",
+    "noAccountsYet": "Аккаунты еще не настроены",
+    "badges": {
+      "default": "По ум.",
+      "active": "Активен",
+      "authenticated": "Авторизован",
+      "needsAuth": "Нужен вход"
+    },
+    "buttons": {
+      "authenticate": "Авторизоваться",
+      "setActive": "Сделать активным",
+      "rename": "Переименовать",
+      "delete": "Удалить",
+      "add": "Добавить",
+      "adding": "Добавление...",
+      "showToken": "Показать токен",
+      "hideToken": "Скрыть токен",
+      "copyToken": "Копировать",
+      "back": " Назад",
+      "continue": "Продолжить",
+      "skip": "Пропустить"
+    },
+    "labels": {
+      "accountName": "Имя аккаунта",
+      "namePlaceholder": "Профиль (напр., Рабочий, Личный)",
+      "tokenLabel": "OAuth Токен",
+      "tokenPlaceholder": "Введите токен здесь",
+      "tokenHint": "Вставьте токен из терминала после завершения OAuth входа."
+    },
+    "keychainTitle": "Безопасное хранение",
+    "keychainDescription": "Ваши токены шифруются системным хранилищем. Вы можете увидеть запрос пароля — нажмите «Всегда разрешать», чтобы он больше не появлялся.",
+    "toast": {
+      "authSuccess": "Профиль успешно авторизован",
+      "authSuccessWithEmail": "Аккаунт: {{email}}",
+      "authSuccessGeneric": "Авторизация завершена. Теперь вы можете использовать этот профиль.",
+      "authStartFailed": "Не удалось начать авторизацию",
+      "addProfileFailed": "Не удалось добавить профиль",
+      "tokenSaved": "Токен сохранен",
+      "tokenSavedDescription": "Ваш токен был успешно сохранен.",
+      "tokenSaveFailed": "Не удалось сохранить токен",
+      "tryAgain": "Пожалуйста, попробуйте еще раз."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Профиль создан, но не удалось подготовить авторизацию: {{error}}",
+      "authPrepareFailed": "Не удалось подготовить авторизацию: {{error}}",
+      "authStartFailedMessage": "Не удалось начать авторизацию. Попробуйте еще раз."
+    }
+  },
+  "memory": {
+    "title": "Память",
+    "description": "Настройка постоянной памяти агентов между сессиями",
+    "contextDescription": "Память Auto Claude помогает сохранять контекст между сессиями кодинга",
+    "enableMemory": "Включить память",
+    "enableMemoryDescription": "Постоянная память с использованием LadybugDB (встроенная база данных)",
+    "memoryDisabledInfo": "Память отключена. Инсайты сессий будут храниться только в локальных файлах. Включите память для семантического поиска контекста между сессиями.",
+    "enableAgentAccess": "Разрешить агентам доступ к памяти",
+    "enableAgentAccessDescription": "Позволить агентам искать и добавлять данные в граф знаний через MCP",
+    "mcpServerUrl": "URL MCP сервера Graphiti",
+    "mcpServerUrlDescription": "URL сервера Graphiti для доступа агентов к памяти",
+    "embeddingProvider": "Провайдер эмбеддингов",
+    "embeddingProviderDescription": "Провайдер для семантического поиска (опционально — ключевые слова работают без него)",
+    "selectEmbeddingModel": "Выберите модель эмбеддингов",
+    "openaiApiKey": "API ключ OpenAI",
+    "openaiApiKeyDescription": "Требуется для эмбеддингов OpenAI",
+    "openaiGetKey": "Получите ключ на",
+    "voyageApiKey": "API ключ Voyage AI",
+    "voyageApiKeyDescription": "Требуется для эмбеддингов Voyage AI",
+    "voyageEmbeddingModel": "Модель эмбеддингов",
+    "googleApiKey": "API ключ Google AI",
+    "googleApiKeyDescription": "Требуется для эмбеддингов Google AI",
+    "azureConfig": "Конфигурация Azure OpenAI",
+    "azureApiKey": "API ключ",
+    "azureBaseUrl": "Base URL",
+    "azureEmbeddingDeployment": "Имя развертывания (Deployment Name)",
+    "memoryInfo": "Память хранит открытия, паттерны и инсайты вашего кода, чтобы новые сессии начинались с уже загруженным контекстом. Docker не требуется — используется встроенная база.",
+    "learnMore": "Подробнее о Памяти",
+    "back": "Назад",
+    "skip": "Пропустить",
+    "saving": "Сохранение...",
+    "saveAndContinue": "Сохранить и продолжить",
+    "providers": {
+      "ollama": "Ollama (Локально - Бесплатно)",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azure": "Azure OpenAI"
+    },
+    "ollamaConfig": "Конфигурация Ollama",
+    "checking": "Проверка...",
+    "connected": "Подключено",
+    "notRunning": "Не запущено",
+    "baseUrl": "Base URL",
+    "embeddingModel": "Модель эмбеддингов",
+    "embeddingDim": "Размерность эмбеддингов",
+    "embeddingDimDescription": "Требуется для Ollama (например, 768 для nomic-embed-text)",
+    "modelRecommendation": "Рекомендовано: qwen3-embedding:4b (баланс), :8b (качество), :0.6b (скорость)"
+  },
+  "completion": {
+    "title": "Всё готово!",
+    "subtitle": "Auto Claude готов помогать вам создавать крутой софт",
+    "setupComplete": "Настройка завершена",
+    "setupCompleteDescription": "Ваше окружение настроено и готово к работе. Вы можете сразу создать первую задачу или изучить приложение самостоятельно.",
+    "whatsNext": "Что дальше?",
+    "createTask": {
+      "title": "Создайте задачу",
+      "description": "Начните с создания первой задачи, чтобы увидеть Auto Claude в деле.",
+      "action": "Открыть конструктор задач"
+    },
+    "customizeSettings": {
+      "title": "Настройте параметры",
+      "description": "Уточните предпочтения, настройте интеграции или запустите этот мастер снова.",
+      "action": "Открыть настройки"
+    },
+    "exploreDocs": {
+      "title": "Изучите документацию",
+      "description": "Узнайте больше о продвинутых функциях и лучших практиках."
+    },
+    "finish": "Готово, поехали строить!",
+    "rerunHint": "Вы всегда можете запустить этот мастер снова из Настройки → Приложение"
+  },
+  "steps": {
+    "welcome": "Приветствие",
+    "authChoice": "Способ входа",
+    "auth": "Вход",
+    "claudeCode": "CLI",
+    "devtools": "Инструменты",
+    "privacy": "Приватность",
+    "memory": "Память",
+    "done": "Готово"
+  },
+  "privacy": {
+    "title": "Помогите улучшить Auto Claude",
+    "subtitle": "Анонимные отчеты об ошибках помогают нам быстрее исправлять баги",
+    "whatWeCollect": {
+      "title": "Что мы собираем",
+      "crashReports": "Отчеты о сбоях и трассировки стека",
+      "errorMessages": "Сообщения об ошибках (пути к файлам анонимизируются)",
+      "appVersion": "Версия приложения и информация о платформе"
+    },
+    "whatWeNeverCollect": {
+      "title": "Что мы никогда не собираем",
+      "code": "Ваш код или файлы проекта",
+      "filenames": "Полные пути к файлам (имена пользователей маскируются)",
+      "apiKeys": "API ключи или токены",
+      "personalData": "Личную информацию или данные об использовании"
+    },
+    "toggle": {
+      "label": "Отправлять анонимные отчеты",
+      "description": "Помогите нам находить и исправлять проблемы"
+    }
+  },
+  "claudeCode": {
+    "title": "Claude Code CLI",
+    "description": "Установите или обновите Claude Code CLI для работы функций ИИ",
+    "detecting": "Проверка установки Claude Code...",
+    "info": {
+      "title": "Что такое Claude Code?",
+      "description": "Claude Code — это официальный CLI от Anthropic, который обеспечивает работу функций ИИ в Auto Claude. Он отвечает за безопасную авторизацию и прямой доступ к моделям Claude."
+    },
+    "status": {
+      "installed": "Установлено",
+      "outdated": "Доступно обновление",
+      "notFound": "Не установлено"
+    },
+    "version": {
+      "current": "Текущая версия",
+      "latest": "Последняя версия"
+    },
+    "install": {
+      "button": "Установить Claude Code",
+      "updating": "Обновить Claude Code",
+      "inProgress": "Установка...",
+      "success": "Команда установки отправлена в терминал. Пожалуйста, завершите процесс там.",
+      "instructions": "Установщик откроется в терминале. Следуйте подсказкам для завершения."
+    },
+    "learnMore": "Подробнее о Claude Code"
+  },
+  "devtools": {
+    "title": "Инструменты разработки",
+    "description": "Выберите предпочтительную IDE и терминал для работы",
+    "detecting": "Поиск установленных инструментов...",
+    "detectAgain": "Обновить поиск",
+    "whyConfigure": "Зачем это настраивать?",
+    "whyConfigureDescription": "Когда Auto Claude работает в изолированных деревьях, вы можете открывать их напрямую в вашей IDE или терминале для проверки изменений.",
+    "ide": {
+      "label": "Предпочтительная IDE",
+      "description": "Auto Claude будет открывать проекты в этом редакторе",
+      "customPath": "Свой путь к IDE"
+    },
+    "terminal": {
+      "label": "Предпочтительный терминал",
+      "description": "Auto Claude будет открывать сессии терминала здесь",
+      "customPath": "Свой путь к терминалу"
+    },
+    "detectedSummary": "Обнаружено в системе:",
+    "noToolsDetected": "Инструменты не обнаружены (будут использоваться VS Code и системный терминал)",
+    "custom": "Свой...",
+    "saveAndContinue": "Сохранить и продолжить"
+  },
+  "ollama": {
+    "notInstalled": {
+      "title": "Ollama не установлена",
+      "description": "Ollama предоставляет бесплатные локальные модели для семантического поиска. Установите её в один клик.",
+      "installSuccess": "Установка началась в терминале. Завершите её там и нажмите «Повторить».",
+      "installButton": "Установить Ollama",
+      "installing": "Установка...",
+      "retry": "Повторить",
+      "learnMore": "Подробнее",
+      "fallbackNote": "Память будет работать через обычный поиск по ключевым словам даже без Ollama."
+    },
+    "notRunning": {
+      "title": "Ollama не запущена",
+      "description": "Ollama установлена, но не запущена. Запустите Ollama для использования локальных моделей.",
+      "retry": "Повторить",
+      "fallbackNote": "Память будет работать через поиск по ключевым словам даже без эмбеддингов."
+    }
+  }
+}

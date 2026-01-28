@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Zap,
   Eye,
@@ -75,6 +76,7 @@ export function IntegrationSettings({
   githubExpanded,
   onGitHubToggle
 }: IntegrationSettingsProps) {
+  const { t } = useTranslation(['settings']);
   // Branch selection state
   const [branches, setBranches] = useState<string[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
@@ -151,7 +153,7 @@ export function IntegrationSettings({
         >
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
-            Linear Integration
+            {t('integrations.linear.title')}
             {envConfig.linearEnabled && (
               <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
                 Enabled
@@ -169,9 +171,9 @@ export function IntegrationSettings({
           <div className="space-y-4 pl-6 pt-2">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="font-normal text-foreground">Enable Linear Sync</Label>
+                <Label className="font-normal text-foreground">{t('integrations.linear.syncLabel')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Create and update Linear issues automatically
+                  {t('integrations.linear.syncDescription')}
                 </p>
               </div>
               <Switch
@@ -330,7 +332,7 @@ export function IntegrationSettings({
         >
           <div className="flex items-center gap-2">
             <Github className="h-4 w-4" />
-            GitHub Integration
+            {t('integrations.github.title')}
             {envConfig.githubEnabled && (
               <span className="px-2 py-0.5 text-xs bg-success/10 text-success rounded-full">
                 Enabled
@@ -348,9 +350,9 @@ export function IntegrationSettings({
           <div className="space-y-4 pl-6 pt-2">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="font-normal text-foreground">Enable GitHub Issues</Label>
+                <Label className="font-normal text-foreground">{t('integrations.github.syncLabel')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Sync issues from GitHub and create tasks automatically
+                  {t('integrations.github.syncDescription')}
                 </p>
               </div>
               <Switch

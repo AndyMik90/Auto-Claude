@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Zap, Import, Radio } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
@@ -29,8 +30,10 @@ export function LinearIntegrationSection({
   isCheckingLinear,
   onOpenImportModal,
 }: LinearIntegrationSectionProps) {
+  const { t } = useTranslation(['settings']);
+
   const badge = envConfig.linearEnabled ? (
-    <StatusBadge status="success" label="Enabled" />
+    <StatusBadge status="success" label={t('integrations.memory.enabled')} />
   ) : null;
 
   return (
@@ -43,9 +46,9 @@ export function LinearIntegrationSection({
     >
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label className="font-normal text-foreground">Enable Linear Sync</Label>
+          <Label className="font-normal text-foreground">{t('integrations.linear.syncLabel')}</Label>
           <p className="text-xs text-muted-foreground">
-            Create and update Linear issues automatically
+            {t('integrations.linear.syncDescription')}
           </p>
         </div>
         <Switch

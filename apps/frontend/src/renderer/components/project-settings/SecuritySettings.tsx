@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Database,
   Eye,
@@ -46,6 +47,8 @@ export function SecuritySettings({
   expanded,
   onToggle
 }: SecuritySettingsProps) {
+  const { t } = useTranslation(['settings']);
+
   // Password visibility for multiple providers
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({
     openai: showOpenAIKey,
@@ -339,13 +342,12 @@ export function SecuritySettings({
       >
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4" />
-          Memory
-          <span className={`px-2 py-0.5 text-xs rounded-full ${
-            envConfig.graphitiEnabled
+          {t('integrations.memory.title')}
+          <span className={`px-2 py-0.5 text-xs rounded-full ${envConfig.graphitiEnabled
               ? 'bg-success/10 text-success'
               : 'bg-muted text-muted-foreground'
-          }`}>
-            {envConfig.graphitiEnabled ? 'Enabled' : 'Disabled'}
+            }`}>
+            {envConfig.graphitiEnabled ? t('integrations.memory.enabled') : t('integrations.memory.disabled')}
           </span>
         </div>
         {expanded ? (
@@ -359,9 +361,9 @@ export function SecuritySettings({
         <div className="space-y-4 pl-6 pt-2">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-normal text-foreground">Enable Memory</Label>
+              <Label className="font-normal text-foreground">{t('integrations.memory.enableMemory')}</Label>
               <p className="text-xs text-muted-foreground">
-                Persistent cross-session memory using LadybugDB (embedded database)
+                {t('integrations.memory.enableMemoryDescription')}
               </p>
             </div>
             <Switch
@@ -376,8 +378,7 @@ export function SecuritySettings({
           {!envConfig.graphitiEnabled && (
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">
-                Using file-based memory. Session insights are stored locally in JSON files.
-                Enable Memory for persistent cross-session context with semantic search.
+                {t('integrations.memory.fileBasedFallback')}
               </p>
             </div>
           )}
@@ -387,9 +388,9 @@ export function SecuritySettings({
               {/* Graphiti MCP Server Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
+                  <Label className="font-normal text-foreground">{t('integrations.memory.agentMemoryAccess')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Allow agents to search and add to the knowledge graph via MCP
+                    {t('integrations.memory.agentMemoryAccessDescription')}
                   </p>
                 </div>
                 <Switch
@@ -402,9 +403,9 @@ export function SecuritySettings({
 
               {settings.graphitiMcpEnabled && (
                 <div className="space-y-2 ml-6">
-                  <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
+                  <Label className="text-sm font-medium text-foreground">{t('integrations.memory.graphitiMcpUrl')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    URL of the Graphiti MCP server for agent memory access
+                    {t('integrations.memory.graphitiMcpUrlDescription')}
                   </p>
                   <Input
                     placeholder="http://localhost:8000/mcp/"
@@ -418,9 +419,9 @@ export function SecuritySettings({
 
               {/* Embedding Provider Selection */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Embedding Provider</Label>
+                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.embeddingProvider')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Provider for semantic search (optional - keyword search works without)
+                  {t('integrations.memory.embeddingProviderDescription')}
                 </p>
                 <Select
                   value={embeddingProvider}
@@ -434,14 +435,14 @@ export function SecuritySettings({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select embedding provider" />
+                    <SelectValue placeholder={t('integrations.memory.selectProvider')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ollama">Ollama (Local - Free)</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="voyage">Voyage AI</SelectItem>
-                    <SelectItem value="google">Google AI</SelectItem>
-                    <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+                    <SelectItem value="ollama">{t('integrations.memory.providers.ollama')}</SelectItem>
+                    <SelectItem value="openai">{t('integrations.memory.providers.openai')}</SelectItem>
+                    <SelectItem value="voyage">{t('integrations.memory.providers.voyage')}</SelectItem>
+                    <SelectItem value="google">{t('integrations.memory.providers.google')}</SelectItem>
+                    <SelectItem value="azure_openai">{t('integrations.memory.providers.azure')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -453,9 +454,9 @@ export function SecuritySettings({
 
               {/* Database Settings */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Database Name</Label>
+                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.databaseName')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Stored in ~/.auto-claude/memories/
+                  {t('integrations.memory.databaseNameDescription')}
                 </p>
                 <Input
                   placeholder="auto_claude_memory"
@@ -465,9 +466,9 @@ export function SecuritySettings({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Database Path (Optional)</Label>
+                <Label className="text-sm font-medium text-foreground">{t('integrations.memory.databasePath')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Custom storage location. Default: ~/.auto-claude/memories/
+                  {t('integrations.memory.databasePathDescription')}
                 </p>
                 <Input
                   placeholder="~/.auto-claude/memories"

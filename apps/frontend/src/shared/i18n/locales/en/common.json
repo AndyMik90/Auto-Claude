@@ -80,7 +80,8 @@
     "apply": "Apply",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "rename": "Rename"
   },
   "actions": {
     "save": "Save",
@@ -662,5 +663,9 @@
     "progress": "Progress",
     "lastActivityPrefix": "last activity",
     "lastProgressUpdateTooltip": "Last progress update received"
+  },
+  "messages": {
+    "selectProject": "Select a project to view details",
+    "pressEnterToSend": "Press Enter to send"
   }
 }

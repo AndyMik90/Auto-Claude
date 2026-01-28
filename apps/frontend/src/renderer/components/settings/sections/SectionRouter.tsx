@@ -78,8 +78,8 @@ export function SectionRouter({
     case 'general':
       return (
         <SettingsSection
-          title="General"
-          description={`Configure Auto-Build, agent model, and notifications for ${project.name}`}
+          title={t('projectSections.general.title')}
+          description={t('projectSections.general.description', { projectName: project.name })}
         >
           <GeneralSettings
             project={project}
@@ -188,7 +188,7 @@ export function SectionRouter({
               showOpenAIKey={showOpenAIKey}
               setShowOpenAIKey={setShowOpenAIKey}
               expanded={true}
-              onToggle={() => {}}
+              onToggle={() => { }}
             />
           </InitializationGuard>
         </SettingsSection>

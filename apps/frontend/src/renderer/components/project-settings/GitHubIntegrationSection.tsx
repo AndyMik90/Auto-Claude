@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Github, RefreshCw, KeyRound, Info, CheckCircle2 } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
@@ -31,13 +32,15 @@ export function GitHubIntegrationSection({
   isCheckingGitHub,
   projectName,
 }: GitHubIntegrationSectionProps) {
+  const { t } = useTranslation(['settings']);
+
   // Show OAuth flow if user previously used OAuth, or if there's no token yet
   const [showOAuthFlow, setShowOAuthFlow] = useState(
     envConfig.githubAuthMethod === 'oauth' || (!envConfig.githubToken && !envConfig.githubAuthMethod)
   );
 
   const badge = envConfig.githubEnabled ? (
-    <StatusBadge status="success" label="Enabled" />
+    <StatusBadge status="success" label={t('integrations.memory.enabled')} />
   ) : null;
 
   const handleOAuthSuccess = (token: string, _username?: string) => {
@@ -75,9 +78,9 @@ export function GitHubIntegrationSection({
 
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label className="font-normal text-foreground">Enable GitHub Issues</Label>
+          <Label className="font-normal text-foreground">{t('integrations.github.syncLabel')}</Label>
           <p className="text-xs text-muted-foreground">
-            Sync issues from GitHub and create tasks automatically
+            {t('integrations.github.syncDescription')}
           </p>
         </div>
         <Switch
