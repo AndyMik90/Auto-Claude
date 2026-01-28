@@ -4,6 +4,25 @@
  */
 
 // ============================================
+// I18n Helper Functions
+// ============================================
+
+// Type-safe translation function signature
+type TranslationFunction = (key: string, params?: Record<string, string | number>) => string;
+
+/**
+ * Get translated roadmap status columns for Kanban board
+ * @param t - i18n translation function
+ * @returns Array of roadmap status columns with translated labels
+ */
+export const getRoadmapStatusColumns = (t: TranslationFunction): RoadmapStatusColumn[] => [
+  { id: 'under_review', label: t('roadmap:status.under_review'), color: 'border-t-muted-foreground/50', icon: 'Eye' },
+  { id: 'planned', label: t('roadmap:status.planned'), color: 'border-t-info', icon: 'Calendar' },
+  { id: 'in_progress', label: t('roadmap:status.in_progress'), color: 'border-t-primary', icon: 'Play' },
+  { id: 'done', label: t('roadmap:status.done'), color: 'border-t-success', icon: 'Check' }
+];
+
+// ============================================
 // Roadmap Priority
 // ============================================
 

@@ -4,10 +4,122 @@
  */
 
 // ============================================
+// I18n Helper Functions
+// ============================================
+
+// Type-safe translation function signature
+type TranslationFunction = (key: string, params?: Record<string, string | number>) => string;
+
+/**
+ * Get translated ideation type labels
+ * @param t - i18n translation function
+ * @returns Record of type keys to translated labels
+ */
+export const getIdeationTypeLabels = (t: TranslationFunction): Record<string, string> => ({
+  code_improvements: t('ideation:types.code_improvements'),
+  ui_ux_improvements: t('ideation:types.ui_ux_improvements'),
+  documentation_gaps: t('ideation:types.documentation_gaps'),
+  security_hardening: t('ideation:types.security_hardening'),
+  performance_optimizations: t('ideation:types.performance_optimizations'),
+  code_quality: t('ideation:types.code_quality')
+});
+
+/**
+ * Get translated ideation type descriptions
+ * @param t - i18n translation function
+ * @returns Record of type keys to translated descriptions
+ */
+export const getIdeationTypeDescriptions = (t: TranslationFunction): Record<string, string> => ({
+  code_improvements: t('ideation:typeDescriptions.code_improvements'),
+  ui_ux_improvements: t('ideation:typeDescriptions.ui_ux_improvements'),
+  documentation_gaps: t('ideation:typeDescriptions.documentation_gaps'),
+  security_hardening: t('ideation:typeDescriptions.security_hardening'),
+  performance_optimizations: t('ideation:typeDescriptions.performance_optimizations'),
+  code_quality: t('ideation:typeDescriptions.code_quality')
+});
+
+/**
+ * Get translated UI/UX category labels
+ * @param t - i18n translation function
+ * @returns Record of UI/UX category keys to translated labels
+ */
+export const getUIUXCategoryLabels = (t: TranslationFunction): Record<string, string> => ({
+  usability: t('ideation:categories.uiux.usability'),
+  accessibility: t('ideation:categories.uiux.accessibility'),
+  performance: t('ideation:categories.uiux.performance'),
+  visual: t('ideation:categories.uiux.visual'),
+  interaction: t('ideation:categories.uiux.interaction')
+});
+
+/**
+ * Get translated documentation category labels
+ * @param t - i18n translation function
+ * @returns Record of documentation category keys to translated labels
+ */
+export const getDocumentationCategoryLabels = (t: TranslationFunction): Record<string, string> => ({
+  readme: t('ideation:categories.documentation.readme'),
+  api_docs: t('ideation:categories.documentation.api_docs'),
+  inline_comments: t('ideation:categories.documentation.inline_comments'),
+  examples: t('ideation:categories.documentation.examples'),
+  architecture: t('ideation:categories.documentation.architecture'),
+  troubleshooting: t('ideation:categories.documentation.troubleshooting')
+});
+
+/**
+ * Get translated security category labels
+ * @param t - i18n translation function
+ * @returns Record of security category keys to translated labels
+ */
+export const getSecurityCategoryLabels = (t: TranslationFunction): Record<string, string> => ({
+  authentication: t('ideation:categories.security.authentication'),
+  authorization: t('ideation:categories.security.authorization'),
+  input_validation: t('ideation:categories.security.input_validation'),
+  data_protection: t('ideation:categories.security.data_protection'),
+  dependencies: t('ideation:categories.security.dependencies'),
+  configuration: t('ideation:categories.security.configuration'),
+  secrets_management: t('ideation:categories.security.secrets_management')
+});
+
+/**
+ * Get translated performance category labels
+ * @param t - i18n translation function
+ * @returns Record of performance category keys to translated labels
+ */
+export const getPerformanceCategoryLabels = (t: TranslationFunction): Record<string, string> => ({
+  bundle_size: t('ideation:categories.performance.bundle_size'),
+  runtime: t('ideation:categories.performance.runtime'),
+  memory: t('ideation:categories.performance.memory'),
+  database: t('ideation:categories.performance.database'),
+  network: t('ideation:categories.performance.network'),
+  rendering: t('ideation:categories.performance.rendering'),
+  caching: t('ideation:categories.performance.caching')
+});
+
+/**
+ * Get translated code quality category labels
+ * @param t - i18n translation function
+ * @returns Record of code quality category keys to translated labels
+ */
+export const getCodeQualityCategoryLabels = (t: TranslationFunction): Record<string, string> => ({
+  large_files: t('ideation:categories.codeQuality.large_files'),
+  code_smells: t('ideation:categories.codeQuality.code_smells'),
+  complexity: t('ideation:categories.codeQuality.complexity'),
+  duplication: t('ideation:categories.codeQuality.duplication'),
+  naming: t('ideation:categories.codeQuality.naming'),
+  structure: t('ideation:categories.codeQuality.structure'),
+  linting: t('ideation:categories.codeQuality.linting'),
+  testing: t('ideation:categories.codeQuality.testing'),
+  types: t('ideation:categories.codeQuality.types'),
+  dependencies: t('ideation:categories.codeQuality.dependencies'),
+  dead_code: t('ideation:categories.codeQuality.dead_code'),
+  git_hygiene: t('ideation:categories.codeQuality.git_hygiene')
+});
+
+// ============================================
 // Ideation Types
 // ============================================
 
-// Ideation type labels and descriptions
+// Ideation type labels and descriptions (fallback/default English values)
 // Note: high_value_features removed - strategic features belong to Roadmap
 // low_hanging_fruit renamed to code_improvements to cover all code-revealed opportunities
 export const IDEATION_TYPE_LABELS: Record<string, string> = {
