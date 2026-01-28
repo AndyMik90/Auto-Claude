@@ -21,6 +21,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.claude_rules import (
+    get_files_from_implementation_plan,
+    load_claude_rules,
+)
+from core.config import should_use_claude_md, should_use_claude_rules
 from core.platform import (
     is_windows,
     validate_cli_path,
@@ -418,11 +423,6 @@ def get_electron_debug_port() -> int:
     return int(os.environ.get("ELECTRON_DEBUG_PORT", "9222"))
 
 
-def should_use_claude_md() -> bool:
-    """Check if CLAUDE.md instructions should be included in system prompt."""
-    return os.environ.get("USE_CLAUDE_MD", "").lower() == "true"
-
-
 def load_claude_md(project_dir: Path) -> str | None:
     """
     Load CLAUDE.md content from project root if it exists.
@@ -440,6 +440,10 @@ def load_claude_md(project_dir: Path) -> str | None:
         except Exception:
             return None
     return None
+
+
+# Note: Claude Code Rules support is in core/claude_rules.py
+# Feature flags (should_use_claude_md, should_use_claude_rules) are in core/config.py
 
 
 def create_client(
@@ -793,6 +797,140 @@ def create_client(
             print("   - CLAUDE.md: not found in project root")
     else:
         print("   - CLAUDE.md: disabled by project settings")
+
+    # Include .claude/rules/ if enabled
+    # Rules are matched based on files being modified in the implementation plan
+    required_skills: list[dict] = []
+    if should_use_claude_rules():
+        files_in_plan = get_files_from_implementation_plan(spec_dir)
+        if files_in_plan:
+            rules_content, matched_rules, required_skills = load_claude_rules(
+                project_dir, files_in_plan
+            )
+            if rules_content:
+                base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
+                print(f"   - .claude/rules/: {len(matched_rules)} rules matched")
+                for rule_name in matched_rules[:5]:  # Show first 5
+                    print(f"     • {rule_name}")
+                if len(matched_rules) > 5:
+                    print(f"     • ... and {len(matched_rules) - 5} more")
+            else:
+                print("   - .claude/rules/: no matching rules for files in plan")
+        else:
+            # No implementation plan yet (planning phase) - load all rules
+            rules_content, matched_rules, required_skills = load_claude_rules(
+                project_dir, None
+            )
+            if rules_content:
+                base_prompt = f"{base_prompt}\n\n# Project Rules (from .claude/rules/)\n\n{rules_content}"
+                print(f"   - .claude/rules/: {len(matched_rules)} rules loaded (all)")
+            else:
+                print("   - .claude/rules/: no rules found")
+
+        # Add required skills instruction if any rules specify them
+        # Filter skills based on agent_type and 'when' timing
+        if required_skills:
+            # Map 'when' values to agent types
+            WHEN_TO_AGENTS = {
+                "planning": ["planner", "spec_gatherer"],
+                "per_subtask": ["coder"],
+                "end_of_coding": ["coder"],
+                "qa_phase": ["qa_reviewer", "qa_fixer"],
+            }
+
+            # Filter skills relevant to this agent type
+            relevant_skills = [
+                s
+                for s in required_skills
+                if agent_type in WHEN_TO_AGENTS.get(s.get("when", "per_subtask"), [])
+            ]
+
+            if relevant_skills:
+                # Group skills by 'when' for appropriate instructions
+                planning_skills = [
+                    s for s in relevant_skills if s.get("when") == "planning"
+                ]
+                per_subtask_skills = [
+                    s for s in relevant_skills if s.get("when") == "per_subtask"
+                ]
+                end_of_coding_skills = [
+                    s for s in relevant_skills if s.get("when") == "end_of_coding"
+                ]
+                qa_skills = [s for s in relevant_skills if s.get("when") == "qa_phase"]
+
+                skill_instructions = []
+
+                # Planning phase instructions
+                if planning_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in planning_skills)
+                    skill_instructions.append(
+                        f"**Planning skills** ({skills_list}):\n"
+                        f"Include these as verification_steps in implementation_plan.json with "
+                        f"appropriate timing (e.g., as final verification step)."
+                    )
+
+                # Per-subtask instructions
+                if per_subtask_skills:
+                    skills_list = ", ".join(
+                        f"`{s['skill']}`" for s in per_subtask_skills
+                    )
+                    paths_info = []
+                    for s in per_subtask_skills:
+                        if s.get("paths"):
+                            paths_info.append(
+                                f"  - `{s['skill']}` on files matching: {', '.join(s['paths'])}"
+                            )
+                    paths_section = "\n".join(paths_info) if paths_info else ""
+                    skill_instructions.append(
+                        f"**Per-subtask skills** ({skills_list}):\n"
+                        f"Run these skills on relevant files during subtask implementation.\n"
+                        f"{paths_section}"
+                    )
+
+                # End-of-coding instructions
+                if end_of_coding_skills:
+                    skills_list = ", ".join(
+                        f"`{s['skill']}`" for s in end_of_coding_skills
+                    )
+                    skill_instructions.append(
+                        f"**End-of-coding skills** ({skills_list}):\n"
+                        f"Run these skills ONCE after ALL subtasks are complete, before signaling completion.\n"
+                        f"Do NOT run on every subtask - only at the very end."
+                    )
+
+                # QA phase instructions
+                if qa_skills:
+                    skills_list = ", ".join(f"`{s['skill']}`" for s in qa_skills)
+                    skill_instructions.append(
+                        f"**QA phase skills** ({skills_list}):\n"
+                        f"Run these skills during your QA review before sign-off."
+                    )
+
+                if skill_instructions:
+                    combined_instructions = "\n\n".join(skill_instructions)
+                    skill_instruction = (
+                        f"\n\n# Required Skills\n\n"
+                        f"The following skills are required based on project rules:\n\n"
+                        f"{combined_instructions}\n\n"
+                        f"Skills are invoked automatically when relevant based on context. "
+                        f"Ensure the required skills run during your workflow phase.\n\n"
+                        f"Do NOT mark your work as complete until all required skills for your phase have been run."
+                    )
+                    base_prompt = f"{base_prompt}{skill_instruction}"
+
+                    # Print summary of relevant skills
+                    skill_names = [s["skill"] for s in relevant_skills]
+                    print(
+                        f"   - Required skills ({agent_type}): {', '.join(skill_names)}"
+                    )
+            else:
+                # Skills exist but none for this agent type
+                all_skill_names = [s["skill"] for s in required_skills]
+                print(
+                    f"   - Required skills: {', '.join(all_skill_names)} (not for {agent_type})"
+                )
+    else:
+        print("   - .claude/rules/: disabled")
     print()
 
     # Build options dict, conditionally including output_format

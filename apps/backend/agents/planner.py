@@ -99,6 +99,7 @@ async def run_followup_planner(
         project_dir,
         spec_dir,
         planning_model,
+        agent_type="planner",
         max_thinking_tokens=planning_thinking_budget,
     )
 
