@@ -6,7 +6,8 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 // Make require globally available for Sentry's require-in-the-middle hooks
-globalThis.require = require;
+// Prevent tree-shaking: Object.defineProperty ensures this side-effect is preserved
+Object.defineProperty(globalThis, "require", { value: require, writable: true, enumerable: true, configurable: true });
 
 // Load .env file FIRST before any other imports that might use process.env
 import { config } from 'dotenv';
