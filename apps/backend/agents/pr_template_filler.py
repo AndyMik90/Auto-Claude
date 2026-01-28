@@ -111,6 +111,36 @@ def _truncate_diff(diff_summary: str) -> str:
     return "\n".join(summary_lines)
 
 
+def _strip_markdown_fences(content: str) -> str:
+    """
+    Strip markdown code fences from the response if present.
+
+    The AI sometimes wraps the output in ```markdown ... ``` even when instructed
+    not to. This ensures the PR body renders correctly on GitHub.
+
+    Args:
+        content: The response content to clean
+
+    Returns:
+        The content with markdown fences stripped.
+    """
+    result = content
+
+    # Strip opening fence (```markdown or just ```)
+    if result.startswith("```markdown"):
+        result = result[len("```markdown") :].lstrip("\n")
+    elif result.startswith("```md"):
+        result = result[len("```md") :].lstrip("\n")
+    elif result.startswith("```"):
+        result = result[3:].lstrip("\n")
+
+    # Strip closing fence
+    if result.endswith("```"):
+        result = result[:-3].rstrip("\n")
+
+    return result.strip()
+
+
 def _build_prompt(
     template_content: str,
     diff_summary: str,
@@ -137,13 +167,38 @@ def _build_prompt(
         The assembled prompt string.
     """
     return f"""Fill out the following GitHub PR template using the provided context.
-Return ONLY the filled template markdown — no preamble, no explanation.
+Return ONLY the filled template markdown — no preamble, no explanation, no code fences.
+
+## Checkbox Guidelines
+
+IMPORTANT: Be accurate and honest about what has and hasn't been verified.
+
+**Check these based on context (you can infer from the diff/spec):**
+- Base Branch targeting — check based on target_branch value
+- Type of Change (bug fix, feature, docs, refactor, test) — infer from diff and spec
+- Area (Frontend, Backend, Fullstack) — infer from changed file paths
+- Feature Toggle "N/A" — if the feature appears complete and not behind a flag
+- Breaking Changes "No" — if changes appear backward compatible
+
+**Leave UNCHECKED (these require human verification you cannot perform):**
+- "I've tested my changes locally" — you have not tested anything
+- "All CI checks pass" — CI has not run yet
+- "Windows/macOS/Linux tested" — requires manual testing on each platform
+- "All existing tests pass" — CI has not run yet
+- "New features include test coverage" — unless test files are clearly visible in the diff
+- "Bug fixes include regression tests" — unless test files are clearly visible in the diff
+
+**For platform/code quality checkboxes:**
+- "Used centralized platform/ module" — leave unchecked unless you can verify from the diff
+- "No hardcoded paths" — leave unchecked unless you can verify from the diff
+- "PR is small and focused (< 400 lines)" — check only if diff stats show < 400 lines changed
+
+**For the "I've synced with develop branch" checkbox:**
+- Leave unchecked — you cannot verify the sync status
 
 ## PR Template
 
-```markdown
 {template_content}
-```
 
 ## Change Context
 
@@ -164,8 +219,8 @@ Return ONLY the filled template markdown — no preamble, no explanation.
 {commit_log}
 ```
 
-Fill every section of the PR template above. Check applicable checkboxes.
-Output the completed template as valid markdown."""
+Fill every section of the PR template. Follow the checkbox guidelines above carefully.
+Output ONLY the completed template — no code fences, no preamble."""
 
 
 def _load_spec_overview(spec_dir: Path) -> str:
@@ -278,8 +333,9 @@ async def run_pr_template_filler(
 
         # The agent should return only the filled template markdown
         if response and response.strip():
+            result = _strip_markdown_fences(response.strip())
             logger.info("PR template filled successfully")
-            return response.strip()
+            return result
 
         logger.warning("PR template filler returned empty response")
         return None
