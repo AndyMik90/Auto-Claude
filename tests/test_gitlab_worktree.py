@@ -90,6 +90,9 @@ class TestCreateMergeRequest:
 
     def test_successful_mr_creation(self, worktree_manager, temp_project_dir):
         """Test successful MR creation with glab CLI."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         # Mock get_worktree_info to return a valid WorktreeInfo
@@ -109,10 +112,20 @@ class TestCreateMergeRequest:
         )
 
         with (
-            patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result),
-            patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
+            patch.object(
+                worktree_manager, "get_worktree_info", return_value=mock_worktree_info
+            ),
+            patch.object(
+                worktree_module,
+                "get_glab_executable",
+                return_value="/usr/local/bin/glab",
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ),
+            patch.object(
+                worktree_manager, "_extract_spec_summary", return_value="Test MR body"
+            ),
         ):
             result = worktree_manager.create_merge_request(
                 spec_name=spec_name,
@@ -129,6 +142,9 @@ class TestCreateMergeRequest:
 
     def test_mr_already_exists(self, worktree_manager, temp_project_dir):
         """Test MR already exists scenario."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_worktree_info = WorktreeInfo(
@@ -150,11 +166,23 @@ class TestCreateMergeRequest:
         existing_url = "https://gitlab.com/user/repo/-/merge_requests/42"
 
         with (
-            patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result),
-            patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
-            patch.object(worktree_manager, "_get_existing_mr_url", return_value=existing_url),
+            patch.object(
+                worktree_manager, "get_worktree_info", return_value=mock_worktree_info
+            ),
+            patch.object(
+                worktree_module,
+                "get_glab_executable",
+                return_value="/usr/local/bin/glab",
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ),
+            patch.object(
+                worktree_manager, "_extract_spec_summary", return_value="Test MR body"
+            ),
+            patch.object(
+                worktree_manager, "_get_existing_mr_url", return_value=existing_url
+            ),
         ):
             result = worktree_manager.create_merge_request(
                 spec_name=spec_name,
@@ -169,6 +197,9 @@ class TestCreateMergeRequest:
 
     def test_missing_glab_cli(self, worktree_manager, temp_project_dir):
         """Test error when glab CLI is not installed."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_worktree_info = WorktreeInfo(
@@ -180,8 +211,10 @@ class TestCreateMergeRequest:
         )
 
         with (
-            patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_glab_executable", return_value=None),
+            patch.object(
+                worktree_manager, "get_worktree_info", return_value=mock_worktree_info
+            ),
+            patch.object(worktree_module, "get_glab_executable", return_value=None),
         ):
             result = worktree_manager.create_merge_request(spec_name=spec_name)
 
@@ -203,6 +236,9 @@ class TestCreateMergeRequest:
 
     def test_mr_with_draft_flag(self, worktree_manager, temp_project_dir):
         """Test MR creation with draft flag."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_worktree_info = WorktreeInfo(
@@ -220,10 +256,20 @@ class TestCreateMergeRequest:
         )
 
         with (
-            patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result) as mock_run,
-            patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
+            patch.object(
+                worktree_manager, "get_worktree_info", return_value=mock_worktree_info
+            ),
+            patch.object(
+                worktree_module,
+                "get_glab_executable",
+                return_value="/usr/local/bin/glab",
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ) as mock_run,
+            patch.object(
+                worktree_manager, "_extract_spec_summary", return_value="Test MR body"
+            ),
         ):
             result = worktree_manager.create_merge_request(
                 spec_name=spec_name,
@@ -237,6 +283,9 @@ class TestCreateMergeRequest:
 
     def test_network_error_retry(self, worktree_manager, temp_project_dir):
         """Test retry logic for network errors."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_worktree_info = WorktreeInfo(
@@ -260,11 +309,23 @@ class TestCreateMergeRequest:
         )
 
         with (
-            patch.object(worktree_manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_glab_executable", return_value="/usr/local/bin/glab"),
-            patch("core.worktree.subprocess.run", side_effect=[mock_failure, mock_success]),
-            patch.object(worktree_manager, "_extract_spec_summary", return_value="Test MR body"),
-            patch("core.worktree.time.sleep"),  # Skip sleep in tests
+            patch.object(
+                worktree_manager, "get_worktree_info", return_value=mock_worktree_info
+            ),
+            patch.object(
+                worktree_module,
+                "get_glab_executable",
+                return_value="/usr/local/bin/glab",
+            ),
+            patch.object(
+                worktree_module.subprocess,
+                "run",
+                side_effect=[mock_failure, mock_success],
+            ),
+            patch.object(
+                worktree_manager, "_extract_spec_summary", return_value="Test MR body"
+            ),
+            patch.object(worktree_module.time, "sleep"),  # Skip sleep in tests
         ):
             result = worktree_manager.create_merge_request(spec_name=spec_name)
 
@@ -276,51 +337,11 @@ class TestCreateMergeRequest:
 class TestPushAndCreatePR:
     """Test push_and_create_pr method with provider detection."""
 
-    def test_github_routing(self, worktree_manager, temp_project_dir):
-        """Test routing to create_pull_request for GitHub repos."""
-        spec_name = "test-feature"
-
-        # Mock push_branch to succeed
-        mock_push_result = {
-            "success": True,
-            "remote": "origin",
-            "branch": f"auto-claude/{spec_name}",
-        }
-
-        # Mock PR creation result
-        mock_pr_result = PullRequestResult(
-            success=True,
-            pr_url="https://github.com/user/repo/pull/123",
-            already_exists=False,
-        )
-
-        with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result) as mock_create_pr,
-        ):
-            result = worktree_manager.push_and_create_pr(
-                spec_name=spec_name,
-                target_branch="main",
-                title="Test PR",
-            )
-
-        # Verify routing to GitHub
-        mock_create_pr.assert_called_once_with(
-            spec_name=spec_name,
-            target_branch="main",
-            title="Test PR",
-            draft=False,
-        )
-
-        # Verify result
-        assert result["success"] is True
-        assert result["pushed"] is True
-        assert result["provider"] == "github"
-        assert result["pr_url"] == "https://github.com/user/repo/pull/123"
-
     def test_gitlab_routing(self, worktree_manager, temp_project_dir):
         """Test routing to create_merge_request for GitLab repos."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         # Mock push_branch to succeed
@@ -338,9 +359,13 @@ class TestPushAndCreatePR:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="gitlab"),
-            patch.object(worktree_manager, "create_merge_request", return_value=mock_mr_result) as mock_create_mr,
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(worktree_module, "detect_git_provider", return_value="gitlab"),
+            patch.object(
+                worktree_manager, "create_merge_request", return_value=mock_mr_result
+            ) as mock_create_mr,
         ):
             result = worktree_manager.push_and_create_pr(
                 spec_name=spec_name,
@@ -364,6 +389,9 @@ class TestPushAndCreatePR:
 
     def test_unknown_provider_error(self, worktree_manager, temp_project_dir):
         """Test error handling for unknown git providers."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         # Mock push_branch to succeed
@@ -374,8 +402,12 @@ class TestPushAndCreatePR:
         }
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="unknown"),
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(
+                worktree_module, "detect_git_provider", return_value="unknown"
+            ),
         ):
             result = worktree_manager.push_and_create_pr(spec_name=spec_name)
 
@@ -396,7 +428,9 @@ class TestPushAndCreatePR:
             "error": "Failed to push: remote rejected",
         }
 
-        with patch.object(worktree_manager, "push_branch", return_value=mock_push_result):
+        with patch.object(
+            worktree_manager, "push_branch", return_value=mock_push_result
+        ):
             result = worktree_manager.push_and_create_pr(spec_name=spec_name)
 
         # Verify error
@@ -406,6 +440,9 @@ class TestPushAndCreatePR:
 
     def test_draft_pr_flag(self, worktree_manager, temp_project_dir):
         """Test draft flag is passed through correctly."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_push_result = {
@@ -421,9 +458,13 @@ class TestPushAndCreatePR:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result) as mock_create_pr,
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ) as mock_create_pr,
         ):
             result = worktree_manager.push_and_create_pr(
                 spec_name=spec_name,
@@ -436,6 +477,9 @@ class TestPushAndCreatePR:
 
     def test_force_push_flag(self, worktree_manager, temp_project_dir):
         """Test force push flag is passed to push_branch."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_push_result = {
@@ -451,9 +495,13 @@ class TestPushAndCreatePR:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result) as mock_push,
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result),
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ) as mock_push,
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ),
         ):
             result = worktree_manager.push_and_create_pr(
                 spec_name=spec_name,
@@ -466,6 +514,9 @@ class TestPushAndCreatePR:
 
     def test_custom_target_branch(self, worktree_manager, temp_project_dir):
         """Test custom target branch is passed through."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
         custom_target = "develop"
 
@@ -482,9 +533,13 @@ class TestPushAndCreatePR:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result) as mock_create_pr,
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ) as mock_create_pr,
         ):
             result = worktree_manager.push_and_create_pr(
                 spec_name=spec_name,
@@ -501,6 +556,9 @@ class TestProviderIntegration:
 
     def test_self_hosted_gitlab_routing(self, worktree_manager, temp_project_dir):
         """Test that self-hosted GitLab instances route to glab CLI."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_push_result = {
@@ -516,9 +574,15 @@ class TestProviderIntegration:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="gitlab"),  # Self-hosted detected as gitlab
-            patch.object(worktree_manager, "create_merge_request", return_value=mock_mr_result) as mock_create_mr,
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(
+                worktree_module, "detect_git_provider", return_value="gitlab"
+            ),  # Self-hosted detected as gitlab
+            patch.object(
+                worktree_manager, "create_merge_request", return_value=mock_mr_result
+            ) as mock_create_mr,
         ):
             result = worktree_manager.push_and_create_pr(spec_name=spec_name)
 
@@ -529,6 +593,9 @@ class TestProviderIntegration:
 
     def test_pr_already_exists_propagation(self, worktree_manager, temp_project_dir):
         """Test that already_exists flag propagates correctly."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_push_result = {
@@ -545,9 +612,13 @@ class TestProviderIntegration:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result),
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ),
         ):
             result = worktree_manager.push_and_create_pr(spec_name=spec_name)
 
@@ -556,8 +627,13 @@ class TestProviderIntegration:
         assert result["already_exists"] is True
         assert result["pr_url"] == "https://github.com/user/repo/pull/127"
 
-    def test_error_propagation_from_pr_creation(self, worktree_manager, temp_project_dir):
+    def test_error_propagation_from_pr_creation(
+        self, worktree_manager, temp_project_dir
+    ):
         """Test that errors from PR/MR creation propagate correctly."""
+        # Import the actual module to patch it directly (handles importlib shim)
+        import core.worktree as worktree_module
+
         spec_name = "test-feature"
 
         mock_push_result = {
@@ -573,9 +649,13 @@ class TestProviderIntegration:
         )
 
         with (
-            patch.object(worktree_manager, "push_branch", return_value=mock_push_result),
-            patch("core.worktree.detect_git_provider", return_value="github"),
-            patch.object(worktree_manager, "create_pull_request", return_value=mock_pr_result),
+            patch.object(
+                worktree_manager, "push_branch", return_value=mock_push_result
+            ),
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ),
         ):
             result = worktree_manager.push_and_create_pr(spec_name=spec_name)
 

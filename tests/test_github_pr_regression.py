@@ -25,6 +25,66 @@ from core.git_provider import detect_git_provider
 from core.worktree import PullRequestResult, WorktreeInfo, WorktreeManager
 
 
+@pytest.fixture
+def temp_project_dir(tmp_path):
+    """Create a temporary project directory with proper git setup."""
+    project_dir = tmp_path / "test-project"
+    project_dir.mkdir()
+
+    # Initialize git repo
+    subprocess.run(
+        ["git", "init"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+    )
+
+    # Create initial commit
+    readme = project_dir / "README.md"
+    readme.write_text("# Test Project\n")
+    subprocess.run(
+        ["git", "add", "README.md"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+    )
+
+    return project_dir
+
+
+@pytest.fixture
+def worktree_manager(temp_project_dir):
+    """Create a WorktreeManager instance."""
+    # Create .auto-claude directories
+    auto_claude_dir = temp_project_dir / ".auto-claude"
+    auto_claude_dir.mkdir(exist_ok=True)
+    (auto_claude_dir / "specs").mkdir(exist_ok=True)
+    (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
+
+    return WorktreeManager(
+        project_dir=temp_project_dir,
+        base_branch="main",
+    )
+
+
 class TestGitHubProviderDetection:
     """Test that GitHub remotes are still detected correctly."""
 
@@ -70,7 +130,13 @@ class TestGitHubProviderDetection:
         # Initialize git repo with GitHub Enterprise remote
         subprocess.run(["git", "init"], cwd=repo_path, check=True, capture_output=True)
         subprocess.run(
-            ["git", "remote", "add", "origin", "https://github.company.com/user/repo.git"],
+            [
+                "git",
+                "remote",
+                "add",
+                "origin",
+                "https://github.company.com/user/repo.git",
+            ],
             cwd=repo_path,
             check=True,
             capture_output=True,
@@ -83,43 +149,41 @@ class TestGitHubProviderDetection:
 class TestGitHubPRRouting:
     """Test that push_and_create_pr correctly routes to create_pull_request for GitHub."""
 
-    def test_github_routing_to_create_pull_request(self, tmp_path):
+    def test_github_routing_to_create_pull_request(
+        self, worktree_manager, temp_project_dir
+    ):
         """Test that GitHub remotes route to create_pull_request."""
-        # Setup
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
+        spec_name = "test-spec"
 
-        # Initialize git repo
-        subprocess.run(["git", "init"], cwd=project_dir, check=True, capture_output=True)
+        # Mock push_branch to succeed
+        mock_push_result = {
+            "success": True,
+            "remote": "origin",
+            "branch": f"auto-claude/{spec_name}",
+        }
 
-        # Create .auto-claude directories
-        auto_claude_dir = project_dir / ".auto-claude"
-        auto_claude_dir.mkdir(exist_ok=True)
-        (auto_claude_dir / "specs").mkdir(exist_ok=True)
-        (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
-
-        # Create WorktreeManager
-        manager = WorktreeManager(
-            project_dir=project_dir,
-            base_branch="main",
+        # Mock PR creation result
+        mock_pr_result = PullRequestResult(
+            success=True,
+            pr_url="https://github.com/user/repo/pull/123",
+            already_exists=False,
         )
 
-        # Mock create_pull_request to verify it's called
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
-            patch("core.worktree.detect_git_provider", return_value="github"),
             patch.object(
-                manager, "create_pull_request", return_value=PullRequestResult(
-                    success=True,
-                    pr_url="https://github.com/user/repo/pull/123",
-                    already_exists=False,
-                )
-            ) as mock_create_pr,
-            patch.object(
-                manager, "push_branch", return_value={"success": True, "remote": "origin", "branch": "test"}
+                worktree_manager, "push_branch", return_value=mock_push_result
             ),
+            # Patch on the module object directly to handle importlib shim loading
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
+            patch.object(
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
+            ) as mock_create_pr,
         ):
-            result = manager.push_and_create_pr(
-                spec_name="test-spec",
+            result = worktree_manager.push_and_create_pr(
+                spec_name=spec_name,
                 target_branch="main",
                 title="Test PR",
                 draft=False,
@@ -127,7 +191,7 @@ class TestGitHubPRRouting:
 
         # Verify create_pull_request was called
         mock_create_pr.assert_called_once_with(
-            spec_name="test-spec",
+            spec_name=spec_name,
             target_branch="main",
             title="Test PR",
             draft=False,
@@ -135,53 +199,55 @@ class TestGitHubPRRouting:
 
         # Verify result
         assert result["success"] is True
+        assert result["pushed"] is True
         assert result["provider"] == "github"
         assert result["pr_url"] == "https://github.com/user/repo/pull/123"
 
-    def test_github_provider_field_set_correctly(self, tmp_path):
+    def test_github_provider_field_set_correctly(
+        self, worktree_manager, temp_project_dir
+    ):
         """Test that provider field is set to 'github' in result."""
-        # Setup
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
+        spec_name = "test-spec"
 
-        # Initialize git repo
-        subprocess.run(["git", "init"], cwd=project_dir, check=True, capture_output=True)
+        # Mock push_branch to succeed
+        mock_push_result = {
+            "success": True,
+            "remote": "origin",
+            "branch": f"auto-claude/{spec_name}",
+        }
 
-        # Create .auto-claude directories
-        auto_claude_dir = project_dir / ".auto-claude"
-        auto_claude_dir.mkdir(exist_ok=True)
-        (auto_claude_dir / "specs").mkdir(exist_ok=True)
-        (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
-
-        # Create WorktreeManager
-        manager = WorktreeManager(
-            project_dir=project_dir,
-            base_branch="main",
+        # Mock PR creation result
+        mock_pr_result = PullRequestResult(
+            success=True,
+            pr_url="https://github.com/user/repo/pull/123",
+            already_exists=False,
         )
 
-        # Mock methods
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
-            patch("core.worktree.detect_git_provider", return_value="github"),
             patch.object(
-                manager, "create_pull_request", return_value=PullRequestResult(
-                    success=True,
-                    pr_url="https://github.com/user/repo/pull/123",
-                    already_exists=False,
-                )
+                worktree_manager, "push_branch", return_value=mock_push_result
             ),
+            # Patch on the module object directly to handle importlib shim loading
+            patch.object(worktree_module, "detect_git_provider", return_value="github"),
             patch.object(
-                manager, "push_branch", return_value={"success": True, "remote": "origin", "branch": "test"}
+                worktree_manager, "create_pull_request", return_value=mock_pr_result
             ),
         ):
-            result = manager.push_and_create_pr(
-                spec_name="test-spec",
+            result = worktree_manager.push_and_create_pr(
+                spec_name=spec_name,
                 target_branch="main",
                 title="Test PR",
                 draft=False,
             )
 
         # Verify provider field
-        assert result["provider"] == "github", f"Expected provider='github', got '{result['provider']}'"
+        assert result["provider"] == "github", (
+            f"Expected provider='github', got '{result['provider']}'"
+        )
+        assert result["pushed"] is True
 
 
 class TestGitHubCLIInvocation:
@@ -221,10 +287,17 @@ class TestGitHubCLIInvocation:
             stderr="",
         )
 
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
             patch.object(manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_gh_executable", return_value="/usr/bin/gh"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result) as mock_run,
+            patch.object(
+                worktree_module, "get_gh_executable", return_value="/usr/bin/gh"
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ) as mock_run,
             patch.object(manager, "_extract_spec_summary", return_value="Test PR body"),
         ):
             result = manager.create_pull_request(
@@ -284,10 +357,17 @@ class TestGitHubCLIInvocation:
             stderr="",
         )
 
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
             patch.object(manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_gh_executable", return_value="/usr/bin/gh"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result) as mock_run,
+            patch.object(
+                worktree_module, "get_gh_executable", return_value="/usr/bin/gh"
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ) as mock_run,
             patch.object(manager, "_extract_spec_summary", return_value="Test PR body"),
         ):
             result = manager.create_pull_request(
@@ -333,9 +413,12 @@ class TestGitHubErrorHandling:
             is_active=True,
         )
 
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
             patch.object(manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_gh_executable", return_value=None),
+            patch.object(worktree_module, "get_gh_executable", return_value=None),
         ):
             result = manager.create_pull_request(
                 spec_name="001-test-spec",
@@ -383,12 +466,21 @@ class TestGitHubErrorHandling:
             stderr="pull request already exists",
         )
 
+        # Import the actual module to patch it directly
+        import core.worktree as worktree_module
+
         with (
             patch.object(manager, "get_worktree_info", return_value=mock_worktree_info),
-            patch("core.worktree.get_gh_executable", return_value="/usr/bin/gh"),
-            patch("core.worktree.subprocess.run", return_value=mock_subprocess_result),
             patch.object(
-                manager, "_get_existing_pr_url", return_value="https://github.com/user/repo/pull/123"
+                worktree_module, "get_gh_executable", return_value="/usr/bin/gh"
+            ),
+            patch.object(
+                worktree_module.subprocess, "run", return_value=mock_subprocess_result
+            ),
+            patch.object(
+                manager,
+                "_get_existing_pr_url",
+                return_value="https://github.com/user/repo/pull/123",
             ),
             patch.object(manager, "_extract_spec_summary", return_value="Test PR body"),
         ):

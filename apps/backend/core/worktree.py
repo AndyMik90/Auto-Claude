@@ -1305,7 +1305,10 @@ class WorktreeManager:
                     if not mr_url.startswith("http"):
                         # Try to find URL in output
                         # GitLab URL pattern: matches any HTTPS URL with /merge_requests/<number> or /-/merge_requests/<number> path
-                        match = re.search(r"https://[^\s]+(?:/merge_requests/|/-/merge_requests/)\d+", result.stdout)
+                        match = re.search(
+                            r"https://[^\s]+(?:/merge_requests/|/-/merge_requests/)\d+",
+                            result.stdout,
+                        )
                         if match:
                             mr_url = match.group(0)
                         else:
