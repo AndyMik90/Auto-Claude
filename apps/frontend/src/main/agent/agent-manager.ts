@@ -175,8 +175,10 @@ export class AgentManager extends EventEmitter {
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch);
 
-    // Note: This is spec-creation but it chains to task-execution via run.py
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
+    // Start spec creation process - this spawns spec_runner.py
+    // If spec is auto-approved, spec_runner.py chains to run.py (task-execution) via subprocess
+    // The key is that THIS process (spec_runner.py) is spec-creation, not task-execution
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'spec-creation');
   }
 
   /**

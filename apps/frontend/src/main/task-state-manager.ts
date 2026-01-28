@@ -97,38 +97,32 @@ export class TaskStateManager {
     logger.info('[TaskStateManager] All resources cleaned up');
   }
 
-  handleExecutionProgress(task: Task, project: Project, progress: ExecutionProgress): void {
+  handleExecutionProgress(task: Task, project: Project, progress: ExecutionProgress, requireReviewBeforeCoding?: boolean): void {
     const key = this.getActorKey(task.id, project.id);
     this.taskContext.set(key, { task, project });
     this.logExecutionProgress(task.id, progress, project.id);
 
     const actor = this.getActor(task, project);
     const currentState = actor.getSnapshot().value;
-    const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+    // Use passed value, don't read from task object
+    const requireReviewFlag = requireReviewBeforeCoding ?? false;
 
-    // IMPORTANT: Don't transition to awaitingPlanReview based on execution progress.
+    // IMPORTANT: Don't transition out of planning/backlog states based on execution progress.
     // Plan review should ONLY be triggered by PROCESS_EXITED when spec creation finishes.
-    // Execution progress phases can be misleading (e.g., "coding" phase during spec validation).
+    // Execution progress phases can be misleading (e.g., "coding" phase detected from log text
+    // during spec validation). Let PROCESS_EXITED handle all planning -> next state transitions.
 
-    // Only handle state transitions for phases that don't involve plan review
-    if (
-      currentState === 'planning' &&
-      progress.phase !== 'planning' &&
-      progress.phase !== 'idle'
-    ) {
-      // Don't trigger plan review here - let PROCESS_EXITED handle it
-      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
+    // If we're in planning or backlog state, don't sync to phase - let PROCESS_EXITED handle transitions
+    if (currentState === 'planning' || currentState === 'backlog') {
+      // Only update if we're moving to planning phase (to start planning from backlog)
+      if (currentState === 'backlog' && progress.phase === 'planning') {
+        actor.send({ type: 'PLANNING_STARTED' });
+      }
+      // Don't call syncActorToPhase - we stay in planning until PROCESS_EXITED
+      return;
     }
-    if (
-      currentState === 'backlog' &&
-      progress.phase !== 'planning' &&
-      progress.phase !== 'idle'
-    ) {
-      actor.send({ type: 'PLANNING_STARTED' });
-      // Don't trigger plan review here - let PROCESS_EXITED handle it
-      actor.send({ type: 'PLANNING_COMPLETE', requireReviewBeforeCoding: false });
-    }
-    this.syncActorToPhase(actor, progress.phase, requireReviewBeforeCoding);
+
+    this.syncActorToPhase(actor, progress.phase, requireReviewFlag);
     const event = this.mapProgressToEvent(progress);
     if (event) {
       actor.send(event);
@@ -220,11 +214,13 @@ export class TaskStateManager {
     hasSubtasks: boolean,
     allSubtasksDone: boolean,
     hasCompletedSubtasks?: boolean,
-    isQAApproved?: boolean
+    isQAApproved?: boolean,
+    requireReviewBeforeCoding?: boolean
   ): void {
     const key = this.getActorKey(task.id, project.id);
     this.taskContext.set(key, { task, project });
-    const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+    // Use passed value, don't read from task object
+    const requireReviewFlag = requireReviewBeforeCoding ?? false;
     // Default hasCompletedSubtasks to checking if any subtask is completed
     const completedSubtasksFlag = hasCompletedSubtasks ?? task.subtasks?.some((s) => s.status === 'completed') ?? false;
 
@@ -235,7 +231,7 @@ export class TaskStateManager {
       allSubtasksDone,
       hasCompletedSubtasks: completedSubtasksFlag,
       isQAApproved: isQAApproved ?? false,
-      requireReviewBeforeCoding
+      requireReviewBeforeCoding: requireReviewFlag
     });
 
     const actor = this.getActor(task, project);
@@ -246,7 +242,7 @@ export class TaskStateManager {
       allSubtasksDone,
       hasCompletedSubtasks: completedSubtasksFlag,
       isQAApproved: isQAApproved ?? false,
-      requireReviewBeforeCoding
+      requireReviewBeforeCoding: requireReviewFlag
     });
   }
 

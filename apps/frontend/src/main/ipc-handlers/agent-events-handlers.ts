@@ -189,6 +189,25 @@ export function registerAgenteventsHandlers(
 
     if (processType === "spec-creation") {
       console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
+
+      // Invalidate task cache to ensure we get fresh data after spec creation
+      const projects = projectStore.getProjects();
+      for (const p of projects) {
+        projectStore.invalidateTasksCache(p.id);
+      }
+
+      // Spec creation tasks also need XState handling for proper plan review state
+      const { task: specTask, project: specProject } = findTaskAndProject(taskId);
+      if (specTask && specProject) {
+        const manager = getTaskStateManager(getMainWindow);
+        const requireReviewBeforeCoding = specTask.metadata?.requireReviewBeforeCoding === true;
+        // Spec creation has no subtasks yet, so hasSubtasks=false, allSubtasksDone=false, hasCompletedSubtasks=false
+        // isQAApproved=false since spec just finished
+        console.warn(`[Task ${taskId}] Calling handleProcessExit: code=${code ?? 0}, requireReviewBeforeCoding=${requireReviewBeforeCoding}`);
+        manager.handleProcessExit(specTask, specProject, code ?? 0, false, false, false, false, requireReviewBeforeCoding);
+      } else {
+        console.warn(`[Task ${taskId}] Spec creation exit: task or project not found - specTask=${!!specTask}, specProject=${!!specProject}`);
+      }
       return;
     }
 
@@ -280,7 +299,7 @@ export function registerAgenteventsHandlers(
 
         // hasCompletedSubtasks is now calculated from finalPlan above (line 266)
         const manager = getTaskStateManager(getMainWindow);
-        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone, hasCompletedSubtasks, isQAApproved);
+        manager.handleProcessExit(task, project, code ?? 0, hasSubtasks, allSubtasksDone, hasCompletedSubtasks, isQAApproved, requireReviewBeforeCoding);
 
         if (code === 0) {
           notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
@@ -370,7 +389,8 @@ export function registerAgenteventsHandlers(
 
     if (task && project) {
       const manager = getTaskStateManager(getMainWindow);
-      manager.handleExecutionProgress(task, project, progress);
+      const requireReviewBeforeCoding = task.metadata?.requireReviewBeforeCoding === true;
+      manager.handleExecutionProgress(task, project, progress, requireReviewBeforeCoding);
 
       const fallbackStatus = taskStateMachine.getStatusForExecutionProgress(progress);
       if (fallbackStatus === "ai_review" || fallbackStatus === "human_review") {

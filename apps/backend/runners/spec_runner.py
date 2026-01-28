@@ -346,15 +346,25 @@ Examples:
             )
         )
 
-        if not success:
+        # Check if spec was created successfully (files exist) even if orchestrator returned False
+        # orchestrator.run() returns False when review is needed but spec creation succeeded
+        spec_created = (
+            orchestrator.spec_dir
+            and orchestrator.spec_dir.exists()
+            and (orchestrator.spec_dir / "spec.md").exists()
+        )
+
+        if not success and not spec_created:
+            # Actual failure - spec files don't exist
             debug_error("spec_runner", "Spec creation failed")
             sys.exit(1)
 
-        debug_success(
-            "spec_runner",
-            "Spec creation succeeded",
-            spec_dir=str(orchestrator.spec_dir),
-        )
+        if spec_created:
+            debug_success(
+                "spec_runner",
+                "Spec creation succeeded",
+                spec_dir=str(orchestrator.spec_dir),
+            )
 
         # Auto-start build unless --no-build is specified
         if not args.no_build:

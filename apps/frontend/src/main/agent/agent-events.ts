@@ -16,6 +16,11 @@ export class AgentEvents {
   ): { phase: ExecutionProgressData['phase']; message?: string; currentSubtask?: string } | null {
     const structuredEvent = parsePhaseEvent(log);
     if (structuredEvent) {
+      // For spec runner, ignore structured events that would transition away from planning
+      // The spec runner should ONLY be in planning phase - never coding/qa
+      if (isSpecRunner && structuredEvent.phase !== 'planning' && structuredEvent.phase !== 'failed') {
+        return null;
+      }
       return {
         phase: structuredEvent.phase as ExecutionProgressData['phase'],
         message: structuredEvent.message,
@@ -43,6 +48,7 @@ export class AgentEvents {
     const lowerLog = log.toLowerCase();
 
     // Spec runner phase detection (all part of "planning")
+    // IMPORTANT: For spec runner, ONLY return planning phase - never transition to coding/qa
     if (isSpecRunner) {
       if (lowerLog.includes('discovering') || lowerLog.includes('discovery')) {
         return { phase: 'planning', message: 'Discovering project context...' };
@@ -59,9 +65,11 @@ export class AgentEvents {
       if (lowerLog.includes('spec complete') || lowerLog.includes('specification complete')) {
         return { phase: 'planning', message: 'Specification complete' };
       }
+      // For spec runner, don't fall through to coding/qa detection - stay in planning
+      return null;
     }
 
-    // Run.py phase detection
+    // Run.py phase detection (NOT spec runner)
     if (!checkRegression('planning') && (lowerLog.includes('planner agent') || lowerLog.includes('creating implementation plan'))) {
       return { phase: 'planning', message: 'Creating implementation plan...' };
     }
