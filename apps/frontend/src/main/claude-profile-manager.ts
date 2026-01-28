@@ -498,9 +498,19 @@ export class ClaudeProfileManager {
     // This prevents interference with external Claude Code CLI usage
     if (profile?.configDir) {
       // Expand ~ to home directory for the environment variable
-      const expandedConfigDir = profile.configDir.startsWith('~')
+      let expandedConfigDir = profile.configDir.startsWith('~')
         ? profile.configDir.replace(/^~/, homedir())
         : profile.configDir;
+
+      // CRITICAL: Normalize path separators to match Claude CLI behavior on Windows
+      // Claude CLI on Windows uses backslashes, so we must too for hash consistency
+      // Mixed slashes (C:\Users\bill/.claude-profiles) produce different hashes than
+      // consistent slashes (C:\Users\bill\.claude-profiles)
+      // Only normalize if this looks like a Windows path (has drive letter or backslashes)
+      if (process.platform === 'win32' && /^[A-Za-z]:|\\/.test(expandedConfigDir)) {
+        expandedConfigDir = expandedConfigDir.replace(/\//g, '\\');
+      }
+
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
       if (process.env.DEBUG === 'true') {
         console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
@@ -719,9 +729,18 @@ export class ClaudeProfileManager {
     }
 
     // Expand ~ to home directory for the environment variable
-    const expandedConfigDir = profile.configDir.startsWith('~')
+    let expandedConfigDir = profile.configDir.startsWith('~')
       ? profile.configDir.replace(/^~/, require('os').homedir())
       : profile.configDir;
+
+    // CRITICAL: Normalize path separators to match Claude CLI behavior on Windows
+    // Claude CLI on Windows uses backslashes, so we must too for hash consistency
+    // Mixed slashes (C:\Users\bill/.claude-profiles) produce different hashes than
+    // consistent slashes (C:\Users\bill\.claude-profiles)
+    // Only normalize if this looks like a Windows path (has drive letter or backslashes)
+    if (process.platform === 'win32' && /^[A-Za-z]:|\\/.test(expandedConfigDir)) {
+      expandedConfigDir = expandedConfigDir.replace(/\//g, '\\');
+    }
 
     if (process.env.DEBUG === 'true') {
       console.warn('[ClaudeProfileManager] getProfileEnv:', {

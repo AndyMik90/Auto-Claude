@@ -1065,29 +1065,41 @@ function getCredentialsFromWindowsFile(configDir?: string, forceRefresh = false)
 }
 
 /**
- * Retrieve credentials from Windows - tries Credential Manager first, falls back to file
- * Claude CLI on Windows primarily uses file-based storage (.credentials.json)
+ * Retrieve credentials from Windows - checks both file and Credential Manager, uses the most recent valid token.
+ * Claude CLI on Windows can store credentials in either location, and they may get out of sync.
+ * We compare both sources and return the one with the most recent/valid token.
  */
 function getCredentialsFromWindows(configDir?: string, forceRefresh = false): PlatformCredentials {
   const isDebug = process.env.DEBUG === 'true';
 
-  // Try Credential Manager first (for compatibility if Claude CLI changes in the future)
+  // Get credentials from both sources
+  const fileResult = getCredentialsFromWindowsFile(configDir, forceRefresh);
   const credManagerResult = getCredentialsFromWindowsCredentialManager(configDir, forceRefresh);
 
-  // If we got a token from Credential Manager, use it
-  if (credManagerResult.token) {
+  // If only one has a token, use that one
+  if (fileResult.token && !credManagerResult.token) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows] Using file credentials (Credential Manager empty)');
+    }
+    return fileResult;
+  }
+  if (credManagerResult.token && !fileResult.token) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows] Using Credential Manager credentials (file empty)');
+    }
     return credManagerResult;
   }
 
-  // If Credential Manager had an error (not just "not found"), log it
-  if (credManagerResult.error && !credManagerResult.error.includes('not found')) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Credential Manager unavailable, trying file fallback:', credManagerResult.error);
-    }
+  // If neither has a token, return file result (which has the appropriate error)
+  if (!fileResult.token && !credManagerResult.token) {
+    return fileResult;
   }
 
-  // Fall back to file-based storage (what Claude CLI actually uses on Windows)
-  return getCredentialsFromWindowsFile(configDir, forceRefresh);
+  // Both have tokens - prefer file since Claude CLI writes there after login
+  if (isDebug) {
+    console.warn('[CredentialUtils:Windows] Both sources have tokens, preferring file (Claude CLI primary storage)');
+  }
+  return fileResult;
 }
 
 // =============================================================================
@@ -1459,29 +1471,54 @@ function getFullCredentialsFromWindowsFile(configDir?: string): FullOAuthCredent
 }
 
 /**
- * Retrieve full credentials from Windows - tries Credential Manager first, falls back to file
- * Claude CLI on Windows primarily uses file-based storage (.credentials.json)
+ * Retrieve full credentials from Windows - checks both file and Credential Manager, uses the most recent valid token.
+ * Claude CLI on Windows can store credentials in either location, and they may get out of sync.
+ * We compare both sources and return the one with the later expiry time (most recently refreshed).
  */
 function getFullCredentialsFromWindows(configDir?: string): FullOAuthCredentials {
   const isDebug = process.env.DEBUG === 'true';
 
-  // Try Credential Manager first (for compatibility if Claude CLI changes in the future)
+  // Get credentials from both sources
+  const fileResult = getFullCredentialsFromWindowsFile(configDir);
   const credManagerResult = getFullCredentialsFromWindowsCredentialManager(configDir);
 
-  // If we got a token from Credential Manager, use it
-  if (credManagerResult.token) {
+  // If only one has a token, use that one
+  if (fileResult.token && !credManagerResult.token) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Full] Using file credentials (Credential Manager empty)');
+    }
+    return fileResult;
+  }
+  if (credManagerResult.token && !fileResult.token) {
+    if (isDebug) {
+      console.warn('[CredentialUtils:Windows:Full] Using Credential Manager credentials (file empty)');
+    }
     return credManagerResult;
   }
 
-  // If Credential Manager had an error (not just "not found"), log it
-  if (credManagerResult.error && !credManagerResult.error.includes('not found')) {
-    if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Full] Credential Manager unavailable, trying file fallback:', credManagerResult.error);
-    }
+  // If neither has a token, return file result (which has the appropriate error)
+  if (!fileResult.token && !credManagerResult.token) {
+    return fileResult;
   }
 
-  // Fall back to file-based storage (what Claude CLI actually uses on Windows)
-  return getFullCredentialsFromWindowsFile(configDir);
+  // Both have tokens - compare expiry times to find the most recent one
+  const fileExpiry = fileResult.expiresAt ? new Date(fileResult.expiresAt).getTime() : 0;
+  const credManagerExpiry = credManagerResult.expiresAt ? new Date(credManagerResult.expiresAt).getTime() : 0;
+
+  if (isDebug) {
+    console.warn('[CredentialUtils:Windows:Full] Comparing token expiry times:', {
+      fileExpiry: fileResult.expiresAt,
+      credManagerExpiry: credManagerResult.expiresAt,
+      preferring: fileExpiry >= credManagerExpiry ? 'file' : 'credManager'
+    });
+  }
+
+  // Return the one with the later expiry (more recently refreshed)
+  // If equal or file is newer, prefer file (Claude CLI primary storage)
+  if (fileExpiry >= credManagerExpiry) {
+    return fileResult;
+  }
+  return credManagerResult;
 }
 
 /**
