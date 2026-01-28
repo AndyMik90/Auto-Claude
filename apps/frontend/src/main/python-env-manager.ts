@@ -6,16 +6,10 @@ import { app } from 'electron';
 import { findPythonCommand, getBundledPythonPath } from './python-detector';
 import { isLinux, isWindows, getPathDelimiter } from './platform';
 import { getIsolatedGitEnv } from './utils/git-isolation';
+import type { PythonEnvStatus } from '../shared/types/settings';
 
-export interface PythonEnvStatus {
-  ready: boolean;
-  pythonPath: string | null;
-  sitePackagesPath: string | null;
-  venvExists: boolean;
-  depsInstalled: boolean;
-  usingBundledPackages: boolean;
-  error?: string;
-}
+// Re-export for backwards compatibility
+export type { PythonEnvStatus };
 
 /**
  * Manages the Python environment for the auto-claude backend.
