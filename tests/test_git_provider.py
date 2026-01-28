@@ -305,6 +305,15 @@ class TestClassifyHostname:
         """Test classification with mixed case."""
         assert _classify_hostname("GitHub.com") == "github"
 
+    def test_github_keyword_in_hostname(self):
+        """Test that 'github' at start of domain segment is detected."""
+        # Segments starting with 'github-' are detected (e.g., GitHub Enterprise)
+        assert _classify_hostname("github-enterprise.company.com") == "github"
+        assert _classify_hostname("github-internal.local") == "github"
+        # Embedded 'github' (not at segment start) returns unknown for security
+        assert _classify_hostname("attacker-github.com") == "unknown"
+        assert _classify_hostname("mygithub.dev") == "unknown"
+
     def test_gitlab_com(self):
         """Test classification of gitlab.com."""
         assert _classify_hostname("gitlab.com") == "gitlab"
@@ -322,10 +331,13 @@ class TestClassifyHostname:
         assert _classify_hostname("gitlab.company.com:8443") == "gitlab"
 
     def test_gitlab_keyword_in_hostname(self):
-        """Test that 'gitlab' anywhere in hostname is detected."""
-        assert _classify_hostname("mygitlab.dev") == "gitlab"
+        """Test that 'gitlab' at start of domain segment is detected."""
+        # Segments starting with 'gitlab-' are detected
         assert _classify_hostname("gitlab-server.local") == "gitlab"
-        assert _classify_hostname("code-gitlab.enterprise") == "gitlab"
+        assert _classify_hostname("gitlab-internal.company.com") == "gitlab"
+        # Embedded 'gitlab' (not at segment start) returns unknown for security
+        assert _classify_hostname("mygitlab.dev") == "unknown"
+        assert _classify_hostname("code-gitlab.enterprise") == "unknown"
 
     def test_bitbucket(self):
         """Test classification of Bitbucket (unknown)."""

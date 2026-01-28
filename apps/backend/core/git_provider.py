@@ -87,13 +87,26 @@ def _classify_hostname(hostname: str) -> str:
     hostname_lower = hostname.lower()
 
     # Check for GitHub (cloud and self-hosted/enterprise)
-    # Match github.com or any domain containing 'github'
-    if "github.com" in hostname_lower or "github" in hostname_lower:
+    # Match github.com, *.github.com, or domains where a segment is or starts with 'github'
+    hostname_parts = hostname_lower.split(".")
+    if (
+        hostname_lower == "github.com"
+        or hostname_lower.endswith(".github.com")
+        or any(
+            part == "github" or part.startswith("github-") for part in hostname_parts
+        )
+    ):
         return "github"
 
     # Check for GitLab (cloud and self-hosted)
-    # Match gitlab.com or any domain containing 'gitlab'
-    if "gitlab.com" in hostname_lower or "gitlab" in hostname_lower:
+    # Match gitlab.com, *.gitlab.com, or domains where a segment is or starts with 'gitlab'
+    if (
+        hostname_lower == "gitlab.com"
+        or hostname_lower.endswith(".gitlab.com")
+        or any(
+            part == "gitlab" or part.startswith("gitlab-") for part in hostname_parts
+        )
+    ):
         return "gitlab"
 
     # Unknown provider

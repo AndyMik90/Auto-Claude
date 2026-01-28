@@ -132,16 +132,6 @@ class PullRequestResult(TypedDict, total=False):
     message: str
 
 
-class MergeRequestResult(TypedDict, total=False):
-    """Result of creating a merge request."""
-
-    success: bool
-    mr_url: str | None  # None when MR was created but URL couldn't be extracted
-    already_exists: bool
-    error: str
-    message: str
-
-
 class PushAndCreatePRResult(TypedDict, total=False):
     """Result of push_and_create_pr operation."""
 
@@ -189,8 +179,8 @@ class WorktreeManager:
 
     # Timeout constants for subprocess operations
     GIT_PUSH_TIMEOUT = 120  # 2 minutes for git push (network operations)
-    GH_CLI_TIMEOUT = 60  # 1 minute for gh CLI commands
-    GH_QUERY_TIMEOUT = 30  # 30 seconds for gh CLI queries
+    CLI_TIMEOUT = 60  # 1 minute for CLI commands (gh/glab)
+    CLI_QUERY_TIMEOUT = 30  # 30 seconds for CLI queries (gh/glab)
 
     def __init__(self, project_dir: Path, base_branch: str | None = None):
         self.project_dir = project_dir
@@ -1250,7 +1240,7 @@ class WorktreeManager:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    timeout=self.GH_CLI_TIMEOUT,
+                    timeout=self.CLI_TIMEOUT,
                     env=get_isolated_git_env(),
                 )
 
@@ -1406,7 +1396,7 @@ class WorktreeManager:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    timeout=self.GH_CLI_TIMEOUT,
+                    timeout=self.CLI_TIMEOUT,
                     env=get_isolated_git_env(),
                 )
 
@@ -1561,7 +1551,7 @@ class WorktreeManager:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=self.GH_QUERY_TIMEOUT,
+                timeout=self.CLI_QUERY_TIMEOUT,
                 env=get_isolated_git_env(),
             )
             if result.returncode == 0:
@@ -1606,7 +1596,7 @@ class WorktreeManager:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=self.GH_QUERY_TIMEOUT,
+                timeout=self.CLI_QUERY_TIMEOUT,
                 env=get_isolated_git_env(),
             )
             if result.returncode == 0 and result.stdout.strip():
