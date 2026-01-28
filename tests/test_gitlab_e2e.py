@@ -121,6 +121,14 @@ def create_test_git_repo(repo_path: Path, remote_url: str) -> bool:
             check=True,
         )
 
+        # Disable GPG signing to prevent hangs in CI
+        subprocess.run(
+            ["git", "config", "commit.gpgsign", "false"],
+            cwd=repo_path,
+            capture_output=True,
+            check=True,
+        )
+
         # Add remote
         subprocess.run(
             ["git", "remote", "add", "origin", remote_url],
