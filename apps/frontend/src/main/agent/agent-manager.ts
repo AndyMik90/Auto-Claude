@@ -6,6 +6,7 @@ import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
+import { readSettingsFileAsync } from '../settings-utils';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -134,6 +135,13 @@ export class AgentManager extends EventEmitter {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
+    // Check YOLO mode setting and set environment variable
+    // This is simpler than threading --skip-permissions through every CLI call
+    const settings = await readSettingsFileAsync();
+    if (settings?.dangerouslySkipPermissions === true) {
+      combinedEnv['AUTO_CLAUDE_SKIP_PERMISSIONS'] = '1';
+    }
+
     // spec_runner.py will auto-start run.py after spec creation completes
     const args = [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
 
@@ -227,6 +235,12 @@ export class AgentManager extends EventEmitter {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
+    // Check YOLO mode setting and set environment variable
+    const settings = await readSettingsFileAsync();
+    if (settings?.dangerouslySkipPermissions === true) {
+      combinedEnv['AUTO_CLAUDE_SKIP_PERMISSIONS'] = '1';
+    }
+
     const args = [runPath, '--spec', specId, '--project-dir', projectPath];
 
     // Always use auto-continue when running from UI (non-interactive)
@@ -287,6 +301,12 @@ export class AgentManager extends EventEmitter {
 
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+
+    // Check YOLO mode setting and set environment variable
+    const settings = await readSettingsFileAsync();
+    if (settings?.dangerouslySkipPermissions === true) {
+      combinedEnv['AUTO_CLAUDE_SKIP_PERMISSIONS'] = '1';
+    }
 
     const args = [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
 

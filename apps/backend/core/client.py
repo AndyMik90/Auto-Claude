@@ -836,4 +836,9 @@ def create_client(
     if agents:
         options_kwargs["agents"] = agents
 
+    # YOLO mode: bypass permission prompts when env var is set
+    if os.environ.get("AUTO_CLAUDE_SKIP_PERMISSIONS", "").lower() in ("1", "true"):
+        options_kwargs["permission_mode"] = "bypassPermissions"
+        options_kwargs["extra_args"] = {"dangerously-skip-permissions": None}
+
     return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
