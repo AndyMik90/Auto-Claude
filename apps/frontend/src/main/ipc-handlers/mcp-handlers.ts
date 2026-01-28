@@ -36,6 +36,186 @@ const DANGEROUS_FLAGS = new Set([
 const SHELL_METACHARACTERS = ['&', '|', '>', '<', '^', '%', ';', '$', '`', '\n', '\r'];
 
 /**
+ * MCP client name constant for consistent identification across all requests
+ */
+const MCP_CLIENT_NAME = 'auto-claude-client';
+const MCP_CLIENT_VERSION = '1.0.0';
+
+/**
+ * Create MCP initialize request object.
+ * Extracted as shared factory to avoid DRY violation.
+ */
+function createMcpInitRequest() {
+  return {
+    jsonrpc: '2.0' as const,
+    id: 1,
+    method: 'initialize' as const,
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        roots: { listChanged: true },
+      },
+      clientInfo: {
+        name: MCP_CLIENT_NAME,
+        version: MCP_CLIENT_VERSION,
+      },
+    },
+  };
+}
+
+/**
+ * Sensitive header keys that should be redacted in logs.
+ * Uses substring matching via lowerKey.includes(), so entries like 'token'
+ * will match 'x-access-token', 'x-refresh-token', 'x-auth-token', etc.
+ */
+const SENSITIVE_HEADER_KEYS = [
+  // Standard auth headers
+  'authorization',      // Authorization, Proxy-Authorization
+  'cookie',             // Cookie, Set-Cookie
+  'bearer',             // Bearer tokens
+
+  // Token-based auth (substring matches many variants)
+  'token',              // *-token, token-*, x-access-token, x-refresh-token, etc.
+  'api-key',            // x-api-key, api-key
+  'apikey',             // X-ApiKey, apikey (no hyphen variants)
+
+  // OAuth and session
+  'oauth',              // OAuth headers
+  'session',            // Session IDs
+
+  // AWS security
+  'x-amz-security',     // x-amz-security-token
+  'x-aws-security',     // x-aws-security-token
+
+  // Secrets and credentials
+  'secret',             // client-secret, x-secret, etc.
+  'password',           // x-password, password headers
+  'credential',         // credentials, x-credential
+
+  // Authentication variants
+  'x-auth',             // x-auth-*, authentication headers
+  'authentication',     // Authentication header
+];
+
+/**
+ * Redact sensitive values from headers for safe logging
+ */
+function redactSensitiveHeaders(headers: Record<string, string>): Record<string, string> {
+  const safeHeaders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    const lowerKey = key.toLowerCase();
+    if (SENSITIVE_HEADER_KEYS.some(sensitive => lowerKey.includes(sensitive))) {
+      safeHeaders[key] = '[REDACTED]';
+    } else {
+      safeHeaders[key] = value;
+    }
+  }
+  return safeHeaders;
+}
+
+/**
+ * Read response body with SSE stream support.
+ * For SSE streams, performs a bounded read to avoid hanging on endless streams.
+ * For regular responses, uses standard response.text().
+ *
+ * @param response - Fetch response object
+ * @param contentType - Content-Type header value
+ * @param timeoutMs - Timeout for SSE bounded read (default: 5000ms)
+ * @returns Response text (may be partial for SSE streams)
+ */
+async function readResponseWithSSESupport(
+  response: Response,
+  contentType: string,
+  timeoutMs: number = 5000
+): Promise<string> {
+  const isSSEContentType = contentType.includes('text/event-stream');
+
+  if (!isSSEContentType || !response.body) {
+    // Non-SSE response - use standard text() method
+    return response.text();
+  }
+
+  // SSE stream - perform bounded read to avoid hanging
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let responseText = '';
+
+  try {
+    // Race between reading first chunk and timeout
+    const readPromise = reader.read();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
+      timeoutId = setTimeout(() => resolve({ done: true, value: undefined }), timeoutMs);
+    });
+
+    const result = await Promise.race([readPromise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (!result.done && result.value) {
+      responseText = decoder.decode(result.value, { stream: false });
+    }
+
+    // Try to read more chunks with short timeout for complete SSE messages
+    let additionalReads = 0;
+    const maxAdditionalReads = 3;
+
+    while (additionalReads < maxAdditionalReads) {
+      let shortTimeoutId: ReturnType<typeof setTimeout> | undefined;
+      const shortTimeoutPromise = new Promise<{ done: true; value: undefined }>((resolve) => {
+        shortTimeoutId = setTimeout(() => resolve({ done: true, value: undefined }), 500);
+      });
+
+      const additionalResult = await Promise.race([reader.read(), shortTimeoutPromise]);
+      if (shortTimeoutId) clearTimeout(shortTimeoutId);
+
+      if (additionalResult.done || !additionalResult.value) {
+        break;
+      }
+
+      responseText += decoder.decode(additionalResult.value, { stream: false });
+      additionalReads++;
+
+      // Stop if we have complete SSE data lines (require full data line with newline)
+      if (responseText.includes('\n\n') || /data:.*\n/.test(responseText)) {
+        break;
+      }
+    }
+  } finally {
+    // Clean up - cancel reader and release lock
+    try {
+      await reader.cancel();
+    } catch {
+      // Ignore cancel errors
+    }
+  }
+
+  return responseText;
+}
+
+/**
+ * Interface for MCP JSON-RPC response
+ */
+interface McpJsonRpcResponse {
+  jsonrpc: string;
+  /** JSON-RPC 2.0 id can be string, number, or null */
+  id: string | number | null;
+  result?: {
+    protocolVersion?: string;
+    capabilities?: Record<string, unknown>;
+    serverInfo?: {
+      name: string;
+      version: string;
+    };
+    tools?: Array<{ name: string; description?: string }>;
+  };
+  error?: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
+/**
  * Validate that a command is in the safe allowlist
  */
 function isCommandSafe(command: string | undefined): boolean {
@@ -97,7 +277,8 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+      'Content-Type': 'application/json',
     };
 
     // Add custom headers if configured
@@ -105,14 +286,23 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       Object.assign(headers, server.headers);
     }
 
+    appLog.info('[MCP Health] Checking HTTP server:', server.url);
+    appLog.debug('[MCP Health] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
+
+    // Use POST with MCP initialize for health check (many MCP servers don't support GET)
+    const initRequest = createMcpInitRequest();
+
     const response = await fetch(server.url, {
-      method: 'GET',
+      method: 'POST',
       headers,
+      body: JSON.stringify(initRequest),
       signal: controller.signal,
     });
 
     clearTimeout(timeout);
     const responseTime = Date.now() - startTime;
+
+    appLog.info('[MCP Health] Response status:', response.status, response.statusText);
 
     let status: McpHealthStatus;
     let message: string;
@@ -124,6 +314,13 @@ async function checkHttpHealth(server: CustomMcpServer, startTime: number): Prom
       status = 'needs_auth';
       message = response.status === 401 ? 'Authentication required' : 'Access forbidden';
     } else {
+      // Try to get error body for debugging
+      try {
+        const errorBody = await response.text();
+        appLog.debug('[MCP Health] Error response:', errorBody.substring(0, 500));
+      } catch (e) {
+        appLog.debug('[MCP Health] Failed to get error response text:', e);
+      }
       status = 'unhealthy';
       message = `HTTP ${response.status}: ${response.statusText}`;
     }
@@ -272,27 +469,18 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      'Accept': 'application/json, text/event-stream',
     };
 
     if (server.headers) {
       Object.assign(headers, server.headers);
     }
 
+    appLog.info('[MCP Test] Testing connection to:', server.url);
+    appLog.debug('[MCP Test] Headers:', JSON.stringify(redactSensitiveHeaders(headers)));
+
     // Send MCP initialize request
-    const initRequest = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: {
-          name: 'auto-claude-health-check',
-          version: '1.0.0',
-        },
-      },
-    };
+    const initRequest = createMcpInitRequest();
 
     const response = await fetch(server.url, {
       method: 'POST',
@@ -304,13 +492,24 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
     clearTimeout(timeout);
     const responseTime = Date.now() - startTime;
 
+    appLog.info('[MCP Test] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
+      // Try to get error body for more details
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+        appLog.debug('[MCP Test] Error response body:', errorBody.substring(0, 500));
+      } catch (e) {
+        appLog.debug('[MCP Test] Failed to get error response text:', e);
+      }
+
       if (response.status === 401 || response.status === 403) {
         return {
           serverId: server.id,
           success: false,
           message: 'Authentication failed',
-          error: `HTTP ${response.status}: ${response.statusText}`,
+          error: `HTTP ${response.status}: ${response.statusText}${errorBody ? ` - ${errorBody.substring(0, 200)}` : ''}`,
           responseTime,
         };
       }
@@ -318,14 +517,88 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
         serverId: server.id,
         success: false,
         message: `Server returned error`,
-        error: `HTTP ${response.status}: ${response.statusText}`,
+        error: `HTTP ${response.status}: ${response.statusText}${errorBody ? ` - ${errorBody.substring(0, 200)}` : ''}`,
         responseTime,
       };
     }
 
-    const data = await response.json();
+    // Check content type - SSE servers may return event stream
+    const contentType = response.headers.get('content-type') || '';
+    appLog.info('[MCP Test] Content-Type:', contentType);
 
-    if (data.error) {
+    let data: McpJsonRpcResponse | undefined;
+    // Use bounded read for SSE streams to avoid hanging on endless streams
+    const responseText = await readResponseWithSSESupport(response, contentType);
+    appLog.debug('[MCP Test] Response text (first 500):', responseText.substring(0, 500));
+
+    // Determine if response is SSE format
+    // Only treat as SSE if content-type explicitly indicates it, or response clearly looks like SSE
+    const isSSE = contentType.includes('text/event-stream') ||
+      responseText.startsWith('event:') ||
+      (responseText.startsWith('data:') && contentType.includes('text/'));
+
+    if (isSSE) {
+      // Parse SSE format - extract JSON from data lines
+      const dataLines = responseText.split('\n').filter(line => line.startsWith('data:'));
+      if (dataLines.length > 0) {
+        try {
+          const jsonStr = dataLines[0].replace('data:', '').trim();
+          data = JSON.parse(jsonStr) as McpJsonRpcResponse;
+        } catch (e) {
+          // SSE response but can't parse - log warning but consider it working
+          appLog.warn('[MCP Test] SSE response received but could not parse JSON - verify server configuration', {
+            serverId: server.id,
+            responseTime,
+            error: e instanceof Error ? e.message : 'Parse error'
+          });
+          return {
+            serverId: server.id,
+            success: false,
+            message: 'Server reachable but MCP protocol could not be verified',
+            error: 'SSE response could not be parsed as MCP JSON-RPC',
+            responseTime,
+          };
+        }
+      } else {
+        // SSE response without data - server reachable but MCP not verified
+        appLog.warn('[MCP Test] SSE response received without data lines - verify server configuration', {
+          serverId: server.id,
+          responseTime,
+          contentType
+        });
+        return {
+          serverId: server.id,
+          success: false,
+          message: 'Server reachable but MCP protocol could not be verified',
+          error: 'SSE response did not contain expected data lines',
+          responseTime,
+        };
+      }
+    } else {
+      // Standard JSON response
+      try {
+        data = JSON.parse(responseText) as McpJsonRpcResponse;
+      } catch (parseError) {
+        appLog.error('[MCP Test] Failed to parse response as JSON:', parseError);
+        // Non-JSON 200 response - server reachable but MCP not verified
+        appLog.warn('[MCP Test] Server responded with non-JSON format - may not be MCP compliant', {
+          serverId: server.id,
+          responseTime,
+          contentType
+        });
+        return {
+          serverId: server.id,
+          success: false,
+          message: 'Server reachable but MCP protocol could not be verified',
+          error: 'Response was not valid JSON',
+          responseTime,
+        };
+      }
+    }
+
+    appLog.debug('[MCP Test] Parsed data:', JSON.stringify(data).substring(0, 500));
+
+    if (data?.error) {
       return {
         serverId: server.id,
         success: false,
@@ -335,7 +608,17 @@ async function testHttpConnection(server: CustomMcpServer, startTime: number): P
       };
     }
 
-    // Now try to list tools
+    // If we got a valid initialize response, the server is working
+    if (data?.result) {
+      return {
+        serverId: server.id,
+        success: true,
+        message: 'Connected successfully',
+        responseTime,
+      };
+    }
+
+    // Try to list tools as additional verification
     const toolsRequest = {
       jsonrpc: '2.0',
       id: 2,
@@ -443,20 +726,8 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
       }
     }, 15000); // 15 second timeout (matches spawn timeout)
 
-    // Send MCP initialize request
-    const initRequest = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: {
-          name: 'auto-claude-health-check',
-          version: '1.0.0',
-        },
-      },
-    }) + '\n';
+    // Send MCP initialize request (use shared factory for consistency)
+    const initRequest = JSON.stringify(createMcpInitRequest()) + '\n';
 
     proc.stdin.write(initRequest);
 

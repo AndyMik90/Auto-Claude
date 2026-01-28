@@ -636,8 +636,27 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
 }
 
 export function AgentTools() {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation(['settings', 'mcp']);
   const settings = useSettingsStore((state) => state.settings);
+
+  // Map MCP backend messages to i18n keys for localization
+  const getMcpMessage = (message: string | undefined): string => {
+    if (!message) return '';
+    // Map known backend messages to translation keys
+    const messageKeyMap: Record<string, string> = {
+      'Server reachable but MCP protocol could not be verified': 'mcp:connection.unverified',
+      'SSE response could not be parsed as MCP JSON-RPC': 'mcp:sse.parseError',
+      'SSE response did not contain expected data lines': 'mcp:sse.noDataLines',
+      'Response was not valid JSON': 'mcp:response.invalidJson',
+      'Server returned error': 'mcp:connection.serverError',
+      'MCP error': 'mcp:connection.mcpError',
+      'Connected successfully': 'mcp:connection.success',
+      'Connection timeout': 'mcp:connection.timeout',
+      'Connection failed': 'mcp:connection.failed',
+    };
+    const key = messageKeyMap[message];
+    return key ? t(key) : message;
+  };
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -1252,7 +1271,7 @@ export function AgentTools() {
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
-                                  {health?.message || (server.type === 'command'
+                                  {getMcpMessage(health?.message) || (server.type === 'command'
                                     ? `${server.command} ${server.args?.join(' ') || ''}`
                                     : server.url)}
                                 </p>
