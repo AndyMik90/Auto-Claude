@@ -164,6 +164,13 @@ export async function restoreTerminal(
   cols = 80,
   rows = 24
 ): Promise<TerminalOperationResult> {
+  // #region agent log
+  const fs = require('fs');
+  const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+  const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Starting restore', data: { sessionId: session.id, projectPath: session.projectPath, cwd: session.cwd }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+  fs.appendFileSync(logPath, line);
+  // #endregion
+
   // Look up the stored session to get the correct isClaudeMode value
   // The renderer may pass isClaudeMode: false (by design), but we need the stored value
   // to determine whether to auto-resume Claude
@@ -206,11 +213,23 @@ export async function restoreTerminal(
   );
 
   if (!result.success) {
+    // #region agent log
+    const fs = require('fs');
+    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'createTerminal failed', data: { sessionId: session.id, error: result.error }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+    fs.appendFileSync(logPath, line);
+    // #endregion
     return result;
   }
 
   const terminal = terminals.get(session.id);
   if (!terminal) {
+    // #region agent log
+    const fs = require('fs');
+    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Terminal not found after creation', data: { sessionId: session.id, terminalIds: Array.from(terminals.keys()) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+    fs.appendFileSync(logPath, line);
+    // #endregion
     return { success: false, error: 'Terminal not found after creation' };
   }
 
@@ -275,6 +294,13 @@ export async function restoreTerminal(
   debugLog('[TerminalLifecycle] Returning outputBuffer for terminal:', session.id,
     'length:', returnBufferLen, 'bytes',
     'hasContent:', returnBufferLen > 0);
+
+  // #region agent log
+  const fs = require('fs');
+  const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+  const successLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Restore successful', data: { sessionId: session.id }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
+  fs.appendFileSync(logPath, successLine);
+  // #endregion
 
   return {
     success: true,
