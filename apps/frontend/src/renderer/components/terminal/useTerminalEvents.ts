@@ -49,7 +49,8 @@ export function useTerminalEvents({
   const terminal = useTerminalStore((state) => state.terminals.find((t) => t.id === terminalId));
   useEffect(() => {
     if (terminal?.isRestored && terminalRestoredAtRef.current === null) {
-      terminalRestoredAtRef.current = Date.now();
+      const restoredAt = Date.now();
+      terminalRestoredAtRef.current = restoredAt;
       restorationGuardTimerRef.current = setTimeout(() => {
         terminalRestoredAtRef.current = null;
         restorationGuardTimerRef.current = null;
@@ -86,12 +87,6 @@ export function useTerminalEvents({
   useEffect(() => {
     const cleanup = window.electronAPI.onTerminalExit((id, exitCode) => {
       if (id === terminalId) {
-        // #region agent log
-        const isRecreating = isRecreatingRef?.current ?? false;
-        const isRestored = terminalRestoredAtRef.current !== null;
-        const timeSinceRestore = terminalRestoredAtRef.current ? Date.now() - terminalRestoredAtRef.current : null;
-        console.log('[DEBUG] TERMINAL_EXIT', JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'TERMINAL_EXIT received', data: { terminalId, exitCode, isRecreating, isRestored, timeSinceRestore, willSkip: isRecreating || (isRestored && timeSinceRestore !== null && timeSinceRestore < 2500) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }));
-        // #endregion
         // During deliberate recreation (e.g., worktree switching), skip the normal
         // exit handling to prevent setting status to 'exited' and scheduling removal.
         // The recreation flow will handle status transitions.
@@ -107,9 +102,6 @@ export function useTerminalEvents({
         if (terminalRestoredAtRef.current !== null) {
           const timeSinceRestore = Date.now() - terminalRestoredAtRef.current;
           if (timeSinceRestore < 2500) {
-            // #region agent log
-            console.log('[DEBUG] TERMINAL_EXIT', JSON.stringify({ location: 'useTerminalEvents.ts:TERMINAL_EXIT', message: 'Ignoring TERMINAL_EXIT during restoration guard', data: { terminalId, exitCode, timeSinceRestore }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'M' }));
-            // #endregion
             return;
           }
         }

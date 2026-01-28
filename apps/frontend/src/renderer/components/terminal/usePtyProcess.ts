@@ -289,9 +289,6 @@ export function usePtyProcess({
     } else {
       // New terminal
       debugLog(`[usePtyProcess] Creating new PTY for terminal: ${terminalId}, cwd: ${cwd}, projectPath: ${projectPath}`);
-      // #region agent log
-      console.log('[DEBUG] Creating PTY', JSON.stringify({ location: 'usePtyProcess.ts:createTerminal', message: 'About to create PTY', data: { terminalId, cwd, isRecreating: isRecreatingRef?.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H' }));
-      // #endregion
       window.electronAPI.createTerminal({
         id: terminalId,
         cwd,
@@ -301,9 +298,6 @@ export function usePtyProcess({
       }).then((result) => {
         if (result.success) {
           debugLog(`[usePtyProcess] Successfully created PTY for terminal: ${terminalId}`);
-          // #region agent log
-          console.log('[DEBUG] PTY created', JSON.stringify({ location: 'usePtyProcess.ts:createSuccess', message: 'PTY created successfully', data: { terminalId, cwd, isRecreating: isRecreatingRef?.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H' }));
-          // #endregion
           handleSuccess();
           if (!alreadyRunning) {
             getStore().setTerminalStatus(terminalId, 'running');

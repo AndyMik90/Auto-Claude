@@ -151,14 +151,6 @@ export function spawnPtyProcess(
   // show "Claude API" instead of "Claude Max" when ANTHROPIC_API_KEY is set.
   const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = process.env;
 
-  // #region agent log
-  const fs = require('fs');
-  const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-  const cwdToUse = cwd || os.homedir();
-  const cwdExists = fs.existsSync(cwdToUse);
-  const line = JSON.stringify({ location: 'pty-manager.ts:spawnPtyProcess', message: 'Spawning PTY', data: { shell, shellArgs, cwd: cwdToUse, cwdExists, cols, rows }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'I' }) + '\n';
-  fs.appendFileSync(logPath, line);
-  // #endregion
 
   const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
@@ -176,10 +168,6 @@ export function spawnPtyProcess(
     },
   });
 
-  // #region agent log
-  const pidLine = JSON.stringify({ location: 'pty-manager.ts:spawnPtyProcess', message: 'PTY spawned', data: { pid: ptyProcess.pid, cwd: cwdToUse }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'I' }) + '\n';
-  fs.appendFileSync(logPath, pidLine);
-  // #endregion
 
   return { pty: ptyProcess, shellType };
 }
@@ -198,13 +186,6 @@ export function setupPtyHandlers(
 
   // Handle data from terminal
   ptyProcess.onData((data) => {
-    // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const terminal = terminals.get(id);
-    const line = JSON.stringify({ location: 'pty-manager.ts:onData', message: 'PTY data received', data: { id, dataLength: data.length, cwd: terminal?.cwd, pid: ptyProcess.pid, firstChars: data.substring(0, 50) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'J' }) + '\n';
-    fs.appendFileSync(logPath, line);
-    // #endregion
 
     // Append to output buffer (limit to 100KB)
     terminal.outputBuffer = (terminal.outputBuffer + data).slice(-100000);
@@ -222,13 +203,6 @@ export function setupPtyHandlers(
   // Handle terminal exit
   ptyProcess.onExit(({ exitCode }) => {
     debugLog('[PtyManager] Terminal exited:', id, 'code:', exitCode);
-    // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const terminal = terminals.get(id);
-    const line = JSON.stringify({ location: 'pty-manager.ts:onExit', message: 'PTY exited', data: { id, exitCode, cwd: terminal?.cwd, pid: ptyProcess.pid }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'I' }) + '\n';
-    fs.appendFileSync(logPath, line);
-    // #endregion
 
     // Resolve any pending exit promise FIRST (before other cleanup)
     const pendingExit = pendingExitPromises.get(id);

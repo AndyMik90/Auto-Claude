@@ -97,14 +97,6 @@ export async function createTerminal(
         effectiveCwd = projectPath || os.homedir();
       }
     }
-    // #region agent log
-    const fs = require('fs');
-    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-    const cwdExists = cwd ? fs.existsSync(cwd) : false;
-    const effectiveCwdExists = effectiveCwd ? fs.existsSync(effectiveCwd) : false;
-    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:createTerminal', message: 'Creating terminal with cwd validation', data: { id, requestedCwd: cwd, cwdExists, effectiveCwd, effectiveCwdExists, projectPath }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H' }) + '\n';
-    fs.appendFileSync(logPath, line);
-    // #endregion
 
     const { pty: ptyProcess, shellType } = PtyManager.spawnPtyProcess(
       effectiveCwd || os.homedir(),
@@ -164,12 +156,6 @@ export async function restoreTerminal(
   cols = 80,
   rows = 24
 ): Promise<TerminalOperationResult> {
-  // #region agent log
-  const fs = require('fs');
-  const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
-  const line = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Starting restore', data: { sessionId: session.id, projectPath: session.projectPath, cwd: session.cwd }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-  fs.appendFileSync(logPath, line);
-  // #endregion
 
   // Look up the stored session to get the correct isClaudeMode value
   // The renderer may pass isClaudeMode: false (by design), but we need the stored value
@@ -213,19 +199,11 @@ export async function restoreTerminal(
   );
 
   if (!result.success) {
-    // #region agent log
-    const errorLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'createTerminal failed', data: { sessionId: session.id, error: result.error }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-    fs.appendFileSync(logPath, errorLine);
-    // #endregion
     return result;
   }
 
   const terminal = terminals.get(session.id);
   if (!terminal) {
-    // #region agent log
-    const notFoundLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Terminal not found after creation', data: { sessionId: session.id, terminalIds: Array.from(terminals.keys()) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-    fs.appendFileSync(logPath, notFoundLine);
-    // #endregion
     return { success: false, error: 'Terminal not found after creation' };
   }
 
@@ -290,11 +268,6 @@ export async function restoreTerminal(
   debugLog('[TerminalLifecycle] Returning outputBuffer for terminal:', session.id,
     'length:', returnBufferLen, 'bytes',
     'hasContent:', returnBufferLen > 0);
-
-  // #region agent log
-  const successLine = JSON.stringify({ location: 'terminal-lifecycle.ts:restoreTerminal', message: 'Restore successful', data: { sessionId: session.id }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'L' }) + '\n';
-  fs.appendFileSync(logPath, successLine);
-  // #endregion
 
   return {
     success: true,
