@@ -1,0 +1,208 @@
+{
+    "title": "GitLab Issues",
+    "states": {
+        "opened": "Nyitott",
+        "closed": "Lezárt"
+    },
+    "complexity": {
+        "simple": "Egyszerű",
+        "standard": "Standard",
+        "complex": "Összetett"
+    },
+    "header": {
+        "open": "nyitott",
+        "searchPlaceholder": "Issue-k keresése..."
+    },
+    "filters": {
+        "opened": "Nyitott",
+        "closed": "Lezárt",
+        "all": "Összes"
+    },
+    "empty": {
+        "noMatch": "Nincs megfelelő issue a keresésedhez",
+        "selectIssue": "Válassz egy issue-t a részletek megtekintéséhez"
+    },
+    "notConnected": {
+        "title": "GitLab nincs csatlakoztatva",
+        "description": "Konfiguráld a GitLab tokenedet és projektet a projekt beállításokban az issue-k szinkronizálásához.",
+        "openSettings": "Beállítások megnyitása"
+    },
+    "detail": {
+        "notes": "megjegyzés",
+        "viewTask": "Feladat megtekintése",
+        "createTask": "Feladat létrehozása",
+        "taskLinked": "Feladat csatolva",
+        "taskId": "Feladat ID",
+        "description": "Leírás",
+        "noDescription": "Nincs leírás megadva.",
+        "assignees": "Felelősök",
+        "milestone": "Mérföldkő"
+    },
+    "investigation": {
+        "title": "Feladat létrehozása issue-ból",
+        "issuePrefix": "Issue",
+        "description": "Hozz létre feladatot ebből a GitLab issue-ból. A feladat a Kanban táblád Várólista oszlopába kerül.",
+        "selectNotes": "Megjegyzések kiválasztása a beillesztéshez",
+        "deselectAll": "Összes kijelölés megszüntetése",
+        "selectAll": "Összes kijelölése",
+        "willInclude": "A feladat tartalmazni fogja:",
+        "includeTitle": "Issue cím és leírás",
+        "includeLink": "Hivatkozás vissza a GitLab issue-ra",
+        "includeLabels": "Címkék és metaadatok az issue-ból",
+        "noNotes": "Nincsenek megjegyzések (ennek az issue-nak nincsenek megjegyzései)",
+        "failedToLoadNotes": "Nem sikerült a megjegyzések betöltése",
+        "taskCreated": "Feladat létrehozva! Nézd meg a Kanban tábládon.",
+        "creating": "Létrehozás...",
+        "cancel": "Mégse",
+        "done": "Kész",
+        "close": "Bezárás"
+    },
+    "settings": {
+        "enableIssues": "GitLab Issues engedélyezése",
+        "enableIssuesDescription": "Issue-k szinkronizálása GitLab-ról és feladatok automatikus létrehozása",
+        "instance": "GitLab példány",
+        "instanceDescription": "Használd a https://gitlab.com-ot vagy a saját hosztolt példányod URL-jét",
+        "connectedVia": "Csatlakozva GitLab CLI-n keresztül",
+        "authenticatedAs": "Hitelesítve mint",
+        "useDifferentToken": "Másik token használata",
+        "authentication": "GitLab hitelesítés",
+        "useManualToken": "Manuális token használata",
+        "authenticating": "Hitelesítés glab CLI-vel...",
+        "browserWindow": "Egy böngésző ablaknak kell megnyílnia a bejelentkezéshez.",
+        "personalAccessToken": "Personal Access Token",
+        "useOAuth": "OAuth használata helyette",
+        "tokenScope": "Hozz létre tokent ezzel a jogosultsággal:",
+        "scopeApi": "api",
+        "scopeFrom": "jogosultsággal innen:",
+        "gitlabSettings": "GitLab beállítások",
+        "project": "Projekt",
+        "enterManually": "Kézi bevitel",
+        "loadingProjects": "Projektek betöltése...",
+        "selectProject": "Projekt kiválasztása...",
+        "searchProjects": "Projektek keresése...",
+        "noMatchingProjects": "Nincs megfelelő projekt",
+        "noProjectsFound": "Nem található projekt",
+        "selected": "Kiválasztva",
+        "projectFormat": "Formátum:",
+        "projectFormatExample": "(pl. gitlab-org/gitlab)",
+        "connectionStatus": "Kapcsolat állapota",
+        "checking": "Ellenőrzés...",
+        "connectedTo": "Csatlakozva ide:",
+        "notConnected": "Nincs csatlakoztatva",
+        "issuesAvailable": "Issue-k elérhetők",
+        "issuesAvailableDescription": "GitLab Issues elérése az oldalsávból issue-k megtekintéséhez, vizsgálásához és feladatok létrehozásához.",
+        "defaultBranch": "Alapértelmezett branch",
+        "defaultBranchDescription": "Alap branch a feladat munkakönyvtárak létrehozásához",
+        "loadingBranches": "Branch-ek betöltése...",
+        "autoDetect": "Automatikus felismerés (main/master)",
+        "searchBranches": "Branch-ek keresése...",
+        "noMatchingBranches": "Nincs megfelelő branch",
+        "noBranchesFound": "Nem található branch",
+        "branchFromNote": "Minden új feladat ebből a branch-ből ágazik le:",
+        "autoSyncOnLoad": "Automatikus szinkron betöltéskor",
+        "autoSyncDescription": "Issue-k automatikus lekérése a projekt betöltésekor",
+        "cli": {
+            "required": "GitLab CLI szükséges",
+            "notInstalled": "A GitLab CLI (glab) szükséges az OAuth hitelesítéshez. Telepítsd az 'OAuth használata' opció használatához.",
+            "installButton": "glab telepítése",
+            "installing": "Telepítés...",
+            "installSuccess": "Telepítés elindítva a terminálban. Fejezd be és kattints a Frissítésre.",
+            "refresh": "Frissítés",
+            "learnMore": "Tudj meg többet",
+            "installed": "GitLab CLI telepítve:"
+        }
+    },
+    "mergeRequests": {
+        "title": "GitLab Merge Requestek",
+        "newMR": "Új Merge Request",
+        "selectMR": "Válassz egy merge requestet a részletek megtekintéséhez",
+        "states": {
+            "opened": "Nyitott",
+            "closed": "Lezárt",
+            "merged": "Összefésülve",
+            "locked": "Zárolt"
+        },
+        "filters": {
+            "opened": "Nyitott",
+            "closed": "Lezárt",
+            "merged": "Összefésülve",
+            "all": "Összes"
+        }
+    },
+    "mrReview": {
+        "runReview": "AI átnézés indítása",
+        "reviewing": "Átnézés...",
+        "followupReview": "Utókövetés átnézés",
+        "newCommits": "új commit",
+        "newCommitsPlural": "új commit",
+        "cancel": "Mégse",
+        "postFindings": "Észrevételek közzététele",
+        "posting": "Közzététel...",
+        "postedTo": "Közzétéve a GitLab-on",
+        "approve": "Jóváhagyás",
+        "approving": "Jóváhagyás...",
+        "merge": "MR összefésülése",
+        "merging": "Összefésülés...",
+        "aiReviewResult": "AI átnézés eredménye",
+        "followupReviewResult": "Utókövetés átnézés",
+        "description": "Leírás",
+        "noDescription": "Nincs leírás megadva.",
+        "labels": "Címkék",
+        "status": {
+            "notReviewed": "Nincs átnézve",
+            "notReviewedDesc": "Indíts AI átnézést ennek az MR-nek az elemzéséhez",
+            "reviewComplete": "Átnézés kész",
+            "reviewCompleteDesc": "észrevétel található. Válaszd ki és tedd közzé a GitLab-on.",
+            "waitingForChanges": "Változtatásokra vár",
+            "waitingForChangesDesc": "észrevétel közzétéve. Várakozás a közreműködőre, hogy kezelje a problémákat.",
+            "readyToMerge": "Összefésülésre kész",
+            "readyToMergeDesc": "Nem találtunk blokkoló problémát. Ez az MR összefésülhető.",
+            "needsAttention": "Figyelmet igényel",
+            "needsAttentionDesc": "észrevételt kell közzétenni a GitLab-on.",
+            "readyForFollowup": "Kész az utókövetésre",
+            "readyForFollowupDesc": "az átnézés óta. Futtass utókövetést, hogy ellenőrizd, megoldódtak-e a problémák.",
+            "blockingIssues": "Blokkoló problémák",
+            "blockingIssuesDesc": "blokkoló probléma még nyitott."
+        },
+        "overallStatus": {
+            "approve": "Jóváhagyás",
+            "requestChanges": "Változtatások kérve",
+            "comment": "Hozzászólás"
+        },
+        "resolution": {
+            "resolved": "megoldva",
+            "stillOpen": "még nyitott",
+            "newIssue": "új probléma",
+            "newIssues": "új probléma"
+        }
+    },
+    "findings": {
+        "summary": "kiválasztva",
+        "selectCriticalHigh": "Blokkoló/Szükséges kiválasztása",
+        "selectAll": "Összes kiválasztása",
+        "clear": "Törlés",
+        "noIssues": "Nem találtunk problémát! A kód jónak tűnik.",
+        "suggestedFix": "Javasolt javítás:",
+        "posted": "Közzétéve",
+        "severity": {
+            "critical": "Blokkoló",
+            "criticalDesc": "Kötelező javítani",
+            "high": "Szükséges",
+            "highDesc": "Javítani kellene",
+            "medium": "Ajánlott",
+            "mediumDesc": "Minőség javítása",
+            "low": "Javaslat",
+            "lowDesc": "Fontold meg"
+        },
+        "category": {
+            "security": "Biztonság",
+            "quality": "Minőség",
+            "style": "Stílus",
+            "test": "Teszt",
+            "docs": "Dokumentáció",
+            "pattern": "Minta",
+            "performance": "Teljesítmény",
+            "logic": "Logika"
+        }
+    }
+}

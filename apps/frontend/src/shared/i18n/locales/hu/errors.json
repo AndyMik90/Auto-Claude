@@ -1,0 +1,9 @@
+{
+    "task": {
+        "parseImplementationPlan": "Nem sikerült az implementation_plan.json feldolgozása ehhez: {{specId}}: {{error}}",
+        "jsonError": {
+            "titleSuffix": "(JSON hiba)",
+            "description": "⚠️ JSON feldolgozási hiba: {{error}}\n\nAz implementation_plan.json fájl hibás formátumú. Futtasd a backend automatikus javítást vagy javítsd manuálisan a fájlt."
+        }
+    }
+}

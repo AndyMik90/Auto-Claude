@@ -1,0 +1,83 @@
+{
+    "terminal": {
+        "openTerminal": "Terminál megnyitása",
+        "openInbuilt": "Megnyitás beépített terminálban",
+        "openExternal": "Megnyitás külső terminálban"
+    },
+    "merge": {
+        "branchHasNewCommits": "A(z) {{branch}} branch-nek {{count}} új commit-ja van.",
+        "branchHasNewCommits_other": "A(z) {{branch}} branch-nek {{count}} új commit-ja van.",
+        "branchHasNewCommitsSinceWorktree": "A(z) {{branch}} branch-nek {{count}} új commit-ja van, mióta ez a munkakönyvtár létrejött.",
+        "branchHasNewCommitsSinceWorktree_other": "A(z) {{branch}} branch-nek {{count}} új commit-ja van, mióta ez a munkakönyvtár létrejött.",
+        "filesNeedMerging": "{{count}} fájlt kell összefésülni.",
+        "filesNeedMerging_other": "{{count}} fájlt kell összefésülni.",
+        "filesNeedIntelligentMerging": "{{count}} fájlnak intelligens összefésülésre lesz szüksége:",
+        "filesNeedIntelligentMerging_other": "{{count}} fájlnak intelligens összefésülésre lesz szüksége:",
+        "branchHasNewCommitsSinceBuild": "A(z) {{branch}} branch-nek {{count}} új commit-ja van, mióta ez a build elindult.",
+        "branchHasNewCommitsSinceBuild_other": "A(z) {{branch}} branch-nek {{count}} új commit-ja van, mióta ez a build elindult.",
+        "filesNeedAIMergeDueToRenames": "{{count}} fájlnak AI összefésülésre van szüksége {{renameCount}} fájl átnevezés miatt.",
+        "filesNeedAIMergeDueToRenames_other": "{{count}} fájlnak AI összefésülésre van szüksége {{renameCount}} fájl átnevezés miatt.",
+        "filesNeedAIMergeDueToRenamesPlural": "{{count}} fájlnak AI összefésülésre van szüksége {{renameCount}} fájl átnevezés miatt.",
+        "filesNeedAIMergeDueToRenamesPlural_other": "{{count}} fájlnak AI összefésülésre van szüksége {{renameCount}} fájl átnevezés miatt.",
+        "fileRenamesDetected": "{{count}} fájl átnevezés észlelve - az AI kezeli az összefésülést.",
+        "fileRenamesDetected_other": "{{count}} fájl átnevezés észlelve - az AI kezeli az összefésülést.",
+        "filesRenamedOrMoved": "Fájlok átneveződhettek vagy áthelyeződhettek - az AI kezeli az összefésülést.",
+        "buttons": {
+            "stageWithAIMerge": "Előkészítés AI összefésüléssel",
+            "mergeWithAI": "Összefésülés AI-val",
+            "stageTo": "Előkészítés {{branch}}-ra",
+            "mergeTo": "Összefésülés {{branch}}-ba",
+            "resolving": "Feloldás...",
+            "staging": "Előkészítés...",
+            "merging": "Összefésülés..."
+        }
+    },
+    "pr": {
+        "title": "Pull Request létrehozása",
+        "description": "Branch pusholása és pull request létrehozása ehhez: \"{{taskTitle}}\"",
+        "errors": {
+            "unknown": "Ismeretlen hiba történt a pull request létrehozása közben",
+            "invalidBranchName": "A branch név érvénytelen karaktereket tartalmaz. Csak betűket, számokat, kötőjeleket (-), aláhúzásokat (_) és perjeleket (/) használj.",
+            "emptyTitle": "A pull request címe nem lehet üres."
+        },
+        "success": {
+            "created": "Pull request sikeresen létrehozva!",
+            "alreadyExists": "Már létezik pull request ehhez a branch-hez"
+        },
+        "actions": {
+            "retry": "Újra",
+            "creating": "PR létrehozása...",
+            "create": "Pull Request létrehozása"
+        },
+        "labels": {
+            "sourceBranch": "Forrás branch",
+            "targetBranch": "Cél branch",
+            "commits": "Commit-ok",
+            "changes": "Változtatások",
+            "prTitle": "PR cím (opcionális)",
+            "draftPR": "Létrehozás piszkozat PR-ként",
+            "unknown": "Ismeretlen"
+        },
+        "hints": {
+            "targetBranch": "Hagyd üresen az alapértelmezett branch használatához",
+            "prTitle": "Hagyd üresen a feladat címének használatához"
+        }
+    },
+    "bulkPR": {
+        "title": "Pull Requestek létrehozása",
+        "description": "Pull requestek létrehozása {{count}} kiválasztott feladathoz",
+        "creating": "PR létrehozása {{current}} / {{total}}...",
+        "creatingPR": "PR létrehozása {{current}} / {{total}}",
+        "resultsDescription": "{{success}} sikeres, {{failed}} sikertelen",
+        "tasksToProcess": "Feldolgozandó feladatok",
+        "targetBranchHint": "Hagyd üresen az egyes feladatok alapértelmezett branch-ének használatához. Ez minden PR-ra alkalmazva lesz.",
+        "createAll": "{{count}} PR létrehozása",
+        "completed": "befejezve",
+        "succeeded": "sikeres",
+        "failed": "sikertelen",
+        "skipped": "kihagyva",
+        "alreadyExisted": "már létezett",
+        "noWorktree": "Nem található munkakönyvtár ehhez a feladathoz",
+        "resultsDescriptionWithSkipped": "{{success}} sikeres, {{skipped}} kihagyva, {{failed}} sikertelen"
+    }
+}

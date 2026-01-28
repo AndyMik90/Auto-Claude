@@ -1,0 +1,41 @@
+{
+    "expand": {
+        "expand": "Terminál kibontása",
+        "collapse": "Terminál összecsukása"
+    },
+    "auth": {
+        "terminalTitle": "Hitelesítés: {{profileName}}",
+        "maxTerminalsReached": "Nem lehet hitelesítési terminált nyitni: maximális terminálszám elérve. Előbb zárj be egy terminált."
+    },
+    "worktree": {
+        "create": "Munkakönyvtár",
+        "createNew": "Új munkakönyvtár",
+        "existing": "Terminál munkakönyvtárak",
+        "taskWorktrees": "Feladat munkakönyvtárak",
+        "otherWorktrees": "Egyéb",
+        "createTitle": "Terminál munkakönyvtár létrehozása",
+        "createDescription": "Elkülönített munkaterület létrehozása ehhez a terminálhoz. Minden munka a munkakönyvtár könyvtárában történik.",
+        "name": "Munkakönyvtár neve",
+        "namePlaceholder": "az-en-funkcióm",
+        "nameRequired": "Munkakönyvtár neve kötelező",
+        "nameInvalid": "A névnek betűvel vagy számmal kell kezdődnie és végződnie",
+        "nameHelp": "Kisbetűk, számok, kötőjelek és aláhúzások (szóközök kötőjelekké válnak)",
+        "associateTask": "Csatolás feladathoz",
+        "selectTask": "Feladat kiválasztása...",
+        "noTask": "Nincs feladat (önálló munkakönyvtár)",
+        "createBranch": "Git branch létrehozása",
+        "branchHelp": "Branch létrehozása: {{branch}}",
+        "baseBranch": "Alap branch",
+        "selectBaseBranch": "Alap branch kiválasztása...",
+        "searchBranch": "Branch-ek keresése...",
+        "noBranchFound": "Nem található branch",
+        "useProjectDefault": "Projekt alapértelmezett használata ({{branch}})",
+        "baseBranchHelp": "A branch, amiből a munkakönyvtár létrejön",
+        "openInIDE": "Megnyitás IDE-ben",
+        "maxReached": "Maximum 12 terminál munkakönyvtár engedélyezett",
+        "alreadyExists": "Ezzel a névvel már létezik munkakönyvtár",
+        "deleteTitle": "Munkakönyvtár törlése?",
+        "deleteDescription": "Ez véglegesen törli a munkakönyvtárat és a branch-ét. Minden nem commit-olt változtatás elvész.",
+        "detached": "(leválasztott)"
+    }
+}
