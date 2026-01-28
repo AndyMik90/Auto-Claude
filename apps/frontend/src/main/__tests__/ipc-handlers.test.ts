@@ -683,13 +683,16 @@ describe("IPC Handlers", { timeout: 30000 }, () => {
         JSON.stringify({ feature: "Test Task", status: "in_progress" })
       );
 
+      // XState state machine transitions: exit code != 0 triggers transition to error state
+      // with reviewReason 'errors', which maps to human_review status
       mockAgentManager.emit("exit", "task-1", 1, "task-execution");
 
       expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
         "task:statusChange",
         "task-1",
         "human_review",
-        expect.any(String) // projectId for multi-project filtering
+        expect.any(String), // projectId for multi-project filtering
+        "errors" // reviewReason added in XState refactor
       );
     });
   });

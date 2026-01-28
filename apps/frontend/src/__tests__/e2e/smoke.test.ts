@@ -393,10 +393,11 @@ describe('E2E Smoke Tests', () => {
 
       if (statusHandler) {
         // Simulate status change to in_progress
-        statusHandler({}, 'task-001', 'in_progress');
+        // Event handler signature: (_event, taskId, status, projectId, reviewReason)
+        statusHandler({}, 'task-001', 'in_progress', undefined, undefined);
       }
 
-      expect(statusCallback).toHaveBeenCalledWith('task-001', 'in_progress', undefined);
+      expect(statusCallback).toHaveBeenCalledWith('task-001', 'in_progress', undefined, undefined);
 
       // Cleanup listeners
       cleanupProgress();
@@ -645,17 +646,20 @@ describe('E2E Smoke Tests', () => {
 
       if (statusHandler) {
         for (const status of statusProgression) {
-          statusHandler({}, 'task-001', status);
+          // Event handler signature: (_event, taskId, status, projectId, reviewReason)
+          statusHandler({}, 'task-001', status, undefined, undefined);
         }
       }
 
       // Verify all status changes were tracked
       expect(statusCallback).toHaveBeenCalledTimes(statusProgression.length);
       statusProgression.forEach((status, index) => {
+        // Callback signature: (taskId, status, projectId, reviewReason)
         expect(statusCallback).toHaveBeenNthCalledWith(
           index + 1,
           'task-001',
           status,
+          undefined,
           undefined
         );
       });

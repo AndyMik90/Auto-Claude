@@ -722,6 +722,39 @@ export class ClaudeProfileManager {
   getProfilesSortedByAvailability(): ClaudeProfile[] {
     return getProfilesSortedByAvailabilityImpl(this.data.profiles);
   }
+
+  /**
+   * Get list of profile IDs that were migrated from shared ~/.claude to isolated directories.
+   * These profiles need re-authentication since their credentials are in the old location.
+   */
+  getMigratedProfileIds(): string[] {
+    return this.data.migratedProfileIds || [];
+  }
+
+  /**
+   * Check if a specific profile was migrated and needs re-authentication
+   */
+  isProfileMigrated(profileId: string): boolean {
+    return (this.data.migratedProfileIds || []).includes(profileId);
+  }
+
+  /**
+   * Clear the migration flag for a profile after successful re-authentication
+   */
+  clearMigratedProfile(profileId: string): void {
+    if (!this.data.migratedProfileIds) {
+      return;
+    }
+
+    this.data.migratedProfileIds = this.data.migratedProfileIds.filter(id => id !== profileId);
+
+    // If no more migrated profiles, remove the array entirely
+    if (this.data.migratedProfileIds.length === 0) {
+      delete this.data.migratedProfileIds;
+    }
+
+    this.save();
+  }
 }
 
 // Singleton instance and initialization promise
