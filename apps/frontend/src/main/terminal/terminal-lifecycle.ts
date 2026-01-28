@@ -75,6 +75,28 @@ export async function createTerminal(
       debugLog('[TerminalLifecycle] Terminal cwd does not exist, falling back:', cwd, '->', projectPath || os.homedir());
       effectiveCwd = projectPath || os.homedir();
     }
+    // Additional validation: check if directory is accessible (not just exists)
+    if (effectiveCwd && existsSync(effectiveCwd)) {
+      try {
+        // Try to read the directory to ensure it's accessible
+        const stats = require('fs').statSync(effectiveCwd);
+        if (!stats.isDirectory()) {
+          debugLog('[TerminalLifecycle] Terminal cwd is not a directory, falling back:', effectiveCwd, '->', projectPath || os.homedir());
+          effectiveCwd = projectPath || os.homedir();
+        }
+      } catch (err) {
+        debugLog('[TerminalLifecycle] Terminal cwd is not accessible, falling back:', effectiveCwd, '->', projectPath || os.homedir(), 'error:', err);
+        effectiveCwd = projectPath || os.homedir();
+      }
+    }
+    // #region agent log
+    const fs = require('fs');
+    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+    const cwdExists = cwd ? fs.existsSync(cwd) : false;
+    const effectiveCwdExists = effectiveCwd ? fs.existsSync(effectiveCwd) : false;
+    const line = JSON.stringify({ location: 'terminal-lifecycle.ts:createTerminal', message: 'Creating terminal with cwd validation', data: { id, requestedCwd: cwd, cwdExists, effectiveCwd, effectiveCwdExists, projectPath }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H' }) + '\n';
+    fs.appendFileSync(logPath, line);
+    // #endregion
 
     const { pty: ptyProcess, shellType } = PtyManager.spawnPtyProcess(
       effectiveCwd || os.homedir(),
