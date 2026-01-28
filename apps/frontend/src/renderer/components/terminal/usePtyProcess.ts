@@ -73,13 +73,18 @@ export function usePtyProcess({
     }
   }, []);
 
+  // Clear the recreation guard timer (only timer-related cleanup)
   const clearRecreationGuardTimer = useCallback(() => {
     if (recreationGuardTimerRef.current) {
       clearTimeout(recreationGuardTimerRef.current);
       recreationGuardTimerRef.current = null;
     }
-    hasReceivedFirstOutputRef.current = false;
     newPtyCreatedAtRef.current = null;
+  }, []);
+
+  // Reset the first output flag (separate from timer cleanup)
+  const resetHasReceivedFirstOutput = useCallback(() => {
+    hasReceivedFirstOutputRef.current = false;
   }, []);
 
   // Function to clear guard timer when first output is received from the NEW PTY
@@ -211,7 +216,7 @@ export function usePtyProcess({
         // The guard timer will be cleared early when first output is received from the new PTY,
         // allowing genuine early exits to be processed while still ignoring late exits from old PTY.
         clearRecreationGuardTimer();
-        hasReceivedFirstOutputRef.current = false;
+        resetHasReceivedFirstOutput();
         // Mark when new PTY was created to distinguish its output from old PTY's buffered output
         newPtyCreatedAtRef.current = Date.now();
         recreationGuardTimerRef.current = setTimeout(() => {
@@ -298,7 +303,7 @@ export function usePtyProcess({
       });
     }
 
-  }, [terminalId, cwd, projectPath, cols, rows, skipCreation, recreationTrigger, getStore, onCreated, onError, clearRetryTimer, clearRecreationGuardTimer, scheduleRetryOrFail, isRecreatingRef, handleFirstOutput]);
+  }, [terminalId, cwd, projectPath, cols, rows, skipCreation, recreationTrigger, getStore, onCreated, onError, clearRetryTimer, clearRecreationGuardTimer, resetHasReceivedFirstOutput, scheduleRetryOrFail, isRecreatingRef, handleFirstOutput]);
 
   // Function to prepare for recreation by preventing the effect from running
   // Call this BEFORE updating the store cwd to avoid race condition
@@ -313,11 +318,11 @@ export function usePtyProcess({
   const resetForRecreate = useCallback(() => {
     isCreatedRef.current = false;
     isCreatingRef.current = false;
-    hasReceivedFirstOutputRef.current = false;
-    newPtyCreatedAtRef.current = null;
+    clearRecreationGuardTimer(); // Clears timer and newPtyCreatedAtRef
+    resetHasReceivedFirstOutput(); // Resets first output flag
     // Increment trigger to force the creation effect to run
     setRecreationTrigger((prev) => prev + 1);
-  }, []);
+  }, [clearRecreationGuardTimer, resetHasReceivedFirstOutput]);
 
   // Expose handleFirstOutput so parent component can call it when TERMINAL_OUTPUT is received
   return {
