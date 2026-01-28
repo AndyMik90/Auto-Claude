@@ -252,9 +252,16 @@ Examples:
     # Find project root (look for auto-claude folder)
     project_dir = args.project_dir
 
-    # Auto-detect if running from within auto-claude directory (the source code)
-    if project_dir.name == "auto-claude" and (project_dir / "run.py").exists():
-        # Running from within auto-claude/ source directory, go up 1 level
+    # Auto-detect if running from within auto-claude/apps/backend/ source directory.
+    # This happens when developers run spec_runner.py directly from the source tree.
+    # We check for run.py as a FILE (not directory) AND core/client.py to confirm
+    # we're in the actual backend source directory, not just a project named "auto-claude"
+    # that happens to have a run.py file or directory at its root.
+    run_py_path = project_dir / "run.py"
+    if (project_dir.name == "auto-claude" and
+        run_py_path.exists() and run_py_path.is_file() and
+        (project_dir / "core" / "client.py").exists()):
+        # Running from within auto-claude/apps/backend/ source directory, go up 1 level
         project_dir = project_dir.parent
     elif not (project_dir / ".auto-claude").exists():
         # No .auto-claude folder found - try to find project root
