@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } fr
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { getToolPath } from './cli-tool-manager';
+import { getIsolatedGitEnv } from './utils/git-isolation';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -36,10 +37,12 @@ export function checkGitStatus(projectPath: string): GitStatus {
 
   try {
     // Check if it's a git repository
+    // Use isolated git env to prevent contamination from worktree env vars
     execFileSync(git, ['rev-parse', '--git-dir'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: getIsolatedGitEnv()
     });
   } catch {
     return {
@@ -51,12 +54,15 @@ export function checkGitStatus(projectPath: string): GitStatus {
   }
 
   // Check if there are any commits
+  // Use isolated git env to prevent contamination from worktree env vars
+  const isolatedEnv = getIsolatedGitEnv();
   let hasCommits = false;
   try {
     execFileSync(git, ['rev-parse', 'HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: isolatedEnv
     });
     hasCommits = true;
   } catch {
@@ -70,7 +76,8 @@ export function checkGitStatus(projectPath: string): GitStatus {
     currentBranch = execFileSync(git, ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: isolatedEnv
     }).trim();
   } catch {
     // Branch detection failed
@@ -102,6 +109,8 @@ export function initializeGit(projectPath: string): InitializationResult {
   // Check current git status
   const status = checkGitStatus(projectPath);
   const git = getToolPath('git');
+  // Use isolated git env to prevent contamination from worktree env vars
+  const isolatedEnv = getIsolatedGitEnv();
 
   try {
     // Step 1: Initialize git if needed
@@ -110,7 +119,8 @@ export function initializeGit(projectPath: string): InitializationResult {
       execFileSync(git, ['init'], {
         cwd: projectPath,
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: isolatedEnv
       });
     }
 
@@ -118,7 +128,8 @@ export function initializeGit(projectPath: string): InitializationResult {
     const statusOutput = execFileSync(git, ['status', '--porcelain'], {
       cwd: projectPath,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: isolatedEnv
     }).trim();
 
     // Step 3: If there are untracked/modified files, add and commit them
@@ -129,14 +140,16 @@ export function initializeGit(projectPath: string): InitializationResult {
       execFileSync(git, ['add', '-A'], {
         cwd: projectPath,
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: isolatedEnv
       });
 
       // Create initial commit
       execFileSync(git, ['commit', '-m', 'Initial commit', '--allow-empty'], {
         cwd: projectPath,
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: isolatedEnv
       });
     }
 
