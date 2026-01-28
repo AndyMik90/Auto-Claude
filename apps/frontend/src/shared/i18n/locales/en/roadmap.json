@@ -14,5 +14,18 @@
         "kanban": "Kanban",
         "list": "List",
         "phases": "Phases"
+    },
+    "competitorAnalysis": {
+        "title": "Enable Competitor Analysis?",
+        "description": "Enhance your roadmap with insights from competitor products",
+        "whatItDoesTitle": "What competitor analysis does:",
+        "identifies": "Identifies 3-5 main competitors based on your project type",
+        "searches": "Searches app stores, forums, and social media for user feedback and pain points",
+        "suggests": "Suggests features that address gaps in competitor products",
+        "privacyTitle": "Web searches will be performed",
+        "privacyText": "This feature will perform web searches to gather competitor information. Your project name and type will be used in search queries. No code or sensitive data is shared.",
+        "optionalText": "You can generate a roadmap without competitor analysis if you prefer. The roadmap will still be based on your project structure and best practices.",
+        "skipAction": "No, Skip Analysis",
+        "enableAction": "Yes, Enable Analysis"
     }
 }

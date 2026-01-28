@@ -1,27 +1,31 @@
 {
-    "title": "Feuille de Route du Projet",
-    "subtitle": "Suivez la progression des fonctionnalités majeures",
+    "title": "Roadmap",
     "empty": {
-        "title": "Roadmap vide",
-        "description": "Ajoutez des fonctionnalités depuis la section Idéation ou manuellement.",
-        "action": "Ajouter une fonctionnalité"
+        "title": "Pas encore de Roadmap",
+        "description": "Générez une feuille de route alimentée par l'IA qui comprend le public cible de votre projet et crée un plan de fonctionnalités stratégiques."
     },
-    "status": {
-        "todo": "À faire",
-        "in_progress": "En cours",
-        "completed": "Terminé",
-        "blocked": "Bloqué"
+    "actions": {
+        "generate": "Générer",
+        "refresh": "Rafraîchir",
+        "generateFull": "Générer la Roadmap complète",
+        "stop": "Arrêter"
     },
-    "priority": {
-        "low": "Basse",
-        "medium": "Moyenne",
-        "high": "Haute",
-        "critical": "Critique"
+    "tabs": {
+        "kanban": "Kanban",
+        "list": "Liste",
+        "phases": "Phases"
     },
-    "phases": {
-        "design": "Conception",
-        "development": "Développement",
-        "testing": "Tests",
-        "deployment": "Déploiement"
+    "competitorAnalysis": {
+        "title": "Activer l'analyse de la concurrence ?",
+        "description": "Améliorez votre feuille de route grâce aux informations sur les produits concurrents",
+        "whatItDoesTitle": "Ce que fait l'analyse de la concurrence :",
+        "identifies": "Identifie 3 à 5 concurrents principaux en fonction du type de votre projet",
+        "searches": "Recherche sur les magasins d'applications, les forums et les réseaux sociaux les avis des utilisateurs et leurs points de douleur",
+        "suggests": "Suggère des fonctionnalités qui comblent les lacunes des produits concurrents",
+        "privacyTitle": "Des recherches sur le Web seront effectuées",
+        "privacyText": "Cette fonctionnalité effectuera des recherches sur le Web pour recueillir des informations sur les concurrents. Le nom et le type de votre projet seront utilisés dans les requêtes de recherche. Aucun code ni donnée sensible ne sont partagés.",
+        "optionalText": "Vous pouvez générer une feuille de route sans analyse de la concurrence si vous préférez. La feuille de route sera toujours basée sur la structure de votre projet et les meilleures pratiques.",
+        "skipAction": "Non, ignorer l'analyse",
+        "enableAction": "Oui, activer l'analyse"
     }
 }
