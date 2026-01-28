@@ -23,12 +23,33 @@ export const MODEL_ID_MAP: Record<string, string> = {
 } as const;
 
 // Maps thinking levels to budget tokens (null = no extended thinking)
+// Must match apps/backend/model_limits.json thinking_levels
 export const THINKING_BUDGET_MAP: Record<string, number | null> = {
   none: null,
   low: 1024,
   medium: 4096,
   high: 16384,
-  ultrathink: 63999 // Maximum reasoning depth (API requires max_tokens >= budget + 1, so 63999 + 1 = 64000 limit)
+  ultrathink: 60000 // Maximum reasoning depth (leaves 4K buffer for SDK overhead, keeps max_tokens under 64K for all Claude 4.5 models)
+} as const;
+
+// Model-specific output token limits (all Claude 4.5 models have 64K max_tokens)
+export const MODEL_OUTPUT_LIMITS: Record<string, number> = {
+  'claude-opus-4-5-20251101': 64000,
+  'claude-sonnet-4-5-20250929': 64000,
+  'claude-haiku-4-5-20251001': 64000,
+  opus: 64000,
+  sonnet: 64000,
+  haiku: 64000
+} as const;
+
+// Maximum safe thinking budget for each model (leaves buffer for SDK overhead)
+export const MODEL_MAX_THINKING: Record<string, number> = {
+  'claude-opus-4-5-20251101': 60000,
+  'claude-sonnet-4-5-20250929': 60000,
+  'claude-haiku-4-5-20251001': 60000,
+  opus: 60000,
+  sonnet: 60000,
+  haiku: 60000
 } as const;
 
 // ============================================

@@ -3,13 +3,17 @@ Phase Configuration Module
 ===========================
 
 Handles model and thinking level configuration for different execution phases.
-Reads configuration from task_metadata.json and provides resolved model IDs.
+Reads configuration from task_metadata.json and model_limits.json for model-specific constraints.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Literal, TypedDict
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 # Model shorthand to full model ID mapping
 MODEL_ID_MAP: dict[str, str] = {
@@ -18,14 +22,39 @@ MODEL_ID_MAP: dict[str, str] = {
     "haiku": "claude-haiku-4-5-20251001",
 }
 
-# Thinking level to budget tokens mapping (None = no extended thinking)
+# Load model limits from configuration file
+def _load_model_limits() -> dict:
+    """Load model limits from model_limits.json."""
+    limits_file = Path(__file__).parent / "model_limits.json"
+    try:
+        with open(limits_file, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.warning(f"Failed to load model_limits.json: {e}. Using fallback defaults.")
+        # Fallback to hardcoded defaults if file is missing
+        return {
+            "models": {
+                "claude-opus-4-5-20251101": {"max_output_tokens": 64000, "max_thinking_tokens": 60000},
+                "claude-sonnet-4-5-20250929": {"max_output_tokens": 64000, "max_thinking_tokens": 60000},
+                "claude-haiku-4-5-20251001": {"max_output_tokens": 64000, "max_thinking_tokens": 60000},
+            },
+            "thinking_levels": {
+                "none": {"budget": None},
+                "low": {"budget": 1024},
+                "medium": {"budget": 4096},
+                "high": {"budget": 16384},
+                "ultrathink": {"budget": 60000},
+            },
+        }
+
+# Load model limits at module initialization
+_MODEL_LIMITS = _load_model_limits()
+
+# Thinking level to budget tokens mapping (loaded from model_limits.json)
 # Values must match auto-claude-ui/src/shared/constants/models.ts THINKING_BUDGET_MAP
 THINKING_BUDGET_MAP: dict[str, int | None] = {
-    "none": None,
-    "low": 1024,
-    "medium": 4096,  # Moderate analysis
-    "high": 16384,  # Deep thinking for QA review
-    "ultrathink": 63999,  # Maximum reasoning depth (API requires max_tokens >= budget + 1, so 63999 + 1 = 64000 limit)
+    level: config.get("budget")
+    for level, config in _MODEL_LIMITS.get("thinking_levels", {}).items()
 }
 
 # Spec runner phase-specific thinking levels
@@ -126,27 +155,100 @@ def resolve_model_id(model: str) -> str:
     return model
 
 
-def get_thinking_budget(thinking_level: str) -> int | None:
+def get_model_max_output_tokens(model_id: str) -> int:
     """
-    Get the thinking budget for a thinking level.
+    Get the maximum output tokens for a specific model.
+
+    Args:
+        model_id: Full model ID (e.g., 'claude-opus-4-5-20251101')
+
+    Returns:
+        Maximum output tokens for the model (defaults to 64000 if model not found)
+    """
+    models = _MODEL_LIMITS.get("models", {})
+    model_config = models.get(model_id, {})
+    return model_config.get("max_output_tokens", 64000)
+
+
+def get_model_max_thinking_tokens(model_id: str) -> int:
+    """
+    Get the maximum thinking tokens for a specific model.
+
+    This represents the safe maximum thinking budget that leaves enough buffer
+    for SDK overhead and ensures thinking_budget < max_tokens constraint.
+
+    Args:
+        model_id: Full model ID (e.g., 'claude-opus-4-5-20251101')
+
+    Returns:
+        Maximum thinking tokens for the model (defaults to 60000 if model not found)
+    """
+    models = _MODEL_LIMITS.get("models", {})
+    model_config = models.get(model_id, {})
+    return model_config.get("max_thinking_tokens", 60000)
+
+
+def validate_thinking_budget(
+    thinking_budget: int | None, model_id: str
+) -> tuple[int | None, bool]:
+    """
+    Validate and cap thinking budget to ensure it doesn't exceed model limits.
+
+    API constraint: max_tokens > thinking.budget_tokens (must be strictly greater)
+    SDK bug #8756: SDK sometimes reduces max_tokens without adjusting thinking budget
+
+    Args:
+        thinking_budget: Requested thinking budget (or None for no extended thinking)
+        model_id: Full model ID to validate against
+
+    Returns:
+        Tuple of (capped_budget, was_capped)
+        - capped_budget: Valid thinking budget that respects model limits
+        - was_capped: True if the budget was reduced, False otherwise
+    """
+    if thinking_budget is None:
+        return None, False
+
+    max_thinking = get_model_max_thinking_tokens(model_id)
+
+    if thinking_budget > max_thinking:
+        logger.warning(
+            f"Thinking budget {thinking_budget} exceeds model limit {max_thinking} for {model_id}. "
+            f"Capping to {max_thinking} tokens."
+        )
+        return max_thinking, True
+
+    return thinking_budget, False
+
+
+def get_thinking_budget(thinking_level: str, model_id: str | None = None) -> int | None:
+    """
+    Get the thinking budget for a thinking level, optionally validated against model limits.
 
     Args:
         thinking_level: Thinking level (none, low, medium, high, ultrathink)
+        model_id: Optional model ID to validate against (if provided, budget is capped to model limits)
 
     Returns:
-        Token budget or None for no extended thinking
+        Token budget or None for no extended thinking (capped to model limits if model_id provided)
     """
-    import logging
-
     if thinking_level not in THINKING_BUDGET_MAP:
         valid_levels = ", ".join(THINKING_BUDGET_MAP.keys())
-        logging.warning(
+        logger.warning(
             f"Invalid thinking_level '{thinking_level}'. Valid values: {valid_levels}. "
             f"Defaulting to 'medium'."
         )
-        return THINKING_BUDGET_MAP["medium"]
+        thinking_level = "medium"
 
-    return THINKING_BUDGET_MAP[thinking_level]
+    budget = THINKING_BUDGET_MAP[thinking_level]
+
+    # Validate against model limits if model_id provided
+    if model_id and budget is not None:
+        budget, was_capped = validate_thinking_budget(budget, model_id)
+        if was_capped:
+            logger.info(f"Thinking budget capped for model {model_id}")
+
+    return budget
 
 
 def load_task_metadata(spec_dir: Path) -> TaskMetadataConfig | None:
@@ -261,20 +363,25 @@ def get_phase_thinking_budget(
     spec_dir: Path,
     phase: Phase,
     cli_thinking: str | None = None,
+    cli_model: str | None = None,
 ) -> int | None:
     """
     Get the thinking budget tokens for a specific execution phase.
+
+    The budget is validated against model-specific limits to prevent API errors.
 
     Args:
         spec_dir: Path to the spec directory
         phase: Execution phase (spec, planning, coding, qa)
         cli_thinking: Thinking level from CLI argument (optional)
+        cli_model: Model from CLI argument (optional, used for validation)
 
     Returns:
-        Token budget or None for no extended thinking
+        Token budget or None for no extended thinking (capped to model limits)
     """
     thinking_level = get_phase_thinking(spec_dir, phase, cli_thinking)
-    return get_thinking_budget(thinking_level)
+    model_id = get_phase_model(spec_dir, phase, cli_model)
+    return get_thinking_budget(thinking_level, model_id=model_id)
 
 
 def get_phase_config(
@@ -285,6 +392,8 @@ def get_phase_config(
 ) -> tuple[str, str, int | None]:
     """
     Get the full configuration for a specific execution phase.
+
+    Thinking budget is validated against model-specific limits.
 
     Args:
         spec_dir: Path to the spec directory
@@ -297,12 +406,12 @@ def get_phase_config(
     """
     model_id = get_phase_model(spec_dir, phase, cli_model)
     thinking_level = get_phase_thinking(spec_dir, phase, cli_thinking)
-    thinking_budget = get_thinking_budget(thinking_level)
+    thinking_budget = get_thinking_budget(thinking_level, model_id=model_id)
 
     return model_id, thinking_level, thinking_budget
 
 
-def get_spec_phase_thinking_budget(phase_name: str) -> int | None:
+def get_spec_phase_thinking_budget(phase_name: str, model_id: str | None = None) -> int | None:
     """
     Get the thinking budget for a specific spec runner phase.
 
@@ -311,9 +420,10 @@ def get_spec_phase_thinking_budget(phase_name: str) -> int | None:
 
     Args:
         phase_name: Name of the spec phase (e.g., 'discovery', 'spec_writing')
+        model_id: Optional model ID to validate budget against model limits
 
     Returns:
         Token budget for extended thinking, or None for no extended thinking
     """
     thinking_level = SPEC_PHASE_THINKING_LEVELS.get(phase_name, "medium")
-    return get_thinking_budget(thinking_level)
+    return get_thinking_budget(thinking_level, model_id=model_id)
