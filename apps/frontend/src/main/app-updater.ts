@@ -84,7 +84,7 @@ function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | 
  *
  * @param channel - The update channel to use
  */
-export function setUpdateChannel(channel: UpdateChannel, updater?: any): void {
+export function setUpdateChannel(channel: UpdateChannel, updater?: AppUpdater): void {
   const autoUpdater = updater || require('electron-updater').autoUpdater;
   autoUpdater.channel = channel;
   // Clear any downloaded update info when channel changes to prevent showing
@@ -368,7 +368,9 @@ const GITHUB_API_TIMEOUT = 10000;
  * Returns the latest non-prerelease version
  */
 async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
-  const fetchPromise = new Promise<AppUpdateInfo | null>((resolve) => {
+  return new Promise<AppUpdateInfo | null>((resolve) => {
+    let settled = false;
+
     const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
     console.warn('[app-updater] Fetching releases from:', url);
 
@@ -398,21 +400,27 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
         } else if (statusCode === 404) {
           console.error('[app-updater] Repository or releases not found');
         }
-        resolve(null);
+        if (!settled) {
+          settled = true;
+          resolve(null);
+        }
         return;
       }
 
       response.on('data', (chunk) => {
-        data += chunk.toString();
+        data += chunk.toString('utf-8');
       });
 
       response.on('end', () => {
+        if (settled) return;
+
         try {
           const parsed = JSON.parse(data);
 
           // Validate response is an array
           if (!Array.isArray(parsed)) {
             console.error('[app-updater] Unexpected response format - expected array, got:', typeof parsed);
+            settled = true;
             resolve(null);
             return;
           }
@@ -431,6 +439,7 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
 
           if (!latestStable) {
             console.warn('[app-updater] No stable release found');
+            settled = true;
             resolve(null);
             return;
           }
@@ -441,6 +450,7 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
           const safeVersion = String(version).replace(/[\x00-\x1f\x7f]/g, '').slice(0, 50);
           console.warn('[app-updater] Found latest stable release:', safeVersion);
 
+          settled = true;
           resolve({
             version,
             releaseNotes: latestStable.body,
@@ -450,30 +460,33 @@ async function fetchLatestStableRelease(): Promise<AppUpdateInfo | null> {
           // Sanitize error message for logging (prevent log injection from malformed JSON)
           const safeError = e instanceof Error ? e.message : 'Unknown parse error';
           console.error('[app-updater] Failed to parse releases JSON:', safeError);
+          settled = true;
           resolve(null);
         }
       });
     });
 
     request.on('error', (error) => {
+      if (settled) return;
       // Sanitize error message for logging (use only the message property)
       const safeErrorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('[app-updater] Failed to fetch releases:', safeErrorMessage);
+      settled = true;
       resolve(null);
     });
 
     request.end();
-  });
 
-  // Add timeout to prevent hanging indefinitely
-  const timeoutPromise = new Promise<AppUpdateInfo | null>((resolve) => {
+    // Set up timeout that aborts the request to prevent resource leak
     setTimeout(() => {
-      console.error(`[app-updater] GitHub API request timed out after ${GITHUB_API_TIMEOUT}ms`);
-      resolve(null);
+      if (!settled) {
+        settled = true;
+        console.error(`[app-updater] GitHub API request timed out after ${GITHUB_API_TIMEOUT}ms`);
+        request.abort();
+        resolve(null);
+      }
     }, GITHUB_API_TIMEOUT);
   });
-
-  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 /**
