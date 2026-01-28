@@ -414,13 +414,20 @@ export function Worktrees({ projectId }: WorktreesProps) {
     setShowBulkDeleteConfirm(false);
     await loadWorktrees();
 
-    // Show error if any failures occurred
+    const deletedCount = taskSpecNames.length + terminalNames.length;
+
+    // Show error if any failures occurred, otherwise show success toast
     if (errors.length > 0) {
       setError(`${t('common:errors.bulkDeletePartialFailure')}\n${errors.join('\n')}`);
+    } else {
+      toast({
+        title: t('common:actions.success'),
+        description: t('common:worktrees.bulkDeleteSuccess', { count: deletedCount }),
+      });
     }
 
     setIsBulkDeleting(false);
-  }, [selectedWorktreeIds, selectedProject, worktrees, terminalWorktrees, projectId, findTaskForWorktree, loadWorktrees, t]);
+  }, [selectedWorktreeIds, selectedProject, worktrees, terminalWorktrees, projectId, findTaskForWorktree, loadWorktrees, t, toast]);
 
   // Handle terminal worktree delete
   const handleDeleteTerminalWorktree = async () => {

@@ -80,7 +80,8 @@
     "apply": "Appliquer",
     "gotIt": "Compris",
     "continue": "Continuer",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "deleting": "Suppression..."
   },
   "actions": {
     "save": "Enregistrer",
@@ -137,7 +138,8 @@
     "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}"
   },
   "worktrees": {
-    "deleteSuccess": "Worktree '{{branch}}' supprimé avec succès"
+    "deleteSuccess": "Worktree '{{branch}}' supprimé avec succès",
+    "bulkDeleteSuccess": "{{count}} worktree(s) supprimé(s) avec succès"
   },
   "notification": {
     "accountSwitched": "Compte changé",

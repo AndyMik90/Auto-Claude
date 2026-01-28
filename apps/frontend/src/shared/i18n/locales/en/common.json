@@ -80,7 +80,8 @@
     "apply": "Apply",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "deleting": "Deleting..."
   },
   "actions": {
     "save": "Save",
@@ -137,7 +138,8 @@
     "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}"
   },
   "worktrees": {
-    "deleteSuccess": "Worktree '{{branch}}' deleted successfully"
+    "deleteSuccess": "Worktree '{{branch}}' deleted successfully",
+    "bulkDeleteSuccess": "{{count}} worktree(s) deleted successfully"
   },
   "notification": {
     "accountSwitched": "Account Switched",
