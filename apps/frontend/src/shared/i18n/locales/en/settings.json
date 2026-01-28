@@ -311,7 +311,9 @@
     "onReviewNeeded": "On Review Needed",
     "onReviewNeededDescription": "Notify when QA requires your review",
     "sound": "Sound",
-    "soundDescription": "Play sound with notifications"
+    "soundDescription": "Play sound with notifications",
+    "soundType": "Sound Type",
+    "soundTypeDescription": "Choose notification sound style"
   },
   "actions": {
     "save": "Save Settings",

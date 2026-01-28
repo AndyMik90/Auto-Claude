@@ -13,6 +13,9 @@ export interface SettingsAPI {
   getSettings: () => Promise<IPCResult<AppSettings>>;
   saveSettings: (settings: Partial<AppSettings>) => Promise<IPCResult>;
 
+  // Notification sound listener (plays sound in renderer via Web Audio API)
+  onPlayNotificationSound: (callback: (soundType: string) => void) => () => void;
+
   // CLI Tools Detection
   getCliToolsInfo: () => Promise<IPCResult<{
     python: ToolDetectionResult;
@@ -45,6 +48,13 @@ export const createSettingsAPI = (): SettingsAPI => ({
 
   saveSettings: (settings: Partial<AppSettings>): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
+
+  // Notification sound listener - main process sends this when notification sound should play
+  onPlayNotificationSound: (callback: (soundType: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, soundType: string) => callback(soundType || 'chime');
+    ipcRenderer.on('play-notification-sound', handler);
+    return () => ipcRenderer.removeListener('play-notification-sound', handler);
+  },
 
   // CLI Tools Detection
   getCliToolsInfo: (): Promise<IPCResult<{

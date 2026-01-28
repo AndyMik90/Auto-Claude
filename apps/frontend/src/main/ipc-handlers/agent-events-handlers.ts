@@ -14,7 +14,6 @@ import type {
   AuthFailureInfo,
   Task,
   TaskStatus,
-  Project,
   ImplementationPlan,
 } from "../../shared/types";
 import { AgentManager } from "../agent";
@@ -23,9 +22,10 @@ import { titleGenerator } from "../title-generator";
 import { fileWatcher } from "../file-watcher";
 import { projectStore } from "../project-store";
 import { notificationService } from "../notification-service";
-import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
+import { persistPlanStatus } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
-import { findTaskAndProject } from "./task/shared";
+// FIX: Removed findTaskAndProject import - it triggers heavy sync I/O via getTasks()
+// All handlers now use lightweight project lookup (existsSync) instead
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
 
@@ -114,15 +114,35 @@ export function registerAgenteventsHandlers(
   // ============================================
 
   agentManager.on("log", (taskId: string, log: string) => {
-    // Include projectId for multi-project filtering (issue #723)
-    const { project } = findTaskAndProject(taskId);
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_LOG, taskId, log, project?.id);
+    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+    const projects = projectStore.getProjects();
+    let foundProjectId: string | undefined;
+    for (const p of projects) {
+      if (!p.autoBuildPath) continue;
+      const specsBaseDir = getSpecsDir(p.autoBuildPath);
+      const specPath = path.join(p.path, specsBaseDir, taskId);
+      if (existsSync(specPath)) {
+        foundProjectId = p.id;
+        break;
+      }
+    }
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_LOG, taskId, log, foundProjectId);
   });
 
   agentManager.on("error", (taskId: string, error: string) => {
-    // Include projectId for multi-project filtering (issue #723)
-    const { project } = findTaskAndProject(taskId);
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, project?.id);
+    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+    const projects = projectStore.getProjects();
+    let foundProjectId: string | undefined;
+    for (const p of projects) {
+      if (!p.autoBuildPath) continue;
+      const specsBaseDir = getSpecsDir(p.autoBuildPath);
+      const specPath = path.join(p.path, specsBaseDir, taskId);
+      if (existsSync(specPath)) {
+        foundProjectId = p.id;
+        break;
+      }
+    }
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, foundProjectId);
   });
 
   // Handle SDK rate limit events from agent manager
@@ -164,144 +184,182 @@ export function registerAgenteventsHandlers(
   });
 
   agentManager.on("exit", (taskId: string, code: number | null, processType: ProcessType) => {
-    // Get project info early for multi-project filtering (issue #723)
-    const { project: exitProject } = findTaskAndProject(taskId);
-    const exitProjectId = exitProject?.id;
-
-    // Send final plan state to renderer BEFORE unwatching
-    // This ensures the renderer has the final subtask data (fixes 0/0 subtask bug)
-    const finalPlan = fileWatcher.getCurrentPlan(taskId);
-    if (finalPlan) {
-      safeSendToRenderer(
-        getMainWindow,
-        IPC_CHANNELS.TASK_PROGRESS,
-        taskId,
-        finalPlan,
-        exitProjectId
-      );
-    }
-
-    fileWatcher.unwatch(taskId);
-
-    if (processType === "spec-creation") {
-      console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
-      return;
-    }
-
-    let task: Task | undefined;
-    let project: Project | undefined;
+    console.warn(`[Exit Handler] START for task ${taskId}, code=${code}, type=${processType}`);
 
     try {
+      // FIX: Get plan data from file watcher cache FIRST (zero I/O - already in memory)
+      // This avoids the heavy sync file I/O in findTaskAndProject() that was causing crashes
+      const finalPlan = fileWatcher.getCurrentPlan(taskId);
+      console.warn(`[Exit Handler] Got finalPlan: ${finalPlan ? 'yes' : 'no'}`);
+
+      // FIX: Find project WITHOUT calling getTasks() - just check if spec dir exists
+      // projectStore.getProjects() is fast (in-memory), existsSync is lightweight
       const projects = projectStore.getProjects();
-
-      // IMPORTANT: Invalidate cache for all projects to ensure we get fresh data
-      // This prevents race conditions where cached task data has stale status
+      let foundProject: typeof projects[0] | undefined;
       for (const p of projects) {
-        projectStore.invalidateTasksCache(p.id);
-      }
-
-      for (const p of projects) {
-        const tasks = projectStore.getTasks(p.id);
-        task = tasks.find((t) => t.id === taskId || t.specId === taskId);
-        if (task) {
-          project = p;
+        if (!p.autoBuildPath) continue;
+        const specsBaseDir = getSpecsDir(p.autoBuildPath);
+        const specPath = path.join(p.path, specsBaseDir, taskId);
+        if (existsSync(specPath)) {
+          foundProject = p;
           break;
         }
       }
+      const projectId = foundProject?.id;
+      console.warn(`[Exit Handler] Found project: ${projectId || 'none'}`);
 
-      if (task && project) {
-        const taskTitle = task.title || task.specId;
-        const mainPlanPath = getPlanPath(project, task);
-        const projectId = project.id; // Capture for closure
+      // Send final plan state to renderer BEFORE unwatching
+      // This ensures the renderer has the final subtask data (fixes 0/0 subtask bug)
+      if (finalPlan) {
+        safeSendToRenderer(
+          getMainWindow,
+          IPC_CHANNELS.TASK_PROGRESS,
+          taskId,
+          finalPlan,
+          projectId
+        );
+        console.warn(`[Exit Handler] Sent final plan to renderer`);
+      }
 
-        // Capture task values for closure
-        const taskSpecId = task.specId;
-        const projectPath = project.path;
-        const autoBuildPath = project.autoBuildPath;
+      // Unwatch asynchronously - don't block on it
+      fileWatcher.unwatch(taskId).catch((err) => {
+        console.error(`[Exit Handler] Error unwatching:`, err);
+      });
+      console.warn(`[Exit Handler] Initiated unwatch`);
 
-        // Use shared utility for persisting status (prevents race conditions)
-        // Persist to both main project AND worktree (if exists) for consistency
-        const persistStatus = (status: TaskStatus) => {
-          // Persist to main project
-          const mainPersisted = persistPlanStatusSync(mainPlanPath, status, projectId);
-          if (mainPersisted) {
-            console.warn(`[Task ${taskId}] Persisted status to main plan: ${status}`);
-          }
+      if (processType === "spec-creation") {
+        console.warn(`[Task ${taskId}] Spec creation completed with code ${code}`);
+        return;
+      }
 
-          // Also persist to worktree if it exists
-          const worktreePath = findTaskWorktree(projectPath, taskSpecId);
-          if (worktreePath) {
-            const specsBaseDir = getSpecsDir(autoBuildPath);
-            const worktreePlanPath = path.join(
-              worktreePath,
-              specsBaseDir,
-              taskSpecId,
-              AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
-            );
-            if (existsSync(worktreePlanPath)) {
-              const worktreePersisted = persistPlanStatusSync(worktreePlanPath, status, projectId);
-              if (worktreePersisted) {
-                console.warn(`[Task ${taskId}] Persisted status to worktree plan: ${status}`);
-              }
-            }
-          }
-        };
+      // FIX: Use plan data from file watcher cache for immediate operations
+      // This completely avoids the heavy getTasks() call that reads multiple files per spec
+      if (foundProject && finalPlan) {
+        console.warn(`[Exit Handler] Processing task completion for ${taskId}`);
+
+        // Get title from plan (file watcher already has this in memory)
+        const taskTitle = finalPlan.feature || finalPlan.title || taskId;
+
+        // Capture values for deferred async work
+        const projectPath = foundProject.path;
+        const autoBuildPath = foundProject.autoBuildPath;
+        const specsBaseDir = getSpecsDir(autoBuildPath);
+        const mainPlanPath = path.join(projectPath, specsBaseDir, taskId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+
+        // Use subtasks from the plan (already in memory from file watcher)
+        const allSubtasks = finalPlan.phases?.flatMap((phase) => phase.subtasks || []) || [];
+        const hasSubtasks = allSubtasks.length > 0;
+        const allSubtasksCompleted = hasSubtasks && allSubtasks.every((s) => s.status === "completed");
+        console.warn(`[Exit Handler] Subtasks: ${allSubtasks.length}, completed: ${allSubtasksCompleted}`);
+
+        // Determine what status to persist and whether to send IPC
+        let statusToPersist: TaskStatus | null = null;
+        let shouldSendStatusIpc = false;
 
         if (code === 0) {
-          notificationService.notifyReviewNeeded(taskTitle, project.id, taskId);
+          console.warn(`[Exit Handler] Sending review notification for ${taskTitle}`);
+          // Send notification IMMEDIATELY (before any file I/O)
+          notificationService.notifyReviewNeeded(taskTitle, foundProject.id, taskId);
+          console.warn(`[Exit Handler] Notification sent`);
 
           // Fallback: Ensure status is updated even if COMPLETE phase event was missed
-          // This prevents tasks from getting stuck in ai_review status
           // FIX (ACS-71): Only move to human_review if subtasks exist AND are all completed
-          // If no subtasks exist, the task is still in planning and shouldn't move to human_review
-          const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";
-          const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-          const hasIncompleteSubtasks =
-            hasSubtasks && task.subtasks.some((s) => s.status !== "completed");
-
-          if (isActiveStatus && hasSubtasks && !hasIncompleteSubtasks) {
-            // All subtasks completed - safe to move to human_review
+          if (hasSubtasks && allSubtasksCompleted) {
             console.warn(
-              `[Task ${taskId}] Fallback: Moving to human_review (process exited successfully, all ${task.subtasks.length} subtasks completed)`
+              `[Task ${taskId}] Fallback: Moving to human_review (process exited successfully, all ${allSubtasks.length} subtasks completed)`
             );
-            persistStatus("human_review");
-            // Include projectId for multi-project filtering (issue #723)
-            safeSendToRenderer(
-              getMainWindow,
-              IPC_CHANNELS.TASK_STATUS_CHANGE,
-              taskId,
-              "human_review" as TaskStatus,
-              projectId
-            );
-          } else if (isActiveStatus && !hasSubtasks) {
-            // No subtasks yet - task is still in planning phase, don't change status
-            // This prevents the bug where tasks jump to human_review before planning completes
+            statusToPersist = "human_review";
+            shouldSendStatusIpc = true;
+          } else if (!hasSubtasks) {
             console.warn(
-              `[Task ${taskId}] Process exited but no subtasks created yet - keeping current status (${task.status})`
+              `[Task ${taskId}] Process exited but no subtasks created yet - keeping current status`
             );
           }
         } else {
-          notificationService.notifyTaskFailed(taskTitle, project.id, taskId);
-          persistStatus("human_review");
-          // Include projectId for multi-project filtering (issue #723)
+          console.warn(`[Exit Handler] Sending failure notification for ${taskTitle}`);
+          // Send notification IMMEDIATELY (before any file I/O)
+          notificationService.notifyTaskFailed(taskTitle, foundProject.id, taskId);
+          console.warn(`[Exit Handler] Failure notification sent`);
+          statusToPersist = "human_review";
+          shouldSendStatusIpc = true;
+        }
+
+        // Send IPC to renderer IMMEDIATELY for instant UI feedback
+        if (shouldSendStatusIpc && statusToPersist) {
+          console.warn(`[Exit Handler] Sending status IPC: ${statusToPersist}`);
           safeSendToRenderer(
             getMainWindow,
             IPC_CHANNELS.TASK_STATUS_CHANGE,
             taskId,
-            "human_review" as TaskStatus,
+            statusToPersist,
             projectId
           );
+          console.warn(`[Exit Handler] Status IPC sent`);
         }
+
+        console.warn(`[Exit Handler] Scheduling deferred work`);
+        // FIX: Defer ALL heavy file I/O to prevent blocking the main process
+        // This follows the established pattern in execution-handlers.ts
+        setImmediate(async () => {
+          try {
+            // Invalidate cache for all projects to ensure fresh data on next read
+            for (const p of projects) {
+              projectStore.invalidateTasksCache(p.id);
+            }
+
+            // Persist status to plan files using async version (prevents race conditions)
+            if (statusToPersist) {
+              // Persist to main project
+              const mainPersisted = await persistPlanStatus(mainPlanPath, statusToPersist, projectId);
+              if (mainPersisted) {
+                console.warn(`[Task ${taskId}] Persisted status to main plan: ${statusToPersist}`);
+              }
+
+              // Also persist to worktree if it exists
+              const worktreePath = findTaskWorktree(projectPath, taskId);
+              if (worktreePath) {
+                const worktreePlanPath = path.join(
+                  worktreePath,
+                  specsBaseDir,
+                  taskId,
+                  AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
+                );
+                if (existsSync(worktreePlanPath)) {
+                  const worktreePersisted = await persistPlanStatus(worktreePlanPath, statusToPersist, projectId);
+                  if (worktreePersisted) {
+                    console.warn(`[Task ${taskId}] Persisted status to worktree plan: ${statusToPersist}`);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`[Task ${taskId}] Exit handler deferred work error:`, error);
+          }
+        });
+        console.warn(`[Exit Handler] Deferred work scheduled`);
       }
+      console.warn(`[Exit Handler] END for task ${taskId}`);
     } catch (error) {
-      console.error(`[Task ${taskId}] Exit handler error:`, error);
+      console.error(`[Exit Handler] CRASH for task ${taskId}:`, error);
     }
   });
 
   agentManager.on("execution-progress", (taskId: string, progress: ExecutionProgressData) => {
-    // Use shared helper to find task and project (issue #723 - deduplicate lookup)
-    const { task, project } = findTaskAndProject(taskId);
-    const taskProjectId = project?.id;
+    try {
+      // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+      // projectStore.getProjects() is fast (in-memory), existsSync is lightweight
+      const projects = projectStore.getProjects();
+    let foundProject: typeof projects[0] | undefined;
+    for (const p of projects) {
+      if (!p.autoBuildPath) continue;
+      const specsBaseDir = getSpecsDir(p.autoBuildPath);
+      const specPath = path.join(p.path, specsBaseDir, taskId);
+      if (existsSync(specPath)) {
+        foundProject = p;
+        break;
+      }
+    }
+    const taskProjectId = foundProject?.id;
 
     // Include projectId in execution progress event for multi-project filtering
     safeSendToRenderer(
@@ -323,49 +381,80 @@ export function registerAgenteventsHandlers(
     };
 
     const newStatus = phaseToStatus[progress.phase];
-    // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
-    if (newStatus && validateStatusTransition(task, newStatus, progress.phase)) {
-      // Include projectId in status change event for multi-project filtering
-      safeSendToRenderer(
-        getMainWindow,
-        IPC_CHANNELS.TASK_STATUS_CHANGE,
-        taskId,
-        newStatus,
-        taskProjectId
-      );
+    if (newStatus && foundProject) {
+      // FIX: For status validation, use the plan from file watcher (already in memory)
+      // instead of calling findTaskAndProject() which triggers heavy I/O
+      const cachedPlan = fileWatcher.getCurrentPlan(taskId);
+      const cachedTask: Task | undefined = cachedPlan ? {
+        id: taskId,
+        specId: taskId,
+        projectId: foundProject.id,
+        title: cachedPlan.feature || cachedPlan.title || taskId,
+        description: '',
+        status: (cachedPlan.status as TaskStatus) || 'in_progress',
+        subtasks: cachedPlan.phases?.flatMap((p) => p.subtasks || []).map((s) => ({
+          id: s.id,
+          title: s.description,
+          description: s.description,
+          status: s.status,
+          files: []
+        })) || [],
+        logs: [],
+        executionProgress: {
+          phase: progress.phase,
+          phaseProgress: progress.phaseProgress || 0,
+          overallProgress: progress.overallProgress || 0,
+          completedPhases: progress.completedPhases || [],
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } : undefined;
 
-      // CRITICAL: Persist status to plan file(s) to prevent flip-flop on task list refresh
-      // When getTasks() is called, it reads status from the plan file. Without persisting,
-      // the status in the file might differ from the UI, causing inconsistent state.
-      // Uses shared utility with locking to prevent race conditions.
-      // IMPORTANT: We persist to BOTH main project AND worktree (if exists) to ensure
-      // consistency, since getTasks() prefers the worktree version.
-      if (task && project) {
-        try {
-          // Persist to main project plan file
-          const mainPlanPath = getPlanPath(project, task);
-          persistPlanStatusSync(mainPlanPath, newStatus, project.id);
+      // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
+      if (validateStatusTransition(cachedTask, newStatus, progress.phase)) {
+        // Include projectId in status change event for multi-project filtering
+        safeSendToRenderer(
+          getMainWindow,
+          IPC_CHANNELS.TASK_STATUS_CHANGE,
+          taskId,
+          newStatus,
+          taskProjectId
+        );
 
-          // Also persist to worktree plan file if it exists
-          // This ensures consistency since getTasks() prefers worktree version
-          const worktreePath = findTaskWorktree(project.path, task.specId);
-          if (worktreePath) {
-            const specsBaseDir = getSpecsDir(project.autoBuildPath);
-            const worktreePlanPath = path.join(
-              worktreePath,
-              specsBaseDir,
-              task.specId,
-              AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
-            );
-            if (existsSync(worktreePlanPath)) {
-              persistPlanStatusSync(worktreePlanPath, newStatus, project.id);
+        // FIX: Defer file persistence to prevent blocking the main process
+        // This follows the established pattern in execution-handlers.ts
+        const projectPath = foundProject.path;
+        const autoBuildPath = foundProject.autoBuildPath;
+        const specsBaseDir = getSpecsDir(autoBuildPath);
+        const mainPlanPath = path.join(projectPath, specsBaseDir, taskId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+
+        setImmediate(async () => {
+          try {
+            // Persist to main project plan file using async version
+            await persistPlanStatus(mainPlanPath, newStatus, taskProjectId);
+
+            // Also persist to worktree plan file if it exists
+            const worktreePath = findTaskWorktree(projectPath, taskId);
+            if (worktreePath) {
+              const worktreePlanPath = path.join(
+                worktreePath,
+                specsBaseDir,
+                taskId,
+                AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
+              );
+              if (existsSync(worktreePlanPath)) {
+                await persistPlanStatus(worktreePlanPath, newStatus, taskProjectId);
+              }
             }
+          } catch (err) {
+            // Ignore persistence errors - UI will still work, just might flip on refresh
+            console.warn("[execution-progress] Could not persist status:", err);
           }
-        } catch (err) {
-          // Ignore persistence errors - UI will still work, just might flip on refresh
-          console.warn("[execution-progress] Could not persist status:", err);
-        }
+        });
       }
+    }
+    } catch (error) {
+      console.error(`[execution-progress] CRASH for task ${taskId}:`, error);
     }
   });
 
@@ -374,14 +463,34 @@ export function registerAgenteventsHandlers(
   // ============================================
 
   fileWatcher.on("progress", (taskId: string, plan: ImplementationPlan) => {
-    // Use shared helper to find project (issue #723 - deduplicate lookup)
-    const { project } = findTaskAndProject(taskId);
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_PROGRESS, taskId, plan, project?.id);
+    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+    const projects = projectStore.getProjects();
+    let foundProjectId: string | undefined;
+    for (const p of projects) {
+      if (!p.autoBuildPath) continue;
+      const specsBaseDir = getSpecsDir(p.autoBuildPath);
+      const specPath = path.join(p.path, specsBaseDir, taskId);
+      if (existsSync(specPath)) {
+        foundProjectId = p.id;
+        break;
+      }
+    }
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_PROGRESS, taskId, plan, foundProjectId);
   });
 
   fileWatcher.on("error", (taskId: string, error: string) => {
-    // Include projectId for multi-project filtering (issue #723)
-    const { project } = findTaskAndProject(taskId);
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, project?.id);
+    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+    const projects = projectStore.getProjects();
+    let foundProjectId: string | undefined;
+    for (const p of projects) {
+      if (!p.autoBuildPath) continue;
+      const specsBaseDir = getSpecsDir(p.autoBuildPath);
+      const specPath = path.join(p.path, specsBaseDir, taskId);
+      if (existsSync(specPath)) {
+        foundProjectId = p.id;
+        break;
+      }
+    }
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, foundProjectId);
   });
 }

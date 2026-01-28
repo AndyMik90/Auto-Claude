@@ -311,7 +311,9 @@
     "onReviewNeeded": "Révision requise",
     "onReviewNeededDescription": "Notifier quand le QA nécessite votre révision",
     "sound": "Son",
-    "soundDescription": "Jouer un son avec les notifications"
+    "soundDescription": "Jouer un son avec les notifications",
+    "soundType": "Type de son",
+    "soundTypeDescription": "Choisir le style de son de notification"
   },
   "actions": {
     "save": "Enregistrer les paramètres",
