@@ -79,9 +79,17 @@ export async function createTerminal(
     if (effectiveCwd && existsSync(effectiveCwd)) {
       try {
         // Try to read the directory to ensure it's accessible
-        const stats = require('fs').statSync(effectiveCwd);
+        const fs = require('fs');
+        const stats = fs.statSync(effectiveCwd);
         if (!stats.isDirectory()) {
           debugLog('[TerminalLifecycle] Terminal cwd is not a directory, falling back:', effectiveCwd, '->', projectPath || os.homedir());
+          effectiveCwd = projectPath || os.homedir();
+        }
+        // Check if directory is readable (required for shell to start)
+        try {
+          fs.accessSync(effectiveCwd, fs.constants.R_OK);
+        } catch (accessErr) {
+          debugLog('[TerminalLifecycle] Terminal cwd is not readable, falling back:', effectiveCwd, '->', projectPath || os.homedir(), 'error:', accessErr);
           effectiveCwd = projectPath || os.homedir();
         }
       } catch (err) {
