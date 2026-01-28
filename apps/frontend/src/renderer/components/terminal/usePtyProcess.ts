@@ -87,26 +87,12 @@ export function usePtyProcess({
   // while still ignoring late exits from the old PTY
   // We verify the output is from the new PTY by checking newPtyCreatedAtRef
   const handleFirstOutput = useCallback(() => {
-    // #region agent log
-    const logData = {
-      terminalId,
-      isRecreating: isRecreatingRef?.current,
-      hasGuardTimer: !!recreationGuardTimerRef.current,
-      newPtyCreatedAt: newPtyCreatedAtRef.current,
-      timeSinceCreation: newPtyCreatedAtRef.current ? Date.now() - newPtyCreatedAtRef.current : null,
-    };
-    fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'usePtyProcess.ts:handleFirstOutput', message: 'handleFirstOutput called', data: logData, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
-    // #endregion
-    
     if (isRecreatingRef?.current && recreationGuardTimerRef.current && newPtyCreatedAtRef.current) {
       // Only clear guard if this output is from the new PTY (created after recreation started)
       // Add a small delay to ensure we're not getting output from the old PTY's buffer
       const timeSinceCreation = Date.now() - newPtyCreatedAtRef.current;
       if (timeSinceCreation > 50) { // 50ms delay to avoid old PTY buffer output
         debugLog(`[usePtyProcess] First output received from new PTY for terminal: ${terminalId}, clearing recreation guard early`);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'usePtyProcess.ts:clearGuard', message: 'Clearing guard timer on first output', data: { terminalId, timeSinceCreation }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
-        // #endregion
         clearRecreationGuardTimer();
         if (isRecreatingRef.current) {
           isRecreatingRef.current = false;
@@ -216,9 +202,6 @@ export function usePtyProcess({
     const handleSuccess = () => {
       isCreatedRef.current = true;
       if (isRecreatingRef?.current) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'usePtyProcess.ts:handleSuccess', message: 'New PTY created during recreation', data: { terminalId }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
-        // #endregion
         // Delay clearing isRecreatingRef so any late TERMINAL_EXIT from the old (killed)
         // PTY is ignored when attaching a worktree (exit can arrive after new PTY is created).
         // The guard timer will be cleared early when first output is received from the new PTY,
@@ -231,9 +214,6 @@ export function usePtyProcess({
           recreationGuardTimerRef.current = null;
           // Only clear if we haven't received first output yet (fallback for slow PTY startup)
           if (!hasReceivedFirstOutputRef.current && isRecreatingRef?.current) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'usePtyProcess.ts:guardTimeout', message: 'Guard timer timeout - clearing isRecreatingRef', data: { terminalId, hasReceivedFirstOutput: hasReceivedFirstOutputRef.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
-            // #endregion
             isRecreatingRef.current = false;
           }
         }, RECREATION_GUARD_MS);

@@ -227,9 +227,6 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
     const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
       if (terminalId === id && !hasCalledFirstOutputRef.current && isRecreatingRef.current) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a4100325-fb76-497d-a992-08e964baf053', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Terminal.tsx:onTerminalOutput', message: 'TERMINAL_OUTPUT received during recreation', data: { terminalId: id, dataLength: data.length }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => {});
-        // #endregion
         hasCalledFirstOutputRef.current = true;
         handleFirstOutput();
       }
@@ -497,9 +494,6 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     // Destroy current PTY - a new one will be created in the worktree directory
     // Note: The terminal session is preserved via isRecreatingRef flag, which prevents
     // the exit handler from removing the terminal when the old PTY exits.
-    // #region agent log
-    console.log('[DEBUG] applyWorktreeConfig', JSON.stringify({ location: 'Terminal.tsx:applyWorktreeConfig', message: 'About to destroy terminal and recreate', data: { id, worktreePath: config.worktreePath, isRecreating: isRecreatingRef.current }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'G' }));
-    // #endregion
     if (isCreatedRef.current) {
       await window.electronAPI.destroyTerminal(id);
       isCreatedRef.current = false;
