@@ -217,10 +217,6 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       pendingWorktreeConfigRef.current = null;
       writeln(`\r\n\x1b[31mError: ${error}\x1b[0m`);
     },
-    onFirstOutput: () => {
-      // Reset flag when new PTY is created (will be set again on first output)
-      hasCalledFirstOutputRef.current = false;
-    },
   });
 
   // Listen for first TERMINAL_OUTPUT to clear recreation guard early

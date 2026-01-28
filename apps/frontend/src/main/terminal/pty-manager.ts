@@ -151,6 +151,7 @@ export function spawnPtyProcess(
   // show "Claude API" instead of "Claude Max" when ANTHROPIC_API_KEY is set.
   const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = process.env;
 
+  const cwdToUse = cwd || os.homedir();
 
   const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
