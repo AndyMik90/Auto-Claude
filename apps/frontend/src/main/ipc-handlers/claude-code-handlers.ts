@@ -890,8 +890,8 @@ function checkProfileAuthentication(configDir: string): AuthCheckResult {
       }
     }
 
-    // On Linux and Windows, also check .credentials.json (Claude CLI stores tokens here)
-    if ((isLinux() || isWindows()) && existsSync(credentialsJsonPath)) {
+    // On Linux, also check .credentials.json (Claude CLI may store tokens here)
+    if (isLinux() && existsSync(credentialsJsonPath)) {
       const content = readFileSync(credentialsJsonPath, 'utf-8');
       const data = JSON.parse(content);
 
