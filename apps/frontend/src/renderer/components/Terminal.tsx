@@ -57,6 +57,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   // Track last sent PTY dimensions to prevent redundant resize calls
   // This ensures terminal.resize() stays in sync with PTY dimensions
   const lastPtyDimensionsRef = useRef<{ cols: number; rows: number } | null>(null);
+  // Track if we've called handleFirstOutput for this PTY instance
+  const hasCalledFirstOutputRef = useRef(false);
 
   // Worktree dialog state
   const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
@@ -178,7 +180,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   }, [readyDimensions, cols, rows]);
 
   // Create PTY process - only when we have valid dimensions
-  const { prepareForRecreate, resetForRecreate } = usePtyProcess({
+  const { prepareForRecreate, resetForRecreate, handleFirstOutput } = usePtyProcess({
     terminalId: id,
     cwd: effectiveCwd,
     projectPath,
@@ -215,7 +217,27 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       pendingWorktreeConfigRef.current = null;
       writeln(`\r\n\x1b[31mError: ${error}\x1b[0m`);
     },
+    onFirstOutput: () => {
+      // Reset flag when new PTY is created (will be set again on first output)
+      hasCalledFirstOutputRef.current = false;
+    },
   });
+
+  // Listen for first TERMINAL_OUTPUT to clear recreation guard early
+  // This allows genuine early exits from the new PTY to be processed
+  // while still ignoring late exits from the old PTY
+  useEffect(() => {
+    if (!handleFirstOutput) return;
+
+    const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
+      if (terminalId === id && !hasCalledFirstOutputRef.current && isRecreatingRef.current) {
+        hasCalledFirstOutputRef.current = true;
+        handleFirstOutput();
+      }
+    });
+
+    return cleanup;
+  }, [id, handleFirstOutput, isRecreatingRef]);
 
   // Handle terminal events (output is now handled globally via useGlobalTerminalListeners)
   useTerminalEvents({
@@ -484,6 +506,8 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
 
     // Reset refs to allow recreation - effect will now trigger with new cwd
     resetForRecreate();
+    // Reset first output flag for new PTY instance
+    hasCalledFirstOutputRef.current = false;
   }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
 
   const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
