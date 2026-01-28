@@ -117,6 +117,10 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   const handleRestoreFromDate = useCallback(async (date: string) => {
     if (!projectPath || isRestoring) return;
 
+    // #region agent log
+    console.log('[DEBUG] handleRestoreFromDate', JSON.stringify({ location: 'TerminalGrid.tsx:handleRestoreFromDate', message: 'Starting restore from date', data: { date, projectPath, terminalCount: terminals.length, terminalIds: terminals.map(t => t.id) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'K' }));
+    // #endregion
+
     setIsRestoring(true);
     try {
       // First get the session data for this date (we need it after restore)
@@ -132,13 +136,23 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       }
 
       // Close all existing terminals
+      // #region agent log
+      console.log('[DEBUG] handleRestoreFromDate', JSON.stringify({ location: 'TerminalGrid.tsx:handleRestoreFromDate', message: 'Destroying existing terminals', data: { terminalCount: terminals.length }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'K' }));
+      // #endregion
       for (const terminal of terminals) {
+        // #region agent log
+        console.log('[DEBUG] handleRestoreFromDate', JSON.stringify({ location: 'TerminalGrid.tsx:handleRestoreFromDate', message: 'Destroying terminal', data: { terminalId: terminal.id, status: terminal.status }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'K' }));
+        // #endregion
         await window.electronAPI.destroyTerminal(terminal.id);
         removeTerminal(terminal.id);
       }
 
       // Small delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      // #region agent log
+      console.log('[DEBUG] handleRestoreFromDate', JSON.stringify({ location: 'TerminalGrid.tsx:handleRestoreFromDate', message: 'Restoring sessions from date', data: { date, projectPath, sessionCount: sessionsToRestore.length }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'K' }));
+      // #endregion
 
       // Restore sessions from the selected date (creates PTYs in main process)
       const result = await window.electronAPI.restoreTerminalSessionsFromDate(
@@ -147,6 +161,10 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
         80,
         24
       );
+
+      // #region agent log
+      console.log('[DEBUG] handleRestoreFromDate', JSON.stringify({ location: 'TerminalGrid.tsx:handleRestoreFromDate', message: 'Restore result', data: { success: result.success, restored: result.data?.restored }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'K' }));
+      // #endregion
 
       if (result.success && result.data) {
         console.warn(`[TerminalGrid] Main process restored ${result.data.restored} sessions from ${date}`);
