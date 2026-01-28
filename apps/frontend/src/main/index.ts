@@ -52,6 +52,7 @@ import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
 import { initializeClaudeProfileManager, getClaudeProfileManager } from './claude-profile-manager';
+import { isProfileAuthenticated } from './claude-profile/profile-utils';
 import { isMacOS, isWindows } from './platform';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
@@ -416,23 +417,31 @@ app.whenReady().then(() => {
         if (migratedProfileIds.length > 0) {
           console.warn('[main] Found migrated profiles that need re-authentication:', migratedProfileIds);
 
-          // If the active profile was migrated, show auth failure modal immediately
+          // If the active profile was migrated, check if it actually needs re-auth
           if (migratedProfileIds.includes(activeProfile.id)) {
-            // Wait for renderer to be ready before sending the event
-            mainWindow.webContents.once('did-finish-load', () => {
-              // Small delay to ensure stores are initialized
-              setTimeout(() => {
-                const authFailureInfo: AuthFailureInfo = {
-                  profileId: activeProfile.id,
-                  profileName: activeProfile.name,
-                  failureType: 'missing',
-                  message: `Profile "${activeProfile.name}" was migrated to an isolated directory and needs re-authentication.`,
-                  detectedAt: new Date()
-                };
-                console.warn('[main] Sending auth failure for migrated active profile:', activeProfile.name);
-                mainWindow?.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
-              }, 1000);
-            });
+            // First check if the profile has valid credentials via file fallback
+            // (Windows file-based credentials may be valid even though Credential Manager is empty)
+            if (isProfileAuthenticated(activeProfile)) {
+              // Credentials are valid - clear the migrated flag instead of showing modal
+              console.warn('[main] Migrated profile has valid credentials via file fallback, clearing migrated flag:', activeProfile.name);
+              profileManager.clearMigratedProfile(activeProfile.id);
+            } else {
+              // Wait for renderer to be ready before sending the event
+              mainWindow.webContents.once('did-finish-load', () => {
+                // Small delay to ensure stores are initialized
+                setTimeout(() => {
+                  const authFailureInfo: AuthFailureInfo = {
+                    profileId: activeProfile.id,
+                    profileName: activeProfile.name,
+                    failureType: 'missing',
+                    message: `Profile "${activeProfile.name}" was migrated to an isolated directory and needs re-authentication.`,
+                    detectedAt: new Date()
+                  };
+                  console.warn('[main] Sending auth failure for migrated active profile:', activeProfile.name);
+                  mainWindow?.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
+                }, 1000);
+              });
+            }
           }
         }
       }
