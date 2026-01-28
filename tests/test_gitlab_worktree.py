@@ -12,8 +12,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 # Add apps/backend directory to path for imports
 _backend_dir = Path(__file__).parent.parent / "apps" / "backend"
 if str(_backend_dir) not in sys.path:
@@ -22,7 +20,6 @@ if str(_backend_dir) not in sys.path:
 from core.worktree import (
     PullRequestResult,
     WorktreeInfo,
-    WorktreeManager,
 )
 
 
