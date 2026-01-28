@@ -414,6 +414,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     return () => {
       isMountedRef.current = false;
       cleanupAutoNaming();
+      // Reset recreation flag on unmount to prevent issues if terminal is destroyed
+      // during recreation (e.g., when clicking History to restore sessions)
+      isRecreatingRef.current = false;
 
       setTimeout(() => {
         if (!isMountedRef.current) {
