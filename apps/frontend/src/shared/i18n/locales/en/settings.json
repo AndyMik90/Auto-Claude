@@ -50,6 +50,25 @@
       "description": "Customize terminal font appearance"
     }
   },
+  "projectSections": {
+    "general": {
+      "title": "General",
+      "description": "Manage general settings for {{projectName}}",
+      "notInitialized": "Auto-Build not initialized",
+      "notInitializedDescription": "You need to initialize Auto-Build to use automated coding features.",
+      "initializing": "Initializing...",
+      "initializeAutoBuild": "Initialize Auto-Build",
+      "initialized": "Auto-Build Initialized",
+      "checkingStatus": "Checking Auto-Build status...",
+      "agentConfig": "Agent Configuration",
+      "useClaudeMd": "Use .claude.md",
+      "useClaudeMdDescription": "Enable .claude.md for project-specific instructions"
+    }
+  },
+  "agentProfile": {
+    "model": "Model",
+    "thinking": "Thinking"
+  },
   "apiProfiles": {
     "title": "API Profiles",
     "description": "Configure custom Anthropic-compatible API endpoints",

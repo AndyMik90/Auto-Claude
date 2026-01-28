@@ -107,6 +107,7 @@
     },
     "memory": {
         "title": "Memory",
+        "syncDescription": "Persistent cross-session memory and semantic search",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "enableMemory": "Enable Memory",

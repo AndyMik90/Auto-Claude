@@ -75,6 +75,11 @@ def main():
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
+        "--language",
+        type=str,
+        help="Language for generation (e.g. 'en', 'ru', 'fr')",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Force regeneration even if roadmap exists",
@@ -126,6 +131,7 @@ def main():
         refresh=args.refresh,
         enable_competitor_analysis=args.enable_competitor_analysis,
         refresh_competitor_analysis=args.refresh_competitor_analysis,
+        language=args.language,
     )
 
     try:

@@ -113,6 +113,11 @@ def main():
         help="Thinking level for extended reasoning (default: medium)",
     )
     parser.add_argument(
+        "--language",
+        type=str,
+        help="Language for generation (e.g. 'en', 'ru', 'fr')",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Force regeneration even if ideation exists",
@@ -152,6 +157,7 @@ def main():
         thinking_level=args.thinking_level,
         refresh=args.refresh,
         append=args.append,
+        language=args.language,
     )
 
     try:

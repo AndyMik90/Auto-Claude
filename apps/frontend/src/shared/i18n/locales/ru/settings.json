@@ -50,6 +50,25 @@
       "description": "Настройка внешнего вида шрифтов в терминале"
     }
   },
+  "projectSections": {
+    "general": {
+      "title": "Общие",
+      "description": "Управление общими настройками для {{projectName}}",
+      "notInitialized": "Auto-Build не инициализирован",
+      "notInitializedDescription": "Вам необходимо инициализировать Auto-Build для использования функций автоматического кодирования.",
+      "initializing": "Инициализация...",
+      "initializeAutoBuild": "Инициализировать Auto-Build",
+      "initialized": "Auto-Build инициализирован",
+      "checkingStatus": "Проверка статуса Auto-Build...",
+      "agentConfig": "Конфигурация агента",
+      "useClaudeMd": "Использовать .claude.md",
+      "useClaudeMdDescription": "Включить использование .claude.md для инструкций проекта"
+    }
+  },
+  "agentProfile": {
+    "model": "Модель",
+    "thinking": "Мышление"
+  },
   "apiProfiles": {
     "title": "Профили API",
     "description": "Настройка пользовательских эндпоинтов API, совместимых с Anthropic",

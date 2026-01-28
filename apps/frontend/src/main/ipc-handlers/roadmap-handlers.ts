@@ -31,7 +31,7 @@ import { safeSendToRenderer } from "./utils";
 /**
  * Read feature settings from the settings file
  */
-function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
+function getFeatureSettings(): { model?: string; thinkingLevel?: string; language?: string } {
   const settingsPath = path.join(app.getPath("userData"), "settings.json");
 
   try {
@@ -45,6 +45,7 @@ function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
     return {
       model: featureModels.roadmap,
       thinkingLevel: featureThinking.roadmap,
+      language: settings.language,
     };
   } catch (error) {
     // Return defaults if settings file doesn't exist (ENOENT) or fails to parse
@@ -56,6 +57,7 @@ function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
   return {
     model: DEFAULT_FEATURE_MODELS.roadmap,
     thinkingLevel: DEFAULT_FEATURE_THINKING.roadmap,
+    language: undefined,
   };
 }
 
@@ -240,6 +242,7 @@ export function registerRoadmapHandlers(
       const config: RoadmapConfig = {
         model: featureSettings.model,
         thinkingLevel: featureSettings.thinkingLevel,
+        language: featureSettings.language,
       };
 
       debugLog("[Roadmap Handler] Generate request:", {
@@ -302,6 +305,7 @@ export function registerRoadmapHandlers(
       const config: RoadmapConfig = {
         model: featureSettings.model,
         thinkingLevel: featureSettings.thinkingLevel,
+        language: featureSettings.language,
       };
 
       debugLog("[Roadmap Handler] Refresh request:", {
@@ -537,8 +541,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         let specNumber = 1;
         const existingDirs = existsSync(specsDir)
           ? readdirSync(specsDir, { withFileTypes: true })
-              .filter((d) => d.isDirectory())
-              .map((d) => d.name)
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name)
           : [];
         const existingNumbers = existingDirs
           .map((name) => {
