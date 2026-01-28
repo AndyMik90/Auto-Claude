@@ -38,6 +38,48 @@ def _repair_json_syntax(content: str) -> str | None:
 
     repaired = content
 
+    # Fix missing commas between object properties
+    # Pattern: "value" followed by whitespace/newlines and another "key":
+    # e.g., "value1" \n "key2": -> "value1", \n "key2":
+    repaired = re.sub(
+        r'("(?:[^"\\]|\\.)*")(\s*\n\s*)("(?:[^"\\]|\\.)*"\s*:)',
+        r'\1,\2\3',
+        repaired,
+    )
+
+    # Fix missing commas after numbers/booleans/null before next key
+    # e.g., 123 \n "key": -> 123, \n "key":
+    repaired = re.sub(
+        r'(\d+|true|false|null)(\s*\n\s*)("(?:[^"\\]|\\.)*"\s*:)',
+        r'\1,\2\3',
+        repaired,
+    )
+
+    # Fix missing commas after closing brace/bracket before next key
+    # e.g., } \n "key": -> }, \n "key":
+    repaired = re.sub(
+        r'([}\]])(\s*\n\s*)("(?:[^"\\]|\\.)*"\s*:)',
+        r'\1,\2\3',
+        repaired,
+    )
+
+    # Fix missing commas between array elements
+    # e.g., "value1" \n "value2" -> "value1", \n "value2"
+    # But only when not followed by a colon (to avoid matching object keys)
+    repaired = re.sub(
+        r'("(?:[^"\\]|\\.)*")(\s*\n\s*)("(?:[^"\\]|\\.)*")(?!\s*:)',
+        r'\1,\2\3',
+        repaired,
+    )
+
+    # Fix missing commas after closing brace/bracket before opening brace/bracket in arrays
+    # e.g., } \n { -> }, \n {
+    repaired = re.sub(
+        r'([}\]])(\s*\n\s*)([{\[])',
+        r'\1,\2\3',
+        repaired,
+    )
+
     # Remove trailing commas before closing brackets/braces
     # Match: comma followed by optional whitespace and closing bracket/brace
     repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
@@ -143,18 +185,35 @@ def auto_fix_plan(spec_dir: Path) -> bool:
         with open(plan_file, encoding="utf-8") as f:
             content = f.read()
         plan = json.loads(content)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except json.JSONDecodeError as original_error:
         # Attempt JSON syntax repair
+        logging.info(
+            f"JSON parse error in {plan_file}: {original_error.msg} "
+            f"at line {original_error.lineno}, column {original_error.colno}. "
+            "Attempting auto-repair..."
+        )
         try:
-            with open(plan_file, encoding="utf-8") as f:
-                content = f.read()
             repaired = _repair_json_syntax(content)
             if repaired:
                 plan = json.loads(repaired)
                 json_repaired = True
-                logging.info(f"JSON syntax repaired: {plan_file}")
+                logging.info(f"JSON syntax successfully repaired: {plan_file}")
+            else:
+                logging.warning(
+                    f"JSON repair returned None for {plan_file}. "
+                    f"Original error: {original_error.msg} at line {original_error.lineno}"
+                )
+        except json.JSONDecodeError as repair_error:
+            logging.warning(
+                f"JSON repair attempt failed for {plan_file}. "
+                f"Original error: {original_error.msg} at line {original_error.lineno}. "
+                f"After repair: {repair_error.msg} at line {repair_error.lineno}"
+            )
         except Exception as e:
-            logging.warning(f"JSON repair attempt failed for {plan_file}: {e}")
+            logging.warning(f"Unexpected error during JSON repair for {plan_file}: {e}")
+    except UnicodeDecodeError as e:
+        logging.warning(f"Unicode decode error in {plan_file}: {e}")
+        return False
     except OSError:
         return False
 
