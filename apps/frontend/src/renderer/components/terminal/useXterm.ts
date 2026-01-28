@@ -7,7 +7,6 @@ import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
 import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
 import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
-import { debounce } from '../../lib/debounce';
 import { DEFAULT_TERMINAL_THEME } from '../../lib/terminal-theme';
 
 // Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
@@ -84,6 +83,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const fontSettings = useTerminalFontSettingsStore();
 
   // Initialize xterm.js UI
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Font settings are intentionally omitted from deps to prevent xterm instance recreation. Reactive updates are handled by a separate effect.
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
@@ -335,6 +335,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
 
   // Subscribe to store changes - when terminalId changes, this effect re-runs,
   // cleaning up the old subscription and creating a new one for the new xterm instance
+  // biome-ignore lint/correctness/useExhaustiveDependencies: terminalId is required for cleanup when it changes
   useEffect(() => {
     // Get latest settings from store
     const latestSettings = useTerminalFontSettingsStore.getState();
