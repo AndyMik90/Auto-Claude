@@ -471,6 +471,8 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     window.electronAPI.setTerminalTitle(id, config.name);
 
     // Destroy current PTY - a new one will be created in the worktree directory
+    // Note: The terminal session is preserved via isRecreatingRef flag, which prevents
+    // the exit handler from removing the terminal when the old PTY exits.
     if (isCreatedRef.current) {
       await window.electronAPI.destroyTerminal(id);
       isCreatedRef.current = false;

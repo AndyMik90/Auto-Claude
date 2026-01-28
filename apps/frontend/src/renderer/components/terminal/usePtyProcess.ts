@@ -8,6 +8,9 @@ import { debugLog, debugError } from '../../../shared/utils/debug-logger';
 const MAX_RECREATION_RETRIES = 30;
 // Delay between retry attempts in ms
 const RECREATION_RETRY_DELAY = 100;
+// Keep isRecreatingRef true briefly after PTY creation so late TERMINAL_EXIT from the
+// old (killed) PTY is ignored when attaching a worktree (race: exit arrives after handleSuccess).
+const RECREATION_GUARD_MS = 2500;
 
 interface UsePtyProcessOptions {
   terminalId: string;
@@ -43,6 +46,7 @@ export function usePtyProcess({
   // Track retry attempts during recreation when dimensions aren't ready
   const recreationRetryCountRef = useRef(0);
   const recreationRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recreationGuardTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use getState() pattern for store actions to avoid React Fast Refresh issues
   // The selectors like useTerminalStore((state) => state.setTerminalStatus) can fail
@@ -55,6 +59,13 @@ export function usePtyProcess({
     if (recreationRetryTimerRef.current) {
       clearTimeout(recreationRetryTimerRef.current);
       recreationRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const clearRecreationGuardTimer = useCallback(() => {
+    if (recreationGuardTimerRef.current) {
+      clearTimeout(recreationGuardTimerRef.current);
+      recreationGuardTimerRef.current = null;
     }
   }, []);
 
@@ -84,12 +95,13 @@ export function usePtyProcess({
     return false;
   }, [isRecreatingRef, onError, clearRetryTimer]);
 
-  // Cleanup retry timer on unmount
+  // Cleanup retry and recreation-guard timers on unmount
   useEffect(() => {
     return () => {
       clearRetryTimer();
+      clearRecreationGuardTimer();
     };
-  }, [clearRetryTimer]);
+  }, [clearRetryTimer, clearRecreationGuardTimer]);
 
   // Track cwd changes - if cwd changes while terminal exists, trigger recreate
   useEffect(() => {
@@ -154,7 +166,15 @@ export function usePtyProcess({
     const handleSuccess = () => {
       isCreatedRef.current = true;
       if (isRecreatingRef?.current) {
-        isRecreatingRef.current = false;
+        // Delay clearing isRecreatingRef so any late TERMINAL_EXIT from the old (killed)
+        // PTY is ignored when attaching a worktree (exit can arrive after new PTY is created).
+        clearRecreationGuardTimer();
+        recreationGuardTimerRef.current = setTimeout(() => {
+          recreationGuardTimerRef.current = null;
+          if (isRecreatingRef?.current) {
+            isRecreatingRef.current = false;
+          }
+        }, RECREATION_GUARD_MS);
       }
       recreationRetryCountRef.current = 0;
       isCreatingRef.current = false;
@@ -232,13 +252,14 @@ export function usePtyProcess({
       });
     }
 
-  }, [terminalId, cwd, projectPath, cols, rows, skipCreation, recreationTrigger, getStore, onCreated, onError, clearRetryTimer, scheduleRetryOrFail, isRecreatingRef]);
+  }, [terminalId, cwd, projectPath, cols, rows, skipCreation, recreationTrigger, getStore, onCreated, onError, clearRetryTimer, clearRecreationGuardTimer, scheduleRetryOrFail, isRecreatingRef]);
 
   // Function to prepare for recreation by preventing the effect from running
   // Call this BEFORE updating the store cwd to avoid race condition
   const prepareForRecreate = useCallback(() => {
+    clearRecreationGuardTimer();
     isCreatingRef.current = true;
-  }, []);
+  }, [clearRecreationGuardTimer]);
 
   // Function to reset refs and allow recreation
   // Call this AFTER destroying the old terminal
