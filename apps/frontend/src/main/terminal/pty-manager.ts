@@ -198,6 +198,14 @@ export function setupPtyHandlers(
 
   // Handle data from terminal
   ptyProcess.onData((data) => {
+    // #region agent log
+    const fs = require('fs');
+    const logPath = '/Users/qveys/Git/Auto-Claude/.cursor/debug.log';
+    const terminal = terminals.get(id);
+    const line = JSON.stringify({ location: 'pty-manager.ts:onData', message: 'PTY data received', data: { id, dataLength: data.length, cwd: terminal?.cwd, pid: ptyProcess.pid, firstChars: data.substring(0, 50) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'J' }) + '\n';
+    fs.appendFileSync(logPath, line);
+    // #endregion
+
     // Append to output buffer (limit to 100KB)
     terminal.outputBuffer = (terminal.outputBuffer + data).slice(-100000);
 
