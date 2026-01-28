@@ -6,7 +6,7 @@ import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, Implemen
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
-import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
+import { findAllSpecPaths } from './utils/spec-path-helpers';
 
 interface TabState {
   openProjectIds: string[];
