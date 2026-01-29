@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../ui/select';
+import { playNotificationSound } from '../../lib/notification-sounds';
 import type {
   AppSettings,
   AppUpdateAvailableEvent,
@@ -506,9 +507,9 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
     );
   }
 
-  // notifications section
+  // notifications section - only include boolean notification settings (not soundType)
   const notificationItems: Array<{
-    key: keyof NotificationSettings;
+    key: 'onTaskComplete' | 'onTaskFailed' | 'onReviewNeeded' | 'sound';
     labelKey: string;
     descriptionKey: string;
   }> = [
@@ -519,46 +520,7 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   ];
 
   const handleTestSound = () => {
-    const soundType = settings.notifications.soundType || 'chime';
-    try {
-      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const playTone = (freq: number, start: number, duration: number, type: OscillatorType = 'sine', volume = 0.3) => {
-        const osc = audioContext.createOscillator();
-        const g = audioContext.createGain();
-        osc.connect(g);
-        g.connect(audioContext.destination);
-        osc.frequency.value = freq;
-        osc.type = type;
-        g.gain.setValueAtTime(volume, audioContext.currentTime + start);
-        g.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + start + duration);
-        osc.start(audioContext.currentTime + start);
-        osc.stop(audioContext.currentTime + start + duration);
-      };
-      switch (soundType) {
-        case 'chime': playTone(880, 0, 0.15); playTone(660, 0.12, 0.2); break;
-        case 'ping': playTone(1200, 0, 0.1, 'sine', 0.25); break;
-        case 'pulse': playTone(200, 0, 0.08, 'square', 0.2); playTone(200, 0.12, 0.08, 'square', 0.2); break;
-        case 'blip': playTone(600, 0, 0.05, 'triangle', 0.3); playTone(800, 0.05, 0.05, 'triangle', 0.25); break;
-        case 'soft': {
-          const osc = audioContext.createOscillator();
-          const g = audioContext.createGain();
-          osc.connect(g);
-          g.connect(audioContext.destination);
-          osc.frequency.value = 440;
-          osc.type = 'sine';
-          g.gain.setValueAtTime(0.01, audioContext.currentTime);
-          g.gain.exponentialRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
-          g.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-          osc.start();
-          osc.stop(audioContext.currentTime + 0.3);
-          break;
-        }
-        default: playTone(800, 0, 0.15);
-      }
-      setTimeout(() => audioContext.close(), 500);
-    } catch (err) {
-      console.error('Failed to play test sound:', err);
-    }
+    playNotificationSound(settings.notifications.soundType || 'chime');
   };
 
   return (
@@ -610,11 +572,11 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="chime">Chime</SelectItem>
-                  <SelectItem value="ping">Ping</SelectItem>
-                  <SelectItem value="pulse">Pulse</SelectItem>
-                  <SelectItem value="blip">Blip</SelectItem>
-                  <SelectItem value="soft">Soft</SelectItem>
+                  <SelectItem value="chime">{t('notifications.soundTypes.chime')}</SelectItem>
+                  <SelectItem value="ping">{t('notifications.soundTypes.ping')}</SelectItem>
+                  <SelectItem value="pulse">{t('notifications.soundTypes.pulse')}</SelectItem>
+                  <SelectItem value="blip">{t('notifications.soundTypes.blip')}</SelectItem>
+                  <SelectItem value="soft">{t('notifications.soundTypes.soft')}</SelectItem>
                 </SelectContent>
               </Select>
               <button
@@ -622,7 +584,7 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
                 onClick={handleTestSound}
                 className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                Test
+                {t('notifications.test')}
               </button>
             </div>
           </div>

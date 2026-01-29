@@ -313,7 +313,15 @@
     "sound": "Sound",
     "soundDescription": "Play sound with notifications",
     "soundType": "Sound Type",
-    "soundTypeDescription": "Choose notification sound style"
+    "soundTypeDescription": "Choose notification sound style",
+    "test": "Test",
+    "soundTypes": {
+      "chime": "Chime",
+      "ping": "Ping",
+      "pulse": "Pulse",
+      "blip": "Blip",
+      "soft": "Soft"
+    }
   },
   "actions": {
     "save": "Save Settings",

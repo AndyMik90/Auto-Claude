@@ -1,6 +1,7 @@
 import { Notification } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { projectStore } from './project-store';
+import { IPC_CHANNELS } from '../shared/constants';
 import type { NotificationSoundType } from '../shared/types';
 
 export type NotificationType = 'task-complete' | 'task-failed' | 'review-needed';
@@ -33,7 +34,7 @@ class NotificationService {
     try {
       const window = this.mainWindow?.();
       if (window?.webContents) {
-        window.webContents.send('play-notification-sound', soundType);
+        window.webContents.send(IPC_CHANNELS.PLAY_NOTIFICATION_SOUND, soundType);
       }
     } catch (err) {
       console.error('[NotificationService] Failed to send sound IPC:', err);

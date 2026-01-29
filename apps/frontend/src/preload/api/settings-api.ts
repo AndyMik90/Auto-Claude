@@ -52,8 +52,8 @@ export const createSettingsAPI = (): SettingsAPI => ({
   // Notification sound listener - main process sends this when notification sound should play
   onPlayNotificationSound: (callback: (soundType: string) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, soundType: string) => callback(soundType || 'chime');
-    ipcRenderer.on('play-notification-sound', handler);
-    return () => ipcRenderer.removeListener('play-notification-sound', handler);
+    ipcRenderer.on(IPC_CHANNELS.PLAY_NOTIFICATION_SOUND, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PLAY_NOTIFICATION_SOUND, handler);
   },
 
   // CLI Tools Detection

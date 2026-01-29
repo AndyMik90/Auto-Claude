@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from "../../shared/constants";
 import {
   wouldPhaseRegress,
@@ -28,6 +28,25 @@ import { findTaskWorktree } from "../worktree-paths";
 // All handlers now use lightweight project lookup (existsSync) instead
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
+import type { Project } from "../../shared/types";
+
+/**
+ * Lightweight project lookup by taskId without heavy I/O.
+ * Checks if a spec directory exists for the given taskId in any project.
+ * This avoids the heavy getTasks() call that reads multiple files per spec.
+ */
+function findProjectByTaskId(taskId: string): { project: Project; projectId: string } | undefined {
+  const projects = projectStore.getProjects();
+  for (const p of projects) {
+    // Use default .auto-claude path if autoBuildPath not set (matches getSpecsDir behavior)
+    const specsBaseDir = getSpecsDir(p.autoBuildPath);
+    const specPath = path.join(p.path, specsBaseDir, taskId);
+    if (existsSync(specPath)) {
+      return { project: p, projectId: p.id };
+    }
+  }
+  return undefined;
+}
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -114,35 +133,13 @@ export function registerAgenteventsHandlers(
   // ============================================
 
   agentManager.on("log", (taskId: string, log: string) => {
-    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
-    const projects = projectStore.getProjects();
-    let foundProjectId: string | undefined;
-    for (const p of projects) {
-      if (!p.autoBuildPath) continue;
-      const specsBaseDir = getSpecsDir(p.autoBuildPath);
-      const specPath = path.join(p.path, specsBaseDir, taskId);
-      if (existsSync(specPath)) {
-        foundProjectId = p.id;
-        break;
-      }
-    }
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_LOG, taskId, log, foundProjectId);
+    const found = findProjectByTaskId(taskId);
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_LOG, taskId, log, found?.projectId);
   });
 
   agentManager.on("error", (taskId: string, error: string) => {
-    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
-    const projects = projectStore.getProjects();
-    let foundProjectId: string | undefined;
-    for (const p of projects) {
-      if (!p.autoBuildPath) continue;
-      const specsBaseDir = getSpecsDir(p.autoBuildPath);
-      const specPath = path.join(p.path, specsBaseDir, taskId);
-      if (existsSync(specPath)) {
-        foundProjectId = p.id;
-        break;
-      }
-    }
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, foundProjectId);
+    const found = findProjectByTaskId(taskId);
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, found?.projectId);
   });
 
   // Handle SDK rate limit events from agent manager
@@ -187,26 +184,32 @@ export function registerAgenteventsHandlers(
     console.warn(`[Exit Handler] START for task ${taskId}, code=${code}, type=${processType}`);
 
     try {
+      // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
+      const found = findProjectByTaskId(taskId);
+      const foundProject = found?.project;
+      const projectId = found?.projectId;
+      console.warn(`[Exit Handler] Found project: ${projectId || 'none'}`);
+
       // FIX: Get plan data from file watcher cache FIRST (zero I/O - already in memory)
       // This avoids the heavy sync file I/O in findTaskAndProject() that was causing crashes
-      const finalPlan = fileWatcher.getCurrentPlan(taskId);
-      console.warn(`[Exit Handler] Got finalPlan: ${finalPlan ? 'yes' : 'no'}`);
+      let finalPlan = fileWatcher.getCurrentPlan(taskId);
 
-      // FIX: Find project WITHOUT calling getTasks() - just check if spec dir exists
-      // projectStore.getProjects() is fast (in-memory), existsSync is lightweight
-      const projects = projectStore.getProjects();
-      let foundProject: typeof projects[0] | undefined;
-      for (const p of projects) {
-        if (!p.autoBuildPath) continue;
-        const specsBaseDir = getSpecsDir(p.autoBuildPath);
-        const specPath = path.join(p.path, specsBaseDir, taskId);
-        if (existsSync(specPath)) {
-          foundProject = p;
-          break;
+      // Fallback: If file watcher doesn't have the plan (e.g., in tests or edge cases),
+      // read it directly from disk. This is a single file read, much lighter than getTasks()
+      if (!finalPlan && foundProject) {
+        try {
+          const specsBaseDir = getSpecsDir(foundProject.autoBuildPath);
+          const planPath = path.join(foundProject.path, specsBaseDir, taskId, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+          if (existsSync(planPath)) {
+            const planContent = readFileSync(planPath, 'utf-8');
+            finalPlan = JSON.parse(planContent);
+            console.warn(`[Exit Handler] Read plan from disk (fallback)`);
+          }
+        } catch (readErr) {
+          console.warn(`[Exit Handler] Could not read plan from disk:`, readErr);
         }
       }
-      const projectId = foundProject?.id;
-      console.warn(`[Exit Handler] Found project: ${projectId || 'none'}`);
+      console.warn(`[Exit Handler] Got finalPlan: ${finalPlan ? 'yes' : 'no'}`);
 
       // Send final plan state to renderer BEFORE unwatching
       // This ensures the renderer has the final subtask data (fixes 0/0 subtask bug)
@@ -232,8 +235,8 @@ export function registerAgenteventsHandlers(
         return;
       }
 
-      // FIX: Use plan data from file watcher cache for immediate operations
-      // This completely avoids the heavy getTasks() call that reads multiple files per spec
+      // FIX: Use plan data from file watcher cache (or fallback from disk) for immediate operations
+      // This avoids the heavy getTasks() call that reads multiple files per spec
       if (foundProject && finalPlan) {
         console.warn(`[Exit Handler] Processing task completion for ${taskId}`);
 
@@ -303,7 +306,7 @@ export function registerAgenteventsHandlers(
         setImmediate(async () => {
           try {
             // Invalidate cache for all projects to ensure fresh data on next read
-            for (const p of projects) {
+            for (const p of projectStore.getProjects()) {
               projectStore.invalidateTasksCache(p.id);
             }
 
@@ -347,19 +350,9 @@ export function registerAgenteventsHandlers(
   agentManager.on("execution-progress", (taskId: string, progress: ExecutionProgressData) => {
     try {
       // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
-      // projectStore.getProjects() is fast (in-memory), existsSync is lightweight
-      const projects = projectStore.getProjects();
-    let foundProject: typeof projects[0] | undefined;
-    for (const p of projects) {
-      if (!p.autoBuildPath) continue;
-      const specsBaseDir = getSpecsDir(p.autoBuildPath);
-      const specPath = path.join(p.path, specsBaseDir, taskId);
-      if (existsSync(specPath)) {
-        foundProject = p;
-        break;
-      }
-    }
-    const taskProjectId = foundProject?.id;
+      const found = findProjectByTaskId(taskId);
+      const foundProject = found?.project;
+      const taskProjectId = found?.projectId;
 
     // Include projectId in execution progress event for multi-project filtering
     safeSendToRenderer(
@@ -406,8 +399,8 @@ export function registerAgenteventsHandlers(
           overallProgress: progress.overallProgress || 0,
           completedPhases: progress.completedPhases || [],
         },
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: cachedPlan.created_at ? new Date(cachedPlan.created_at) : new Date(),
+        updatedAt: cachedPlan.updated_at ? new Date(cachedPlan.updated_at) : new Date()
       } : undefined;
 
       // FIX (ACS-55, ACS-71): Validate status transition before sending/persisting
@@ -463,34 +456,12 @@ export function registerAgenteventsHandlers(
   // ============================================
 
   fileWatcher.on("progress", (taskId: string, plan: ImplementationPlan) => {
-    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
-    const projects = projectStore.getProjects();
-    let foundProjectId: string | undefined;
-    for (const p of projects) {
-      if (!p.autoBuildPath) continue;
-      const specsBaseDir = getSpecsDir(p.autoBuildPath);
-      const specPath = path.join(p.path, specsBaseDir, taskId);
-      if (existsSync(specPath)) {
-        foundProjectId = p.id;
-        break;
-      }
-    }
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_PROGRESS, taskId, plan, foundProjectId);
+    const found = findProjectByTaskId(taskId);
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_PROGRESS, taskId, plan, found?.projectId);
   });
 
   fileWatcher.on("error", (taskId: string, error: string) => {
-    // FIX: Find project WITHOUT calling getTasks() - lightweight lookup
-    const projects = projectStore.getProjects();
-    let foundProjectId: string | undefined;
-    for (const p of projects) {
-      if (!p.autoBuildPath) continue;
-      const specsBaseDir = getSpecsDir(p.autoBuildPath);
-      const specPath = path.join(p.path, specsBaseDir, taskId);
-      if (existsSync(specPath)) {
-        foundProjectId = p.id;
-        break;
-      }
-    }
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, foundProjectId);
+    const found = findProjectByTaskId(taskId);
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, found?.projectId);
   });
 }
