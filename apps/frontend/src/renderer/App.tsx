@@ -314,6 +314,22 @@ export function App() {
     }
   }, [settings.language, i18n]);
 
+  // Sync spell check language with i18n language
+  useEffect(() => {
+    const syncSpellCheck = async () => {
+      try {
+        const result = await window.electronAPI.setSpellCheckLanguages(i18n.language);
+        if (!result.success) {
+          console.warn('[App] Failed to set spell check language:', result.error);
+        }
+      } catch (error) {
+        console.warn('[App] Error syncing spell check language:', error);
+      }
+    };
+
+    syncSpellCheck();
+  }, [i18n.language]);
+
   // Listen for open-app-settings events (e.g., from project settings)
   useEffect(() => {
     const handleOpenAppSettings = (event: Event) => {
