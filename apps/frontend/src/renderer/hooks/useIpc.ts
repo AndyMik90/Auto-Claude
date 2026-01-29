@@ -5,7 +5,8 @@ import { useRoadmapStore } from '../stores/roadmap-store';
 import { useRateLimitStore } from '../stores/rate-limit-store';
 import { useAuthFailureStore } from '../stores/auth-failure-store';
 import { useProjectStore } from '../stores/project-store';
-import type { ImplementationPlan, TaskStatus, RoadmapGenerationStatus, Roadmap, ExecutionProgress, RateLimitInfo, SDKRateLimitInfo, AuthFailureInfo } from '../../shared/types';
+import { playNotificationSound } from '../lib/notification-sounds';
+import type { ImplementationPlan, TaskStatus, RoadmapGenerationStatus, Roadmap, ExecutionProgress, RateLimitInfo, SDKRateLimitInfo, AuthFailureInfo, NotificationSoundType } from '../../shared/types';
 
 /**
  * Batched update queue for IPC events.
@@ -348,6 +349,11 @@ export function useIpcListeners(): void {
       }
     );
 
+    // Notification sound listener - plays sounds via Web Audio API (safe, no native crashes)
+    const cleanupNotificationSound = window.electronAPI.onPlayNotificationSound((soundType: string) => {
+      playNotificationSound(soundType as NotificationSoundType);
+    });
+
     // Cleanup on unmount
     return () => {
       // Flush any pending batched updates before cleanup
@@ -368,6 +374,7 @@ export function useIpcListeners(): void {
       cleanupRateLimit();
       cleanupSDKRateLimit();
       cleanupAuthFailure();
+      cleanupNotificationSound();
     };
   }, [updateTaskFromPlan, updateTaskStatus, updateExecutionProgress, appendLog, batchAppendLogs, setError]);
 }

@@ -336,6 +336,9 @@ export interface ElectronAPI {
   getSettings: () => Promise<IPCResult<AppSettings>>;
   saveSettings: (settings: Partial<AppSettings>) => Promise<IPCResult>;
 
+  // Notification sound listener (plays sound in renderer via Web Audio API)
+  onPlayNotificationSound: (callback: (soundType: string) => void) => () => void;
+
   // Sentry error reporting
   notifySentryStateChanged: (enabled: boolean) => void;
   getSentryDsn: () => Promise<string>;

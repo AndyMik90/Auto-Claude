@@ -13,6 +13,9 @@ export const settingsMock = {
 
   saveSettings: async () => ({ success: true }),
 
+  // Notification sound listener (no-op in browser mode)
+  onPlayNotificationSound: () => () => {},
+
   // Sentry error reporting
   notifySentryStateChanged: (_enabled: boolean) => {
     console.warn('[browser-mock] notifySentryStateChanged called');

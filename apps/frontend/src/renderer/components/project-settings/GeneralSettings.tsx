@@ -18,10 +18,12 @@ import {
 } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { AVAILABLE_MODELS } from '../../../shared/constants';
+import { playNotificationSound } from '../../lib/notification-sounds';
 import type {
   Project,
   ProjectSettings as ProjectSettingsType,
-  AutoBuildVersionInfo
+  AutoBuildVersionInfo,
+  NotificationSoundType
 } from '../../../shared/types';
 
 interface GeneralSettingsProps {
@@ -214,6 +216,43 @@ export function GeneralSettings({
                   }
                 />
               </div>
+              {settings.notifications.sound && (
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-foreground">Sound Type</Label>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={settings.notifications.soundType || 'chime'}
+                      onValueChange={(value: NotificationSoundType) =>
+                        setSettings({
+                          ...settings,
+                          notifications: {
+                            ...settings.notifications,
+                            soundType: value
+                          }
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="chime">{t('settings:notifications.soundTypes.chime')}</SelectItem>
+                        <SelectItem value="ping">{t('settings:notifications.soundTypes.ping')}</SelectItem>
+                        <SelectItem value="pulse">{t('settings:notifications.soundTypes.pulse')}</SelectItem>
+                        <SelectItem value="blip">{t('settings:notifications.soundTypes.blip')}</SelectItem>
+                        <SelectItem value="soft">{t('settings:notifications.soundTypes.soft')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <button
+                      type="button"
+                      onClick={() => playNotificationSound(settings.notifications.soundType || 'chime')}
+                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t('settings:notifications.test')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </>

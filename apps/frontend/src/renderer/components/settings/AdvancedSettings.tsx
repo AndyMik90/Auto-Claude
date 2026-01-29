@@ -13,12 +13,21 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Progress } from '../ui/progress';
 import { SettingsSection } from './SettingsSection';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../ui/select';
+import { playNotificationSound } from '../../lib/notification-sounds';
 import type {
   AppSettings,
   AppUpdateAvailableEvent,
   AppUpdateProgress,
   AppUpdateInfo,
-  NotificationSettings
+  NotificationSettings,
+  NotificationSoundType
 } from '../../../shared/types';
 
 /**
@@ -498,9 +507,9 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
     );
   }
 
-  // notifications section
+  // notifications section - only include boolean notification settings (not soundType)
   const notificationItems: Array<{
-    key: keyof NotificationSettings;
+    key: 'onTaskComplete' | 'onTaskFailed' | 'onReviewNeeded' | 'sound';
     labelKey: string;
     descriptionKey: string;
   }> = [
@@ -509,6 +518,10 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
     { key: 'onReviewNeeded', labelKey: 'notifications.onReviewNeeded', descriptionKey: 'notifications.onReviewNeededDescription' },
     { key: 'sound', labelKey: 'notifications.sound', descriptionKey: 'notifications.soundDescription' }
   ];
+
+  const handleTestSound = () => {
+    playNotificationSound(settings.notifications.soundType || 'chime');
+  };
 
   return (
     <SettingsSection
@@ -536,6 +549,46 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
             />
           </div>
         ))}
+        {settings.notifications.sound && (
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+            <div className="space-y-1">
+              <Label className="font-medium text-foreground">{t('notifications.soundType')}</Label>
+              <p className="text-sm text-muted-foreground">{t('notifications.soundTypeDescription')}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={settings.notifications.soundType || 'chime'}
+                onValueChange={(value: NotificationSoundType) =>
+                  onSettingsChange({
+                    ...settings,
+                    notifications: {
+                      ...settings.notifications,
+                      soundType: value
+                    }
+                  })
+                }
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chime">{t('notifications.soundTypes.chime')}</SelectItem>
+                  <SelectItem value="ping">{t('notifications.soundTypes.ping')}</SelectItem>
+                  <SelectItem value="pulse">{t('notifications.soundTypes.pulse')}</SelectItem>
+                  <SelectItem value="blip">{t('notifications.soundTypes.blip')}</SelectItem>
+                  <SelectItem value="soft">{t('notifications.soundTypes.soft')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={handleTestSound}
+                className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t('notifications.test')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </SettingsSection>
   );
