@@ -9,16 +9,15 @@ Tests the ImplementationPlan extension methods that enable follow-up tasks:
 """
 
 import json
-import pytest
 from datetime import datetime
 from pathlib import Path
 
 from implementation_plan import (
     ImplementationPlan,
     Phase,
+    PhaseType,
     Subtask,
     SubtaskStatus,
-    PhaseType,
     WorkflowType,
 )
 

@@ -133,7 +133,8 @@ import type {
   GitLabInvestigationStatus,
   GitLabMRReviewResult,
   GitLabMRReviewProgress,
-  GitLabNewCommitsCheck
+  GitLabNewCommitsCheck,
+  ValidationResult
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
 
@@ -437,6 +438,19 @@ export interface ElectronAPI {
   getLinearIssues: (projectId: string, teamId?: string, projectId_?: string) => Promise<IPCResult<LinearIssue[]>>;
   importLinearIssues: (projectId: string, issueIds: string[]) => Promise<IPCResult<LinearImportResult>>;
   checkLinearConnection: (projectId: string) => Promise<IPCResult<LinearSyncStatus>>;
+  validateLinearTicket: (projectId: string, ticketId: string, skipCache?: boolean) => Promise<IPCResult<ValidationResult>>;
+  validateLinearTicketBatch: (projectId: string, ticketIds: string[], skipCache?: boolean) => Promise<IPCResult<any>>;
+  cancelLinearValidation: (ticketId: string) => Promise<IPCResult<void>>;
+  updateLinearTicketWithValidation: (projectId: string, ticketId: string, validation: ValidationResult) => Promise<IPCResult<any>>;
+  clearLinearCache: () => Promise<IPCResult<void>>;
+  /** Listen for Linear validation progress events */
+  onLinearValidationProgress: (callback: (progress: {
+    ticketId: string;
+    phase: string;
+    step: number;
+    total: number;
+    message: string;
+  }) => void) => () => void;
 
   // GitHub integration operations
   getGitHubRepositories: (projectId: string) => Promise<IPCResult<GitHubRepository[]>>;

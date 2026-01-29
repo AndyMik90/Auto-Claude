@@ -480,49 +480,297 @@ export class AgentManager extends EventEmitter {
     return true;
   }
 
-  // ============================================
-  // Queue Routing Methods (Rate Limit Recovery)
-  // ============================================
+  /**
+   * Validate a single Linear ticket using AI
+   * @param taskId - Task ID for error events
+   * @param projectPath - Project directory path
+   * @param ticketId - Linear ticket identifier (e.g., LIN-123)
+   * @param skipCache - Whether to skip cache and force re-validation
+   * @returns Promise resolving to validation result or null on failure
+   */
+  async validateLinearTicket(
+    taskId: string,
+    projectPath: string,
+    ticketId: string,
+    skipCache: boolean = false,
+  ): Promise<{ success: boolean; data?: any; error?: string } | null> {
+    try {
+      const autoBuildSource = this.processManager.getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        this.emit(
+          "error",
+          taskId,
+          "Auto-build source path not found. Please configure it in App Settings.",
+        );
+        return null;
+      }
+
+      const runnerPath = path.join(
+        autoBuildSource,
+        "runners",
+        "linear_validation_runner.py",
+      );
+      if (!existsSync(runnerPath)) {
+        this.emit(
+          "error",
+          taskId,
+          `Linear validation runner not found at: ${runnerPath}`,
+        );
+        return null;
+      }
+
+      const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+      const args = [
+        runnerPath,
+        "--project-dir",
+        projectPath,
+        "--ticket-id",
+        ticketId,
+      ];
+      if (skipCache) {
+        args.push("--skip-cache");
+      }
+
+      return new Promise((resolve) => {
+        const { spawn } = require("child_process");
+        const pythonCommand = this.processManager.getPythonPath();
+        let stdout = "";
+        let stderr = "";
+        // Split stdout into lines to parse progress events
+        let stdoutBuffer = "";
+
+        const child = spawn(pythonCommand, args, {
+          cwd: autoBuildSource,
+          env: { ...process.env, ...combinedEnv },
+        });
+
+        child.stdout?.on("data", (data: Buffer) => {
+          stdoutBuffer += data.toString();
+          const lines = stdoutBuffer.split("\n");
+          // Keep the last potentially incomplete line in the buffer
+          stdoutBuffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("PROGRESS:")) {
+              try {
+                const progressEvent = JSON.parse(line.slice("PROGRESS:".length));
+                // Emit progress event via IPC
+                this.emit("linear-validate-progress", ticketId, progressEvent);
+              } catch {
+                // Ignore invalid progress lines
+              }
+            } else {
+              stdout += line + "\n";
+            }
+          }
+        });
+
+        child.stderr?.on("data", (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        child.on("close", (code: number | null) => {
+          // Add any remaining buffer content
+          if (stdoutBuffer) {
+            if (!stdoutBuffer.startsWith("PROGRESS:")) {
+              stdout += stdoutBuffer;
+            }
+          }
+
+          if (code === 0 && stdout) {
+            try {
+              const result = JSON.parse(stdout);
+              resolve(result);
+            } catch {
+              resolve({
+                success: false,
+                error: `Failed to parse validation output: ${stdout.slice(0, 200)}`,
+              });
+            }
+          } else {
+            resolve({
+              success: false,
+              error: stderr || `Validation process exited with code ${code}`,
+            });
+          }
+        });
+
+        child.on("error", (err: Error) => {
+          resolve({
+            success: false,
+            error: `Failed to spawn validation process: ${err.message}`,
+          });
+        });
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.emit("error", taskId, `Linear validation failed: ${errorMessage}`);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
 
   /**
-   * Get running tasks grouped by profile
-   * Used by queue routing to determine profile load
+   * Validate multiple Linear tickets in batch
+   * @param taskId - Task ID for error events
+   * @param projectPath - Project directory path
+   * @param ticketIds - Array of Linear ticket identifiers
+   * @param skipCache - Whether to skip cache and force re-validation
+   * @returns Promise resolving to batch validation result or null on failure
    */
+  async validateLinearTicketBatch(
+    taskId: string,
+    projectPath: string,
+    ticketIds: string[],
+    skipCache: boolean = false,
+  ): Promise<{ success: boolean; data?: any; error?: string } | null> {
+    try {
+      const autoBuildSource = this.processManager.getAutoBuildSourcePath();
+      if (!autoBuildSource) {
+        this.emit(
+          "error",
+          taskId,
+          "Auto-build source path not found. Please configure it in App Settings.",
+        );
+        return null;
+      }
+
+      const runnerPath = path.join(
+        autoBuildSource,
+        "runners",
+        "linear_validation_runner.py",
+      );
+      if (!existsSync(runnerPath)) {
+        this.emit(
+          "error",
+          taskId,
+          `Linear validation runner not found at: ${runnerPath}`,
+        );
+        return null;
+      }
+
+      const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+      const args = [
+        runnerPath,
+        "--project-dir",
+        projectPath,
+        "--ticket-ids",
+        ticketIds.join(","),
+      ];
+      if (skipCache) {
+        args.push("--skip-cache");
+      }
+
+      return new Promise((resolve) => {
+        const { spawn } = require("child_process");
+        const pythonCommand = this.processManager.getPythonPath();
+        let stdout = "";
+        let stderr = "";
+        // Split stdout into lines to parse progress events
+        let stdoutBuffer = "";
+
+        const child = spawn(pythonCommand, args, {
+          cwd: autoBuildSource,
+          env: { ...process.env, ...combinedEnv },
+        });
+
+        child.stdout?.on("data", (data: Buffer) => {
+          stdoutBuffer += data.toString();
+          const lines = stdoutBuffer.split("\n");
+          // Keep the last potentially incomplete line in the buffer
+          stdoutBuffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("PROGRESS:")) {
+              try {
+                const progressEvent = JSON.parse(line.slice("PROGRESS:".length));
+                // For batch validation, we don't have a single ticket ID
+                // Emit with a special batch identifier
+                this.emit("linear-validate-progress", "batch", progressEvent);
+              } catch {
+                // Ignore invalid progress lines
+              }
+            } else {
+              stdout += line + "\n";
+            }
+          }
+        });
+
+        child.stderr?.on("data", (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        child.on("close", (code: number | null) => {
+          // Add any remaining buffer content
+          if (stdoutBuffer) {
+            if (!stdoutBuffer.startsWith("PROGRESS:")) {
+              stdout += stdoutBuffer;
+            }
+          }
+
+          if (code === 0 && stdout) {
+            try {
+              const result = JSON.parse(stdout);
+              resolve(result);
+            } catch {
+              resolve({
+                success: false,
+                error: `Failed to parse validation output: ${stdout.slice(0, 200)}`,
+              });
+            }
+          } else {
+            resolve({
+              success: false,
+              error: stderr || `Validation process exited with code ${code}`,
+            });
+          }
+        });
+
+        child.on("error", (err: Error) => {
+          resolve({
+            success: false,
+            error: `Failed to spawn validation process: ${err.message}`,
+          });
+        });
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.emit(
+        "error",
+        taskId,
+        `Linear batch validation failed: ${errorMessage}`,
+      );
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  // Queue routing methods - delegate to AgentState
+  // These are used by the queue routing IPC handlers for multi-profile support
+
   getRunningTasksByProfile(): { byProfile: Record<string, string[]>; totalRunning: number } {
     return this.state.getRunningTasksByProfile();
   }
 
-  /**
-   * Assign a profile to a task
-   * Records which profile is being used for a task
-   */
-  assignProfileToTask(
-    taskId: string,
-    profileId: string,
-    profileName: string,
-    reason: 'proactive' | 'reactive' | 'manual'
-  ): void {
+  assignProfileToTask(taskId: string, profileId: string, profileName: string, reason: 'proactive' | 'reactive' | 'manual'): void {
     this.state.assignProfileToTask(taskId, profileId, profileName, reason);
   }
 
-  /**
-   * Get the profile assignment for a task
-   */
-  getTaskProfileAssignment(taskId: string): { profileId: string; profileName: string; reason: string } | undefined {
-    return this.state.getTaskProfileAssignment(taskId);
-  }
-
-  /**
-   * Update the session ID for a task (for session resume)
-   */
   updateTaskSession(taskId: string, sessionId: string): void {
     this.state.updateTaskSession(taskId, sessionId);
   }
 
-  /**
-   * Get the session ID for a task
-   */
-  getTaskSessionId(taskId: string): string | undefined {
-    return this.state.getTaskSessionId(taskId);
+  getTaskSessionId(taskId: string): string | null {
+    return this.state.getTaskSessionId(taskId) ?? null;
+  }
+
+  getTaskProfileAssignment(taskId: string) {
+    return this.state.getTaskProfileAssignment(taskId);
   }
 }
