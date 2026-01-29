@@ -57,7 +57,14 @@ export function usePtyProcess({
   // Track if we've received first output from the new PTY during recreation
   const hasReceivedFirstOutputRef = useRef(false);
   // Track when the new PTY was created to distinguish it from the old PTY's output
+  // (kept for optional telemetry, but generation-based check is primary)
   const newPtyCreatedAtRef = useRef<number | null>(null);
+  // PTY generation counter - incremented each time a new PTY is created
+  // Used to deterministically identify output from the current PTY vs old PTY
+  const ptyGenerationRef = useRef<number>(0);
+  // Expected generation for the current recreation - set when new PTY is created
+  // Used to compare against output generation to determine if output is from new PTY
+  const expectedGenerationRef = useRef<number | null>(null);
 
   // Use getState() pattern for store actions to avoid React Fast Refresh issues
   // The selectors like useTerminalStore((state) => state.setTerminalStatus) can fail
@@ -80,6 +87,7 @@ export function usePtyProcess({
       recreationGuardTimerRef.current = null;
     }
     newPtyCreatedAtRef.current = null;
+    expectedGenerationRef.current = null;
   }, []);
 
   // Reset the first output flag (separate from timer cleanup)
@@ -90,26 +98,22 @@ export function usePtyProcess({
   // Function to clear guard timer when first output is received from the NEW PTY
   // This allows genuine early exits from the new PTY to be processed
   // while still ignoring late exits from the old PTY
-  // We verify the output is from the new PTY by checking newPtyCreatedAtRef
-  // Returns true if output was processed, false if ignored (e.g., too early)
+  // Generation-based check is performed in Terminal.tsx before calling this function
+  // Returns true if output was processed, false if ignored (e.g., not in recreation state)
   const handleFirstOutput = useCallback((): boolean => {
-    if (isRecreatingRef?.current && recreationGuardTimerRef.current && newPtyCreatedAtRef.current) {
-      // Only clear guard if this output is from the new PTY (created after recreation started)
-      // Add a small delay to ensure we're not getting output from the old PTY's buffer
-      const timeSinceCreation = Date.now() - newPtyCreatedAtRef.current;
-      if (timeSinceCreation > 50) { // 50ms delay to avoid old PTY buffer output
-        debugLog(`[usePtyProcess] First output received from new PTY for terminal: ${terminalId}, clearing recreation guard early`);
-        clearRecreationGuardTimer();
-        if (isRecreatingRef.current) {
-          isRecreatingRef.current = false;
-        }
-        hasReceivedFirstOutputRef.current = true;
-        onFirstOutput?.();
-        return true; // Output was processed
-      } else {
-        debugLog(`[usePtyProcess] Ignoring early output (${timeSinceCreation}ms) - likely from old PTY buffer`);
-        return false; // Output was ignored, allow next output to trigger handleFirstOutput
+    if (isRecreatingRef?.current && recreationGuardTimerRef.current) {
+      const timeSinceCreation = newPtyCreatedAtRef.current 
+        ? Date.now() - newPtyCreatedAtRef.current 
+        : null;
+      debugLog(`[usePtyProcess] First output received from new PTY (generation ${ptyGenerationRef.current}) for terminal: ${terminalId}, clearing recreation guard early${timeSinceCreation !== null ? ` (${timeSinceCreation}ms after creation)` : ''}`);
+      clearRecreationGuardTimer();
+      if (isRecreatingRef.current) {
+        isRecreatingRef.current = false;
       }
+      hasReceivedFirstOutputRef.current = true;
+      expectedGenerationRef.current = null; // Clear expected generation after processing
+      onFirstOutput?.();
+      return true; // Output was processed
     }
     return false; // Not in recreation state, output not processed
   }, [terminalId, isRecreatingRef, clearRecreationGuardTimer, onFirstOutput]);
@@ -217,7 +221,11 @@ export function usePtyProcess({
         // allowing genuine early exits to be processed while still ignoring late exits from old PTY.
         clearRecreationGuardTimer();
         resetHasReceivedFirstOutput();
-        // Mark when new PTY was created to distinguish its output from old PTY's buffered output
+        // Increment PTY generation to deterministically identify output from this new PTY
+        ptyGenerationRef.current += 1;
+        // Store expected generation for this recreation to compare against output
+        expectedGenerationRef.current = ptyGenerationRef.current;
+        // Mark when new PTY was created (optional telemetry, generation check is primary)
         newPtyCreatedAtRef.current = Date.now();
         recreationGuardTimerRef.current = setTimeout(() => {
           recreationGuardTimerRef.current = null;
@@ -330,5 +338,6 @@ export function usePtyProcess({
     prepareForRecreate,
     resetForRecreate,
     handleFirstOutput,
+    getExpectedGeneration: () => expectedGenerationRef.current,
   };
 }

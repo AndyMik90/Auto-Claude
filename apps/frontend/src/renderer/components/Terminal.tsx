@@ -59,6 +59,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   const lastPtyDimensionsRef = useRef<{ cols: number; rows: number } | null>(null);
   // Track if we've called handleFirstOutput for this PTY instance
   const hasCalledFirstOutputRef = useRef(false);
+  // Track the expected generation when recreation starts
+  // Used to deterministically identify output from the new PTY vs old PTY
+  const capturedExpectedGenerationRef = useRef<number | null>(null);
 
   // Worktree dialog state
   const [showWorktreeDialog, setShowWorktreeDialog] = useState(false);
@@ -180,7 +183,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   }, [readyDimensions, cols, rows]);
 
   // Create PTY process - only when we have valid dimensions
-  const { prepareForRecreate, resetForRecreate, handleFirstOutput } = usePtyProcess({
+  const { prepareForRecreate, resetForRecreate, handleFirstOutput, getExpectedGeneration } = usePtyProcess({
     terminalId: id,
     cwd: effectiveCwd,
     projectPath,
@@ -192,6 +195,11 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     isRecreatingRef,
     onCreated: () => {
       isCreatedRef.current = true;
+      // Capture expected generation when new PTY is created (during recreation)
+      // This allows us to deterministically identify output from this new PTY
+      if (isRecreatingRef.current && getExpectedGeneration) {
+        capturedExpectedGenerationRef.current = getExpectedGeneration();
+      }
       // Initialize PTY dimension tracking with creation dimensions
       // This ensures the first resize check has a baseline to compare against
       if (ptyDimensions) {
@@ -222,22 +230,31 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   // Listen for first TERMINAL_OUTPUT to clear recreation guard early
   // This allows genuine early exits from the new PTY to be processed
   // while still ignoring late exits from the old PTY
+  // Uses generation-based check (deterministic) instead of timing (fragile)
   useEffect(() => {
-    if (!handleFirstOutput) return;
+    if (!handleFirstOutput || !getExpectedGeneration) return;
 
     const cleanup = window.electronAPI.onTerminalOutput((terminalId, data) => {
       if (terminalId === id && !hasCalledFirstOutputRef.current && isRecreatingRef.current) {
-        // Only set flag if output was actually processed (not ignored due to early arrival)
-        // This prevents the flag from being set prematurely when output arrives within 50ms
-        const wasProcessed = handleFirstOutput();
-        if (wasProcessed) {
-          hasCalledFirstOutputRef.current = true;
+        // Compare captured expected generation (from when new PTY was created) with current expected generation
+        // If they match, this output is from the new PTY; if not, it's from an old PTY
+        const currentExpected = getExpectedGeneration();
+        if (capturedExpectedGenerationRef.current !== null && capturedExpectedGenerationRef.current === currentExpected) {
+          // This output is from the new PTY - process it
+          const wasProcessed = handleFirstOutput();
+          if (wasProcessed) {
+            hasCalledFirstOutputRef.current = true;
+            capturedExpectedGenerationRef.current = null; // Clear after processing
+          }
+        } else {
+          // This output is from an old PTY - ignore it
+          // (capturedExpectedGenerationRef.current is null or doesn't match current expected generation)
         }
       }
     });
 
     return cleanup;
-  }, [id, handleFirstOutput, isRecreatingRef]);
+  }, [id, handleFirstOutput, getExpectedGeneration, isRecreatingRef]);
 
   // Handle terminal events (output is now handled globally via useGlobalTerminalListeners)
   useTerminalEvents({
@@ -511,6 +528,8 @@ Please confirm you're ready by saying: I'm ready to work on ${selectedTask.title
     resetForRecreate();
     // Reset first output flag for new PTY instance
     hasCalledFirstOutputRef.current = false;
+    // Clear captured generation - will be set when new PTY is created
+    capturedExpectedGenerationRef.current = null;
   }, [id, setWorktreeConfig, updateTerminal, prepareForRecreate, resetForRecreate]);
 
   const handleWorktreeCreated = useCallback(async (config: TerminalWorktreeConfig) => {
