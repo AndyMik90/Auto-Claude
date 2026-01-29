@@ -151,11 +151,13 @@ export function spawnPtyProcess(
   // show "Claude API" instead of "Claude Max" when ANTHROPIC_API_KEY is set.
   const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = process.env;
 
+  const cwdToUse = cwd || os.homedir();
+
   const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
     cols,
     rows,
-    cwd: cwd || os.homedir(),
+    cwd: cwdToUse,
     env: {
       ...cleanEnv,
       ...profileEnv,
@@ -166,6 +168,7 @@ export function spawnPtyProcess(
       PROMPT_EOL_MARK: '',
     },
   });
+
 
   return { pty: ptyProcess, shellType };
 }
@@ -184,6 +187,7 @@ export function setupPtyHandlers(
 
   // Handle data from terminal
   ptyProcess.onData((data) => {
+
     // Append to output buffer (limit to 100KB)
     terminal.outputBuffer = (terminal.outputBuffer + data).slice(-100000);
 

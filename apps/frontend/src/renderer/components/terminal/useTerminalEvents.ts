@@ -18,6 +18,52 @@ export function useTerminalEvents({
   onTitleChange,
   onClaudeSession,
 }: UseTerminalEventsOptions) {
+  // Track when terminal was restored to ignore late TERMINAL_EXIT from old PTY
+  const terminalRestoredAtRef = useRef<number | null>(null);
+  const restorationGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Check if terminal is restored and set up guard
+  useEffect(() => {
+    const store = useTerminalStore.getState();
+    const terminal = store.getTerminal(terminalId);
+    if (terminal?.isRestored && terminalRestoredAtRef.current === null) {
+      terminalRestoredAtRef.current = Date.now();
+      // Set guard timer to ignore TERMINAL_EXIT events for 2.5 seconds after restoration
+      // This prevents late TERMINAL_EXIT from the old (destroyed) PTY from being treated
+      // as an exit from the newly restored terminal
+      restorationGuardTimerRef.current = setTimeout(() => {
+        terminalRestoredAtRef.current = null;
+        restorationGuardTimerRef.current = null;
+      }, 2500);
+    }
+    
+    return () => {
+      if (restorationGuardTimerRef.current) {
+        clearTimeout(restorationGuardTimerRef.current);
+        restorationGuardTimerRef.current = null;
+      }
+    };
+  }, [terminalId]);
+  
+  // Subscribe to terminal store changes to detect when isRestored becomes true
+  const terminal = useTerminalStore((state) => state.terminals.find((t) => t.id === terminalId));
+  useEffect(() => {
+    if (terminal?.isRestored && terminalRestoredAtRef.current === null) {
+      const restoredAt = Date.now();
+      terminalRestoredAtRef.current = restoredAt;
+      restorationGuardTimerRef.current = setTimeout(() => {
+        terminalRestoredAtRef.current = null;
+        restorationGuardTimerRef.current = null;
+      }, 2500);
+    }
+    
+    return () => {
+      if (restorationGuardTimerRef.current) {
+        clearTimeout(restorationGuardTimerRef.current);
+        restorationGuardTimerRef.current = null;
+      }
+    };
+  }, [terminalId, terminal?.isRestored]);
   // Use refs to always have the latest callbacks without re-registering listeners
   // This prevents duplicate listener registration when callbacks change identity
   const onExitRef = useRef(onExit);
@@ -44,9 +90,20 @@ export function useTerminalEvents({
         // During deliberate recreation (e.g., worktree switching), skip the normal
         // exit handling to prevent setting status to 'exited' and scheduling removal.
         // The recreation flow will handle status transitions.
+        // Do NOT call onExit callback here - this is an expected exit from the old PTY
+        // that should be silently ignored. The new PTY will handle its own lifecycle.
         if (isRecreatingRef?.current) {
-          onExitRef.current?.(exitCode);
           return;
+        }
+        
+        // During terminal restoration from History, ignore TERMINAL_EXIT events that arrive
+        // within 2.5 seconds of restoration. This prevents late TERMINAL_EXIT from the old
+        // (destroyed) PTY from being treated as an exit from the newly restored terminal.
+        if (terminalRestoredAtRef.current !== null) {
+          const timeSinceRestore = Date.now() - terminalRestoredAtRef.current;
+          if (timeSinceRestore < 2500) {
+            return;
+          }
         }
 
         const store = useTerminalStore.getState();

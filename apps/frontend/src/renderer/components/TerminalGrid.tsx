@@ -140,7 +140,23 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       // Small delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      // Sort sessions by displayOrder before restoring to preserve user's tab ordering
+      const sortedSessions = [...sessionsToRestore].sort((a, b) => {
+        const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        return orderA - orderB;
+      });
+
+      // CRITICAL: Add terminals to store WITH isRestored:true BEFORE restoring PTYs.
+      // This ensures the restoration guard in useTerminalEvents is activated BEFORE
+      // any TERMINAL_EXIT events arrive, preventing the terminal from being removed
+      // when the PTY exits with code 1 (normal zsh session save behavior).
+      for (const session of sortedSessions) {
+        addRestoredTerminal(session);
+      }
+
       // Restore sessions from the selected date (creates PTYs in main process)
+      // Terminals are already in the store with isRestored:true, so the guard is active
       const result = await window.electronAPI.restoreTerminalSessionsFromDate(
         date,
         projectPath,
@@ -151,27 +167,28 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
       if (result.success && result.data) {
         console.warn(`[TerminalGrid] Main process restored ${result.data.restored} sessions from ${date}`);
 
-        // Sort sessions by displayOrder before restoring to preserve user's tab ordering
-        const sortedSessions = [...sessionsToRestore].sort((a, b) => {
-          const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
-          const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
-          return orderA - orderB;
-        });
-
-        // Add each successfully restored session to the renderer's terminal store
         // Use staggered initialization to prevent race conditions when multiple terminals
         // try to initialize and measure dimensions simultaneously
         const TERMINAL_INIT_STAGGER_MS = 75; // Small delay between each terminal
 
+        // Terminals are already in the store, but we need to stagger their initialization
+        // to prevent race conditions when they try to initialize simultaneously
         for (const sessionResult of result.data.sessions) {
           if (sessionResult.success) {
             const fullSession = sortedSessions.find(s => s.id === sessionResult.id);
             if (fullSession) {
-              console.warn(`[TerminalGrid] Adding restored terminal to store: ${fullSession.id}`);
-              addRestoredTerminal(fullSession);
-              // Stagger terminal initialization to prevent race conditions
+              // Terminal is already in store, just stagger initialization
               await new Promise(resolve => setTimeout(resolve, TERMINAL_INIT_STAGGER_MS));
             }
+          } else {
+            // PTY creation failed - remove the terminal from store to prevent non-functional terminals
+            // from appearing in the UI or counting towards the terminal limit
+            console.warn(`[TerminalGrid] Failed to restore terminal ${sessionResult.id}, removing from store. Error: ${sessionResult.error || 'Unknown error'}`);
+            // Ensure terminal is destroyed in main process (may not exist if creation failed)
+            await window.electronAPI.destroyTerminal(sessionResult.id).catch(() => {
+              // Ignore errors - terminal may not exist in main process if creation failed
+            });
+            removeTerminal(sessionResult.id);
           }
         }
 

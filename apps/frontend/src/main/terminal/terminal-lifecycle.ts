@@ -75,6 +75,28 @@ export async function createTerminal(
       debugLog('[TerminalLifecycle] Terminal cwd does not exist, falling back:', cwd, '->', projectPath || os.homedir());
       effectiveCwd = projectPath || os.homedir();
     }
+    // Additional validation: check if directory is accessible (not just exists)
+    if (effectiveCwd && existsSync(effectiveCwd)) {
+      try {
+        // Try to read the directory to ensure it's accessible
+        const fs = require('fs');
+        const stats = fs.statSync(effectiveCwd);
+        if (!stats.isDirectory()) {
+          debugLog('[TerminalLifecycle] Terminal cwd is not a directory, falling back:', effectiveCwd, '->', projectPath || os.homedir());
+          effectiveCwd = projectPath || os.homedir();
+        }
+        // Check if directory is readable (required for shell to start)
+        try {
+          fs.accessSync(effectiveCwd, fs.constants.R_OK);
+        } catch (accessErr) {
+          debugLog('[TerminalLifecycle] Terminal cwd is not readable, falling back:', effectiveCwd, '->', projectPath || os.homedir(), 'error:', accessErr);
+          effectiveCwd = projectPath || os.homedir();
+        }
+      } catch (err) {
+        debugLog('[TerminalLifecycle] Terminal cwd is not accessible, falling back:', effectiveCwd, '->', projectPath || os.homedir(), 'error:', err);
+        effectiveCwd = projectPath || os.homedir();
+      }
+    }
 
     const { pty: ptyProcess, shellType } = PtyManager.spawnPtyProcess(
       effectiveCwd || os.homedir(),
@@ -134,6 +156,7 @@ export async function restoreTerminal(
   cols = 80,
   rows = 24
 ): Promise<TerminalOperationResult> {
+
   // Look up the stored session to get the correct isClaudeMode value
   // The renderer may pass isClaudeMode: false (by design), but we need the stored value
   // to determine whether to auto-resume Claude
